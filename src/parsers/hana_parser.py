@@ -7,7 +7,7 @@ import pandas as pd
 import re
 from typing import List
 from src.parsers.base import StatementParser
-from src.models import Transaction
+from src.models import Transaction, ParseResult, SkippedTransaction, SkipReason
 import logging
 
 
@@ -22,7 +22,7 @@ class HanaCardParser(StatementParser):
     Note: Real Hana Card format may differ - requires sample file to validate
     """
 
-    def parse(self, file_path: str) -> List[Transaction]:
+    def parse(self, file_path: str) -> ParseResult:
         """
         Parse Hana Card statement file and extract transactions.
 
@@ -33,16 +33,19 @@ class HanaCardParser(StatementParser):
             file_path: Path to the Hana Card statement file (.xlsx or .csv)
 
         Returns:
-            List of Transaction objects with source='하나카드'
+            ParseResult containing:
+                - transactions: List of successfully parsed Transaction objects with source='하나카드'
+                - skipped: List of SkippedTransaction objects for rows that couldn't be parsed
+                - total_rows_scanned: Total number of rows processed
+                - parser_type: 'HANA'
 
         Raises:
             Exception: If file cannot be read or parsed
 
         Examples:
             >>> parser = HanaCardParser()
-            >>> transactions = parser.parse('hana_statement.xlsx')
-            >>> print(len(transactions))
-            25
+            >>> result = parser.parse('hana_statement.xlsx')
+            >>> print(f"Parsed {len(result.transactions)} transactions, skipped {len(result.skipped)}")
 
         Notes:
             - Finds '거래일자' row to locate start of transaction data
@@ -50,8 +53,11 @@ class HanaCardParser(StatementParser):
             - Date format must be yyyy.mm.dd
             - Amount field may contain commas (automatically removed)
             - Uses inherited CategoryMatcher for auto-categorization
+            - Tracks skipped rows with detailed reasons (invalid date, missing data, zero amount, etc.)
         """
         transactions = []
+        skipped = []
+        total_rows_scanned = 0
         logger = logging.getLogger(__name__)
 
         try:
@@ -84,6 +90,7 @@ class HanaCardParser(StatementParser):
 
             # Process transaction rows
             for idx in range(start_row, len(df)):
+                total_rows_scanned += 1
                 try:
                     row = df.iloc[idx]
 
@@ -92,16 +99,35 @@ class HanaCardParser(StatementParser):
 
                     # Check if date matches yyyy.mm.dd format
                     if not re.match(r'\d{4}\.\d{2}\.\d{2}', raw_date):
+                        skipped.append(SkippedTransaction(
+                            row_number=idx,
+                            skip_reason=SkipReason.INVALID_DATE,
+                            transaction_date=raw_date if raw_date != 'nan' else None,
+                            skip_details=f"Date format invalid: '{raw_date}' (expected yyyy.mm.dd)"
+                        ))
                         continue  # Skip non-data rows
 
                     # Extract merchant name (column 1: 가맹점명)
                     item_name = str(row[1]).strip()
                     if not item_name or item_name == 'nan':
+                        skipped.append(SkippedTransaction(
+                            row_number=idx,
+                            skip_reason=SkipReason.MISSING_MERCHANT,
+                            transaction_date=raw_date,
+                            skip_details=f"Missing merchant name (column 1 is empty or 'nan')"
+                        ))
                         continue  # Skip rows with missing merchant
 
                     # Extract original amount (column 2: 이용금액)
                     original_amount_str = str(row[2]).replace(',', '').strip()
                     if original_amount_str == 'nan' or not original_amount_str:
+                        skipped.append(SkippedTransaction(
+                            row_number=idx,
+                            skip_reason=SkipReason.MISSING_AMOUNT,
+                            transaction_date=raw_date,
+                            merchant_name=item_name,
+                            skip_details=f"Missing original amount (column 2 is empty or 'nan')"
+                        ))
                         continue
                     original_amount = int(float(original_amount_str))
 
@@ -115,6 +141,14 @@ class HanaCardParser(StatementParser):
 
                     # Skip transactions with 0 charged amount (cancelled or fully discounted)
                     if charged_amount == 0:
+                        skipped.append(SkippedTransaction(
+                            row_number=idx,
+                            skip_reason=SkipReason.ZERO_AMOUNT,
+                            transaction_date=raw_date,
+                            merchant_name=item_name,
+                            amount=0,
+                            skip_details=f"Charged amount is 0 (original: {original_amount})"
+                        ))
                         logger.debug(f'Skipped 0 amount transaction: {raw_date} {item_name}')
                         continue
 
@@ -159,10 +193,31 @@ class HanaCardParser(StatementParser):
                     transactions.append(transaction)
 
                 except (ValueError, IndexError, AttributeError) as e:
+                    # Try to extract as much metadata as possible for the skipped row
+                    try:
+                        row = df.iloc[idx]
+                        raw_date = str(row[0]).strip() if len(row) > 0 else None
+                        item_name = str(row[1]).strip() if len(row) > 1 else None
+                        if raw_date == 'nan':
+                            raw_date = None
+                        if item_name == 'nan':
+                            item_name = None
+                    except:
+                        raw_date = None
+                        item_name = None
+
+                    skipped.append(SkippedTransaction(
+                        row_number=idx,
+                        skip_reason=SkipReason.PARSING_ERROR,
+                        transaction_date=raw_date,
+                        merchant_name=item_name,
+                        skip_details=f"Parsing error: {type(e).__name__}: {str(e)}"
+                    ))
                     logger.debug(f'Skipped row {idx}: {e}')
                     continue
 
             logger.info(f'Successfully parsed {len(transactions)} transactions from Hana Card statement')
+            logger.info(f'Parsing summary: {total_rows_scanned} rows scanned, {len(transactions)} transactions, {len(skipped)} skipped')
 
         except FileNotFoundError:
             logger.error(f'File not found: {file_path}')
@@ -171,4 +226,9 @@ class HanaCardParser(StatementParser):
             logger.error(f'Parse error for {file_path}: {e}')
             raise
 
-        return transactions
+        return ParseResult(
+            transactions=transactions,
+            skipped=skipped,
+            total_rows_scanned=total_rows_scanned,
+            parser_type='HANA'
+        )

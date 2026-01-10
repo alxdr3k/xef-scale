@@ -5,7 +5,7 @@ Defines the Strategy Pattern for institution-specific parser implementations.
 
 from abc import ABC, abstractmethod
 from typing import List
-from src.models import Transaction
+from src.models import Transaction, ParseResult
 from src.category_matcher import CategoryMatcher
 
 
@@ -26,9 +26,9 @@ class StatementParser(ABC):
         self.matcher = CategoryMatcher()
 
     @abstractmethod
-    def parse(self, input_data: any) -> List[Transaction]:
+    def parse(self, input_data: any) -> ParseResult:
         """
-        Parse statement file and return list of transactions.
+        Parse statement file and return ParseResult with transactions and skipped rows.
 
         This method must be implemented by all concrete parser subclasses.
         The implementation should handle institution-specific file formats
@@ -38,7 +38,11 @@ class StatementParser(ABC):
             input_data: File path (str) or raw content depending on implementation
 
         Returns:
-            List of Transaction objects extracted from the statement
+            ParseResult containing:
+                - transactions: List of successfully parsed Transaction objects
+                - skipped: List of SkippedTransaction objects for rows that couldn't be parsed
+                - total_rows_scanned: Total number of rows processed
+                - parser_type: Identifier for the parser (e.g., 'HANA', 'SHINHAN')
 
         Raises:
             ParseError: If file cannot be parsed or has invalid format
@@ -49,8 +53,9 @@ class StatementParser(ABC):
             >>> class HanaParser(StatementParser):
             ...     def parse(self, input_data):
             ...         # Implementation specific to Hana Card
-            ...         return [Transaction(...)]
+            ...         return ParseResult(transactions=[Transaction(...)], skipped=[], ...)
             >>> parser = HanaParser()
-            >>> transactions = parser.parse('statement.xlsx')
+            >>> result = parser.parse('statement.xlsx')
+            >>> print(f"Parsed {len(result.transactions)} transactions, skipped {len(result.skipped)}")
         """
         pass
