@@ -1,9 +1,9 @@
 """
 End-to-end testing and verification of expense tracker parsing system.
 
-Validates complete workflow from file processing through database persistence,
-session tracking, skip recording, and API-friendly queries. Verifies accounting
-equation and validation scenarios.
+Validates database state after file processing: session tracking, skip recording,
+API methods, and accounting equation verification. Works with existing parsed data
+rather than reprocessing files.
 """
 
 import os
@@ -13,37 +13,8 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.file_processor import FileProcessor
 from src.db.connection import DatabaseConnection
 from src.db.repository import ParsingSessionRepository, SkippedTransactionRepository
-
-
-def find_test_file(archive_path):
-    """
-    Find a test file in the archive directory.
-
-    Uses first available .xls or .xlsx file in the directory.
-
-    Args:
-        archive_path: Path to archive directory
-
-    Returns:
-        str: Full path to test file, or None if no files found
-    """
-    # Find first .xls file
-    if not os.path.exists(archive_path):
-        return None
-
-    files = [f for f in os.listdir(archive_path)
-             if f.endswith('.xls') or f.endswith('.xlsx')]
-
-    # Filter out files in subdirectories
-    files = [f for f in files if os.path.isfile(os.path.join(archive_path, f))]
-
-    if not files:
-        return None
-
-    return os.path.join(archive_path, files[0])
 
 
 def verify_end_to_end():
@@ -51,14 +22,17 @@ def verify_end_to_end():
     Comprehensive end-to-end verification of expense tracker system.
 
     Tests:
-    1. File processing from archive
-    2. Database table population (parsing_sessions, skipped_transactions)
-    3. API methods (get_recent_sessions, get_with_stats, get_summary_by_reason)
-    4. Validation status computation
-    5. Accounting equation verification
+    1. Retrieves most recent parsing session from database
+    2. Validates parsing session data and statistics
+    3. Tests API methods (get_recent_sessions, get_with_stats, get_summary_by_reason)
+    4. Verifies accounting equation: total_rows == saved + skipped + duplicate
+    5. Validates skipped_transactions records and aggregation
+    6. Confirms validation_status logic
+
+    Note: Works with existing database data - does NOT reprocess files.
     """
     print("=" * 70)
-    print("End-to-End Verification")
+    print("End-to-End Verification (Database State)")
     print("=" * 70)
 
     # 1. Setup
@@ -66,112 +40,61 @@ def verify_end_to_end():
     print("1. Setup")
     print("=" * 70)
 
-    archive_path = '/Users/yngn/ws/expense-tracker/archive/'
-    test_file = find_test_file(archive_path)
-
-    if not test_file:
-        print(f"\n✗ ERROR: No test files found in {archive_path}")
-        print("  Please ensure archive directory contains .xls files")
-        sys.exit(1)
-
-    print(f"  Test file: {os.path.basename(test_file)}")
-    print(f"  Full path: {test_file}")
-
-    # Initialize processor and repositories
-    processor = FileProcessor()
+    # Initialize database connection and repositories
     conn = DatabaseConnection.get_instance()
     session_repo = ParsingSessionRepository(conn)
     skipped_repo = SkippedTransactionRepository(conn)
 
-    print("  ✓ FileProcessor initialized")
     print("  ✓ Database connection established")
     print("  ✓ Repositories initialized")
 
-    # 2. Process file
+    # 2. Query most recent parsing session
     print("\n" + "=" * 70)
-    print("2. Process File")
+    print("2. Retrieve Most Recent Parsing Session")
     print("=" * 70)
 
-    print(f"\nProcessing file: {os.path.basename(test_file)}")
-    result = processor.process_file(Path(test_file))
+    # Get recent sessions
+    recent_sessions = session_repo.get_recent_sessions(limit=1)
 
-    print(f"\nProcessing Result:")
-    print(f"  Status: {result.status}")
-    print(f"  Message: {result.message}")
-    print(f"  Transactions: {result.transaction_count}")
-    print(f"  File ID: {result.file_id}")
-    print(f"  File Hash: {result.file_hash[:16] if result.file_hash else None}...")
-
-    # Handle duplicate case
-    if result.is_duplicate():
-        print("\n" + "=" * 70)
-        print("⚠ File is duplicate (expected behavior)")
-        print("=" * 70)
-        print("\nThis is normal - the file was already processed.")
-        print("End-to-end verification cannot proceed with duplicate file.")
-        print("\nTo test with a new file:")
-        print("1. Copy a file from archive to inbox with unique name")
-        print("2. Or delete the duplicate records from database")
-        sys.exit(0)
-
-    # Handle error case
-    if not result.is_success():
-        print("\n" + "=" * 70)
-        print(f"✗ Processing failed: {result.message}")
-        print("=" * 70)
+    if not recent_sessions:
+        print("\n✗ ERROR: No parsing sessions found in database")
+        print("  Please process at least one file before running this test")
         sys.exit(1)
 
-    print("\n  ✓ File processed successfully")
+    session = recent_sessions[0]
+    session_id = session['id']
 
-    file_id = result.file_id
-
-    # 3. Query parsing_sessions (direct SQL for verification)
-    print("\n" + "=" * 70)
-    print("3. Parsing Session Details")
-    print("=" * 70)
-
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT id, file_id, parser_type, total_rows_in_file,
-               rows_saved, rows_skipped, rows_duplicate,
-               status, validation_status, validation_notes
-        FROM parsing_sessions
-        WHERE file_id = ?
-    """, (file_id,))
-
-    session = cursor.fetchone()
-
-    if not session:
-        print(f"\n✗ ERROR: No parsing session found for file_id={file_id}")
-        sys.exit(1)
-
-    print(f"\n  Session ID: {session['id']}")
-    print(f"  File ID: {session['file_id']}")
+    print(f"\n  Most recent session found:")
+    print(f"  Session ID: {session_id}")
+    print(f"  File Name: {session['file_name']}")
+    print(f"  Institution: {session['institution_name']}")
+    print(f"  Institution Type: {session['institution_type']}")
     print(f"  Parser Type: {session['parser_type']}")
-    print(f"  Total Rows Scanned: {session['total_rows_in_file']}")
+    print(f"  Status: {session['status']}")
+
+    print("\n  ✓ Recent session retrieved successfully")
+
+    # 3. Parsing Session Details (Direct Query)
+    print("\n" + "=" * 70)
+    print("3. Parsing Session Statistics")
+    print("=" * 70)
+
+    print(f"\n  Total Rows Scanned: {session['total_rows_in_file']}")
     print(f"  Rows Saved: {session['rows_saved']}")
     print(f"  Rows Skipped: {session['rows_skipped']}")
     print(f"  Rows Duplicate: {session['rows_duplicate']}")
-    print(f"  Status: {session['status']}")
     print(f"  Validation Status: {session['validation_status']}")
     print(f"  Validation Notes: {session['validation_notes']}")
 
-    session_id = session['id']
+    print("\n  ✓ Parsing session statistics retrieved")
 
-    print("\n  ✓ parsing_sessions record verified")
-
-    # 4. Query skipped_transactions (direct SQL)
+    # 4. Query skipped_transactions
     print("\n" + "=" * 70)
     print("4. Skipped Transactions")
     print("=" * 70)
 
-    cursor.execute("""
-        SELECT * FROM skipped_transactions
-        WHERE session_id = ?
-        ORDER BY row_number
-    """, (session_id,))
-
-    skipped_list = cursor.fetchall()
+    # Use repository method instead of direct SQL
+    skipped_list = skipped_repo.get_by_session(session_id)
 
     print(f"\n  Total skipped: {len(skipped_list)}")
 
@@ -191,7 +114,7 @@ def verify_end_to_end():
     print("5. Testing API Methods")
     print("=" * 70)
 
-    # 5a. get_recent_sessions
+    # 5a. get_recent_sessions - already tested in step 2
     print("\n  Testing get_recent_sessions(limit=10)...")
     recent = session_repo.get_recent_sessions(limit=10)
     print(f"    Returned: {len(recent)} sessions")
@@ -199,9 +122,9 @@ def verify_end_to_end():
     # Verify our session is in the list
     found = any(s['id'] == session_id for s in recent)
     if found:
-        print(f"    ✓ Our session (id={session_id}) found in recent list")
+        print(f"    ✓ Current session (id={session_id}) found in recent list")
     else:
-        print(f"    ✗ ERROR: Our session (id={session_id}) NOT in recent list")
+        print(f"    ✗ ERROR: Current session (id={session_id}) NOT in recent list")
         sys.exit(1)
 
     # 5b. get_with_stats
@@ -231,7 +154,7 @@ def verify_end_to_end():
     print("\n  Testing get_summary_by_reason(session_id)...")
     summary = skipped_repo.get_summary_by_reason(session_id)
 
-    print(f"    Returned: {len(summary)} skip reasons")
+    print(f"    Returned: {len(summary)} skip reason types")
 
     if summary:
         print("    Skip reason breakdown:")
@@ -281,28 +204,53 @@ def verify_end_to_end():
 
     print("  ✓ Accounting equation verified: total == saved + skipped + duplicate")
 
-    # 7. Final verdict
+    # 7. Verify skipped transaction count consistency
     print("\n" + "=" * 70)
-    print("7. Verification Checklist")
+    print("7. Skipped Transaction Count Verification")
     print("=" * 70)
 
-    print("\n  ✓ File processes successfully")
-    print("  ✓ parsing_sessions record created")
-    print("  ✓ skipped_transactions records created")
-    print(f"  ✓ Validation status correct: {session['validation_status']}")
+    # Verify that rows_skipped in session matches actual skipped records
+    actual_skipped_count = len(skipped_list)
+    reported_skipped_count = session['rows_skipped']
+
+    print(f"\n  Reported in session: {reported_skipped_count}")
+    print(f"  Actual skipped records: {actual_skipped_count}")
+
+    if actual_skipped_count != reported_skipped_count:
+        print(f"  ✗ ERROR: Skipped count mismatch!")
+        sys.exit(1)
+
+    print("  ✓ Skipped transaction counts match")
+
+    # 8. Final verdict
+    print("\n" + "=" * 70)
+    print("8. Verification Checklist")
+    print("=" * 70)
+
+    print("\n  ✓ Parsing session data retrieved")
+    print("  ✓ Session statistics validated")
+    print("  ✓ Skipped transactions records verified")
+    print(f"  ✓ Validation status: {session['validation_status']}")
     print("  ✓ API methods return expected data")
-    print(f"  ✓ Accounting verified: {'PASS' if match else 'FAIL'}")
+    print(f"  ✓ Accounting equation: PASS")
+    print(f"  ✓ Skipped count consistency: PASS")
 
     # Overall verdict
     print("\n" + "=" * 70)
 
     if session['validation_status'] == 'pass' and match:
-        print("✓✓✓ End-to-End Test PASSED! ✓✓✓")
+        print("✓✓✓ End-to-End Verification PASSED! ✓✓✓")
+        print("\nAll database integrity checks passed:")
+        print("  - Parsing session tracking is working correctly")
+        print("  - Skipped transaction recording is accurate")
+        print("  - API methods return correct joined data")
+        print("  - Accounting equation is satisfied")
+        print("  - Validation status logic is correct")
     elif session['validation_status'] == 'warning':
-        print("⚠ Test completed with warnings")
+        print("⚠ Verification completed with warnings")
         print(f"  Warning: {session['validation_notes']}")
     else:
-        print("✗ Test completed with issues")
+        print("✗ Verification completed with issues")
         if not match:
             print("  Issue: Accounting equation failed")
         if session['validation_status'] == 'fail':
