@@ -160,12 +160,13 @@ This project documentation and requirements are primarily in Korean. Transaction
 **Task Tool Subagents** (use `Task` tool with appropriate `subagent_type`):
 - `Explore`: File/code search, codebase structure, feature investigation
 - `Plan`: Implementation planning before code changes
-- `project-manager`: Multi-component feature breakdown, cross-stack coordination
+- `project-manager`: **ORCHESTRATION ONLY** - Multi-component feature breakdown, cross-stack coordination, Shrimp task management, git commits. **NEVER modifies code directly** - only delegates to specialized implementation agents.
 - `senior-backend-architect`: Backend/API development (Python/Node/Rust), unit testing
 - `frontend-architect`: Frontend/React/UI implementation, E2E testing
 - `database-architect`: Schema design, migrations, query optimization
 - `ux-ui-design-specialist`: UX/UI decisions, design patterns, design review
-- `Bash`: Shell operations, `general-purpose`: Research tasks
+- `Bash`: Shell operations (git, npm, docker, etc.) - **NOT for file operations**
+- `general-purpose`: **Fallback agent** for tasks outside specialized domains (complex research, multi-step investigations, tasks not covered by specialized agents)
 
 ### MCP Tool Integration
 
@@ -205,16 +206,32 @@ This project documentation and requirements are primarily in Korean. Transaction
 - Implementation → `Bash` tests (code before testing)
 - Task management: `project-manager` handles Shrimp flow (`plan_task` → `split_tasks` → `execute_task` → `verify_task`)
 
+**Agent Selection Guidelines**:
+
+When choosing which agent to use, follow this decision tree:
+1. **Specialized agents first**: If the task clearly fits a specialized domain (backend, frontend, database, UX/UI), use that agent
+2. **Fallback to general-purpose**: If the task doesn't fit any specialized category OR requires capabilities across multiple domains not covered by specialized agents, use `general-purpose` agent
+3. **Bash for terminal operations only**: Use `Bash` agent ONLY for actual shell commands (git, npm, docker, build tools), NOT for file operations
+
+**Examples of general-purpose agent usage**:
+- Complex multi-step research across various files and concepts
+- Tasks requiring reasoning/analysis that don't fit specialized domains
+- Troubleshooting issues spanning multiple system components not covered by other agents
+- Keyword searches or investigations where the domain is unclear initially
+
 **Agent Priority**:
 - Start with `Explore` for unfamiliar codebases
 - Use `project-manager` for multi-component features and Shrimp task management
 - Use `Plan` after exploration, before specialized agents
 - `database-architect` before `senior-backend-architect` before `frontend-architect`
 - Delegate Shrimp MCP operations to `project-manager` instead of direct usage
+- **When in doubt between specialized agent and general-purpose**: Choose specialized agent if >70% of work fits that domain, otherwise use `general-purpose`
 
 **Examples**:
 1. Full-stack feature: `Explore` + `context7` (parallel) → `project-manager` (Shrimp planning) → `database-architect` → `senior-backend-architect` → `frontend-architect` → `Bash` tests → `project-manager` (Shrimp update)
 2. Independent bugs: `Explore` (parallel for each) → specialized agents (parallel) → `Bash` tests (parallel)
 3. Complex multi-phase project: `project-manager` creates Shrimp tasks → delegate to specialized agents → `project-manager` tracks/updates Shrimp progress
+4. **Unspecialized task** (e.g., "Analyze trading performance patterns"): `general-purpose` agent for investigation → specialized agents for any implementation needs
+5. **Ambiguous domain task** (e.g., "Find where price calculations happen and document them"): `general-purpose` agent for multi-domain search and analysis
 
 **Never** use Glob/Grep/Read when `Explore` agent is more appropriate.

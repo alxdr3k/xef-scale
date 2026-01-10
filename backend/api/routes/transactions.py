@@ -6,12 +6,13 @@ Provides filtering, pagination, and aggregation endpoints.
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
 import sqlite3
+import math
 
 from backend.api.schemas import (
     TransactionResponse,
     TransactionListResponse,
     MonthlySummaryResponse,
-    TransactionSummary,
+    CategorySummary,
     ErrorResponse
 )
 from backend.api.dependencies import get_current_user, get_db
@@ -19,6 +20,48 @@ from backend.api.schemas import UserInfo
 from src.db.repository import TransactionRepository, CategoryRepository, InstitutionRepository
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
+
+
+def _db_row_to_transaction_response(row: dict) -> TransactionResponse:
+    """
+    Convert database row dict to TransactionResponse schema.
+
+    Maps database column names to API response field names.
+
+    Args:
+        row: Database row as dict (with Row factory)
+
+    Returns:
+        TransactionResponse with all fields populated
+
+    Notes:
+        - Converts transaction_date from 'yyyy-mm-dd' to 'yyyy.mm.dd'
+        - Maps category_name to 'category' field
+        - Maps institution_name to 'institution' field
+        - Handles nullable installment fields
+    """
+    # Convert date format from SQL (yyyy-mm-dd) to API (yyyy.mm.dd)
+    date_parts = row['transaction_date'].split('-')
+    formatted_date = f"{date_parts[0]}.{date_parts[1]}.{date_parts[2]}"
+
+    return TransactionResponse(
+        id=row['id'],
+        date=formatted_date,
+        category=row['category_name'],
+        merchant_name=row['merchant_name'],
+        amount=row['amount'],
+        institution=row['institution_name'],
+        installment_months=row.get('installment_months'),
+        installment_current=row.get('installment_current'),
+        original_amount=row.get('original_amount'),
+        transaction_year=row['transaction_year'],
+        transaction_month=row['transaction_month'],
+        category_id=row['category_id'],
+        institution_id=row['institution_id'],
+        file_id=row.get('file_id'),
+        row_number_in_file=row.get('row_number_in_file'),
+        created_at=row['created_at']
+    )
 
 
 @router.get(
@@ -31,10 +74,12 @@ router = APIRouter(prefix="/transactions", tags=["Transactions"])
 async def get_transactions(
     year: Optional[int] = Query(None, description="Filter by year"),
     month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month (1-12)"),
-    category: Optional[str] = Query(None, description="Filter by category name"),
-    institution: Optional[str] = Query(None, description="Filter by institution name"),
+    category_id: Optional[int] = Query(None, description="Filter by category ID"),
+    institution_id: Optional[int] = Query(None, description="Filter by institution ID"),
+    search: Optional[str] = Query(None, description="Search merchant name (partial match)"),
+    sort: str = Query("date_desc", description="Sort order: date_desc, date_asc, amount_desc, amount_asc"),
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
-    page_size: int = Query(50, ge=1, le=200, description="Items per page"),
+    limit: int = Query(50, ge=1, le=200, description="Items per page"),
     db: sqlite3.Connection = Depends(get_db),
     current_user: UserInfo = Depends(get_current_user)
 ):
@@ -42,49 +87,82 @@ async def get_transactions(
     Get paginated list of transactions with optional filters.
 
     Returns transactions sorted by date (most recent first) with pagination
-    and optional filtering by year, month, category, and institution.
-
-    **Implementation Status**: Skeleton - Phase 2 will implement actual queries.
+    and optional filtering by year, month, category, institution, and merchant search.
 
     Args:
         year: Optional year filter (e.g., 2025)
         month: Optional month filter (1-12)
-        category: Optional category name filter (Korean)
-        institution: Optional institution name filter (Korean)
+        category_id: Optional category ID filter
+        institution_id: Optional institution ID filter
+        search: Optional merchant name search (partial, case-insensitive)
+        sort: Sort order (date_desc, date_asc, amount_desc, amount_asc)
         page: Page number for pagination (1-indexed)
-        page_size: Number of items per page (max 200)
+        limit: Number of items per page (max 200)
         db: Database connection from dependency
         current_user: Current authenticated user
 
     Returns:
-        TransactionListResponse with transactions array, total count, and pagination info
+        TransactionListResponse with data array, total count, and pagination info
 
     Examples:
         >>> # Get all transactions for September 2025
         >>> GET /api/transactions?year=2025&month=9
 
-        >>> # Get food expenses from Hana Card
-        >>> GET /api/transactions?category=식비&institution=하나카드
+        >>> # Get food expenses (category_id=1) from Hana Card (institution_id=1)
+        >>> GET /api/transactions?category_id=1&institution_id=1
+
+        >>> # Search for Starbucks transactions
+        >>> GET /api/transactions?search=스타벅스
 
         >>> # Paginate through results
-        >>> GET /api/transactions?page=2&page_size=100
+        >>> GET /api/transactions?page=2&limit=100
 
     Notes:
-        - Default page_size is 50, max is 200
-        - Transactions ordered by date DESC (most recent first)
-        - Phase 2 will implement actual database queries
-        - Will use TransactionRepository for data access
+        - Default limit is 50, max is 200
+        - Default sort is date_desc (most recent first)
+        - All filters can be combined
+        - Search is case-insensitive and matches partial merchant names
     """
-    # TODO Phase 2: Implement transaction queries
-    # 1. Build dynamic SQL query based on filters
-    # 2. Apply pagination (LIMIT/OFFSET)
-    # 3. Get total count for pagination metadata
-    # 4. Convert database rows to TransactionResponse models
-    # 5. Handle category/institution name lookups
+    # Initialize repositories
+    category_repo = CategoryRepository(db)
+    institution_repo = InstitutionRepository(db)
+    transaction_repo = TransactionRepository(db, category_repo, institution_repo)
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Transaction queries will be implemented in Phase 2"
+    # Validate sort parameter
+    valid_sorts = {'date_desc', 'date_asc', 'amount_desc', 'amount_asc'}
+    if sort not in valid_sorts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid sort parameter. Must be one of: {', '.join(valid_sorts)}"
+        )
+
+    # Calculate offset from page number
+    offset = (page - 1) * limit
+
+    # Query transactions with filters
+    transactions, total = transaction_repo.get_filtered(
+        year=year,
+        month=month,
+        category_id=category_id,
+        institution_id=institution_id,
+        search=search,
+        sort=sort,
+        limit=limit,
+        offset=offset
+    )
+
+    # Convert database rows to API response models
+    transaction_responses = [_db_row_to_transaction_response(row) for row in transactions]
+
+    # Calculate total pages
+    total_pages = math.ceil(total / limit) if total > 0 else 0
+
+    return TransactionListResponse(
+        data=transaction_responses,
+        total=total,
+        page=page,
+        limit=limit,
+        total_pages=total_pages
     )
 
 
@@ -104,9 +182,8 @@ async def get_transaction_by_id(
     """
     Get single transaction by ID.
 
-    Returns detailed information for a specific transaction.
-
-    **Implementation Status**: Skeleton - Phase 2 will implement actual query.
+    Returns detailed information for a specific transaction including
+    category and institution names.
 
     Args:
         transaction_id: Transaction database ID
@@ -124,20 +201,25 @@ async def get_transaction_by_id(
         >>> GET /api/transactions/123
 
     Notes:
-        - Phase 2 will implement database query
-        - Will join with categories and institutions for names
+        - Joins with categories and institutions for readable names
         - Returns 404 if transaction doesn't exist
     """
-    # TODO Phase 2: Implement single transaction query
-    # 1. Query transactions table by ID
-    # 2. Join with categories and financial_institutions
-    # 3. Convert to TransactionResponse
-    # 4. Return 404 if not found
+    # Initialize repositories
+    category_repo = CategoryRepository(db)
+    institution_repo = InstitutionRepository(db)
+    transaction_repo = TransactionRepository(db, category_repo, institution_repo)
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Transaction detail query will be implemented in Phase 2"
-    )
+    # Query transaction by ID
+    transaction = transaction_repo.get_by_id(transaction_id)
+
+    if transaction is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Transaction with ID {transaction_id} not found"
+        )
+
+    # Convert to API response
+    return _db_row_to_transaction_response(transaction)
 
 
 @router.get(
@@ -157,9 +239,8 @@ async def get_monthly_summary(
     Get monthly spending summary aggregated by category.
 
     Returns total spending for each category in the specified month,
-    sorted by total spending (highest first).
-
-    **Implementation Status**: Skeleton - Phase 2 will implement actual aggregation.
+    sorted by total spending (highest first), along with transaction counts
+    and overall totals.
 
     Args:
         year: Year for summary (required)
@@ -178,26 +259,44 @@ async def get_monthly_summary(
         >>> {
         ...     "year": 2025,
         ...     "month": 9,
-        ...     "categories": [
-        ...         {"category": "식비", "total": 450000},
-        ...         {"category": "교통", "total": 120000},
-        ...         {"category": "통신", "total": 80000}
-        ...     ],
-        ...     "total_spending": 650000
+        ...     "total_amount": 1234500,
+        ...     "transaction_count": 56,
+        ...     "by_category": [
+        ...         {"category_id": 1, "category_name": "식비", "amount": 450000, "count": 20},
+        ...         {"category_id": 2, "category_name": "교통", "amount": 120000, "count": 15},
+        ...         {"category_id": 3, "category_name": "통신", "amount": 80000, "count": 3}
+        ...     ]
         ... }
 
     Notes:
-        - Phase 2 will use TransactionRepository.get_monthly_summary()
         - Categories sorted by spending amount (highest first)
+        - Includes both amount and transaction count per category
         - Useful for monthly expense analysis and budgeting
         - Can be used to generate charts/graphs
     """
-    # TODO Phase 2: Implement monthly summary
-    # 1. Use TransactionRepository.get_monthly_summary(year, month)
-    # 2. Calculate total_spending sum
-    # 3. Convert to MonthlySummaryResponse
+    # Initialize repositories
+    category_repo = CategoryRepository(db)
+    institution_repo = InstitutionRepository(db)
+    transaction_repo = TransactionRepository(db, category_repo, institution_repo)
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Monthly summary will be implemented in Phase 2"
+    # Get comprehensive monthly summary
+    summary = transaction_repo.get_monthly_summary_with_stats(year, month)
+
+    # Convert category summaries to API response models
+    category_summaries = [
+        CategorySummary(
+            category_id=cat['category_id'],
+            category_name=cat['category_name'],
+            amount=cat['amount'],
+            count=cat['count']
+        )
+        for cat in summary['by_category']
+    ]
+
+    return MonthlySummaryResponse(
+        year=summary['year'],
+        month=summary['month'],
+        total_amount=summary['total_amount'],
+        transaction_count=summary['transaction_count'],
+        by_category=category_summaries
     )

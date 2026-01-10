@@ -89,10 +89,11 @@ class TransactionResponse(TransactionBase):
 
 class TransactionListResponse(BaseModel):
     """Paginated transaction list response."""
-    transactions: List[TransactionResponse]
+    data: List[TransactionResponse]
     total: int
     page: int
-    page_size: int
+    limit: int
+    total_pages: int
 
 
 class TransactionSummary(BaseModel):
@@ -101,12 +102,21 @@ class TransactionSummary(BaseModel):
     total: int
 
 
+class CategorySummary(BaseModel):
+    """Category summary with ID, name, amount, and count."""
+    category_id: int
+    category_name: str
+    amount: int
+    count: int
+
+
 class MonthlySummaryResponse(BaseModel):
     """Monthly spending summary by category."""
     year: int
     month: int
-    categories: List[TransactionSummary]
-    total_spending: int
+    total_amount: int
+    transaction_count: int
+    by_category: List[CategorySummary]
 
 
 # ==================== Category Schemas ====================

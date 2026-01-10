@@ -626,6 +626,229 @@ class TransactionRepository:
         ''', (year, month))
         return [dict(row) for row in cursor.fetchall()]
 
+    def get_by_id(self, transaction_id: int) -> Optional[dict]:
+        """
+        Get single transaction by ID with category and institution names.
+
+        Joins with categories and financial_institutions tables to provide
+        complete transaction details including readable names.
+
+        Args:
+            transaction_id: Transaction ID to retrieve
+
+        Returns:
+            Transaction dict with all fields or None if not found
+
+        Examples:
+            >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
+            >>> txn = repo.get_by_id(123)
+            >>> if txn:
+            ...     print(f"{txn['merchant_name']}: {txn['amount']}원")
+            ...     print(f"Category: {txn['category_name']}")
+            ...     print(f"Institution: {txn['institution_name']}")
+
+        Notes:
+            - Joins with categories and financial_institutions for names
+            - Returns None if transaction doesn't exist
+            - Includes all transaction fields plus joined name columns
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT
+                    t.*,
+                    c.name as category_name,
+                    fi.name as institution_name,
+                    fi.institution_type
+                FROM transactions t
+                JOIN categories c ON t.category_id = c.id
+                JOIN financial_institutions fi ON t.institution_id = fi.id
+                WHERE t.id = ?
+            ''', (transaction_id,))
+
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+        except Exception as e:
+            self.logger.error(f'Error fetching transaction by ID {transaction_id}: {e}')
+            raise
+
+    def get_filtered(self, year: Optional[int] = None, month: Optional[int] = None,
+                     category_id: Optional[int] = None, institution_id: Optional[int] = None,
+                     search: Optional[str] = None, sort: str = 'date_desc',
+                     limit: int = 50, offset: int = 0) -> tuple[List[dict], int]:
+        """
+        Get filtered and paginated transactions with total count.
+
+        Supports multiple filters, sorting, and pagination. Returns both
+        the matching transactions and total count for pagination metadata.
+
+        Args:
+            year: Optional year filter
+            month: Optional month filter (1-12)
+            category_id: Optional category ID filter
+            institution_id: Optional institution ID filter
+            search: Optional merchant name search (case-insensitive, partial match)
+            sort: Sort order - 'date_desc', 'date_asc', 'amount_desc', 'amount_asc'
+            limit: Maximum number of results (default: 50)
+            offset: Number of results to skip (default: 0)
+
+        Returns:
+            Tuple of (transactions: List[dict], total_count: int)
+
+        Examples:
+            >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
+            >>> # Get September 2025 food expenses
+            >>> txns, total = repo.get_filtered(year=2025, month=9, category_id=1)
+            >>> print(f"Found {total} transactions, showing first {len(txns)}")
+            >>> # Search for Starbucks transactions
+            >>> txns, total = repo.get_filtered(search='스타벅스', limit=10)
+            >>> # Get page 2 of all transactions
+            >>> txns, total = repo.get_filtered(limit=50, offset=50)
+
+        Notes:
+            - All filters are optional and can be combined
+            - Uses indexed queries for performance
+            - Search is case-insensitive and matches partial merchant names
+            - Total count reflects filtered results (not offset/limit)
+            - Returns transactions with joined category and institution names
+        """
+        try:
+            # Build WHERE clause dynamically
+            where_clauses = []
+            params = []
+
+            if year is not None:
+                where_clauses.append('t.transaction_year = ?')
+                params.append(year)
+
+            if month is not None:
+                where_clauses.append('t.transaction_month = ?')
+                params.append(month)
+
+            if category_id is not None:
+                where_clauses.append('t.category_id = ?')
+                params.append(category_id)
+
+            if institution_id is not None:
+                where_clauses.append('t.institution_id = ?')
+                params.append(institution_id)
+
+            if search is not None:
+                where_clauses.append('t.merchant_name LIKE ?')
+                params.append(f'%{search}%')
+
+            where_sql = 'WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''
+
+            # Build ORDER BY clause
+            sort_map = {
+                'date_desc': 't.transaction_date DESC',
+                'date_asc': 't.transaction_date ASC',
+                'amount_desc': 't.amount DESC',
+                'amount_asc': 't.amount ASC'
+            }
+            order_sql = f'ORDER BY {sort_map.get(sort, sort_map["date_desc"])}'
+
+            # Get total count (without pagination)
+            count_query = f'''
+                SELECT COUNT(*) as count
+                FROM transactions t
+                {where_sql}
+            '''
+            cursor = self.conn.execute(count_query, params)
+            total_count = cursor.fetchone()['count']
+
+            # Get paginated results with joins
+            query = f'''
+                SELECT
+                    t.*,
+                    c.name as category_name,
+                    fi.name as institution_name,
+                    fi.institution_type
+                FROM transactions t
+                JOIN categories c ON t.category_id = c.id
+                JOIN financial_institutions fi ON t.institution_id = fi.id
+                {where_sql}
+                {order_sql}
+                LIMIT ? OFFSET ?
+            '''
+            cursor = self.conn.execute(query, params + [limit, offset])
+            transactions = [dict(row) for row in cursor.fetchall()]
+
+            self.logger.debug(
+                f'Filtered transactions: filters={where_clauses}, '
+                f'total={total_count}, returned={len(transactions)}'
+            )
+
+            return transactions, total_count
+
+        except Exception as e:
+            self.logger.error(f'Error in get_filtered: {e}')
+            raise
+
+    def get_monthly_summary_with_stats(self, year: int, month: int) -> dict:
+        """
+        Get comprehensive monthly spending summary with statistics.
+
+        Provides detailed monthly analysis including category breakdown,
+        total spending, and transaction count.
+
+        Args:
+            year: Year to query (e.g., 2025)
+            month: Month to query (1-12)
+
+        Returns:
+            Dict with:
+                - total_amount: Total spending for the month
+                - transaction_count: Total number of transactions
+                - by_category: List of category summaries with name, amount, count
+
+        Examples:
+            >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
+            >>> summary = repo.get_monthly_summary_with_stats(2025, 9)
+            >>> print(f"Total: {summary['total_amount']}원")
+            >>> print(f"Transactions: {summary['transaction_count']}")
+            >>> for cat in summary['by_category']:
+            ...     print(f"{cat['category_name']}: {cat['amount']}원 ({cat['count']} txns)")
+
+        Notes:
+            - Uses indexed query (transaction_year, transaction_month)
+            - Groups by category with counts and sums
+            - Ordered by spending amount (highest first)
+            - Useful for monthly reports and dashboards
+        """
+        try:
+            # Get category breakdown
+            cursor = self.conn.execute('''
+                SELECT
+                    c.id as category_id,
+                    c.name as category_name,
+                    SUM(t.amount) as amount,
+                    COUNT(*) as count
+                FROM transactions t
+                JOIN categories c ON t.category_id = c.id
+                WHERE t.transaction_year = ? AND t.transaction_month = ?
+                GROUP BY c.id, c.name
+                ORDER BY amount DESC
+            ''', (year, month))
+
+            by_category = [dict(row) for row in cursor.fetchall()]
+
+            # Calculate totals
+            total_amount = sum(cat['amount'] for cat in by_category)
+            transaction_count = sum(cat['count'] for cat in by_category)
+
+            return {
+                'year': year,
+                'month': month,
+                'total_amount': total_amount,
+                'transaction_count': transaction_count,
+                'by_category': by_category
+            }
+
+        except Exception as e:
+            self.logger.error(f'Error in get_monthly_summary_with_stats: {e}')
+            raise
+
 
 class ParsingSessionRepository:
     """
