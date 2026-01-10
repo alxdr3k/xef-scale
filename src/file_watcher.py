@@ -6,11 +6,10 @@ Uses watchdog library to detect new files and orchestrate the parsing workflow.
 import time
 import os
 import shutil
+from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from src.router import StatementRouter
-from src.data_loader import DataLoader
-from src.parsers.hana_parser import HanaCardParser
+from src.file_processor import FileProcessor
 from src.config import DIRECTORIES
 import logging
 
@@ -19,38 +18,26 @@ class StatementHandler(FileSystemEventHandler):
     """
     Event handler for processing financial statement files.
 
-    Monitors inbox directory for new statement files, identifies the institution,
-    parses transactions, saves to master ledger, and archives processed files.
+    Monitors inbox directory for new statement files and delegates processing
+    to FileProcessor. Simplified to focus on event detection and delegation.
 
     Attributes:
-        router: StatementRouter for identifying financial institutions
-        loader: DataLoader for saving transactions and archiving files
-        parsers: Dictionary mapping institution codes to parser instances
+        file_processor: FileProcessor for complete file processing workflow
         logger: Logger instance for tracking operations
     """
 
     def __init__(self):
-        """Initialize handler with router, loader, and parser instances."""
-        self.router = StatementRouter()
-        self.loader = DataLoader()
-        self.parsers = {
-            'HANA': HanaCardParser()
-            # Future: Add more parsers here (TOSS, KAKAO, SHINHAN)
-        }
+        """Initialize handler with file processor."""
+        self.file_processor = FileProcessor()
         self.logger = logging.getLogger(__name__)
-        self.logger.info('StatementHandler initialized with parsers: ' + ', '.join(self.parsers.keys()))
+        self.logger.info('StatementHandler initialized with FileProcessor')
 
     def on_created(self, event):
         """
         Handle file creation events in inbox directory.
 
-        Orchestrates the complete workflow:
-        1. Identifies institution using StatementRouter
-        2. Gets appropriate parser instance
-        3. Parses file to extract transactions
-        4. Saves transactions using DataLoader
-        5. Archives processed file
-        6. Moves unidentifiable files to unknown/ directory
+        Delegates file processing to FileProcessor and logs results based on
+        ProcessingResult status. Simplified to focus on event detection.
 
         Args:
             event: FileSystemEvent from watchdog
@@ -59,7 +46,8 @@ class StatementHandler(FileSystemEventHandler):
             - Ignores directories and hidden files
             - Only processes .xlsx, .csv, .pdf files
             - Waits 1 second for file write completion
-            - Comprehensive error handling with logging
+            - Delegates all processing logic to FileProcessor
+            - Logs appropriate messages based on processing outcome
         """
         # Ignore directory events
         if event.is_directory:
@@ -76,50 +64,27 @@ class StatementHandler(FileSystemEventHandler):
         # Wait for file write completion
         time.sleep(1)
 
-        try:
-            self.logger.info(f'Processing new file: {filename}')
+        # Delegate to FileProcessor
+        result = self.file_processor.process_file(Path(filepath))
 
-            # Step 1: Identify institution
-            institution = self.router.identify(filepath)
-
-            if not institution:
-                self.logger.warning(f'Could not identify institution for: {filename}')
-                self._move_to_unknown(filepath)
-                return
-
-            if institution not in self.parsers:
-                self.logger.warning(f'No parser available for {institution}: {filename}')
-                self._move_to_unknown(filepath)
-                return
-
-            self.logger.info(f'Identified as {institution} statement: {filename}')
-
-            # Step 2: Get appropriate parser
-            parser = self.parsers[institution]
-
-            # Step 3: Parse file to extract transactions
-            transactions = parser.parse(filepath)
-
-            if not transactions:
-                self.logger.warning(f'No transactions extracted from: {filename}')
-                self.loader.archive_file(filepath)
-                return
-
-            self.logger.info(f'Extracted {len(transactions)} transactions from: {filename}')
-
-            # Step 4: Save transactions to master ledger
-            self.loader.save(transactions)
-
-            # Step 5: Archive processed file
-            self.loader.archive_file(filepath)
-
-            self.logger.info(f'Successfully processed: {filename} ({len(transactions)} transactions)')
-
-        except FileNotFoundError:
-            self.logger.error(f'File not found (may have been moved): {filename}')
-        except Exception as e:
-            self.logger.error(f'Error processing {filename}: {e}', exc_info=True)
-            # Move problematic file to unknown directory
+        # Log based on processing result
+        if result.is_success():
+            self.logger.info(
+                f'Successfully processed: {filename} '
+                f'({result.transaction_count} transactions, '
+                f'file_id={result.file_id}, '
+                f'hash={result.file_hash[:16]}...)'
+            )
+        elif result.is_duplicate():
+            self.logger.warning(
+                f'Duplicate file skipped: {filename} '
+                f'(hash={result.file_hash[:16]}..., {result.message})'
+            )
+        elif result.is_error():
+            self.logger.error(
+                f'Processing failed: {filename} - {result.message}'
+            )
+            # Move problematic file to unknown directory if it still exists
             if os.path.exists(filepath):
                 self._move_to_unknown(filepath)
 

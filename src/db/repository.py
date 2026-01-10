@@ -398,7 +398,8 @@ class TransactionRepository:
         db_date = f'{date_parts[0]}-{date_parts[1]}-{date_parts[2]}'
         return db_date, year, month
 
-    def insert(self, transaction: Transaction, auto_commit: bool = True) -> int:
+    def insert(self, transaction: Transaction, auto_commit: bool = True,
+               file_id: Optional[int] = None, row_number: Optional[int] = None) -> int:
         """
         Insert a single transaction into database.
 
@@ -408,6 +409,8 @@ class TransactionRepository:
         Args:
             transaction: Transaction object with all fields
             auto_commit: If True, commits after insert (default: True)
+            file_id: Optional file_id for file tracking (default: None for backward compatibility)
+            row_number: Optional row number within file (default: None for backward compatibility)
 
         Returns:
             int: Transaction ID (lastrowid) or 0 if duplicate was ignored
@@ -415,15 +418,22 @@ class TransactionRepository:
         Examples:
             >>> txn = Transaction(month='09', date='2025.09.13', category='식비',
             ...                   item='스타벅스', amount=5000, source='하나카드')
+            >>> # Without file tracking (backward compatible)
             >>> txn_id = repo.insert(txn)
             >>> print(txn_id)
             1
+            >>> # With file tracking (new behavior)
+            >>> txn_id = repo.insert(txn, file_id=5, row_number=3)
+            >>> print(txn_id)
+            2
 
         Notes:
             - Uses get_or_create for categories and institutions
             - INSERT OR IGNORE prevents duplicate constraint violations
             - Returns 0 if transaction already exists (UNIQUE constraint)
             - Handles NULL installment fields gracefully
+            - file_id and row_number are optional for backward compatibility
+            - When provided, enables file-level duplicate detection
         """
         try:
             # Parse date to database format
@@ -433,7 +443,7 @@ class TransactionRepository:
             category_id = self.category_repo.get_or_create(transaction.category)
             institution_id = self.institution_repo.get_or_create(transaction.source)
 
-            # Insert transaction with deduplication
+            # Insert transaction with deduplication (including file tracking columns)
             cursor = self.conn.execute('''
                 INSERT OR IGNORE INTO transactions (
                     transaction_year,
@@ -446,8 +456,10 @@ class TransactionRepository:
                     installment_months,
                     installment_current,
                     original_amount,
-                    raw_description
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    raw_description,
+                    file_id,
+                    row_number_in_file
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 year,
                 month,
@@ -459,7 +471,9 @@ class TransactionRepository:
                 transaction.installment_months,
                 transaction.installment_current,
                 transaction.original_amount,
-                f'{transaction.month}/{transaction.date} {transaction.item}'
+                f'{transaction.month}/{transaction.date} {transaction.item}',
+                file_id,
+                row_number
             ))
 
             if auto_commit:
@@ -476,7 +490,7 @@ class TransactionRepository:
             self.logger.error(f'Error inserting transaction: {transaction} - {e}')
             raise
 
-    def batch_insert(self, transactions: List[Transaction]) -> int:
+    def batch_insert(self, transactions: List[Transaction], file_id: Optional[int] = None) -> int:
         """
         Insert multiple transactions in a single database transaction.
 
@@ -485,6 +499,8 @@ class TransactionRepository:
 
         Args:
             transactions: List of Transaction objects to insert
+            file_id: Optional file_id for file tracking. If provided, auto-assigns
+                    row numbers (1-indexed) to each transaction in order
 
         Returns:
             int: Number of transactions successfully inserted (duplicates not counted)
@@ -492,8 +508,13 @@ class TransactionRepository:
         Examples:
             >>> txn1 = Transaction(...)
             >>> txn2 = Transaction(...)
+            >>> # Without file tracking (backward compatible)
             >>> count = repo.batch_insert([txn1, txn2, txn1])
             >>> print(count)  # 2, duplicate ignored
+            2
+            >>> # With file tracking (new behavior)
+            >>> count = repo.batch_insert([txn1, txn2], file_id=5)
+            >>> print(count)  # txn1 gets row_number=1, txn2 gets row_number=2
             2
 
         Notes:
@@ -501,6 +522,7 @@ class TransactionRepository:
             - Duplicates silently skipped via INSERT OR IGNORE
             - Rollback on any error (atomic operation)
             - Significantly faster than individual inserts
+            - When file_id provided, automatically assigns sequential row numbers
         """
         if not transactions:
             self.logger.info('No transactions to insert')
@@ -509,14 +531,23 @@ class TransactionRepository:
         count = 0
         try:
             # Batch all inserts without individual commits
-            for txn in transactions:
-                result = self.insert(txn, auto_commit=False)
+            for index, txn in enumerate(transactions):
+                # If file_id provided, assign row number (1-indexed)
+                row_number = (index + 1) if file_id is not None else None
+                result = self.insert(txn, auto_commit=False, file_id=file_id, row_number=row_number)
                 if result > 0:
                     count += 1
 
             # Single commit for all inserts
             self.conn.commit()
-            self.logger.info(f'Batch inserted {count} transactions (out of {len(transactions)} total)')
+
+            if file_id is not None:
+                self.logger.info(
+                    f'Batch inserted {count} transactions with file_id={file_id} '
+                    f'(out of {len(transactions)} total)'
+                )
+            else:
+                self.logger.info(f'Batch inserted {count} transactions (out of {len(transactions)} total)')
 
         except Exception as e:
             self.conn.rollback()
@@ -592,3 +623,215 @@ class TransactionRepository:
             ORDER BY total DESC
         ''', (year, month))
         return [dict(row) for row in cursor.fetchall()]
+
+
+class ProcessedFileRepository:
+    """
+    Repository for processed file tracking with duplicate detection.
+
+    Manages file processing history to prevent duplicate file processing.
+    Uses SHA256 file hashing for reliable duplicate detection across
+    filenames and modifications.
+
+    Attributes:
+        conn: SQLite database connection
+        logger: Logger instance for operations tracking
+
+    Examples:
+        >>> repo = ProcessedFileRepository(conn)
+        >>> existing = repo.is_file_processed('abc123...')
+        >>> if not existing:
+        ...     file_id = repo.insert_file('statement.xls', '/path', 'abc123...', 1024, 1)
+        ...     print(f'Processed file {file_id}')
+    """
+
+    def __init__(self, connection: sqlite3.Connection):
+        """
+        Initialize repository with database connection.
+
+        Args:
+            connection: SQLite database connection instance
+        """
+        self.conn = connection
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('ProcessedFileRepository initialized')
+
+    def is_file_processed(self, file_hash: str) -> Optional[dict]:
+        """
+        Check if file with given hash has been processed before.
+
+        Fast duplicate detection using indexed hash lookup. Returns full
+        file record if duplicate found, None otherwise.
+
+        Args:
+            file_hash: SHA256 hash of file contents (hexdigest string)
+
+        Returns:
+            Dict with file record if processed before, None if new file
+
+        Examples:
+            >>> repo = ProcessedFileRepository(conn)
+            >>> existing = repo.is_file_processed('abc123...')
+            >>> if existing:
+            ...     print(f"Duplicate of file processed at {existing['processed_at']}")
+            ... else:
+            ...     print("New file, proceed with processing")
+
+        Notes:
+            - Uses UNIQUE index on file_hash for O(1) lookup
+            - Returns complete file record including original filename
+            - Check this BEFORE parsing file to avoid duplicate work
+        """
+        try:
+            cursor = self.conn.execute(
+                'SELECT * FROM processed_files WHERE file_hash = ? LIMIT 1',
+                (file_hash,)
+            )
+            row = cursor.fetchone()
+            if row:
+                self.logger.debug(f'File hash found: {file_hash} (file_id={row["id"]})')
+                return dict(row)
+            return None
+        except Exception as e:
+            self.logger.error(f'Error checking file hash {file_hash}: {e}')
+            raise
+
+    def insert_file(self, file_name: str, file_path: str, file_hash: str,
+                    file_size: int, institution_id: int, processed_at: str) -> int:
+        """
+        Insert new processed file record.
+
+        Creates file tracking record for successful processing. Uses INSERT OR IGNORE
+        for thread-safe duplicate handling (race condition protection).
+
+        Args:
+            file_name: Original filename (e.g., 'statement.xls')
+            file_path: Full path where file was processed (e.g., '/inbox/statement.xls')
+            file_hash: SHA256 hash of file contents (hexdigest)
+            file_size: File size in bytes
+            institution_id: Foreign key to financial_institutions table
+            processed_at: Timestamp when processing occurred (ISO format)
+
+        Returns:
+            int: File ID (lastrowid) or existing file_id if duplicate
+
+        Examples:
+            >>> from datetime import datetime
+            >>> repo = ProcessedFileRepository(conn)
+            >>> file_id = repo.insert_file(
+            ...     'hana_statement.xls',
+            ...     '/inbox/hana_statement.xls',
+            ...     'abc123...',
+            ...     1024,
+            ...     1,
+            ...     datetime.now().isoformat()
+            ... )
+            >>> print(f'File tracked with ID: {file_id}')
+
+        Notes:
+            - Uses INSERT OR IGNORE for hash uniqueness enforcement
+            - Returns lastrowid for new inserts
+            - If hash collision (duplicate), fetches existing file_id
+            - archive_path initially NULL, updated later via update_archive_path()
+        """
+        try:
+            cursor = self.conn.execute('''
+                INSERT OR IGNORE INTO processed_files (
+                    file_name,
+                    file_path,
+                    file_hash,
+                    file_size,
+                    institution_id,
+                    processed_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            ''', (file_name, file_path, file_hash, file_size, institution_id, processed_at))
+
+            self.conn.commit()
+
+            # If insert succeeded, use lastrowid
+            if cursor.lastrowid > 0:
+                self.logger.debug(
+                    f'Inserted file record: {file_name} (id={cursor.lastrowid}, hash={file_hash[:16]}...)'
+                )
+                return cursor.lastrowid
+
+            # If INSERT OR IGNORE did nothing, fetch existing ID
+            cursor = self.conn.execute(
+                'SELECT id FROM processed_files WHERE file_hash = ?',
+                (file_hash,)
+            )
+            row = cursor.fetchone()
+            if row:
+                self.logger.debug(f'File hash already exists: {file_hash[:16]}... (id={row["id"]})')
+                return row['id']
+
+            raise ValueError(f'Failed to insert or retrieve file record for hash: {file_hash}')
+
+        except Exception as e:
+            self.logger.error(f'Error inserting file record for {file_name}: {e}')
+            raise
+
+    def update_archive_path(self, file_id: int, archive_path: str):
+        """
+        Update archive path for processed file.
+
+        Called after file is successfully moved to archive directory.
+        Records final location for audit trail and potential file recovery.
+
+        Args:
+            file_id: File ID from insert_file()
+            archive_path: Path where file was archived (e.g., '/archive/statement_123.xls')
+
+        Examples:
+            >>> repo = ProcessedFileRepository(conn)
+            >>> repo.update_archive_path(1, '/archive/hana_statement.xls')
+
+        Notes:
+            - Called after successful archiving
+            - Commits immediately (separate transaction from insert)
+            - Useful for audit trail and duplicate file management
+        """
+        try:
+            self.conn.execute(
+                'UPDATE processed_files SET archive_path = ? WHERE id = ?',
+                (archive_path, file_id)
+            )
+            self.conn.commit()
+            self.logger.debug(f'Updated archive path for file_id={file_id}: {archive_path}')
+        except Exception as e:
+            self.logger.error(f'Error updating archive path for file_id={file_id}: {e}')
+            raise
+
+    def get_by_id(self, file_id: int) -> Optional[dict]:
+        """
+        Get processed file record by ID.
+
+        Useful for audit queries and debugging file processing history.
+
+        Args:
+            file_id: File ID
+
+        Returns:
+            Dict with file record or None if not found
+
+        Examples:
+            >>> repo = ProcessedFileRepository(conn)
+            >>> file_record = repo.get_by_id(1)
+            >>> if file_record:
+            ...     print(f"File: {file_record['file_name']}")
+            ...     print(f"Processed: {file_record['processed_at']}")
+
+        Notes:
+            - Returns all fields including hash, size, institution_id
+            - Useful for investigating duplicate detection
+        """
+        try:
+            cursor = self.conn.execute(
+                'SELECT * FROM processed_files WHERE id = ?',
+                (file_id,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        except Exception as e:
+            self.logger.error(f'Error fetching file record {file_id}: {e}')
+            raise
