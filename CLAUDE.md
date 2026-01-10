@@ -157,96 +157,64 @@ This project documentation and requirements are primarily in Korean. Transaction
 
 ### Mandatory Subagent Usage
 
-1. **For all exploration and search tasks**: Use `Task` tool with `subagent_type=Explore`
-   - Finding files, searching code, understanding codebase structure
-   - Investigating how features work or where code is located
-   - Analyzing patterns and relationships in the code
-
-2. **For implementation tasks**: Use `Task` tool with `subagent_type=Plan` first
-   - Any code changes or new features
-   - Bug fixes that affect multiple files
-   - Refactoring or architectural changes
-
-3. **For specialized tasks**: Use appropriate subagent types
-   - Bash operations: `subagent_type=Bash`
-   - General research: `subagent_type=general-purpose`
-
-4. **For project management and task breakdown**: Use `Task` tool with `subagent_type=project-manager`
-   - Breaking down complex features into implementable tasks
-   - Coordinating work across frontend/backend/database/infrastructure
-   - Creating structured implementation plans
-   - Managing software projects with multiple components
-
-5. **For backend development**: Use `Task` tool with `subagent_type=senior-backend-architect`
-   - Backend architecture design and implementation (Python, Node.js, Rust)
-   - Comprehensive unit testing strategies
-   - API design and backend system development
-   - Cross-team collaboration (frontend-backend integration)
-
-6. **For frontend development**: Use `Task` tool with `subagent_type=frontend-architect`
-   - Frontend architecture and React/UI component implementation
-   - API integration and real-time data handling
-   - E2E testing and frontend testing strategies
-   - Cross-platform and responsive design implementation
-
-7. **For UX/UI design**: Use `Task` tool with `subagent_type=ux-ui-design-specialist`
-   - UX/UI design decisions and modern design patterns
-   - Visual design implementation review
-   - User experience optimization
-   - Frontend-design collaboration guidance
-
-8. **For database work**: Use `Task` tool with `subagent_type=database-architect`
-   - Database schema design and refactoring
-   - Migration script creation and review
-   - Query optimization and performance tuning
-   - Database scaling strategies and technology selection
+**Task Tool Subagents** (use `Task` tool with appropriate `subagent_type`):
+- `Explore`: File/code search, codebase structure, feature investigation
+- `Plan`: Implementation planning before code changes
+- `project-manager`: Multi-component feature breakdown, cross-stack coordination
+- `senior-backend-architect`: Backend/API development (Python/Node/Rust), unit testing
+- `frontend-architect`: Frontend/React/UI implementation, E2E testing
+- `database-architect`: Schema design, migrations, query optimization
+- `ux-ui-design-specialist`: UX/UI decisions, design patterns, design review
+- `Bash`: Shell operations, `general-purpose`: Research tasks
 
 ### MCP Tool Integration
 
-**MANDATORY**: Use MCP tools for enhanced project management and documentation:
+**Shrimp Task Manager**: Primarily used by the `project-manager` agent for task planning (`plan_task`, `split_tasks`), execution tracking (`execute_task`, `verify_task`), and review (`analyze_task`, `reflect_task`). Direct shrimp MCP usage should be delegated to the project-manager agent in most cases.
 
-1. **Shrimp Task Manager** (`shrimp-task-manager` MCP server)
-   - **ALWAYS** use when planning and breaking down tasks
-   - Use `plan_task` to create structured implementation plans
-   - Use `split_tasks` to break complex tasks into subtasks
-   - Use `execute_task` and `verify_task` for task execution tracking
-   - Use `analyze_task` and `reflect_task` for post-implementation review
-   - Commands: Check schema with `mcp-cli info shrimp-task-manager/<tool>` before calling
+**Context7**: Use for library documentation (`resolve-library-id`, `query-docs`) when referencing external libraries/frameworks
 
-2. **Context7 Documentation** (`context7` MCP server)
-   - **ALWAYS** use when referencing external libraries or frameworks
-   - Use `resolve-library-id` to identify the correct library
-   - Use `query-docs` to fetch up-to-date documentation and examples
-   - Essential for: Rust crates, API references, framework documentation
-   - Commands: Check schema with `mcp-cli info context7/<tool>` before calling
+**CRITICAL**: Always run `mcp-cli info <server>/<tool>` BEFORE `mcp-cli call <server>/<tool>`
 
-**Remember**: ALWAYS call `mcp-cli info <server>/<tool>` BEFORE `mcp-cli call <server>/<tool>` to verify the correct schema.
+### Task Completion Protocol
 
-### Workflow Pattern
+**CRITICAL: After completing EACH Shrimp task**:
+1. Create git commit IMMEDIATELY after task implementation
+2. Commit message MUST reference the completed Shrimp task
+3. Then update Shrimp status via `project-manager` agent (`execute_task` or `verify_task`)
 
-```
-User Request → Assess Task Type → Launch Appropriate Subagent → Review Results → Report to User
-                    ↓
-    ┌───────────────┼───────────────┐
-    │               │               │
-Project Mgmt   Backend/FE/DB    Design/UX
-    │               │               │
-    ├─ project-manager              ├─ ux-ui-design-specialist
-    ├─ senior-backend-architect     │
-    ├─ frontend-architect           │
-    └─ database-architect           │
-                    │
-          Use Shrimp MCP for task planning
-          Use Context7 MCP for library docs
-```
+**Workflow**:
+- Simple task: Implement → Git commit → Report to user
+- Shrimp task: Implement → **Git commit** → `project-manager` (update Shrimp) → Report to user
+- Complex multi-task: For EACH subtask → Implement → **Git commit** → `project-manager` (update Shrimp) → Next subtask
 
-**Agent Selection Guide**:
-- Complex multi-component features → `project-manager`
-- Backend/API development → `senior-backend-architect`
-- Frontend/UI implementation → `frontend-architect`
-- Database schema/queries → `database-architect`
-- UX/design decisions → `ux-ui-design-specialist`
-- Codebase exploration → `Explore`
-- Implementation planning → `Plan`
+**Never skip commits**: Every Shrimp task completion = One git commit before Shrimp status update
 
-**Never** directly use Glob/Grep/Read for exploration when a subagent would be more appropriate. This ensures efficient context usage and thorough analysis.
+### Subagent Execution Strategy
+
+**Dependency Chain**: Phase 1 (Discovery) → Phase 2 (Design) → Phase 3 (Implementation) → Phase 4 (Verification)
+
+**✅ Parallel Execution**:
+- Phase 1: `Explore` + `project-manager` + `context7` (discovery tasks)
+- Phase 3: `database-architect` + `senior-backend-architect` + `frontend-architect` (if independent)
+- Independent features/bugs across any specialized agents
+
+**❌ Sequential Execution**:
+- `Explore` → `Plan` → Implementation agents (must understand before implementing)
+- `database-architect` → `senior-backend-architect` → `frontend-architect` (dependency chain)
+- `ux-ui-design-specialist` → `frontend-architect` (design before UI)
+- Implementation → `Bash` tests (code before testing)
+- Task management: `project-manager` handles Shrimp flow (`plan_task` → `split_tasks` → `execute_task` → `verify_task`)
+
+**Agent Priority**:
+- Start with `Explore` for unfamiliar codebases
+- Use `project-manager` for multi-component features and Shrimp task management
+- Use `Plan` after exploration, before specialized agents
+- `database-architect` before `senior-backend-architect` before `frontend-architect`
+- Delegate Shrimp MCP operations to `project-manager` instead of direct usage
+
+**Examples**:
+1. Full-stack feature: `Explore` + `context7` (parallel) → `project-manager` (Shrimp planning) → `database-architect` → `senior-backend-architect` → `frontend-architect` → `Bash` tests → `project-manager` (Shrimp update)
+2. Independent bugs: `Explore` (parallel for each) → specialized agents (parallel) → `Bash` tests (parallel)
+3. Complex multi-phase project: `project-manager` creates Shrimp tasks → delegate to specialized agents → `project-manager` tracks/updates Shrimp progress
+
+**Never** use Glob/Grep/Read when `Explore` agent is more appropriate.
