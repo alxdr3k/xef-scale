@@ -1,5 +1,5 @@
 """
-Phase 5: End-to-end testing and verification of expense tracker parsing system.
+End-to-end testing and verification of expense tracker parsing system.
 
 Validates complete workflow from file processing through database persistence,
 session tracking, skip recording, and API-friendly queries. Verifies accounting
@@ -22,7 +22,7 @@ def find_test_file(archive_path):
     """
     Find a test file in the archive directory.
 
-    Prefers manual_test_phase4.xls if exists, otherwise uses first .xls file.
+    Uses first available .xls or .xlsx file in the directory.
 
     Args:
         archive_path: Path to archive directory
@@ -30,12 +30,7 @@ def find_test_file(archive_path):
     Returns:
         str: Full path to test file, or None if no files found
     """
-    # Prefer manual_test_phase4.xls
-    preferred_file = os.path.join(archive_path, 'manual_test_phase4.xls')
-    if os.path.exists(preferred_file):
-        return preferred_file
-
-    # Fallback to first .xls file
+    # Find first .xls file
     if not os.path.exists(archive_path):
         return None
 
@@ -51,9 +46,9 @@ def find_test_file(archive_path):
     return os.path.join(archive_path, files[0])
 
 
-def verify_phase5_end_to_end():
+def verify_end_to_end():
     """
-    Comprehensive end-to-end verification of Phase 4 implementation.
+    Comprehensive end-to-end verification of expense tracker system.
 
     Tests:
     1. File processing from archive
@@ -63,7 +58,7 @@ def verify_phase5_end_to_end():
     5. Accounting equation verification
     """
     print("=" * 70)
-    print("Phase 5: End-to-End Verification")
+    print("End-to-End Verification")
     print("=" * 70)
 
     # 1. Setup
@@ -113,7 +108,7 @@ def verify_phase5_end_to_end():
         print("⚠ File is duplicate (expected behavior)")
         print("=" * 70)
         print("\nThis is normal - the file was already processed.")
-        print("Phase 5 verification cannot proceed with duplicate file.")
+        print("End-to-end verification cannot proceed with duplicate file.")
         print("\nTo test with a new file:")
         print("1. Copy a file from archive to inbox with unique name")
         print("2. Or delete the duplicate records from database")
@@ -288,7 +283,7 @@ def verify_phase5_end_to_end():
 
     # 7. Final verdict
     print("\n" + "=" * 70)
-    print("7. Phase 5 Verification Checklist")
+    print("7. Verification Checklist")
     print("=" * 70)
 
     print("\n  ✓ File processes successfully")
@@ -302,12 +297,12 @@ def verify_phase5_end_to_end():
     print("\n" + "=" * 70)
 
     if session['validation_status'] == 'pass' and match:
-        print("✓✓✓ Phase 5 End-to-End Test PASSED! ✓✓✓")
+        print("✓✓✓ End-to-End Test PASSED! ✓✓✓")
     elif session['validation_status'] == 'warning':
-        print("⚠ Phase 5 completed with warnings")
+        print("⚠ Test completed with warnings")
         print(f"  Warning: {session['validation_notes']}")
     else:
-        print("✗ Phase 5 completed with issues")
+        print("✗ Test completed with issues")
         if not match:
             print("  Issue: Accounting equation failed")
         if session['validation_status'] == 'fail':
@@ -318,7 +313,7 @@ def verify_phase5_end_to_end():
 
 if __name__ == '__main__':
     try:
-        verify_phase5_end_to_end()
+        verify_end_to_end()
     except KeyboardInterrupt:
         print("\n\nVerification interrupted by user")
         sys.exit(1)
