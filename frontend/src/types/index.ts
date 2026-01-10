@@ -9,21 +9,18 @@ export interface Transaction {
   source: string; // 지출 위치 (bank/card name)
 }
 
-// User type for authentication
+// User type for authentication (matches backend UserInfo schema)
 export interface User {
-  id: number;
+  id: string;
   email: string;
-  google_id: string;
-  display_name: string | null;
-  profile_image_url: string | null;
-  created_at: string;
-  last_login_at: string | null;
-  is_active: boolean;
+  name: string | null;
+  picture: string | null;
 }
 
 // Auth response from backend
 export interface AuthResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
   user: User;
 }

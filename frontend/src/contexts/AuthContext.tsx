@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import apiClient from '../api/client';
-import type { User, AuthResponse } from '../types';
+import { googleLogin, getCurrentUser, logout as logoutApi } from '../api/auth';
+import type { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
@@ -33,17 +33,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('access_token');
-      const storedUser = localStorage.getItem('user');
 
-      if (token && storedUser) {
+      if (token) {
         try {
           // Verify token with backend
-          const response = await apiClient.get<User>('/api/auth/me');
-          setUser(response.data);
+          const user = await getCurrentUser();
+          setUser(user);
         } catch (error) {
           // Token is invalid or expired
+          console.error('Session restoration failed:', error);
           localStorage.removeItem('access_token');
-          localStorage.removeItem('user');
+          localStorage.removeItem('refresh_token');
           setUser(null);
         }
       }
@@ -55,15 +55,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (googleIdToken: string) => {
     try {
-      const response = await apiClient.post<AuthResponse>('/api/auth/google', {
-        id_token: googleIdToken,
-      });
+      const response = await googleLogin(googleIdToken);
 
-      const { access_token, user: userData } = response.data;
+      const { access_token, refresh_token, user: userData } = response;
 
-      // Store token and user in localStorage
+      // Store tokens in localStorage
       localStorage.setItem('access_token', access_token);
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('refresh_token', refresh_token);
 
       setUser(userData);
     } catch (error) {
@@ -74,13 +72,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      await apiClient.post('/api/auth/logout');
+      await logoutApi();
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
       // Clear local state regardless of API call result
       localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
+      localStorage.removeItem('refresh_token');
       setUser(null);
     }
   };

@@ -23,7 +23,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
     {
       key: 'profile',
       icon: <UserOutlined />,
-      label: user?.display_name || user?.email,
+      label: user?.name || user?.email,
       disabled: true,
     },
     {
@@ -69,11 +69,11 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
       <Dropdown menu={{ items: menuItems }} placement="bottomRight">
         <Space style={{ cursor: 'pointer' }}>
           <Avatar
-            src={user?.profile_image_url}
+            src={user?.picture || undefined}
             icon={<UserOutlined />}
             style={{ backgroundColor: '#2196F3' }}
           />
-          <span className="user-name">{user?.display_name || '사용자'}</span>
+          <span className="user-name">{user?.name || '사용자'}</span>
         </Space>
       </Dropdown>
 

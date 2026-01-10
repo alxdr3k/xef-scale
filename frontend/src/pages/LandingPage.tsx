@@ -1,18 +1,19 @@
 import React from 'react';
-import { Button, Typography, Space, Card, Row, Col, Tag, Divider } from 'antd';
+import { Typography, Space, Card, Row, Col, Tag, Divider, message } from 'antd';
 import {
-  GoogleOutlined,
   FileSearchOutlined,
   PieChartOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
+import { GoogleLogin } from '@react-oauth/google';
+import type { CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const { Title, Paragraph, Text } = Typography;
 
 const LandingPage: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
 
   // Redirect to transactions if already logged in
@@ -22,11 +23,24 @@ const LandingPage: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleGoogleLogin = async () => {
-    // TODO: Phase 4 - Implement Google OAuth flow
-    // For now, just log the action
-    console.log('Google login clicked - to be implemented in Phase 4');
-    // Placeholder: await login(googleIdToken);
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    try {
+      if (!credentialResponse.credential) {
+        message.error('Google 인증 정보를 받지 못했습니다');
+        return;
+      }
+
+      await login(credentialResponse.credential);
+      message.success('로그인 성공!');
+      navigate('/transactions');
+    } catch (error) {
+      console.error('Google login error:', error);
+      message.error('Google 로그인에 실패했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  const handleGoogleError = () => {
+    message.error('Google 로그인에 실패했습니다');
   };
 
   const features = [
@@ -107,24 +121,17 @@ const LandingPage: React.FC = () => {
           >
             한국 금융기관 명세서를 자동으로 파싱하고 분석하세요
           </Paragraph>
-          <Button
-            type="primary"
-            size="large"
-            icon={<GoogleOutlined />}
-            onClick={handleGoogleLogin}
-            style={{
-              height: '56px',
-              fontSize: '18px',
-              padding: '0 48px',
-              background: '#fff',
-              color: '#667eea',
-              border: 'none',
-              fontWeight: 600,
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
-            }}
-          >
-            Google로 시작하기
-          </Button>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              size="large"
+              text="continue_with"
+              shape="rectangular"
+              theme="filled_blue"
+              width="300"
+            />
+          </div>
         </div>
 
         {/* Features Section */}
