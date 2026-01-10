@@ -1,15 +1,17 @@
 """
-DataLoader for CSV persistence and file archiving.
-Handles saving transactions to master ledger and archiving processed files.
+DataLoader for database persistence and file archiving.
+Handles saving transactions to SQLite database and archiving processed files.
 """
 
-import pandas as pd
 import shutil
 import os
 import time
+import sqlite3
 from typing import List
 from src.models import Transaction
 from src.config import DIRECTORIES
+from src.db.connection import DatabaseConnection
+from src.db.repository import CategoryRepository, InstitutionRepository, TransactionRepository
 import logging
 
 
@@ -17,28 +19,48 @@ class DataLoader:
     """
     Manages data persistence and file archiving for expense tracking system.
 
-    Saves transactions to master_ledger.csv with Korean encoding (UTF-8-BOM)
+    Saves transactions to SQLite database using repository pattern
     and archives processed statement files to prevent reprocessing.
 
     Attributes:
-        ledger_path: Path to master_ledger.csv file
+        ledger_path: Path to master_ledger.csv file (kept for backward compatibility)
         archive_dir: Path to archive directory for processed files
+        conn: Database connection instance
+        category_repo: Repository for category operations
+        institution_repo: Repository for institution operations
+        transaction_repo: Repository for transaction operations
         logger: Logger instance for tracking operations
     """
 
     def __init__(self):
-        """Initialize DataLoader with paths from config and logger."""
+        """
+        Initialize DataLoader with database repositories.
+
+        Sets up database connection and initializes all repository instances
+        for transaction persistence. Repositories are cached to reuse their
+        in-memory lookups across multiple save operations.
+        """
         self.ledger_path = os.path.join(DIRECTORIES['data'], 'master_ledger.csv')
         self.archive_dir = DIRECTORIES['archive']
         self.logger = logging.getLogger(__name__)
 
+        # Initialize database repositories
+        self.conn = DatabaseConnection.get_instance()
+        self.category_repo = CategoryRepository(self.conn)
+        self.institution_repo = InstitutionRepository(self.conn)
+        self.transaction_repo = TransactionRepository(
+            self.conn,
+            self.category_repo,
+            self.institution_repo
+        )
+        self.logger.debug('Database repositories initialized')
+
     def save(self, transactions: List[Transaction]):
         """
-        Append transactions to master ledger CSV.
+        Save transactions to SQLite database with retry logic.
 
-        Creates the CSV file with Korean headers if it doesn't exist.
-        Appends to existing file without duplicating headers.
-        Uses UTF-8-BOM encoding for proper Korean text display in Excel.
+        Inserts transactions using batch_insert for performance. Handles
+        database lock errors with exponential backoff retry strategy.
 
         Args:
             transactions: List of Transaction objects to save
@@ -50,29 +72,50 @@ class DataLoader:
 
         Notes:
             - Empty transaction lists are ignored
-            - Headers are written only if file doesn't exist
-            - Uses UTF-8-BOM encoding for Excel compatibility
+            - Duplicates are automatically handled by UNIQUE constraint
+            - Retries up to 3 times on database lock errors
+            - Uses exponential backoff: 0.5s, 1s, 2s delays
+
+        Raises:
+            sqlite3.OperationalError: If database remains locked after retries
+            Exception: For other database errors
         """
         if not transactions:
             self.logger.info('No transactions to save')
             return
 
-        # Convert transactions to DataFrame using to_dict() method
-        df = pd.DataFrame([t.to_dict() for t in transactions])
+        # Retry logic for database lock handling
+        max_attempts = 3
+        backoff_delays = [0.5, 1.0, 2.0]
 
-        # Check if file exists to determine if headers are needed
-        file_exists = os.path.exists(self.ledger_path)
+        for attempt in range(max_attempts):
+            try:
+                # Attempt batch insert
+                count = self.transaction_repo.batch_insert(transactions)
+                self.logger.info(f'Saved {count} transactions to database')
+                return  # Success - exit function
 
-        # Append to CSV with Korean encoding
-        df.to_csv(
-            self.ledger_path,
-            mode='a',
-            header=not file_exists,
-            index=False,
-            encoding='utf-8-sig'  # UTF-8-BOM for Korean text
-        )
+            except sqlite3.OperationalError as e:
+                error_msg = str(e).lower()
 
-        self.logger.info(f'Saved {len(transactions)} transactions to master ledger')
+                # Check if it's a database lock error
+                if 'database is locked' in error_msg and attempt < max_attempts - 1:
+                    delay = backoff_delays[attempt]
+                    self.logger.warning(
+                        f'Database locked, retrying in {delay}s '
+                        f'(attempt {attempt + 1}/{max_attempts})'
+                    )
+                    time.sleep(delay)
+                else:
+                    # Either not a lock error or out of retries
+                    self.logger.error(
+                        f'Failed to save transactions after {max_attempts} attempts: {e}'
+                    )
+                    raise
+
+            except Exception as e:
+                self.logger.error(f'Error saving transactions: {e}')
+                raise
 
     def archive_file(self, source_path: str):
         """
