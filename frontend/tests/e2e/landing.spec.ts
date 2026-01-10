@@ -83,6 +83,8 @@ test.describe('Landing Page', () => {
   });
 
   test('should log Google login button click', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
+
     // Set up console listener
     const consoleMessages: string[] = [];
     page.on('console', (msg) => {
@@ -90,7 +92,7 @@ test.describe('Landing Page', () => {
     });
 
     // Click Google login button
-    const loginButton = page.locator('button:has-text("Google로 시작하기")');
+    const loginButton = page.getByRole('button', { name: /Google로 시작하기/ });
     await loginButton.click();
 
     // Verify console log (Phase 4 placeholder)
@@ -101,16 +103,16 @@ test.describe('Landing Page', () => {
   test('should be responsive on mobile viewport', async ({ page }) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
+    await page.waitForLoadState('networkidle');
 
     // All main elements should still be visible
-    await expect(page.locator('h1:has-text("지출 추적을 더 쉽게")')).toBeVisible();
-    await expect(page.locator('button:has-text("Google로 시작하기")')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '지출 추적을 더 쉽게' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Google로 시작하기/ })).toBeVisible();
 
     // Feature cards should stack vertically (all visible)
-    const featureCards = page.locator('.ant-card');
-    for (let i = 0; i < 3; i++) {
-      await expect(featureCards.nth(i)).toBeVisible();
-    }
+    await expect(page.getByText('파일 자동 파싱')).toBeVisible();
+    await expect(page.getByText('지능형 분류')).toBeVisible();
+    await expect(page.getByText('실시간 분석')).toBeVisible();
   });
 
   test('should redirect authenticated users to transactions page', async ({ page, context }) => {
