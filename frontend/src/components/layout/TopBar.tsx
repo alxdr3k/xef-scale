@@ -1,10 +1,18 @@
 import React from 'react';
-import { Avatar, Dropdown, Space } from 'antd';
-import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Avatar, Dropdown, Space, Button } from 'antd';
+import {
+  UserOutlined,
+  LogoutOutlined,
+  MenuOutlined,
+} from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useAuth } from '../../contexts/AuthContext';
 
-const TopBar: React.FC = () => {
+interface TopBarProps {
+  onMenuClick?: () => void;
+}
+
+const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
 
   const handleLogout = async () => {
@@ -30,18 +38,33 @@ const TopBar: React.FC = () => {
   ];
 
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      width: '100%'
-    }}>
-      <div style={{
-        fontSize: '20px',
-        fontWeight: 'bold',
-        color: '#2196F3'
-      }}>
-        지출 추적기
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Mobile hamburger menu button */}
+        <Button
+          type="text"
+          icon={<MenuOutlined />}
+          onClick={onMenuClick}
+          className="mobile-menu-button"
+          style={{ fontSize: 20 }}
+        />
+        <div
+          style={{
+            fontSize: '20px',
+            fontWeight: 'bold',
+            color: '#2196F3',
+          }}
+          className="desktop-title"
+        >
+          지출 추적기
+        </div>
       </div>
       <Dropdown menu={{ items: menuItems }} placement="bottomRight">
         <Space style={{ cursor: 'pointer' }}>
@@ -50,9 +73,29 @@ const TopBar: React.FC = () => {
             icon={<UserOutlined />}
             style={{ backgroundColor: '#2196F3' }}
           />
-          <span>{user?.display_name || '사용자'}</span>
+          <span className="user-name">{user?.display_name || '사용자'}</span>
         </Space>
       </Dropdown>
+
+      <style>{`
+        @media (min-width: 992px) {
+          .mobile-menu-button {
+            display: none !important;
+          }
+        }
+
+        @media (max-width: 991px) {
+          .desktop-title {
+            display: none !important;
+          }
+        }
+
+        @media (max-width: 576px) {
+          .user-name {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

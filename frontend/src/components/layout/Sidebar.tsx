@@ -8,7 +8,11 @@ import {
   SettingOutlined,
 } from '@ant-design/icons';
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  onMenuClick?: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -37,6 +41,10 @@ const Sidebar: React.FC = () => {
 
   const handleMenuClick = (key: string) => {
     navigate(key);
+    // Close mobile drawer after navigation
+    if (onMenuClick) {
+      onMenuClick();
+    }
   };
 
   return (

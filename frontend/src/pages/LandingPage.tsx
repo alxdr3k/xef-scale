@@ -1,78 +1,236 @@
 import React from 'react';
-import { Button, Typography, Space, Card, Row, Col } from 'antd';
-import { GoogleOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Button, Typography, Space, Card, Row, Col, Tag, Divider } from 'antd';
+import {
+  GoogleOutlined,
+  FileSearchOutlined,
+  PieChartOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
 
 const LandingPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect to transactions if already logged in
+  // Redirect to dashboard if already logged in
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/transactions');
+      navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
 
-  const handleGoogleLogin = () => {
-    // TODO: Implement Google OAuth login flow
-    console.log('Google login clicked');
+  const handleGoogleLogin = async () => {
+    // TODO: Phase 4 - Implement Google OAuth flow
+    // For now, just log the action
+    console.log('Google login clicked - to be implemented in Phase 4');
+    // Placeholder: await login(googleIdToken);
   };
 
   const features = [
     {
+      icon: <FileSearchOutlined />,
       title: '파일 자동 파싱',
-      description: '신한카드, 하나카드, 토스뱅크, 카카오뱅크 등 주요 금융기관의 명세서를 자동으로 파싱합니다.',
+      description:
+        '신한카드, 하나카드, 토스뱅크, 카카오뱅크 등 주요 금융기관의 명세서를 자동으로 파싱합니다.',
+      color: '#2196F3',
     },
     {
-      title: '지출 분석',
-      description: '카테고리별 지출 현황을 시각화하여 한눈에 확인할 수 있습니다.',
+      icon: <ThunderboltOutlined />,
+      title: '지능형 분류',
+      description:
+        'AI 기반 카테고리 자동 분류로 식비, 교통비, 쇼핑 등 지출 유형을 자동으로 구분합니다.',
+      color: '#52c41a',
     },
     {
-      title: '다중 금융기관 지원',
-      description: '여러 은행과 카드사의 데이터를 하나로 통합하여 관리합니다.',
+      icon: <PieChartOutlined />,
+      title: '실시간 분석',
+      description:
+        '카테고리별 지출 현황과 추세를 시각화하여 한눈에 확인할 수 있습니다.',
+      color: '#faad14',
     },
   ];
 
+  const supportedBanks = [
+    { name: '신한카드', color: '#0046ff' },
+    { name: '하나카드', color: '#008485' },
+    { name: '토스뱅크', color: '#0064ff' },
+    { name: '토스페이', color: '#0064ff' },
+    { name: '카카오뱅크', color: '#ffeb00' },
+    { name: '카카오페이', color: '#ffeb00' },
+  ];
+
   return (
-    <div style={{ padding: '50px 0', maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Hero Section */}
-      <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-        <Title level={1}>지출 추적을 더 쉽게</Title>
-        <Paragraph style={{ fontSize: '18px', color: '#666', margin: '20px 0 40px' }}>
-          금융기관 명세서를 자동으로 파싱하고 지출을 분석하세요
-        </Paragraph>
-        <Button
-          type="primary"
-          size="large"
-          icon={<GoogleOutlined />}
-          onClick={handleGoogleLogin}
-          style={{ height: '48px', fontSize: '16px', padding: '0 40px' }}
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      }}
+    >
+      <div
+        style={{
+          padding: '80px 24px',
+          maxWidth: '1200px',
+          margin: '0 auto',
+        }}
+      >
+        {/* Hero Section */}
+        <div
+          style={{
+            textAlign: 'center',
+            marginBottom: '80px',
+            color: '#fff',
+          }}
         >
-          Google로 시작하기
-        </Button>
+          <Title
+            level={1}
+            style={{
+              color: '#fff',
+              fontSize: '48px',
+              marginBottom: '24px',
+              fontWeight: 700,
+            }}
+          >
+            지출 추적을 더 쉽게
+          </Title>
+          <Paragraph
+            style={{
+              fontSize: '20px',
+              color: 'rgba(255, 255, 255, 0.9)',
+              margin: '0 0 48px',
+              maxWidth: '600px',
+              marginLeft: 'auto',
+              marginRight: 'auto',
+            }}
+          >
+            금융기관 명세서를 자동으로 파싱하고 지출을 분석하세요.
+            <br />
+            모든 데이터는 로컬에서 안전하게 처리됩니다.
+          </Paragraph>
+          <Button
+            type="primary"
+            size="large"
+            icon={<GoogleOutlined />}
+            onClick={handleGoogleLogin}
+            style={{
+              height: '56px',
+              fontSize: '18px',
+              padding: '0 48px',
+              background: '#fff',
+              color: '#667eea',
+              border: 'none',
+              fontWeight: 600,
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
+            }}
+          >
+            Google로 시작하기
+          </Button>
+        </div>
+
+        {/* Features Section */}
+        <Row gutter={[24, 24]} style={{ marginBottom: '80px' }}>
+          {features.map((feature, index) => (
+            <Col xs={24} md={8} key={index}>
+              <Card
+                hoverable
+                style={{
+                  height: '100%',
+                  borderRadius: 16,
+                  border: 'none',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+                }}
+              >
+                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                  <div
+                    style={{
+                      fontSize: '48px',
+                      color: feature.color,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {feature.icon}
+                  </div>
+                  <Title level={4} style={{ textAlign: 'center', marginBottom: 8 }}>
+                    {feature.title}
+                  </Title>
+                  <Paragraph
+                    style={{
+                      textAlign: 'center',
+                      color: '#666',
+                      marginBottom: 0,
+                    }}
+                  >
+                    {feature.description}
+                  </Paragraph>
+                </Space>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+
+        {/* Supported Banks Section */}
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: 16,
+            padding: '48px 24px',
+            textAlign: 'center',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+          }}
+        >
+          <Title level={3} style={{ marginBottom: 32 }}>
+            지원하는 금융기관
+          </Title>
+          <Space size={[16, 16]} wrap style={{ justifyContent: 'center' }}>
+            {supportedBanks.map((bank) => (
+              <Tag
+                key={bank.name}
+                style={{
+                  padding: '8px 24px',
+                  fontSize: '16px',
+                  borderRadius: 24,
+                  border: `2px solid ${bank.color}`,
+                  color: bank.color,
+                  background: 'transparent',
+                  fontWeight: 500,
+                }}
+              >
+                {bank.name}
+              </Tag>
+            ))}
+          </Space>
+          <Divider />
+          <Text type="secondary" style={{ fontSize: 14 }}>
+            더 많은 금융기관이 계속 추가될 예정입니다
+          </Text>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            textAlign: 'center',
+            marginTop: '80px',
+            color: 'rgba(255, 255, 255, 0.8)',
+          }}
+        >
+          <Text style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+            Expense Tracker ©{new Date().getFullYear()} | 안전한 로컬 지출 관리
+          </Text>
+        </div>
       </div>
 
-      {/* Features Section */}
-      <Row gutter={[24, 24]}>
-        {features.map((feature, index) => (
-          <Col xs={24} md={8} key={index}>
-            <Card
-              hoverable
-              style={{ height: '100%' }}
-            >
-              <Space direction="vertical" size="middle">
-                <CheckCircleOutlined style={{ fontSize: '32px', color: '#2196F3' }} />
-                <Title level={4}>{feature.title}</Title>
-                <Paragraph>{feature.description}</Paragraph>
-              </Space>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+      <style>{`
+        @media (max-width: 768px) {
+          h1 {
+            font-size: 32px !important;
+          }
+          .ant-typography {
+            font-size: 16px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
