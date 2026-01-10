@@ -15,10 +15,10 @@ const LandingPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect to dashboard if already logged in
+  // Redirect to transactions if already logged in
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate('/transactions');
     }
   }, [isAuthenticated, navigate]);
 
@@ -105,9 +105,7 @@ const LandingPage: React.FC = () => {
               marginRight: 'auto',
             }}
           >
-            금융기관 명세서를 자동으로 파싱하고 지출을 분석하세요.
-            <br />
-            모든 데이터는 로컬에서 안전하게 처리됩니다.
+            한국 금융기관 명세서를 자동으로 파싱하고 분석하세요
           </Paragraph>
           <Button
             type="primary"
@@ -215,9 +213,16 @@ const LandingPage: React.FC = () => {
             color: 'rgba(255, 255, 255, 0.8)',
           }}
         >
-          <Text style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-            Expense Tracker ©{new Date().getFullYear()} | 안전한 로컬 지출 관리
-          </Text>
+          <div style={{ marginBottom: '8px' }}>
+            <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 14 }}>
+              © {new Date().getFullYear()} 지출 추적기
+            </Text>
+          </div>
+          <div>
+            <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 13 }}>
+              안전한 로컬 지출 관리
+            </Text>
+          </div>
         </div>
       </div>
 

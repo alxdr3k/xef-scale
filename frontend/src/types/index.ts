@@ -33,26 +33,37 @@ export type ParsingStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 export interface ParsingSession {
   id: number;
-  user_id: number;
-  filename: string;
-  institution: string;
-  status: ParsingStatus;
+  file_id: number;
+  parser_type: string;
+  started_at: string;
+  completed_at: string | null;
+  total_rows_in_file: number;
   rows_saved: number;
   rows_skipped: number;
   rows_duplicate: number;
+  status: string;
+  error_message: string | null;
   validation_status: string | null;
-  created_at: string;
-  updated_at: string;
+  validation_notes: string | null;
+  // Joined fields from processed_files and financial_institutions
+  file_name: string | null;
+  file_hash: string | null;
+  institution_name: string | null;
+  institution_type: string | null;
 }
 
 // Skipped transaction in parsing session
 export interface SkippedTransaction {
   id: number;
   session_id: number;
-  row_index: number;
-  reason: string;
-  raw_data: string;
-  created_at: string;
+  row_number: number;
+  skip_reason: string;
+  transaction_date: string | null;
+  merchant_name: string | null;
+  amount: number | null;
+  original_amount: number | null;
+  skip_details: string | null;
+  column_data: Record<string, any> | null;
 }
 
 // API response with pagination
@@ -62,6 +73,14 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+// Parsing session list response
+export interface ParsingSessionListResponse {
+  sessions: ParsingSession[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 // Transaction summary by category
