@@ -39,8 +39,6 @@ async def get_parsing_sessions(
     Returns parsing sessions with file details and processing statistics,
     sorted by start time (most recent first).
 
-    **Implementation Status**: Skeleton - Phase 2 will implement actual query.
-
     Args:
         page: Page number for pagination (1-indexed)
         page_size: Number of items per page (max 200)
@@ -79,21 +77,59 @@ async def get_parsing_sessions(
         ... }
 
     Notes:
-        - Phase 2 will use ParsingSessionRepository.get_recent_sessions()
+        - Uses ParsingSessionRepository.get_recent_sessions()
         - Sessions ordered by started_at DESC (most recent first)
         - Includes file name and institution name via joins
         - Useful for monitoring file processing history
     """
-    # TODO Phase 2: Implement parsing session list
-    # 1. Calculate offset from page and page_size
-    # 2. Use ParsingSessionRepository.get_recent_sessions(limit, offset)
-    # 3. Get total count for pagination metadata
-    # 4. Convert to ParsingSessionListResponse
+    try:
+        parsing_repo = ParsingSessionRepository(db)
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Parsing session listing will be implemented in Phase 2"
-    )
+        # Calculate offset from page (1-indexed)
+        offset = (page - 1) * page_size
+
+        # Get sessions with pagination
+        sessions = parsing_repo.get_recent_sessions(limit=page_size, offset=offset)
+
+        # Get total count for pagination
+        cursor = db.execute('SELECT COUNT(*) FROM parsing_sessions')
+        total = cursor.fetchone()[0]
+
+        # Convert to response models
+        session_responses = [
+            ParsingSessionResponse(
+                id=session['id'],
+                file_id=session['file_id'],
+                parser_type=session['parser_type'],
+                started_at=session['started_at'],
+                completed_at=session.get('completed_at'),
+                total_rows_in_file=session['total_rows_in_file'],
+                rows_saved=session.get('rows_saved', 0),
+                rows_skipped=session.get('rows_skipped', 0),
+                rows_duplicate=session.get('rows_duplicate', 0),
+                status=session['status'],
+                error_message=session.get('error_message'),
+                validation_status=session.get('validation_status'),
+                validation_notes=session.get('validation_notes'),
+                file_name=session.get('file_name'),
+                file_hash=session.get('file_hash'),
+                institution_name=session.get('institution_name'),
+                institution_type=session.get('institution_type')
+            )
+            for session in sessions
+        ]
+
+        return ParsingSessionListResponse(
+            sessions=session_responses,
+            total=total,
+            page=page,
+            page_size=page_size
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve parsing sessions: {str(e)}"
+        )
 
 
 @router.get(
@@ -114,8 +150,6 @@ async def get_parsing_session_by_id(
 
     Returns complete parsing session information including file details,
     processing statistics, and validation results.
-
-    **Implementation Status**: Skeleton - Phase 2 will implement actual query.
 
     Args:
         session_id: Parsing session database ID
@@ -153,20 +187,47 @@ async def get_parsing_session_by_id(
         ... }
 
     Notes:
-        - Phase 2 will use ParsingSessionRepository.get_with_stats()
+        - Uses ParsingSessionRepository.get_with_stats()
         - Returns 404 if session doesn't exist
         - Includes joined file and institution data
         - Useful for debugging parsing issues
     """
-    # TODO Phase 2: Implement session detail query
-    # 1. Use ParsingSessionRepository.get_with_stats(session_id)
-    # 2. Return 404 if not found
-    # 3. Convert to ParsingSessionResponse
+    try:
+        parsing_repo = ParsingSessionRepository(db)
+        session = parsing_repo.get_with_stats(session_id)
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Parsing session detail will be implemented in Phase 2"
-    )
+        if session is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Parsing session {session_id} not found"
+            )
+
+        return ParsingSessionResponse(
+            id=session['id'],
+            file_id=session['file_id'],
+            parser_type=session['parser_type'],
+            started_at=session['started_at'],
+            completed_at=session.get('completed_at'),
+            total_rows_in_file=session['total_rows_in_file'],
+            rows_saved=session.get('rows_saved', 0),
+            rows_skipped=session.get('rows_skipped', 0),
+            rows_duplicate=session.get('rows_duplicate', 0),
+            status=session['status'],
+            error_message=session.get('error_message'),
+            validation_status=session.get('validation_status'),
+            validation_notes=session.get('validation_notes'),
+            file_name=session.get('file_name'),
+            file_hash=session.get('file_hash'),
+            institution_name=session.get('institution_name'),
+            institution_type=session.get('institution_type')
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve parsing session: {str(e)}"
+        )
 
 
 @router.get(
@@ -187,8 +248,6 @@ async def get_skipped_transactions(
 
     Returns list of transactions that were skipped during parsing,
     with reasons and debugging information.
-
-    **Implementation Status**: Skeleton - Phase 2 will implement actual query.
 
     Args:
         session_id: Parsing session database ID
@@ -228,19 +287,48 @@ async def get_skipped_transactions(
         ... ]
 
     Notes:
-        - Phase 2 will use SkippedTransactionRepository.get_by_session()
+        - Uses SkippedTransactionRepository.get_by_session()
         - Ordered by row_number for sequential inspection
         - Useful for debugging parsing issues
         - Returns empty list if no skipped transactions
         - column_data contains raw column values for debugging
     """
-    # TODO Phase 2: Implement skipped transactions query
-    # 1. Verify session exists (or let FK constraint handle it)
-    # 2. Use SkippedTransactionRepository.get_by_session(session_id)
-    # 3. Convert to SkippedTransactionResponse models
-    # 4. Return list (empty if none)
+    try:
+        # Verify session exists first
+        parsing_repo = ParsingSessionRepository(db)
+        session = parsing_repo.get_with_stats(session_id)
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Skipped transactions query will be implemented in Phase 2"
-    )
+        if session is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Parsing session {session_id} not found"
+            )
+
+        # Get skipped transactions
+        skipped_repo = SkippedTransactionRepository(db)
+        skipped_transactions = skipped_repo.get_by_session(session_id)
+
+        # Convert to response models
+        import json
+        return [
+            SkippedTransactionResponse(
+                id=skipped['id'],
+                session_id=skipped['session_id'],
+                row_number=skipped['row_number'],
+                skip_reason=skipped['skip_reason'],
+                transaction_date=skipped.get('transaction_date'),
+                merchant_name=skipped.get('merchant_name'),
+                amount=skipped.get('amount'),
+                original_amount=skipped.get('original_amount'),
+                skip_details=skipped.get('skip_details'),
+                column_data=json.loads(skipped['column_data']) if skipped.get('column_data') else None
+            )
+            for skipped in skipped_transactions
+        ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve skipped transactions: {str(e)}"
+        )

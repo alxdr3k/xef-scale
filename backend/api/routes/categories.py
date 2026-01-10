@@ -31,8 +31,6 @@ async def get_categories(
     Returns list of all categories sorted alphabetically by name.
     Categories are automatically created during transaction parsing.
 
-    **Implementation Status**: Skeleton - Phase 2 will implement actual query.
-
     Args:
         db: Database connection from dependency
         current_user: Current authenticated user
@@ -52,17 +50,26 @@ async def get_categories(
         ... ]
 
     Notes:
-        - Phase 2 will use CategoryRepository.get_all()
+        - Uses CategoryRepository.get_all()
         - Categories ordered alphabetically by name
         - Categories are created automatically during file parsing
         - No create/update endpoints (categories auto-managed)
     """
-    # TODO Phase 2: Implement category list
-    # 1. Use CategoryRepository.get_all()
-    # 2. Convert to CategoryResponse models
-    # 3. Return sorted list
+    try:
+        category_repo = CategoryRepository(db)
+        categories = category_repo.get_all()
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Category listing will be implemented in Phase 2"
-    )
+        return [
+            CategoryResponse(
+                id=cat['id'],
+                name=cat['name'],
+                created_at=cat['created_at'],
+                updated_at=cat['updated_at']
+            )
+            for cat in categories
+        ]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve categories: {str(e)}"
+        )

@@ -31,8 +31,6 @@ async def get_institutions(
     Returns list of all active financial institutions (banks, cards, payment services)
     sorted alphabetically by name. Only active institutions are returned.
 
-    **Implementation Status**: Skeleton - Phase 2 will implement actual query.
-
     Args:
         db: Database connection from dependency
         current_user: Current authenticated user
@@ -67,18 +65,30 @@ async def get_institutions(
         ... ]
 
     Notes:
-        - Phase 2 will use InstitutionRepository.get_all()
+        - Uses InstitutionRepository.get_all()
         - Only returns active institutions (is_active=true)
         - Institutions ordered alphabetically by name
         - Institutions created automatically during file parsing
         - Types: CARD (credit cards), BANK (banks), PAY (payment services)
     """
-    # TODO Phase 2: Implement institution list
-    # 1. Use InstitutionRepository.get_all()
-    # 2. Convert to InstitutionResponse models
-    # 3. Return sorted list (only active institutions)
+    try:
+        institution_repo = InstitutionRepository(db)
+        institutions = institution_repo.get_all()
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Institution listing will be implemented in Phase 2"
-    )
+        return [
+            InstitutionResponse(
+                id=inst['id'],
+                name=inst['name'],
+                institution_type=inst['institution_type'],
+                display_name=inst['display_name'],
+                is_active=bool(inst['is_active']),
+                created_at=inst['created_at'],
+                updated_at=inst['updated_at']
+            )
+            for inst in institutions
+        ]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve institutions: {str(e)}"
+        )
