@@ -5,8 +5,10 @@ Provides CRUD operations for categories, financial institutions, and transaction
 
 import sqlite3
 import logging
+import json
+from datetime import datetime
 from typing import List, Optional, Dict
-from src.models import Transaction
+from src.models import Transaction, SkippedTransaction
 
 
 class CategoryRepository:
@@ -623,6 +625,508 @@ class TransactionRepository:
             ORDER BY total DESC
         ''', (year, month))
         return [dict(row) for row in cursor.fetchall()]
+
+
+class ParsingSessionRepository:
+    """
+    Repository for parsing session tracking and validation.
+
+    Manages parsing session lifecycle including creation, completion, failure tracking,
+    and retrieval with statistics. Each session represents one file parsing attempt.
+
+    Attributes:
+        conn: SQLite database connection
+        logger: Logger instance for operations tracking
+
+    Examples:
+        >>> repo = ParsingSessionRepository(conn)
+        >>> session_id = repo.create_session(file_id=1, parser_type='HANA', total_rows=100)
+        >>> repo.complete_session(session_id, rows_saved=85, rows_skipped=5,
+        ...                       rows_duplicate=10, validation_status='pass',
+        ...                       validation_notes='All validations passed')
+        >>> sessions = repo.get_recent_sessions(limit=10)
+        >>> print(sessions[0]['parser_type'])
+        'HANA'
+    """
+
+    def __init__(self, connection: sqlite3.Connection):
+        """
+        Initialize repository with database connection.
+
+        Args:
+            connection: SQLite database connection instance
+        """
+        self.conn = connection
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('ParsingSessionRepository initialized')
+
+    def create_session(self, file_id: int, parser_type: str, total_rows: int) -> int:
+        """
+        Create a new parsing session with pending status.
+
+        Initializes session tracking for a file parsing operation.
+        Sets status to 'pending' and records start time.
+
+        Args:
+            file_id: Foreign key to processed_files table
+            parser_type: Parser identifier (e.g., 'HANA', 'TOSS', 'SHINHAN')
+            total_rows: Total rows scanned in file
+
+        Returns:
+            int: Session ID (lastrowid)
+
+        Examples:
+            >>> repo = ParsingSessionRepository(conn)
+            >>> session_id = repo.create_session(file_id=1, parser_type='HANA', total_rows=100)
+            >>> print(session_id)
+            1
+
+        Notes:
+            - Status automatically set to 'pending'
+            - started_at automatically set to current timestamp
+            - Session must be completed via complete_session() or fail_session()
+        """
+        try:
+            started_at = datetime.now().isoformat()
+            cursor = self.conn.execute('''
+                INSERT INTO parsing_sessions (
+                    file_id,
+                    parser_type,
+                    started_at,
+                    total_rows_in_file,
+                    status
+                ) VALUES (?, ?, ?, ?, 'pending')
+            ''', (file_id, parser_type, started_at, total_rows))
+
+            self.conn.commit()
+
+            self.logger.debug(
+                f'Created parsing session: file_id={file_id}, parser={parser_type}, '
+                f'total_rows={total_rows}, session_id={cursor.lastrowid}'
+            )
+            return cursor.lastrowid
+
+        except Exception as e:
+            self.logger.error(f'Error creating parsing session for file_id={file_id}: {e}')
+            raise
+
+    def complete_session(self, session_id: int, rows_saved: int, rows_skipped: int,
+                        rows_duplicate: int, validation_status: str,
+                        validation_notes: str):
+        """
+        Mark session as completed with final statistics.
+
+        Updates session with completion timestamp, row counts, validation results,
+        and sets status to 'completed'.
+
+        Args:
+            session_id: Session ID from create_session()
+            rows_saved: Count of successfully inserted transactions
+            rows_skipped: Count of skipped transactions
+            rows_duplicate: Count of duplicate transactions (INSERT OR IGNORE)
+            validation_status: Validation result ('pass', 'warning', 'fail')
+            validation_notes: Human-readable validation summary
+
+        Examples:
+            >>> repo = ParsingSessionRepository(conn)
+            >>> repo.complete_session(
+            ...     session_id=1,
+            ...     rows_saved=85,
+            ...     rows_skipped=5,
+            ...     rows_duplicate=10,
+            ...     validation_status='pass',
+            ...     validation_notes='All validations passed. No critical issues.'
+            ... )
+
+        Notes:
+            - Sets completed_at to current timestamp
+            - Sets status to 'completed'
+            - Commits immediately
+            - Should be called after successful parsing and insertion
+        """
+        try:
+            completed_at = datetime.now().isoformat()
+            self.conn.execute('''
+                UPDATE parsing_sessions
+                SET completed_at = ?,
+                    rows_saved = ?,
+                    rows_skipped = ?,
+                    rows_duplicate = ?,
+                    status = 'completed',
+                    validation_status = ?,
+                    validation_notes = ?
+                WHERE id = ?
+            ''', (completed_at, rows_saved, rows_skipped, rows_duplicate,
+                  validation_status, validation_notes, session_id))
+
+            self.conn.commit()
+
+            self.logger.info(
+                f'Completed parsing session {session_id}: saved={rows_saved}, '
+                f'skipped={rows_skipped}, duplicate={rows_duplicate}, validation={validation_status}'
+            )
+
+        except Exception as e:
+            self.logger.error(f'Error completing parsing session {session_id}: {e}')
+            raise
+
+    def fail_session(self, session_id: int, error_message: str):
+        """
+        Mark session as failed with error message.
+
+        Updates session with completion timestamp, error message,
+        and sets status to 'failed'.
+
+        Args:
+            session_id: Session ID from create_session()
+            error_message: Error message describing the failure
+
+        Examples:
+            >>> repo = ParsingSessionRepository(conn)
+            >>> repo.fail_session(session_id=1, error_message='Invalid file format')
+
+        Notes:
+            - Sets completed_at to current timestamp
+            - Sets status to 'failed'
+            - Commits immediately
+            - Should be called when parsing or insertion fails
+        """
+        try:
+            completed_at = datetime.now().isoformat()
+            self.conn.execute('''
+                UPDATE parsing_sessions
+                SET completed_at = ?,
+                    status = 'failed',
+                    error_message = ?
+                WHERE id = ?
+            ''', (completed_at, error_message, session_id))
+
+            self.conn.commit()
+
+            self.logger.error(f'Failed parsing session {session_id}: {error_message}')
+
+        except Exception as e:
+            self.logger.error(f'Error marking session {session_id} as failed: {e}')
+            raise
+
+    def get_recent_sessions(self, limit: int = 50, offset: int = 0) -> List[dict]:
+        """
+        Get recent parsing sessions with file and institution details.
+
+        Joins with processed_files and financial_institutions for complete context.
+        Ordered by session start time (most recent first).
+
+        Args:
+            limit: Maximum number of sessions to return (default: 50)
+            offset: Number of sessions to skip for pagination (default: 0)
+
+        Returns:
+            List of session dictionaries with joined file and institution data
+
+        Examples:
+            >>> repo = ParsingSessionRepository(conn)
+            >>> sessions = repo.get_recent_sessions(limit=10)
+            >>> for session in sessions:
+            ...     print(f"{session['file_name']} - {session['institution_name']}")
+            'hana_statement.xls - 하나카드'
+            'toss_statement.csv - 토스뱅크'
+
+        Notes:
+            - Joins with processed_files for file_name, file_hash
+            - Joins with financial_institutions for institution_name
+            - Ordered by started_at DESC (most recent first)
+            - Supports pagination via limit/offset
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT
+                    ps.*,
+                    pf.file_name,
+                    pf.file_hash,
+                    fi.name as institution_name,
+                    fi.institution_type
+                FROM parsing_sessions ps
+                JOIN processed_files pf ON ps.file_id = pf.id
+                JOIN financial_institutions fi ON pf.institution_id = fi.id
+                ORDER BY ps.started_at DESC
+                LIMIT ? OFFSET ?
+            ''', (limit, offset))
+
+            results = [dict(row) for row in cursor.fetchall()]
+            self.logger.debug(f'Retrieved {len(results)} recent sessions (limit={limit}, offset={offset})')
+            return results
+
+        except Exception as e:
+            self.logger.error(f'Error fetching recent sessions: {e}')
+            raise
+
+    def get_with_stats(self, session_id: int) -> Optional[dict]:
+        """
+        Get single parsing session with file and institution details.
+
+        Same join as get_recent_sessions() but for single session lookup.
+
+        Args:
+            session_id: Session ID to retrieve
+
+        Returns:
+            Session dict with joined data or None if not found
+
+        Examples:
+            >>> repo = ParsingSessionRepository(conn)
+            >>> session = repo.get_with_stats(session_id=1)
+            >>> if session:
+            ...     print(f"Parser: {session['parser_type']}")
+            ...     print(f"File: {session['file_name']}")
+            ...     print(f"Saved: {session['rows_saved']}")
+            'Parser: HANA'
+            'File: hana_statement.xls'
+            'Saved: 85'
+
+        Notes:
+            - Returns None if session_id not found
+            - Includes all session fields plus joined file/institution data
+            - Useful for detailed session inspection
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT
+                    ps.*,
+                    pf.file_name,
+                    pf.file_hash,
+                    fi.name as institution_name,
+                    fi.institution_type
+                FROM parsing_sessions ps
+                JOIN processed_files pf ON ps.file_id = pf.id
+                JOIN financial_institutions fi ON pf.institution_id = fi.id
+                WHERE ps.id = ?
+            ''', (session_id,))
+
+            row = cursor.fetchone()
+            if row:
+                self.logger.debug(f'Retrieved parsing session {session_id}')
+                return dict(row)
+            else:
+                self.logger.debug(f'Parsing session {session_id} not found')
+                return None
+
+        except Exception as e:
+            self.logger.error(f'Error fetching parsing session {session_id}: {e}')
+            raise
+
+
+class SkippedTransactionRepository:
+    """
+    Repository for skipped transaction tracking during parsing.
+
+    Manages storage and retrieval of transactions that were skipped during parsing,
+    with reasons and metadata for debugging and validation reporting.
+
+    Attributes:
+        conn: SQLite database connection
+        logger: Logger instance for operations tracking
+
+    Examples:
+        >>> repo = SkippedTransactionRepository(conn)
+        >>> skipped_list = [
+        ...     SkippedTransaction(row_number=5, skip_reason='zero_amount',
+        ...                        merchant_name='Test', amount=0),
+        ...     SkippedTransaction(row_number=10, skip_reason='invalid_date')
+        ... ]
+        >>> count = repo.batch_insert(session_id=1, skipped_list=skipped_list)
+        >>> print(count)
+        2
+        >>> summary = repo.get_summary_by_reason(session_id=1)
+        >>> print(summary[0])
+        {'skip_reason': 'zero_amount', 'count': 1}
+    """
+
+    def __init__(self, connection: sqlite3.Connection):
+        """
+        Initialize repository with database connection.
+
+        Args:
+            connection: SQLite database connection instance
+        """
+        self.conn = connection
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('SkippedTransactionRepository initialized')
+
+    def batch_insert(self, session_id: int, skipped_list: List[SkippedTransaction]) -> int:
+        """
+        Insert multiple skipped transactions for a parsing session.
+
+        Loops through skipped transaction list and inserts each record.
+        Serializes column_data as JSON for storage.
+
+        Args:
+            session_id: Foreign key to parsing_sessions table
+            skipped_list: List of SkippedTransaction objects
+
+        Returns:
+            int: Number of skipped transactions inserted
+
+        Examples:
+            >>> from src.models import SkippedTransaction, SkipReason
+            >>> repo = SkippedTransactionRepository(conn)
+            >>> skipped = [
+            ...     SkippedTransaction(
+            ...         row_number=5,
+            ...         skip_reason=SkipReason.ZERO_AMOUNT,
+            ...         merchant_name='Test Store',
+            ...         amount=0,
+            ...         skip_details='Amount is zero',
+            ...         column_data={'col1': 'value1', 'col2': 'value2'}
+            ...     ),
+            ...     SkippedTransaction(
+            ...         row_number=10,
+            ...         skip_reason=SkipReason.INVALID_DATE,
+            ...         skip_details='Date format invalid'
+            ...     )
+            ... ]
+            >>> count = repo.batch_insert(session_id=1, skipped_list=skipped)
+            >>> print(count)
+            2
+
+        Notes:
+            - Uses individual INSERT for each skipped transaction
+            - Serializes column_data dict as JSON string
+            - All inserts in single transaction (single commit)
+            - Returns count of successful inserts
+            - Rolls back on any error
+        """
+        if not skipped_list:
+            self.logger.debug(f'No skipped transactions to insert for session_id={session_id}')
+            return 0
+
+        count = 0
+        try:
+            for skipped in skipped_list:
+                # Serialize column_data as JSON
+                column_data_json = json.dumps(skipped.column_data) if skipped.column_data else None
+
+                self.conn.execute('''
+                    INSERT INTO skipped_transactions (
+                        session_id,
+                        row_number,
+                        skip_reason,
+                        transaction_date,
+                        merchant_name,
+                        amount,
+                        original_amount,
+                        skip_details,
+                        column_data
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    session_id,
+                    skipped.row_number,
+                    skipped.skip_reason,
+                    skipped.transaction_date,
+                    skipped.merchant_name,
+                    skipped.amount,
+                    skipped.original_amount,
+                    skipped.skip_details,
+                    column_data_json
+                ))
+                count += 1
+
+            self.conn.commit()
+            self.logger.info(f'Batch inserted {count} skipped transactions for session_id={session_id}')
+
+        except Exception as e:
+            self.conn.rollback()
+            self.logger.error(f'Batch insert of skipped transactions failed for session_id={session_id}: {e}')
+            raise
+
+        return count
+
+    def get_by_session(self, session_id: int) -> List[dict]:
+        """
+        Get all skipped transactions for a parsing session.
+
+        Retrieves skipped transactions ordered by row number.
+        Useful for detailed validation reports.
+
+        Args:
+            session_id: Session ID to query
+
+        Returns:
+            List of skipped transaction dictionaries ordered by row number
+
+        Examples:
+            >>> repo = SkippedTransactionRepository(conn)
+            >>> skipped = repo.get_by_session(session_id=1)
+            >>> for item in skipped:
+            ...     print(f"Row {item['row_number']}: {item['skip_reason']}")
+            'Row 5: zero_amount'
+            'Row 10: invalid_date'
+            'Row 15: missing_merchant'
+
+        Notes:
+            - Ordered by row_number ASC for sequential inspection
+            - Returns all fields including serialized column_data (as JSON string)
+            - Returns empty list if no skipped transactions found
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT * FROM skipped_transactions
+                WHERE session_id = ?
+                ORDER BY row_number
+            ''', (session_id,))
+
+            results = [dict(row) for row in cursor.fetchall()]
+            self.logger.debug(f'Retrieved {len(results)} skipped transactions for session_id={session_id}')
+            return results
+
+        except Exception as e:
+            self.logger.error(f'Error fetching skipped transactions for session_id={session_id}: {e}')
+            raise
+
+    def get_summary_by_reason(self, session_id: int) -> List[dict]:
+        """
+        Get aggregated summary of skipped transactions by reason.
+
+        Groups skipped transactions by skip_reason and counts occurrences.
+        Useful for validation reports and identifying common parsing issues.
+
+        Args:
+            session_id: Session ID to query
+
+        Returns:
+            List of dicts with 'skip_reason' and 'count' keys, ordered by count descending
+
+        Examples:
+            >>> repo = SkippedTransactionRepository(conn)
+            >>> summary = repo.get_summary_by_reason(session_id=1)
+            >>> for item in summary:
+            ...     print(f"{item['skip_reason']}: {item['count']} transactions")
+            'zero_amount: 15 transactions'
+            'invalid_date: 5 transactions'
+            'missing_merchant: 2 transactions'
+
+        Notes:
+            - Groups by skip_reason
+            - Counts occurrences for each reason
+            - Ordered by count DESC (most common reasons first)
+            - Returns empty list if no skipped transactions found
+            - Useful for identifying systematic parsing issues
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT skip_reason, COUNT(*) as count
+                FROM skipped_transactions
+                WHERE session_id = ?
+                GROUP BY skip_reason
+                ORDER BY count DESC
+            ''', (session_id,))
+
+            results = [dict(row) for row in cursor.fetchall()]
+            self.logger.debug(f'Retrieved skip reason summary for session_id={session_id}: {len(results)} reasons')
+            return results
+
+        except Exception as e:
+            self.logger.error(f'Error fetching skip reason summary for session_id={session_id}: {e}')
+            raise
 
 
 class ProcessedFileRepository:
