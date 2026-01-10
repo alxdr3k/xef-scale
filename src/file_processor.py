@@ -13,13 +13,15 @@ from datetime import datetime
 from typing import Optional
 
 from src.config import DIRECTORIES
-from src.models import ProcessingResult
+from src.models import ProcessingResult, ParseResult
 from src.db.connection import DatabaseConnection
 from src.db.repository import (
     CategoryRepository,
     InstitutionRepository,
     TransactionRepository,
-    ProcessedFileRepository
+    ProcessedFileRepository,
+    ParsingSessionRepository,
+    SkippedTransactionRepository
 )
 from src.router import StatementRouter
 from src.parsers.hana_parser import HanaCardParser
@@ -118,6 +120,8 @@ class FileProcessor:
             self.institution_repo
         )
         self.processed_file_repo = ProcessedFileRepository(self.conn)
+        self.parsing_session_repo = ParsingSessionRepository(self.conn)
+        self.skipped_transaction_repo = SkippedTransactionRepository(self.conn)
         self.logger.debug('Database repositories initialized')
 
         # Initialize router and parsers
@@ -132,6 +136,50 @@ class FileProcessor:
         duplicates_dir = os.path.join(DIRECTORIES['archive'], 'duplicates')
         os.makedirs(duplicates_dir, exist_ok=True)
         self.logger.debug(f'Duplicates directory: {duplicates_dir}')
+
+    def _validate_session(self, parse_result: ParseResult,
+                         saved_count: int, duplicate_count: int) -> tuple:
+        """
+        Validate parsing session completeness.
+
+        Compares expected rows vs actual (saved + skipped + duplicate).
+
+        Args:
+            parse_result: ParseResult from parser
+            saved_count: Count returned from batch_insert (excludes duplicates)
+            duplicate_count: Number of transactions that were duplicates
+
+        Returns:
+            Tuple of (validation_status, validation_notes)
+            - status: 'pass', 'warning', or 'fail'
+            - notes: Human-readable summary
+        """
+        total_scanned = parse_result.total_rows_scanned
+        success_count = parse_result.success_count()
+        skip_count = parse_result.skip_count()
+
+        # Expected: scanned = success + skipped
+        # Actual: saved + duplicate + skipped
+        actual_accounted = saved_count + duplicate_count + skip_count
+
+        if actual_accounted == total_scanned:
+            # Perfect: All rows accounted for
+            return ('pass', f'All {total_scanned} rows accounted for: '
+                           f'{saved_count} saved, {duplicate_count} duplicate, '
+                           f'{skip_count} skipped')
+
+        elif actual_accounted < total_scanned:
+            # Warning: Some rows missing
+            missing = total_scanned - actual_accounted
+            return ('warning', f'Missing {missing} rows: scanned {total_scanned}, '
+                              f'accounted {actual_accounted} '
+                              f'(saved={saved_count}, dup={duplicate_count}, skip={skip_count})')
+
+        else:
+            # Fail: More rows accounted than scanned (logic error)
+            extra = actual_accounted - total_scanned
+            return ('fail', f'Accounting error: {extra} extra rows reported. '
+                           f'Scanned {total_scanned}, accounted {actual_accounted}')
 
     def process_file(self, file_path: Path) -> ProcessingResult:
         """
@@ -225,63 +273,124 @@ class FileProcessor:
 
             self.logger.info(f'Identified as {institution} statement')
 
-            # Step 4: Parse transactions
-            parser = self.parsers[institution]
-            transactions = parser.parse(str(file_path))
+            # Variables for error handling
+            session_id = None
 
-            if not transactions:
-                self.logger.warning(f'No transactions extracted from: {filename}')
+            try:
+                # Step 4: Parse transactions (UPDATED)
+                parser = self.parsers[institution]
+                parse_result = parser.parse(str(file_path))
+
+                # Backward compatibility check
+                if isinstance(parse_result, list):
+                    # Old parser returning List[Transaction]
+                    parse_result = ParseResult(
+                        transactions=parse_result,
+                        skipped=[],
+                        total_rows_scanned=len(parse_result),
+                        parser_type=institution
+                    )
+
+                if not parse_result.transactions:
+                    self.logger.warning(f'No transactions extracted from: {filename}')
+                    return ProcessingResult(
+                        status='error',
+                        message='No transactions found in file',
+                        transaction_count=0,
+                        file_id=None,
+                        file_hash=file_hash
+                    )
+
+                self.logger.info(
+                    f'Parse complete: {parse_result.success_count()} transactions, '
+                    f'{parse_result.skip_count()} skipped'
+                )
+
+                # Step 5: Insert file record
+                institution_id = self.institution_repo.get_or_create(parse_result.transactions[0].source)
+                processed_at = datetime.now().isoformat()
+
+                file_id = self.processed_file_repo.insert_file(
+                    file_name=filename,
+                    file_path=str(file_path.absolute()),
+                    file_hash=file_hash,
+                    file_size=file_size,
+                    institution_id=institution_id,
+                    processed_at=processed_at
+                )
+                self.logger.info(f'Created file record: file_id={file_id}')
+
+                # Step 6: Create parsing session (NEW)
+                session_id = self.parsing_session_repo.create_session(
+                    file_id=file_id,
+                    parser_type=parse_result.parser_type,
+                    total_rows=parse_result.total_rows_scanned
+                )
+                self.logger.debug(f'Created parsing session: {session_id}')
+
+                # Step 7: Save transactions (UNCHANGED)
+                count = self.transaction_repo.batch_insert(
+                    parse_result.transactions,
+                    file_id=file_id
+                )
+                self.logger.info(f'Saved {count} transactions to database')
+
+                # Step 8: Save skipped transactions (NEW)
+                skipped_count = self.skipped_transaction_repo.batch_insert(
+                    session_id,
+                    parse_result.skipped
+                )
+                self.logger.info(f'Saved {skipped_count} skipped transaction records')
+
+                # Step 9: Calculate duplicate count (NEW)
+                duplicate_count = len(parse_result.transactions) - count
+
+                # Step 10: Run validation (NEW)
+                validation_status, validation_notes = self._validate_session(
+                    parse_result, count, duplicate_count
+                )
+
+                # Step 11: Complete session with validation results (NEW)
+                self.parsing_session_repo.complete_session(
+                    session_id=session_id,
+                    rows_saved=count,
+                    rows_skipped=parse_result.skip_count(),
+                    rows_duplicate=duplicate_count,
+                    validation_status=validation_status,
+                    validation_notes=validation_notes
+                )
+                self.logger.info(f'Completed parsing session {session_id}: {validation_status}')
+
+                # Step 12: Archive file
+                archive_dir = DIRECTORIES['archive']
+                dest_path = os.path.join(archive_dir, filename)
+
+                # Handle duplicate filename in archive
+                if os.path.exists(dest_path):
+                    base, ext = os.path.splitext(filename)
+                    timestamp = int(datetime.now().timestamp())
+                    dest_path = os.path.join(archive_dir, f'{base}_{timestamp}{ext}')
+
+                shutil.move(str(file_path), dest_path)
+                self.logger.info(f'Archived file to: {dest_path}')
+
+                # Step 13: Update file record with archive path
+                self.processed_file_repo.update_archive_path(file_id, dest_path)
+
                 return ProcessingResult(
-                    status='error',
-                    message='No transactions found in file',
-                    transaction_count=0,
-                    file_id=None,
+                    status='success',
+                    message=f'Successfully processed {count} transactions from {filename}',
+                    transaction_count=count,
+                    file_id=file_id,
                     file_hash=file_hash
                 )
 
-            self.logger.info(f'Extracted {len(transactions)} transactions')
-
-            # Step 5: Insert file record
-            institution_id = self.institution_repo.get_or_create(transactions[0].source)
-            processed_at = datetime.now().isoformat()
-
-            file_id = self.processed_file_repo.insert_file(
-                file_name=filename,
-                file_path=str(file_path.absolute()),
-                file_hash=file_hash,
-                file_size=file_size,
-                institution_id=institution_id,
-                processed_at=processed_at
-            )
-            self.logger.info(f'Created file record: file_id={file_id}')
-
-            # Step 6: Save transactions with file_id
-            count = self.transaction_repo.batch_insert(transactions, file_id=file_id)
-            self.logger.info(f'Saved {count} transactions to database')
-
-            # Step 7: Archive file
-            archive_dir = DIRECTORIES['archive']
-            dest_path = os.path.join(archive_dir, filename)
-
-            # Handle duplicate filename in archive
-            if os.path.exists(dest_path):
-                base, ext = os.path.splitext(filename)
-                timestamp = int(datetime.now().timestamp())
-                dest_path = os.path.join(archive_dir, f'{base}_{timestamp}{ext}')
-
-            shutil.move(str(file_path), dest_path)
-            self.logger.info(f'Archived file to: {dest_path}')
-
-            # Step 8: Update file record with archive path
-            self.processed_file_repo.update_archive_path(file_id, dest_path)
-
-            return ProcessingResult(
-                status='success',
-                message=f'Successfully processed {count} transactions from {filename}',
-                transaction_count=count,
-                file_id=file_id,
-                file_hash=file_hash
-            )
+            except Exception as e:
+                # Mark session as failed if it was created
+                if session_id is not None:
+                    self.parsing_session_repo.fail_session(session_id, str(e))
+                    self.logger.error(f'Marked session {session_id} as failed')
+                raise  # Re-raise to be caught by outer exception handler
 
         except FileNotFoundError:
             self.logger.error(f'File not found: {filename}')
