@@ -8,58 +8,138 @@ from backend.api.schemas import (
     TokenResponse,
     UserInfo,
     GoogleAuthRequest,
+    GoogleAuthResponse,
+    LogoutResponse,
     ErrorResponse
 )
-from backend.api.dependencies import get_current_user, get_optional_user
+from backend.api.dependencies import get_current_user, get_optional_user, get_db
 from backend.core.security import create_access_token, create_refresh_token, verify_token
 from backend.core.config import settings
+from src.db.repository import UserRepository
+from google.auth.transport import requests
+from google.oauth2 import id_token
+import logging
+import sqlite3
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
     "/google",
-    response_model=TokenResponse,
+    response_model=GoogleAuthResponse,
     responses={
-        401: {"model": ErrorResponse, "description": "Invalid authorization code"},
+        401: {"model": ErrorResponse, "description": "Invalid Google ID token"},
         500: {"model": ErrorResponse, "description": "Google OAuth error"}
     }
 )
-async def google_auth(request: GoogleAuthRequest):
+async def google_auth(request: GoogleAuthRequest, db: sqlite3.Connection = Depends(get_db)):
     """
-    Handle Google OAuth callback and create JWT tokens.
+    Handle Google OAuth authentication and create JWT tokens.
 
-    Exchanges Google authorization code for user information and generates
-    access and refresh tokens for subsequent API calls.
-
-    **Implementation Status**: Skeleton - Phase 2 will implement actual Google OAuth flow.
+    Verifies Google ID token, creates or retrieves user from database,
+    and generates access and refresh tokens for subsequent API calls.
 
     Args:
-        request: GoogleAuthRequest with authorization code from Google
+        request: GoogleAuthRequest with Google ID token (credential)
+        db: Database connection from dependency injection
 
     Returns:
-        TokenResponse with access_token, refresh_token, and token_type
+        GoogleAuthResponse with access_token, refresh_token, token_type, and user info
 
     Raises:
-        HTTPException: 401 if authorization code is invalid
-        HTTPException: 500 if Google API call fails
+        HTTPException: 401 if Google ID token is invalid
+        HTTPException: 500 if database or Google API call fails
 
     Notes:
-        - Phase 2 will implement actual Google OAuth integration
-        - Will exchange code for user info via Google API
-        - Will create/update user in database
-        - Will generate JWT tokens with user data
+        - Verifies Google ID token with Google's public keys
+        - Creates new user if not exists, updates last_login if exists
+        - Generates JWT tokens with user data (sub, email, name, picture)
+        - Google ID is stored for future lookups
     """
-    # TODO Phase 2: Implement Google OAuth flow
-    # 1. Exchange authorization code for access token with Google
-    # 2. Fetch user info from Google (email, name, picture)
-    # 3. Create/update user in database
-    # 4. Generate JWT tokens with user data
+    try:
+        # Verify Google ID token
+        idinfo = id_token.verify_oauth2_token(
+            request.credential,
+            requests.Request(),
+            settings.GOOGLE_CLIENT_ID
+        )
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Google OAuth integration will be implemented in Phase 2"
-    )
+        # Extract user information from token
+        google_id = idinfo['sub']
+        email = idinfo['email']
+        name = idinfo.get('name')
+        picture = idinfo.get('picture')
+
+        logger.info(f"Google auth successful for email: {email}")
+
+        # Initialize UserRepository
+        user_repo = UserRepository(db)
+
+        # Check if user exists by google_id
+        user = user_repo.get_by_google_id(google_id)
+
+        if user:
+            # User exists - update last login
+            user_repo.update_last_login(user['id'])
+            logger.info(f"Existing user logged in: {email} (user_id={user['id']})")
+        else:
+            # New user - create account
+            user_id = user_repo.create_user(
+                email=email,
+                google_id=google_id,
+                name=name,
+                profile_picture_url=picture
+            )
+            user = user_repo.get_by_id(user_id)
+            logger.info(f"New user created: {email} (user_id={user_id})")
+
+        # Prepare JWT payload
+        user_data = {
+            "sub": str(user['id']),  # User ID as subject
+            "email": user['email'],
+            "name": user['name'],
+            "picture": user['profile_picture_url']
+        }
+
+        # Generate JWT tokens
+        access_token = create_access_token(user_data)
+        refresh_token = create_refresh_token({"sub": str(user['id'])})
+
+        # Return response with user info
+        return GoogleAuthResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            user=UserInfo(
+                id=str(user['id']),
+                email=user['email'],
+                name=user['name'],
+                picture=user['profile_picture_url']
+            )
+        )
+
+    except ValueError as e:
+        # Invalid token or verification failed
+        logger.error(f"Google ID token verification failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google ID token"
+        )
+    except sqlite3.IntegrityError as e:
+        # Database constraint violation (e.g., duplicate email)
+        logger.error(f"Database integrity error during user creation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="User account creation failed"
+        )
+    except Exception as e:
+        # Catch-all for unexpected errors
+        logger.error(f"Unexpected error during Google authentication: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Authentication failed"
+        )
 
 
 @router.post(
@@ -127,9 +207,9 @@ async def refresh_token(refresh_token: str):
 
 @router.post(
     "/logout",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=LogoutResponse,
     responses={
-        204: {"description": "Successfully logged out"},
+        200: {"model": LogoutResponse, "description": "Successfully logged out"},
         401: {"model": ErrorResponse, "description": "Not authenticated"}
     }
 )
@@ -147,18 +227,20 @@ async def logout(current_user: UserInfo = Depends(get_current_user)):
         current_user: Current authenticated user from JWT token
 
     Returns:
-        204 No Content on success
+        LogoutResponse with success message
 
     Notes:
         - Client should delete stored access and refresh tokens
         - Future: Implement token blacklist for server-side invalidation
         - Future: Store refresh tokens in database for revocation
     """
-    # TODO Phase 2: Implement server-side token invalidation
+    # TODO Phase 2+: Implement server-side token invalidation
     # Option 1: Add tokens to blacklist with expiration
     # Option 2: Store refresh tokens in DB and mark as revoked
     # For now, client-side token deletion is sufficient
-    return None
+
+    logger.info(f"User logged out: {current_user.email} (user_id={current_user.id})")
+    return LogoutResponse(message="Logged out successfully")
 
 
 @router.get(

@@ -25,9 +25,22 @@ class UserInfo(BaseModel):
     picture: Optional[str] = None
 
 
+class GoogleAuthResponse(BaseModel):
+    """Response schema for Google OAuth authentication."""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    user: UserInfo
+
+
 class GoogleAuthRequest(BaseModel):
-    """Request schema for Google OAuth callback."""
-    code: str = Field(..., description="Google OAuth authorization code")
+    """Request schema for Google OAuth authentication."""
+    credential: str = Field(..., description="Google ID token from Google Sign-In")
+
+
+class LogoutResponse(BaseModel):
+    """Response schema for logout endpoint."""
+    message: str = "Logged out successfully"
 
 
 # ==================== Transaction Schemas ====================
