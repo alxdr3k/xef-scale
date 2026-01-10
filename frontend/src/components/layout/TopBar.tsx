@@ -6,6 +6,7 @@ import {
   MenuOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface TopBarProps {
@@ -14,9 +15,12 @@ interface TopBarProps {
 
 const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     await logout();
+    // Redirect to landing page after logout
+    navigate('/', { replace: true });
   };
 
   const menuItems: MenuProps['items'] = [

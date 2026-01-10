@@ -1,7 +1,7 @@
 import React from 'react';
 import { Skeleton, Card } from 'antd';
 
-export type SkeletonType = 'table' | 'card' | 'list';
+export type SkeletonType = 'table' | 'card' | 'list' | 'page';
 
 interface LoadingSkeletonProps {
   type?: SkeletonType;
@@ -45,6 +45,16 @@ const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
               style={{ marginBottom: 24 }}
             />
           ))}
+        </div>
+      );
+
+    case 'page':
+      return (
+        <div>
+          <Skeleton active={active} title paragraph={{ rows: 1 }} style={{ marginBottom: 24 }} />
+          <Card>
+            <Skeleton active={active} paragraph={{ rows: rows || 4 }} />
+          </Card>
         </div>
       );
 

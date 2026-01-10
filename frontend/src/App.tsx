@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import koKR from 'antd/locale/ko_KR';
@@ -16,24 +15,31 @@ import Transactions from './pages/Transactions';
 import ParsingSessions from './pages/ParsingSessions';
 import Settings from './pages/Settings';
 
-// Protected Route wrapper
-const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+// Auth components
+import PrivateRoute from './components/auth/PrivateRoute';
 
-  if (isLoading) {
-    return <div>Loading...</div>; // TODO: Add proper loading spinner
-  }
-
-  return isAuthenticated ? children : <Navigate to="/" replace />;
-};
-
+/**
+ * AppRoutes component
+ * Handles all application routing with authentication protection
+ */
 function AppRoutes() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Router>
       <Routes>
         {/* Public routes */}
         <Route element={<PublicLayout />}>
-          <Route path="/" element={<LandingPage />} />
+          <Route
+            path="/"
+            element={
+              isAuthenticated ? (
+                <Navigate to="/dashboard" replace />
+              ) : (
+                <LandingPage />
+              )
+            }
+          />
         </Route>
 
         {/* Protected routes */}
@@ -50,8 +56,11 @@ function AppRoutes() {
           <Route path="/settings" element={<Settings />} />
         </Route>
 
-        {/* Fallback route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Fallback route - redirect based on authentication state */}
+        <Route
+          path="*"
+          element={<Navigate to={isAuthenticated ? '/dashboard' : '/'} replace />}
+        />
       </Routes>
     </Router>
   );

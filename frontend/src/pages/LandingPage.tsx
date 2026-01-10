@@ -8,20 +8,24 @@ import {
 import { GoogleLogin } from '@react-oauth/google';
 import type { CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const { Title, Paragraph, Text } = Typography;
 
 const LandingPage: React.FC = () => {
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Redirect to transactions if already logged in
+  // Get the redirect path from location state (set by PrivateRoute)
+  const from = (location.state as any)?.from || '/dashboard';
+
+  // Redirect to original destination if already logged in
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/transactions');
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, from]);
 
   const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     try {
@@ -32,7 +36,9 @@ const LandingPage: React.FC = () => {
 
       await login(credentialResponse.credential);
       message.success('로그인 성공!');
-      navigate('/transactions');
+
+      // Redirect to original destination or dashboard
+      navigate(from, { replace: true });
     } catch (error) {
       console.error('Google login error:', error);
       message.error('Google 로그인에 실패했습니다. 다시 시도해주세요.');
