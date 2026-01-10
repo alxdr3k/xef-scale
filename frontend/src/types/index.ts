@@ -1,0 +1,97 @@
+// Transaction type matching the backend DTO
+export interface Transaction {
+  id?: number;
+  month: string; // mm format
+  date: string; // yyyy.mm.dd format
+  category: string; // 분류 (식비/편의점/교통/보험/기타)
+  item: string; // 내역 (merchant/transaction description)
+  amount: number; // 금액
+  source: string; // 지출 위치 (bank/card name)
+}
+
+// User type for authentication
+export interface User {
+  id: number;
+  email: string;
+  google_id: string;
+  display_name: string | null;
+  profile_image_url: string | null;
+  created_at: string;
+  last_login_at: string | null;
+  is_active: boolean;
+}
+
+// Auth response from backend
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+}
+
+// Parsing session status
+export type ParsingStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface ParsingSession {
+  id: number;
+  user_id: number;
+  filename: string;
+  institution: string;
+  status: ParsingStatus;
+  rows_saved: number;
+  rows_skipped: number;
+  rows_duplicate: number;
+  validation_status: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Skipped transaction in parsing session
+export interface SkippedTransaction {
+  id: number;
+  session_id: number;
+  row_index: number;
+  reason: string;
+  raw_data: string;
+  created_at: string;
+}
+
+// API response with pagination
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+// Transaction summary by category
+export interface CategorySummary {
+  category: string;
+  total_amount: number;
+  transaction_count: number;
+  percentage: number;
+}
+
+// Financial institutions
+export interface Institution {
+  id: number;
+  name: string;
+  code: string;
+}
+
+// Categories
+export interface Category {
+  id: number;
+  name: string;
+  description: string | null;
+}
+
+// Transaction query parameters
+export interface TransactionQueryParams {
+  year?: number;
+  month?: number;
+  page?: number;
+  limit?: number;
+  sort?: 'date' | 'amount' | '-date' | '-amount';
+  search?: string;
+}
