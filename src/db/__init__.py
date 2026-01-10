@@ -7,12 +7,20 @@ from src.db.connection import DatabaseConnection
 from src.db.repository import (
     CategoryRepository,
     InstitutionRepository,
-    TransactionRepository
+    TransactionRepository,
+    UserRepository,
+    ParsingSessionRepository,
+    SkippedTransactionRepository,
+    ProcessedFileRepository
 )
 
 __all__ = [
     'DatabaseConnection',
     'CategoryRepository',
     'InstitutionRepository',
-    'TransactionRepository'
+    'TransactionRepository',
+    'UserRepository',
+    'ParsingSessionRepository',
+    'SkippedTransactionRepository',
+    'ProcessedFileRepository'
 ]

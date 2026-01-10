@@ -1129,6 +1129,483 @@ class SkippedTransactionRepository:
             raise
 
 
+class UserRepository:
+    """
+    Repository for user account management with OAuth token handling.
+
+    Manages user accounts for Google OAuth authentication including profile
+    information, encrypted tokens, and session tracking.
+
+    SECURITY NOTE: Tokens stored in database must be encrypted by application
+    layer before insertion. This repository handles storage only, not encryption.
+
+    Attributes:
+        conn: SQLite database connection
+        logger: Logger instance for operations tracking
+
+    Examples:
+        >>> repo = UserRepository(conn)
+        >>> user_id = repo.create_user(
+        ...     email='user@example.com',
+        ...     google_id='123456',
+        ...     name='John Doe',
+        ...     profile_picture_url='https://...'
+        ... )
+        >>> user = repo.get_by_email('user@example.com')
+        >>> print(user['name'])
+        'John Doe'
+    """
+
+    def __init__(self, connection: sqlite3.Connection):
+        """
+        Initialize repository with database connection.
+
+        Args:
+            connection: SQLite database connection instance
+        """
+        self.conn = connection
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('UserRepository initialized')
+
+    def create_user(self, email: str, google_id: str, name: str,
+                   profile_picture_url: Optional[str] = None,
+                   access_token: Optional[str] = None,
+                   refresh_token: Optional[str] = None,
+                   token_expires_at: Optional[str] = None) -> int:
+        """
+        Create a new user account.
+
+        SECURITY: Tokens should be encrypted before passing to this method.
+
+        Args:
+            email: User's Google account email (unique)
+            google_id: Google user ID (unique)
+            name: User's display name
+            profile_picture_url: Optional profile picture URL
+            access_token: Optional encrypted access token
+            refresh_token: Optional encrypted refresh token
+            token_expires_at: Optional token expiration datetime (ISO format)
+
+        Returns:
+            int: User ID (lastrowid)
+
+        Raises:
+            sqlite3.IntegrityError: If email or google_id already exists
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> user_id = repo.create_user(
+            ...     email='user@example.com',
+            ...     google_id='123456',
+            ...     name='John Doe',
+            ...     profile_picture_url='https://example.com/photo.jpg',
+            ...     access_token='encrypted_token_here',
+            ...     refresh_token='encrypted_refresh_token_here',
+            ...     token_expires_at='2026-01-11T12:00:00'
+            ... )
+            >>> print(f'Created user with ID: {user_id}')
+
+        Notes:
+            - Sets is_active=1 by default
+            - Sets created_at and updated_at automatically
+            - Sets last_login_at to NULL (updated via update_last_login)
+            - Token encryption is caller's responsibility
+        """
+        try:
+            current_time = datetime.now().isoformat()
+            cursor = self.conn.execute('''
+                INSERT INTO users (
+                    email,
+                    google_id,
+                    name,
+                    profile_picture_url,
+                    access_token,
+                    refresh_token,
+                    token_expires_at,
+                    is_active,
+                    created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+            ''', (
+                email,
+                google_id,
+                name,
+                profile_picture_url,
+                access_token,
+                refresh_token,
+                token_expires_at,
+                current_time
+            ))
+
+            self.conn.commit()
+
+            self.logger.info(
+                f'Created user: email={email}, google_id={google_id}, user_id={cursor.lastrowid}'
+            )
+            return cursor.lastrowid
+
+        except sqlite3.IntegrityError as e:
+            self.logger.error(f'Failed to create user (duplicate): {email} - {e}')
+            raise
+        except Exception as e:
+            self.logger.error(f'Error creating user {email}: {e}')
+            raise
+
+    def get_by_id(self, user_id: int) -> Optional[dict]:
+        """
+        Get user by ID.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            User dict or None if not found
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> user = repo.get_by_id(1)
+            >>> if user:
+            ...     print(f"User: {user['name']} ({user['email']})")
+
+        Notes:
+            - Returns all fields including encrypted tokens
+            - Decryption is caller's responsibility
+        """
+        try:
+            cursor = self.conn.execute(
+                'SELECT * FROM users WHERE id = ?',
+                (user_id,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        except Exception as e:
+            self.logger.error(f'Error fetching user by ID {user_id}: {e}')
+            raise
+
+    def get_by_email(self, email: str) -> Optional[dict]:
+        """
+        Get user by email address.
+
+        Fast lookup using UNIQUE index on email column.
+
+        Args:
+            email: User's email address
+
+        Returns:
+            User dict or None if not found
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> user = repo.get_by_email('user@example.com')
+            >>> if user:
+            ...     print(f"Found user: {user['name']}")
+            ... else:
+            ...     print("User not found")
+
+        Notes:
+            - Uses UNIQUE index for O(1) lookup
+            - Returns all fields including encrypted tokens
+        """
+        try:
+            cursor = self.conn.execute(
+                'SELECT * FROM users WHERE email = ?',
+                (email,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        except Exception as e:
+            self.logger.error(f'Error fetching user by email {email}: {e}')
+            raise
+
+    def get_by_google_id(self, google_id: str) -> Optional[dict]:
+        """
+        Get user by Google ID.
+
+        Fast lookup using UNIQUE index on google_id column.
+
+        Args:
+            google_id: Google user ID
+
+        Returns:
+            User dict or None if not found
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> user = repo.get_by_google_id('123456')
+            >>> if user:
+            ...     print(f"Found user: {user['email']}")
+
+        Notes:
+            - Uses UNIQUE index for O(1) lookup
+            - Primary lookup method during OAuth callback
+        """
+        try:
+            cursor = self.conn.execute(
+                'SELECT * FROM users WHERE google_id = ?',
+                (google_id,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        except Exception as e:
+            self.logger.error(f'Error fetching user by google_id {google_id}: {e}')
+            raise
+
+    def update_tokens(self, user_id: int, access_token: str,
+                     refresh_token: Optional[str] = None,
+                     token_expires_at: Optional[str] = None):
+        """
+        Update OAuth tokens for user.
+
+        SECURITY: Tokens should be encrypted before passing to this method.
+
+        Args:
+            user_id: User ID
+            access_token: Encrypted access token
+            refresh_token: Optional encrypted refresh token (None to keep existing)
+            token_expires_at: Optional token expiration datetime (ISO format)
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> repo.update_tokens(
+            ...     user_id=1,
+            ...     access_token='new_encrypted_token',
+            ...     token_expires_at='2026-01-12T12:00:00'
+            ... )
+
+        Notes:
+            - Automatically updates updated_at timestamp via trigger
+            - If refresh_token is None, existing refresh_token is preserved
+            - Token encryption is caller's responsibility
+        """
+        try:
+            if refresh_token is not None:
+                self.conn.execute('''
+                    UPDATE users
+                    SET access_token = ?,
+                        refresh_token = ?,
+                        token_expires_at = ?
+                    WHERE id = ?
+                ''', (access_token, refresh_token, token_expires_at, user_id))
+            else:
+                # Preserve existing refresh_token
+                self.conn.execute('''
+                    UPDATE users
+                    SET access_token = ?,
+                        token_expires_at = ?
+                    WHERE id = ?
+                ''', (access_token, token_expires_at, user_id))
+
+            self.conn.commit()
+            self.logger.debug(f'Updated tokens for user_id={user_id}')
+
+        except Exception as e:
+            self.logger.error(f'Error updating tokens for user_id={user_id}: {e}')
+            raise
+
+    def update_profile(self, user_id: int, name: Optional[str] = None,
+                      profile_picture_url: Optional[str] = None):
+        """
+        Update user profile information.
+
+        Args:
+            user_id: User ID
+            name: Optional new display name
+            profile_picture_url: Optional new profile picture URL
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> repo.update_profile(
+            ...     user_id=1,
+            ...     name='John Smith',
+            ...     profile_picture_url='https://example.com/new_photo.jpg'
+            ... )
+
+        Notes:
+            - Only updates provided fields (None values are skipped)
+            - Automatically updates updated_at timestamp via trigger
+        """
+        try:
+            updates = []
+            params = []
+
+            if name is not None:
+                updates.append('name = ?')
+                params.append(name)
+
+            if profile_picture_url is not None:
+                updates.append('profile_picture_url = ?')
+                params.append(profile_picture_url)
+
+            if not updates:
+                self.logger.debug(f'No profile updates for user_id={user_id}')
+                return
+
+            params.append(user_id)
+            sql = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
+
+            self.conn.execute(sql, tuple(params))
+            self.conn.commit()
+
+            self.logger.debug(f'Updated profile for user_id={user_id}')
+
+        except Exception as e:
+            self.logger.error(f'Error updating profile for user_id={user_id}: {e}')
+            raise
+
+    def update_last_login(self, user_id: int):
+        """
+        Update last login timestamp.
+
+        Call this after successful authentication.
+
+        Args:
+            user_id: User ID
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> repo.update_last_login(user_id=1)
+
+        Notes:
+            - Sets last_login_at to current timestamp
+            - Automatically updates updated_at timestamp via trigger
+        """
+        try:
+            current_time = datetime.now().isoformat()
+            self.conn.execute(
+                'UPDATE users SET last_login_at = ? WHERE id = ?',
+                (current_time, user_id)
+            )
+            self.conn.commit()
+            self.logger.debug(f'Updated last_login for user_id={user_id}')
+
+        except Exception as e:
+            self.logger.error(f'Error updating last_login for user_id={user_id}: {e}')
+            raise
+
+    def deactivate_user(self, user_id: int):
+        """
+        Deactivate user account (soft delete).
+
+        Sets is_active=0 without deleting the record.
+
+        Args:
+            user_id: User ID
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> repo.deactivate_user(user_id=1)
+
+        Notes:
+            - Soft delete - user data is preserved
+            - Automatically updates updated_at timestamp via trigger
+            - Consider clearing tokens when deactivating
+        """
+        try:
+            self.conn.execute(
+                'UPDATE users SET is_active = 0 WHERE id = ?',
+                (user_id,)
+            )
+            self.conn.commit()
+            self.logger.info(f'Deactivated user_id={user_id}')
+
+        except Exception as e:
+            self.logger.error(f'Error deactivating user_id={user_id}: {e}')
+            raise
+
+    def reactivate_user(self, user_id: int):
+        """
+        Reactivate user account.
+
+        Sets is_active=1 for previously deactivated user.
+
+        Args:
+            user_id: User ID
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> repo.reactivate_user(user_id=1)
+
+        Notes:
+            - Automatically updates updated_at timestamp via trigger
+            - User will need to re-authenticate for new tokens
+        """
+        try:
+            self.conn.execute(
+                'UPDATE users SET is_active = 1 WHERE id = ?',
+                (user_id,)
+            )
+            self.conn.commit()
+            self.logger.info(f'Reactivated user_id={user_id}')
+
+        except Exception as e:
+            self.logger.error(f'Error reactivating user_id={user_id}: {e}')
+            raise
+
+    def get_all_active_users(self, limit: int = 100, offset: int = 0) -> List[dict]:
+        """
+        Get all active users with pagination.
+
+        Args:
+            limit: Maximum number of users to return (default: 100)
+            offset: Number of users to skip for pagination (default: 0)
+
+        Returns:
+            List of user dictionaries ordered by created_at DESC
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> users = repo.get_all_active_users(limit=50)
+            >>> for user in users:
+            ...     print(f"{user['email']} - Last login: {user['last_login_at']}")
+
+        Notes:
+            - Only returns users where is_active=1
+            - Ordered by created_at DESC (newest first)
+            - Supports pagination via limit/offset
+            - Uses indexed query (is_active index)
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT * FROM users
+                WHERE is_active = 1
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+            ''', (limit, offset))
+
+            results = [dict(row) for row in cursor.fetchall()]
+            self.logger.debug(f'Retrieved {len(results)} active users')
+            return results
+
+        except Exception as e:
+            self.logger.error(f'Error fetching active users: {e}')
+            raise
+
+    def count_active_users(self) -> int:
+        """
+        Count total number of active users.
+
+        Returns:
+            Count of active users
+
+        Examples:
+            >>> repo = UserRepository(conn)
+            >>> total = repo.count_active_users()
+            >>> print(f'Total active users: {total}')
+
+        Notes:
+            - Uses indexed query (is_active index)
+            - Useful for pagination calculations
+        """
+        try:
+            cursor = self.conn.execute(
+                'SELECT COUNT(*) FROM users WHERE is_active = 1'
+            )
+            return cursor.fetchone()[0]
+
+        except Exception as e:
+            self.logger.error(f'Error counting active users: {e}')
+            raise
+
+
 class ProcessedFileRepository:
     """
     Repository for processed file tracking with duplicate detection.
