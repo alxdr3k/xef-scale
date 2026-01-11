@@ -55,8 +55,8 @@ const AuthenticatedLayout: React.FC = () => {
         placement="left"
         onClose={() => setMobileDrawerOpen(false)}
         open={mobileDrawerOpen}
-        bodyStyle={{ padding: 0, background: '#001529' }}
-        width={250}
+        styles={{ body: { padding: 0, background: '#001529' } }}
+        size="default"
         className="mobile-drawer"
       >
         <div

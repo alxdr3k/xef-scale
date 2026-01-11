@@ -202,7 +202,7 @@ const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
       footer={null}
       width={600}
       centered
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}
