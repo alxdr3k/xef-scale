@@ -23,6 +23,7 @@ class UserInfo(BaseModel):
     email: str
     name: Optional[str] = None
     picture: Optional[str] = None
+    username: Optional[str] = None  # Optional field for logging/display
 
 
 class GoogleAuthResponse(BaseModel):
