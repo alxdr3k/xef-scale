@@ -1,5 +1,6 @@
 import { test as setup, expect } from '@playwright/test';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 
 /**
  * Authentication setup for E2E tests
@@ -12,7 +13,9 @@ import * as path from 'path';
  * and should never be deployed to production.
  */
 
-const authFile = path.join(__dirname, '../../.auth/user.json');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const authFile = path.join(__dirname, '../.auth/user.json');
 
 setup('authenticate', async ({ page, request }) => {
   // Call the test authentication endpoint to get valid JWT tokens
@@ -41,8 +44,9 @@ setup('authenticate', async ({ page, request }) => {
   // Wait for the page to load
   await page.waitForLoadState('networkidle');
 
-  // Wait for table to appear (indicates successful authentication)
-  await expect(page.locator('table')).toBeVisible({ timeout: 10000 });
+  // Wait for page header to appear (indicates successful authentication and page load)
+  // Using heading instead of table because table might be empty initially
+  await expect(page.getByRole('heading', { name: '지출 내역' })).toBeVisible({ timeout: 10000 });
 
   // Save authentication state to file for reuse in other tests
   await page.context().storageState({ path: authFile });

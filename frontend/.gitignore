@@ -27,3 +27,6 @@ playwright-report/
 *.sln
 *.sw?
 tests/.auth/
+# E2E test auth files
+tests/.auth/
+.auth/

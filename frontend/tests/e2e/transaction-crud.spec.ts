@@ -15,8 +15,9 @@ test.describe('Transaction CRUD Operations', () => {
     // Wait for page to load
     await page.waitForLoadState('networkidle');
 
-    // Wait for table to be visible
-    await page.waitForSelector('table', { state: 'visible', timeout: 10000 });
+    // Wait for page header to be visible (indicates page loaded successfully)
+    // Table might be empty initially, so we check for the header instead
+    await expect(page.getByRole('heading', { name: '지출 내역' })).toBeVisible({ timeout: 10000 });
   });
 
   /**
