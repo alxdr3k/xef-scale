@@ -7,17 +7,24 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
 import sqlite3
 import math
+import logging
 
 from backend.api.schemas import (
     TransactionResponse,
     TransactionListResponse,
     MonthlySummaryResponse,
     CategorySummary,
-    ErrorResponse
+    ErrorResponse,
+    TransactionCreateRequest,
+    TransactionUpdateRequest,
+    TransactionDeleteResponse
 )
 from backend.api.dependencies import get_current_user, get_db
 from backend.api.schemas import UserInfo
 from src.db.repository import TransactionRepository, CategoryRepository, InstitutionRepository
+from src.models import Transaction
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
@@ -300,3 +307,377 @@ async def get_monthly_summary(
         transaction_count=summary['transaction_count'],
         by_category=category_summaries
     )
+
+
+@router.post(
+    "",
+    response_model=TransactionResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {"model": ErrorResponse, "description": "Validation error or duplicate transaction"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        500: {"model": ErrorResponse, "description": "Database error"}
+    }
+)
+async def create_transaction(
+    request: TransactionCreateRequest,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: UserInfo = Depends(get_current_user)
+):
+    """
+    Create a new manual transaction.
+
+    Creates a transaction that is marked as manually entered (file_id IS NULL).
+    Manual transactions can be updated and deleted, unlike parsed transactions.
+
+    Args:
+        request: Transaction creation request with required fields
+        db: Database connection from dependency
+        current_user: Current authenticated user
+
+    Returns:
+        TransactionResponse with the created transaction details
+
+    Raises:
+        HTTPException: 400 if duplicate transaction detected or validation fails
+        HTTPException: 401 if not authenticated
+        HTTPException: 500 if database error occurs
+
+    Examples:
+        >>> # Create a food expense
+        >>> POST /api/transactions
+        >>> {
+        ...     "date": "2025.09.15",
+        ...     "category": "식비",
+        ...     "merchant_name": "스타벅스 강남점",
+        ...     "amount": 5500,
+        ...     "institution": "신한카드",
+        ...     "notes": "회의 중 커피"
+        ... }
+
+    Notes:
+        - Manual transactions (file_id IS NULL) can be edited and deleted
+        - Duplicate detection checks: date, institution, merchant, amount
+        - Date format is yyyy.mm.dd (Korean format)
+        - All amounts in KRW (Korean Won)
+    """
+    try:
+        # Initialize repositories
+        category_repo = CategoryRepository(db)
+        institution_repo = InstitutionRepository(db)
+        transaction_repo = TransactionRepository(db, category_repo, institution_repo)
+
+        # Extract month from date (yyyy.mm.dd -> mm)
+        date_parts = request.date.split('.')
+        if len(date_parts) != 3:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="날짜 형식이 올바르지 않습니다. yyyy.mm.dd 형식이어야 합니다."
+            )
+
+        month = date_parts[1]
+
+        # Create Transaction model from request
+        transaction = Transaction(
+            month=month,
+            date=request.date,
+            category=request.category,
+            merchant_name=request.merchant_name,
+            amount=request.amount,
+            institution=request.institution,
+            installment_months=request.installment_months,
+            installment_current=request.installment_current,
+            original_amount=request.original_amount
+        )
+
+        # Insert transaction with file_id=None, row_number=None (marks as manual)
+        transaction_id = transaction_repo.insert(
+            transaction,
+            auto_commit=True,
+            file_id=None,
+            row_number=None
+        )
+
+        # Check for duplicate (INSERT OR IGNORE returns 0)
+        if transaction_id == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="동일한 거래가 이미 존재합니다. (날짜, 금융기관, 가맹점, 금액이 모두 같음)"
+            )
+
+        # If notes provided, update them separately
+        if request.notes:
+            transaction_repo.update(
+                transaction_id,
+                {'notes': request.notes},
+                validate_editable=False  # Just created, safe to update
+            )
+
+        # Fetch created transaction
+        created_transaction = transaction_repo.get_by_id(transaction_id)
+
+        if created_transaction is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="거래가 생성되었지만 조회할 수 없습니다."
+            )
+
+        logger.info(f"Created manual transaction ID={transaction_id} by user={current_user.username}")
+
+        return _db_row_to_transaction_response(created_transaction)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create transaction: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"거래 생성 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.put(
+    "/{transaction_id}",
+    response_model=TransactionResponse,
+    responses={
+        400: {"model": ErrorResponse, "description": "Validation error"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Cannot edit parsed transaction"},
+        404: {"model": ErrorResponse, "description": "Transaction not found"}
+    }
+)
+async def update_transaction(
+    transaction_id: int,
+    request: TransactionUpdateRequest,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: UserInfo = Depends(get_current_user)
+):
+    """
+    Update an existing manual transaction.
+
+    Only manual transactions (file_id IS NULL) can be updated. Transactions
+    parsed from files are immutable and will return 403 Forbidden.
+
+    Args:
+        transaction_id: Transaction database ID to update
+        request: Transaction update request with optional fields
+        db: Database connection from dependency
+        current_user: Current authenticated user
+
+    Returns:
+        TransactionResponse with the updated transaction details
+
+    Raises:
+        HTTPException: 403 if transaction is from parsed file (not editable)
+        HTTPException: 404 if transaction not found
+        HTTPException: 400 if validation fails
+        HTTPException: 401 if not authenticated
+
+    Examples:
+        >>> # Update merchant name and amount
+        >>> PUT /api/transactions/123
+        >>> {
+        ...     "merchant_name": "스타벅스 역삼점",
+        ...     "amount": 6000
+        ... }
+
+        >>> # Update category only
+        >>> PUT /api/transactions/123
+        >>> {
+        ...     "category": "교통"
+        ... }
+
+    Notes:
+        - Only provided fields will be updated (partial updates supported)
+        - Parsed transactions (with file_id) cannot be edited
+        - Category and institution are referenced by name, not ID
+        - Date format must be yyyy.mm.dd if provided
+    """
+    try:
+        # Initialize repositories
+        category_repo = CategoryRepository(db)
+        institution_repo = InstitutionRepository(db)
+        transaction_repo = TransactionRepository(db, category_repo, institution_repo)
+
+        # Check if transaction is editable
+        if not transaction_repo.is_editable(transaction_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="파일에서 가져온 거래는 수정할 수 없습니다. 수동으로 입력한 거래만 수정 가능합니다."
+            )
+
+        # Build updates dict from request (exclude None values)
+        updates = {}
+
+        if request.date is not None:
+            updates['transaction_date'] = request.date
+            # Also update year and month
+            date_parts = request.date.split('.')
+            if len(date_parts) == 3:
+                updates['transaction_year'] = int(date_parts[0])
+                updates['transaction_month'] = int(date_parts[1])
+
+        if request.category is not None:
+            updates['category'] = request.category
+
+        if request.merchant_name is not None:
+            updates['merchant_name'] = request.merchant_name
+
+        if request.amount is not None:
+            updates['amount'] = request.amount
+
+        if request.institution is not None:
+            updates['institution'] = request.institution
+
+        if request.installment_months is not None:
+            updates['installment_months'] = request.installment_months
+
+        if request.installment_current is not None:
+            updates['installment_current'] = request.installment_current
+
+        if request.original_amount is not None:
+            updates['original_amount'] = request.original_amount
+
+        # Validate we have something to update
+        if not updates:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="업데이트할 필드가 없습니다."
+            )
+
+        # Call repository update (validate_editable=False since already checked)
+        success = transaction_repo.update(transaction_id, updates, validate_editable=False)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
+            )
+
+        # Fetch updated transaction
+        updated_transaction = transaction_repo.get_by_id(transaction_id)
+
+        if updated_transaction is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
+            )
+
+        logger.info(f"Updated transaction ID={transaction_id} by user={current_user.username}")
+
+        return _db_row_to_transaction_response(updated_transaction)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update transaction {transaction_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"거래 수정 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.delete(
+    "/{transaction_id}",
+    response_model=TransactionDeleteResponse,
+    responses={
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Cannot delete parsed transaction"},
+        404: {"model": ErrorResponse, "description": "Transaction not found"}
+    }
+)
+async def delete_transaction(
+    transaction_id: int,
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: UserInfo = Depends(get_current_user)
+):
+    """
+    Soft delete a manual transaction.
+
+    Only manual transactions (file_id IS NULL) can be deleted. Transactions
+    parsed from files are immutable and will return 403 Forbidden. Soft deletion
+    sets the deleted_at timestamp, preserving data for audit trails.
+
+    Args:
+        transaction_id: Transaction database ID to delete
+        db: Database connection from dependency
+        current_user: Current authenticated user
+
+    Returns:
+        TransactionDeleteResponse with deletion confirmation and timestamp
+
+    Raises:
+        HTTPException: 403 if transaction is from parsed file (not editable)
+        HTTPException: 404 if transaction not found
+        HTTPException: 401 if not authenticated
+
+    Examples:
+        >>> # Delete transaction
+        >>> DELETE /api/transactions/123
+
+        >>> # Response
+        >>> {
+        ...     "id": 123,
+        ...     "message": "Transaction deleted successfully",
+        ...     "deleted_at": "2025-09-15T14:30:00Z"
+        ... }
+
+    Notes:
+        - Soft deletion preserves transaction data (sets deleted_at timestamp)
+        - Deleted transactions are excluded from queries by default
+        - Only manual transactions can be deleted
+        - Parsed transactions (with file_id) cannot be deleted
+    """
+    try:
+        # Initialize repositories
+        category_repo = CategoryRepository(db)
+        institution_repo = InstitutionRepository(db)
+        transaction_repo = TransactionRepository(db, category_repo, institution_repo)
+
+        # Check if transaction is editable
+        if not transaction_repo.is_editable(transaction_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="파일에서 가져온 거래는 삭제할 수 없습니다. 수동으로 입력한 거래만 삭제 가능합니다."
+            )
+
+        # Call repository soft_delete (validate_editable=False since already checked)
+        success = transaction_repo.soft_delete(transaction_id, validate_editable=False)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
+            )
+
+        # Fetch deleted_at timestamp from DB
+        cursor = db.execute(
+            "SELECT deleted_at FROM transactions WHERE id = ?",
+            (transaction_id,)
+        )
+        row = cursor.fetchone()
+
+        if row is None or row[0] is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="거래가 삭제되었지만 삭제 시각을 조회할 수 없습니다."
+            )
+
+        deleted_at = row[0]
+
+        logger.info(f"Soft deleted transaction ID={transaction_id} by user={current_user.username}")
+
+        return TransactionDeleteResponse(
+            id=transaction_id,
+            message="Transaction deleted successfully",
+            deleted_at=deleted_at
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete transaction {transaction_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"거래 삭제 중 오류가 발생했습니다: {str(e)}"
+        )
