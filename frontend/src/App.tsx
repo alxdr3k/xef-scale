@@ -1,8 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntdApp } from 'antd';
 import koKR from 'antd/locale/ko_KR';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { theme } from './theme.config';
+import StaticApp from './components/common/StaticApp';
 
 // Layouts
 import PublicLayout from './components/layout/PublicLayout';
@@ -69,9 +70,12 @@ function AppRoutes() {
 function App() {
   return (
     <ConfigProvider theme={theme} locale={koKR}>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <AntdApp>
+        <StaticApp />
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </AntdApp>
     </ConfigProvider>
   );
 }

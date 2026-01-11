@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { message } from 'antd';
+import { message } from '../lib/antd-static';
 
 // Create axios instance with default config
 const apiClient = axios.create({
