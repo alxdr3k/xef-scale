@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Table, Tag, message } from 'antd';
+import { Typography, Table, Tag, message, Button, Space, Modal } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, LockOutlined } from '@ant-design/icons';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { SorterResult, FilterValue } from 'antd/es/table/interface';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
@@ -7,10 +8,12 @@ import EmptyState from '../components/common/EmptyState';
 import FilterPanel from '../components/transactions/FilterPanel';
 import type { FilterValues } from '../components/transactions/FilterPanel';
 import SummarySection from '../components/transactions/SummarySection';
+import TransactionFormModal from '../components/transactions/TransactionFormModal';
 import {
   fetchTransactions,
   fetchCategories,
   fetchInstitutions,
+  deleteTransaction,
 } from '../api/services';
 import type {
   TransactionAPIResponse,
@@ -40,6 +43,11 @@ const Transactions: React.FC = () => {
     total: 0,
     totalPages: 0,
   });
+
+  // Modal state
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionAPIResponse | null>(null);
 
   // Filter state - default to current year
   const currentYear = new Date().getFullYear();
@@ -119,6 +127,70 @@ const Transactions: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * Handle create transaction
+   */
+  const handleCreate = () => {
+    setModalMode('create');
+    setSelectedTransaction(null);
+    setModalVisible(true);
+  };
+
+  /**
+   * Handle edit transaction
+   */
+  const handleEdit = (transaction: TransactionAPIResponse) => {
+    if (transaction.file_id !== null) {
+      message.error('파일에서 가져온 거래는 수정할 수 없습니다');
+      return;
+    }
+    setModalMode('edit');
+    setSelectedTransaction(transaction);
+    setModalVisible(true);
+  };
+
+  /**
+   * Handle delete transaction
+   */
+  const handleDelete = (transaction: TransactionAPIResponse) => {
+    if (transaction.file_id !== null) {
+      message.error('파일에서 가져온 거래는 삭제할 수 없습니다');
+      return;
+    }
+
+    Modal.confirm({
+      title: '거래 삭제',
+      content: `"${transaction.merchant_name}" 거래를 삭제하시겠습니까?`,
+      okText: '삭제',
+      okType: 'danger',
+      cancelText: '취소',
+      onOk: async () => {
+        try {
+          await deleteTransaction(transaction.id);
+          message.success('거래가 삭제되었습니다');
+          loadTransactions();
+        } catch (error: any) {
+          message.error(error.response?.data?.detail || '거래 삭제에 실패했습니다');
+        }
+      },
+    });
+  };
+
+  /**
+   * Handle modal close
+   */
+  const handleModalClose = () => {
+    setModalVisible(false);
+    setSelectedTransaction(null);
+  };
+
+  /**
+   * Handle modal success
+   */
+  const handleModalSuccess = () => {
+    loadTransactions();
   };
 
   /**
@@ -228,10 +300,54 @@ const Transactions: React.FC = () => {
       dataIndex: 'institution',
       key: 'institution',
       width: 120,
-      render: (institution: string) => (
-        <Tag color="blue">{institution}</Tag>
+      render: (institution: string, record: TransactionAPIResponse) => (
+        <Space direction="vertical" size={0}>
+          <Tag color="blue">{institution}</Tag>
+          {record.file_id !== null && (
+            <Tag color="default" style={{ fontSize: 11 }}>
+              파일
+            </Tag>
+          )}
+        </Space>
       ),
       responsive: ['lg'],
+    },
+    {
+      title: '작업',
+      key: 'actions',
+      width: 120,
+      fixed: 'right',
+      render: (_, record: TransactionAPIResponse) => {
+        if (record.file_id !== null) {
+          return (
+            <Tag icon={<LockOutlined />} color="default">
+              읽기 전용
+            </Tag>
+          );
+        }
+
+        return (
+          <Space size="small">
+            <Button
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
+            >
+              수정
+            </Button>
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+            >
+              삭제
+            </Button>
+          </Space>
+        );
+      },
     },
   ];
 
@@ -244,7 +360,17 @@ const Transactions: React.FC = () => {
 
   return (
     <div>
-      <Title level={2}>지출 내역</Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Title level={2}>지출 내역</Title>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleCreate}
+          size="large"
+        >
+          새 거래 추가
+        </Button>
+      </div>
 
       {/* Filter Panel */}
       <FilterPanel
@@ -287,6 +413,17 @@ const Transactions: React.FC = () => {
           loading={loading}
         />
       )}
+
+      {/* Transaction Form Modal */}
+      <TransactionFormModal
+        visible={modalVisible}
+        mode={modalMode}
+        transaction={selectedTransaction}
+        categories={categories}
+        institutions={institutions}
+        onClose={handleModalClose}
+        onSuccess={handleModalSuccess}
+      />
     </div>
   );
 };
