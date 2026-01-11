@@ -12,6 +12,10 @@ DIRECTORIES = {
     'logs': './logs'
 }
 
+# Archive configuration
+ARCHIVE_RETENTION_DAYS = 30  # Keep archived files for 30 days, then auto-delete
+ARCHIVE_CLEANUP_ENABLED = True  # Set to False to disable automatic cleanup
+
 # Institution identification keywords
 INSTITUTION_KEYWORDS = {
     'TOSS': ['토스뱅크', 'Toss'],

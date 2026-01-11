@@ -67,6 +67,14 @@ class StatementHandler(FileSystemEventHandler):
         # Delegate to FileProcessor
         result = self.file_processor.process_file(Path(filepath))
 
+        # Cleanup old archived files (automatic maintenance)
+        cleanup_result = self.file_processor.cleanup_old_archives()
+        if cleanup_result['deleted_count'] > 0:
+            self.logger.info(
+                f'Archive cleanup: {cleanup_result["deleted_count"]} old files deleted, '
+                f'{cleanup_result["skipped_count"]} kept'
+            )
+
         # Log based on processing result
         if result.is_success():
             self.logger.info(

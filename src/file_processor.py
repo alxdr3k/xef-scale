@@ -507,3 +507,87 @@ class FileProcessor:
                 file_id=None,
                 file_hash=None
             )
+
+    def cleanup_old_archives(self) -> dict:
+        """
+        Automatically delete archived files older than retention period.
+
+        Removes files from archive directory that exceed ARCHIVE_RETENTION_DAYS.
+        This prevents unlimited disk usage from accumulated archived files.
+
+        Returns:
+            dict: Cleanup statistics with deleted_count, errors, and skipped_count
+
+        Examples:
+            >>> processor = FileProcessor()
+            >>> result = processor.cleanup_old_archives()
+            >>> print(f"Deleted {result['deleted_count']} old files")
+
+        Notes:
+            - Controlled by ARCHIVE_CLEANUP_ENABLED config
+            - Default retention: 30 days (configurable via ARCHIVE_RETENTION_DAYS)
+            - Skips subdirectories (only cleans files in root archive/)
+            - Safe: Does not touch DB records, only physical files
+            - Run automatically after each file processing
+        """
+        from src.config import ARCHIVE_RETENTION_DAYS, ARCHIVE_CLEANUP_ENABLED
+        from datetime import timedelta
+
+        if not ARCHIVE_CLEANUP_ENABLED:
+            self.logger.debug('Archive cleanup disabled in config')
+            return {'deleted_count': 0, 'errors': [], 'skipped_count': 0}
+
+        archive_path = Path(DIRECTORIES['archive'])
+        if not archive_path.exists():
+            self.logger.warning(f'Archive directory does not exist: {archive_path}')
+            return {'deleted_count': 0, 'errors': [], 'skipped_count': 0}
+
+        cutoff_time = datetime.now() - timedelta(days=ARCHIVE_RETENTION_DAYS)
+        deleted_count = 0
+        skipped_count = 0
+        errors = []
+
+        try:
+            for item in archive_path.iterdir():
+                try:
+                    # Skip directories (like duplicates/)
+                    if item.is_dir():
+                        skipped_count += 1
+                        continue
+
+                    # Check file modification time
+                    file_mtime = datetime.fromtimestamp(item.stat().st_mtime)
+
+                    if file_mtime < cutoff_time:
+                        # File is older than retention period, delete it
+                        item.unlink()
+                        deleted_count += 1
+                        self.logger.info(
+                            f'Deleted old archive file: {item.name} '
+                            f'(age: {(datetime.now() - file_mtime).days} days)'
+                        )
+                    else:
+                        # File is still within retention period
+                        skipped_count += 1
+
+                except Exception as e:
+                    error_msg = f'Error deleting {item.name}: {str(e)}'
+                    errors.append(error_msg)
+                    self.logger.error(error_msg)
+
+            if deleted_count > 0:
+                self.logger.info(
+                    f'Archive cleanup completed: {deleted_count} deleted, '
+                    f'{skipped_count} kept, {len(errors)} errors'
+                )
+
+        except Exception as e:
+            error_msg = f'Error during archive cleanup: {str(e)}'
+            errors.append(error_msg)
+            self.logger.error(error_msg)
+
+        return {
+            'deleted_count': deleted_count,
+            'skipped_count': skipped_count,
+            'errors': errors
+        }
