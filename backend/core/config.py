@@ -20,9 +20,7 @@ class Settings(BaseSettings):
         ACCESS_TOKEN_EXPIRE_MINUTES: JWT access token lifetime
         REFRESH_TOKEN_EXPIRE_DAYS: JWT refresh token lifetime
         ALLOWED_ORIGINS: CORS allowed origins for frontend
-        GOOGLE_CLIENT_ID: Google OAuth client ID
-        GOOGLE_CLIENT_SECRET: Google OAuth client secret
-        GOOGLE_REDIRECT_URI: Google OAuth redirect URI
+        GOOGLE_CLIENT_ID: Google OAuth client ID for ID token verification
 
     Examples:
         >>> settings = Settings()
@@ -49,15 +47,15 @@ class Settings(BaseSettings):
 
     # CORS settings
     ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:3000",  # React dev server
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:8080",  # Alternative frontend port
+        "http://localhost:3000",     # React dev server
+        "http://localhost:5173",     # Vite dev server (localhost)
+        "http://127.0.0.1:5173",     # Vite dev server (127.0.0.1)
+        "http://localhost:8080",     # Alternative frontend port
+        "http://127.0.0.1:8080",     # Alternative frontend port (127.0.0.1)
     ]
 
     # Google OAuth settings
     GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
 
     class Config:
         env_file = ".env"

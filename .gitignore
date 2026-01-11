@@ -7,6 +7,10 @@ logs/
 # MCP task manager data
 shrimp_data/
 
+# Environment files
+.env
+.env.local
+
 # Python
 __pycache__/
 *.py[cod]
@@ -30,3 +34,8 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Frontend/Testing
+node_modules/
+playwright-report/
+test-results/

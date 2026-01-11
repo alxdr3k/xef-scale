@@ -9,8 +9,8 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 import logging
 
-from backend.core.config import settings
-from backend.api.routes import auth, transactions, categories, institutions, parsing
+from .core.config import settings
+from .api.routes import auth, transactions, categories, institutions, parsing
 
 # Configure logging
 logging.basicConfig(
