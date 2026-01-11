@@ -75,7 +75,8 @@ def test_data(db_connection):
         file_path='/test/path',
         file_hash='test_hash_' + str(datetime.now().timestamp()),
         file_size=1024,
-        institution_id=1
+        institution_id=1,
+        processed_at=datetime.now()
     )
 
     # Create parsing session
@@ -157,15 +158,23 @@ def test_data(db_connection):
 
     yield test_data
 
-    # Cleanup
-    db_connection.execute(
-        'DELETE FROM duplicate_transaction_confirmations WHERE session_id = ?',
-        (session_id,)
-    )
-    db_connection.execute('DELETE FROM transactions WHERE id IN (?, ?)', (txn1_id, txn2_id))
-    db_connection.execute('DELETE FROM parsing_sessions WHERE id = ?', (session_id,))
-    db_connection.execute('DELETE FROM processed_files WHERE id = ?', (file_id,))
-    db_connection.commit()
+    # Cleanup - delete in proper order respecting foreign keys
+    try:
+        # First delete confirmations (they reference transactions)
+        db_connection.execute(
+            'DELETE FROM duplicate_transaction_confirmations WHERE session_id = ?',
+            (session_id,)
+        )
+        # Then delete transactions
+        db_connection.execute('DELETE FROM transactions WHERE file_id = ?', (file_id,))
+        # Then parsing sessions
+        db_connection.execute('DELETE FROM parsing_sessions WHERE id = ?', (session_id,))
+        # Finally delete file
+        db_connection.execute('DELETE FROM processed_files WHERE id = ?', (file_id,))
+        db_connection.commit()
+    except Exception as e:
+        db_connection.rollback()
+        print(f"Cleanup error: {e}")
 
 
 def test_get_all_confirmations_unauthorized(client):

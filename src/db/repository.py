@@ -936,7 +936,7 @@ class ParsingSessionRepository:
                     file_id,
                     parser_type,
                     started_at,
-                    total_rows_in_file,
+                    total_rows,
                     status
                 ) VALUES (?, ?, ?, ?, 'pending')
             ''', (file_id, parser_type, started_at, total_rows))
@@ -2897,10 +2897,23 @@ class DuplicateConfirmationRepository:
                     dc.*,
                     ps.parser_type,
                     pf.file_name,
-                    pf.processed_at as file_processed_at
+                    pf.processed_at as file_processed_at,
+                    t.transaction_date as existing_transaction_date,
+                    t.merchant_name as existing_merchant_name,
+                    t.amount as existing_amount,
+                    t.category_id as existing_category_id,
+                    t.institution_id as existing_institution_id,
+                    t.installment_months as existing_installment_months,
+                    t.installment_current as existing_installment_current,
+                    t.original_amount as existing_original_amount,
+                    c.name as existing_category_name,
+                    fi.name as existing_institution_name
                 FROM duplicate_transaction_confirmations dc
                 JOIN parsing_sessions ps ON dc.session_id = ps.id
                 JOIN processed_files pf ON ps.file_id = pf.id
+                JOIN transactions t ON dc.existing_transaction_id = t.id
+                JOIN categories c ON t.category_id = c.id
+                JOIN financial_institutions fi ON t.institution_id = fi.id
                 WHERE dc.status = 'pending'
                 ORDER BY dc.created_at DESC
             ''')
