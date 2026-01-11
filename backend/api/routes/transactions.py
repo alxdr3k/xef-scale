@@ -378,13 +378,14 @@ async def create_transaction(
         month = date_parts[1]
 
         # Create Transaction model from request
+        # Note: Transaction model uses 'item' for merchant and 'source' for institution
         transaction = Transaction(
             month=month,
             date=request.date,
             category=request.category,
-            merchant_name=request.merchant_name,
+            item=request.merchant_name,
             amount=request.amount,
-            institution=request.institution,
+            source=request.institution,
             installment_months=request.installment_months,
             installment_current=request.installment_current,
             original_amount=request.original_amount

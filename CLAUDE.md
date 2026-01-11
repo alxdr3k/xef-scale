@@ -176,6 +176,35 @@ This project documentation and requirements are primarily in Korean. Transaction
 
 **CRITICAL**: Always run `mcp-cli info <server>/<tool>` BEFORE `mcp-cli call <server>/<tool>`
 
+### Plan Mode Integration with Shrimp
+
+**When using Plan mode** (`EnterPlanMode` / `ExitPlanMode`):
+
+1. **After ExitPlanMode approval**: Planning phase creates a plan file in `~/.claude/plans/`
+2. **Locate the plan file**: Find the most recent plan file created (sorted by modification time)
+3. **Read and parse the plan**: Extract implementation steps from the plan file
+4. **Delegate to project-manager**: Use `project-manager` agent to:
+   - Import plan into Shrimp via `plan_task` MCP tool
+   - Break down into subtasks via `split_tasks` if needed
+   - Track execution via Shrimp workflow
+5. **Execute via specialized agents**: project-manager delegates implementation to appropriate specialized agents
+
+**Workflow**:
+```
+EnterPlanMode → Planning → ExitPlanMode (user approval) →
+Read ~/.claude/plans/[latest].md →
+project-manager (plan_task) →
+project-manager (split_tasks if needed) →
+Specialized agents (implementation) →
+project-manager (execute_task/verify_task per subtask)
+```
+
+**Example**:
+- User requests complex feature → `EnterPlanMode` → Create plan → `ExitPlanMode`
+- Read `~/.claude/plans/2026-01-11-feature-implementation.md`
+- Call `project-manager` agent: "Import this plan into Shrimp and coordinate implementation"
+- project-manager creates Shrimp tasks → delegates to specialized agents → tracks progress
+
 ### Task Completion Protocol
 
 **CRITICAL: After completing EACH Shrimp task**:

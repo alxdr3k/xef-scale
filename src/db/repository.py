@@ -501,12 +501,13 @@ class TransactionRepository:
             if auto_commit:
                 self.conn.commit()
 
-            if cursor.lastrowid > 0:
+            # Check rowcount to detect duplicates (INSERT OR IGNORE returns rowcount=0 for duplicates)
+            if cursor.rowcount > 0:
                 self.logger.debug(f'Inserted transaction: {transaction.date} {transaction.item} {transaction.amount}원')
+                return cursor.lastrowid
             else:
                 self.logger.debug(f'Duplicate transaction ignored: {transaction.date} {transaction.item}')
-
-            return cursor.lastrowid
+                return 0  # Return 0 to indicate duplicate was ignored
 
         except Exception as e:
             self.logger.error(f'Error inserting transaction: {transaction} - {e}')

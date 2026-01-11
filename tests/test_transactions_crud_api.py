@@ -72,7 +72,8 @@ class TestTransactionsCRUDAPI(unittest.TestCase):
             'db/migrations/001_create_schema.sql',
             'db/migrations/002_seed_initial_data.sql',
             'db/migrations/004_add_file_tracking.sql',
-            'db/migrations/009_add_soft_delete.sql'
+            'db/migrations/009_add_soft_delete.sql',
+            'db/migrations/010_fix_duplicate_detection.sql'
         ]
 
         for migration_path in migrations:
