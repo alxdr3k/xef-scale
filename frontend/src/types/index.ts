@@ -111,3 +111,30 @@ export interface TransactionQueryParams {
   sort?: 'date' | 'amount' | '-date' | '-amount';
   search?: string;
 }
+
+// Duplicate confirmation status
+export type ConfirmationStatus = 'pending' | 'confirmed_insert' | 'confirmed_skip' | 'confirmed_merge' | 'expired';
+
+// Duplicate confirmation action
+export type ConfirmationAction = 'insert' | 'skip' | 'merge';
+
+// Duplicate confirmation for a transaction
+export interface DuplicateConfirmation {
+  id: number;
+  session_id: number;
+  new_transaction: Transaction;
+  new_transaction_index: number;
+  existing_transaction: Transaction;
+  confidence_score: number;
+  match_fields: string[];
+  difference_summary?: string;
+  status: ConfirmationStatus;
+  created_at: string;
+  expires_at: string;
+}
+
+// Bulk confirmation response
+export interface BulkConfirmationResponse {
+  processed_count: number;
+  session_id: number;
+}
