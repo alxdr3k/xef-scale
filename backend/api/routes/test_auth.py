@@ -8,12 +8,12 @@ Never deploy this to production!
 from fastapi import APIRouter, HTTPException, status
 from backend.core.security import create_access_token, create_refresh_token
 from backend.core.config import settings
-from backend.api.schemas import AuthResponse, UserInfo
+from backend.api.schemas import GoogleAuthResponse, UserInfo
 
 router = APIRouter(prefix="/api/test", tags=["Test"])
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post("/login", response_model=GoogleAuthResponse)
 async def test_login():
     """
     Create a test authentication session for E2E testing.
@@ -53,7 +53,7 @@ async def test_login():
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token({"sub": test_user.id})
 
-    return AuthResponse(
+    return GoogleAuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         user=test_user,
