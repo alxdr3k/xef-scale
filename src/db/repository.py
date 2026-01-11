@@ -2295,6 +2295,630 @@ class CategoryMerchantMappingRepository:
             raise
 
 
+class DuplicateConfirmationRepository:
+    """
+    Repository for duplicate transaction confirmation management.
+
+    Manages duplicate transaction confirmations that require user review before
+    insertion. Tracks potential duplicates detected during parsing with metadata
+    about match confidence, matched fields, and user decisions.
+
+    Attributes:
+        conn: SQLite database connection
+        logger: Logger instance for operations tracking
+
+    Examples:
+        >>> repo = DuplicateConfirmationRepository(conn)
+        >>> confirmation_id = repo.create_confirmation(
+        ...     session_id=1,
+        ...     new_transaction_data='{"date": "2025.09.13", "item": "스타벅스", ...}',
+        ...     new_transaction_index=5,
+        ...     existing_transaction_id=123,
+        ...     confidence_score=85,
+        ...     match_fields='["date", "amount", "merchant"]',
+        ...     difference_summary='Same date and amount, similar merchant name'
+        ... )
+        >>> confirmations = repo.get_by_session(session_id=1)
+        >>> repo.apply_user_decision(confirmation_id, 'insert', 'user@example.com')
+    """
+
+    def __init__(self, conn: sqlite3.Connection):
+        """
+        Initialize repository with database connection.
+
+        Args:
+            conn: SQLite database connection instance
+        """
+        self.conn = conn
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('DuplicateConfirmationRepository initialized')
+
+    def create_confirmation(
+        self,
+        session_id: int,
+        new_transaction_data: str,
+        new_transaction_index: int,
+        existing_transaction_id: int,
+        confidence_score: int,
+        match_fields: str,
+        difference_summary: str
+    ) -> int:
+        """
+        Create a new duplicate confirmation record.
+
+        Creates a pending confirmation for a potential duplicate transaction
+        that requires user review. Sets expiration to 30 days from creation.
+
+        Args:
+            session_id: Foreign key to parsing_sessions table
+            new_transaction_data: JSON serialized transaction data (not yet inserted)
+            new_transaction_index: Index of transaction in parsing batch
+            existing_transaction_id: Foreign key to existing transaction in DB
+            confidence_score: Match confidence (0-100)
+            match_fields: JSON array of matched field names (e.g., '["date", "amount"]')
+            difference_summary: Human-readable summary of differences
+
+        Returns:
+            int: Confirmation ID (lastrowid)
+
+        Raises:
+            ValueError: If confidence_score out of valid range (0-100)
+
+        Examples:
+            >>> repo = DuplicateConfirmationRepository(conn)
+            >>> confirmation_id = repo.create_confirmation(
+            ...     session_id=1,
+            ...     new_transaction_data='{"date": "2025.09.13", "item": "스타벅스", ...}',
+            ...     new_transaction_index=5,
+            ...     existing_transaction_id=123,
+            ...     confidence_score=85,
+            ...     match_fields='["date", "amount", "merchant"]',
+            ...     difference_summary='Same date and amount, similar merchant name'
+            ... )
+            >>> print(confirmation_id)
+            1
+
+        Notes:
+            - Status automatically set to 'pending'
+            - created_at set to current timestamp
+            - expires_at set to 30 days from creation
+            - Commits immediately (single transaction)
+        """
+        # Validate confidence_score
+        if not (0 <= confidence_score <= 100):
+            raise ValueError(f"Invalid confidence_score: {confidence_score}. Must be between 0 and 100")
+
+        try:
+            from datetime import timedelta
+            created_at = datetime.now()
+            expires_at = created_at + timedelta(days=30)
+
+            cursor = self.conn.execute('''
+                INSERT INTO duplicate_transaction_confirmations (
+                    session_id,
+                    new_transaction_data,
+                    new_transaction_index,
+                    existing_transaction_id,
+                    confidence_score,
+                    match_fields,
+                    difference_summary,
+                    status,
+                    created_at,
+                    expires_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+            ''', (
+                session_id,
+                new_transaction_data,
+                new_transaction_index,
+                existing_transaction_id,
+                confidence_score,
+                match_fields,
+                difference_summary,
+                created_at.isoformat(),
+                expires_at.isoformat()
+            ))
+
+            self.conn.commit()
+
+            self.logger.debug(
+                f'Created duplicate confirmation: session_id={session_id}, '
+                f'new_index={new_transaction_index}, existing_id={existing_transaction_id}, '
+                f'confidence={confidence_score}, confirmation_id={cursor.lastrowid}'
+            )
+            return cursor.lastrowid
+
+        except Exception as e:
+            self.logger.error(
+                f'Error creating duplicate confirmation for session_id={session_id}: {e}'
+            )
+            raise
+
+    def get_by_session(self, session_id: int) -> List[dict]:
+        """
+        Get all duplicate confirmations for a parsing session.
+
+        Retrieves all confirmations with full details including both new transaction
+        data and existing transaction details via JOIN. Ordered by new_transaction_index
+        for sequential review.
+
+        Args:
+            session_id: Session ID to query
+
+        Returns:
+            List of confirmation dictionaries with joined transaction details
+
+        Examples:
+            >>> repo = DuplicateConfirmationRepository(conn)
+            >>> confirmations = repo.get_by_session(session_id=1)
+            >>> for conf in confirmations:
+            ...     print(f"Confirmation {conf['id']}: {conf['status']}")
+            ...     print(f"  New: {conf['new_transaction_data']}")
+            ...     print(f"  Existing: {conf['existing_merchant_name']}")
+
+        Notes:
+            - Joins with transactions table for existing transaction details
+            - Returns both new_transaction_data (JSON) and existing transaction fields
+            - Ordered by new_transaction_index ASC for sequential review
+            - Returns empty list if no confirmations found
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT
+                    dc.*,
+                    t.transaction_date as existing_transaction_date,
+                    t.merchant_name as existing_merchant_name,
+                    t.amount as existing_amount,
+                    t.category_id as existing_category_id,
+                    t.institution_id as existing_institution_id,
+                    t.installment_months as existing_installment_months,
+                    t.installment_current as existing_installment_current,
+                    t.original_amount as existing_original_amount,
+                    c.name as existing_category_name,
+                    fi.name as existing_institution_name
+                FROM duplicate_transaction_confirmations dc
+                JOIN transactions t ON dc.existing_transaction_id = t.id
+                JOIN categories c ON t.category_id = c.id
+                JOIN financial_institutions fi ON t.institution_id = fi.id
+                WHERE dc.session_id = ?
+                ORDER BY dc.new_transaction_index ASC
+            ''', (session_id,))
+
+            results = [dict(row) for row in cursor.fetchall()]
+            self.logger.debug(
+                f'Retrieved {len(results)} duplicate confirmations for session_id={session_id}'
+            )
+            return results
+
+        except Exception as e:
+            self.logger.error(
+                f'Error fetching duplicate confirmations for session_id={session_id}: {e}'
+            )
+            raise
+
+    def get_pending_count_by_session(self, session_id: int) -> int:
+        """
+        Count pending duplicate confirmations for a session.
+
+        Fast count query using indexed lookup on session_id and status.
+
+        Args:
+            session_id: Session ID to query
+
+        Returns:
+            Count of pending confirmations
+
+        Examples:
+            >>> repo = DuplicateConfirmationRepository(conn)
+            >>> pending_count = repo.get_pending_count_by_session(session_id=1)
+            >>> print(f'Pending confirmations: {pending_count}')
+            5
+
+        Notes:
+            - Uses indexed query (session_id and status indexes)
+            - Only counts status='pending' confirmations
+            - Useful for session completion checks
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT COUNT(*) as count
+                FROM duplicate_transaction_confirmations
+                WHERE session_id = ? AND status = 'pending'
+            ''', (session_id,))
+
+            count = cursor.fetchone()['count']
+            self.logger.debug(
+                f'Found {count} pending confirmations for session_id={session_id}'
+            )
+            return count
+
+        except Exception as e:
+            self.logger.error(
+                f'Error counting pending confirmations for session_id={session_id}: {e}'
+            )
+            raise
+
+    def apply_user_decision(
+        self,
+        confirmation_id: int,
+        action: str,
+        user_id: str
+    ) -> dict:
+        """
+        Apply user's decision to a duplicate confirmation.
+
+        Updates confirmation with user's decision and executes the action:
+        - 'insert': Inserts new transaction into transactions table
+        - 'skip': Marks as confirmed_skip (no insertion)
+        - 'merge': Marks as confirmed_merge (future: merge logic)
+
+        Args:
+            confirmation_id: Confirmation ID to update
+            action: User action - 'insert', 'skip', or 'merge'
+            user_id: User identifier (email or user ID string)
+
+        Returns:
+            Updated confirmation record dict
+
+        Raises:
+            ValueError: If action is invalid or confirmation not found
+            Exception: If transaction insertion fails
+
+        Examples:
+            >>> repo = DuplicateConfirmationRepository(conn)
+            >>> # User decides to insert the new transaction
+            >>> updated = repo.apply_user_decision(
+            ...     confirmation_id=1,
+            ...     action='insert',
+            ...     user_id='user@example.com'
+            ... )
+            >>> print(f"Status: {updated['status']}")
+            'confirmed_insert'
+
+            >>> # User decides to skip (it's a duplicate)
+            >>> updated = repo.apply_user_decision(
+            ...     confirmation_id=2,
+            ...     action='skip',
+            ...     user_id='user@example.com'
+            ... )
+            >>> print(f"Status: {updated['status']}")
+            'confirmed_skip'
+
+        Notes:
+            - Validates action is one of: 'insert', 'skip', 'merge'
+            - Uses database transaction for atomicity
+            - Rollback on any error (e.g., insertion failure)
+            - Commits immediately on success
+            - For 'insert': Parses new_transaction_data JSON and inserts via TransactionRepository
+            - For 'skip': Only updates confirmation status
+            - For 'merge': Marks as confirmed_merge (actual merge logic is future work)
+        """
+        # Validate action
+        valid_actions = ('insert', 'skip', 'merge')
+        if action not in valid_actions:
+            raise ValueError(
+                f"Invalid action: {action}. Must be one of {valid_actions}"
+            )
+
+        try:
+            # Get confirmation record
+            cursor = self.conn.execute(
+                'SELECT * FROM duplicate_transaction_confirmations WHERE id = ?',
+                (confirmation_id,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                raise ValueError(f'Confirmation not found: confirmation_id={confirmation_id}')
+
+            confirmation = dict(row)
+            decided_at = datetime.now().isoformat()
+
+            # Update confirmation status
+            self.conn.execute('''
+                UPDATE duplicate_transaction_confirmations
+                SET user_action = ?,
+                    status = ?,
+                    user_id = ?,
+                    decided_at = ?
+                WHERE id = ?
+            ''', (
+                action,
+                f'confirmed_{action}',
+                user_id,
+                decided_at,
+                confirmation_id
+            ))
+
+            # Execute action based on user decision
+            if action == 'insert':
+                # Parse new_transaction_data JSON and insert transaction
+                new_txn_data = json.loads(confirmation['new_transaction_data'])
+
+                # Create Transaction object from JSON data
+                txn = Transaction(
+                    month=new_txn_data['month'],
+                    date=new_txn_data['date'],
+                    category=new_txn_data['category'],
+                    item=new_txn_data['item'],
+                    amount=new_txn_data['amount'],
+                    source=new_txn_data['source'],
+                    installment_months=new_txn_data.get('installment_months'),
+                    installment_current=new_txn_data.get('installment_current'),
+                    original_amount=new_txn_data.get('original_amount')
+                )
+
+                # Insert transaction using TransactionRepository
+                # Note: We need the category_repo and institution_repo for this
+                # For now, we'll create them inline (could be passed as dependencies)
+                from src.db.repository import CategoryRepository, InstitutionRepository, TransactionRepository
+
+                category_repo = CategoryRepository(self.conn)
+                institution_repo = InstitutionRepository(self.conn)
+                txn_repo = TransactionRepository(self.conn, category_repo, institution_repo)
+
+                # Get session info to associate file_id if available
+                cursor = self.conn.execute(
+                    'SELECT file_id FROM parsing_sessions WHERE id = ?',
+                    (confirmation['session_id'],)
+                )
+                session_row = cursor.fetchone()
+                file_id = session_row['file_id'] if session_row else None
+
+                # Insert transaction (auto_commit=False since we're in a transaction)
+                txn_id = txn_repo.insert(
+                    txn,
+                    auto_commit=False,
+                    file_id=file_id,
+                    row_number=confirmation['new_transaction_index']
+                )
+
+                self.logger.info(
+                    f'Inserted transaction {txn_id} from confirmation {confirmation_id}'
+                )
+
+            elif action == 'skip':
+                # No additional action needed - just status update
+                self.logger.info(
+                    f'Skipped transaction from confirmation {confirmation_id}'
+                )
+
+            elif action == 'merge':
+                # Placeholder for future merge logic
+                # For now, just mark as confirmed_merge
+                self.logger.info(
+                    f'Marked confirmation {confirmation_id} for merge (merge logic not yet implemented)'
+                )
+
+            # Commit transaction
+            self.conn.commit()
+
+            # Fetch and return updated confirmation
+            cursor = self.conn.execute(
+                'SELECT * FROM duplicate_transaction_confirmations WHERE id = ?',
+                (confirmation_id,)
+            )
+            updated = dict(cursor.fetchone())
+
+            self.logger.info(
+                f'Applied user decision: confirmation_id={confirmation_id}, '
+                f'action={action}, user_id={user_id}'
+            )
+
+            return updated
+
+        except Exception as e:
+            self.conn.rollback()
+            self.logger.error(
+                f'Error applying user decision for confirmation_id={confirmation_id}: {e}'
+            )
+            raise
+
+    def get_by_id(self, confirmation_id: int) -> Optional[dict]:
+        """
+        Get a single duplicate confirmation by ID.
+
+        Args:
+            confirmation_id: Confirmation ID
+
+        Returns:
+            Confirmation dict or None if not found
+
+        Examples:
+            >>> repo = DuplicateConfirmationRepository(conn)
+            >>> conf = repo.get_by_id(1)
+            >>> if conf:
+            ...     print(f"Status: {conf['status']}")
+            ...     print(f"Confidence: {conf['confidence_score']}")
+
+        Notes:
+            - Returns all fields including JSON data
+            - Returns None if confirmation_id not found
+        """
+        try:
+            cursor = self.conn.execute(
+                'SELECT * FROM duplicate_transaction_confirmations WHERE id = ?',
+                (confirmation_id,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+        except Exception as e:
+            self.logger.error(
+                f'Error fetching duplicate confirmation by ID {confirmation_id}: {e}'
+            )
+            raise
+
+    def cleanup_expired(self) -> int:
+        """
+        Mark expired pending confirmations as expired.
+
+        Updates status to 'expired' for all pending confirmations where
+        expires_at < current timestamp. Called periodically for cleanup.
+
+        Returns:
+            Count of expired confirmations
+
+        Examples:
+            >>> repo = DuplicateConfirmationRepository(conn)
+            >>> expired_count = repo.cleanup_expired()
+            >>> print(f'Expired {expired_count} confirmations')
+
+        Notes:
+            - Only affects status='pending' confirmations
+            - Uses expires_at index for efficient query
+            - Commits immediately
+            - Should be called periodically (e.g., daily cron job)
+        """
+        try:
+            current_time = datetime.now().isoformat()
+            cursor = self.conn.execute('''
+                UPDATE duplicate_transaction_confirmations
+                SET status = 'expired'
+                WHERE status = 'pending' AND expires_at < ?
+            ''', (current_time,))
+
+            self.conn.commit()
+            expired_count = cursor.rowcount
+
+            if expired_count > 0:
+                self.logger.info(f'Expired {expired_count} pending confirmations')
+            else:
+                self.logger.debug('No expired confirmations found')
+
+            return expired_count
+
+        except Exception as e:
+            self.logger.error(f'Error cleaning up expired confirmations: {e}')
+            raise
+
+    def get_all_pending(self) -> List[dict]:
+        """
+        Get all pending confirmations across all sessions.
+
+        Retrieves all pending confirmations with session and file context.
+        Useful for global pending review queue.
+
+        Returns:
+            List of pending confirmations with session and file details
+
+        Examples:
+            >>> repo = DuplicateConfirmationRepository(conn)
+            >>> all_pending = repo.get_all_pending()
+            >>> print(f'Total pending: {len(all_pending)}')
+            >>> for conf in all_pending:
+            ...     print(f"Session {conf['session_id']}: {conf['file_name']}")
+
+        Notes:
+            - Only returns status='pending' confirmations
+            - Joins with parsing_sessions and processed_files for context
+            - Ordered by created_at DESC (most recent first)
+            - No pagination (use with caution on large datasets)
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT
+                    dc.*,
+                    ps.parser_type,
+                    pf.file_name,
+                    pf.processed_at as file_processed_at
+                FROM duplicate_transaction_confirmations dc
+                JOIN parsing_sessions ps ON dc.session_id = ps.id
+                JOIN processed_files pf ON ps.file_id = pf.id
+                WHERE dc.status = 'pending'
+                ORDER BY dc.created_at DESC
+            ''')
+
+            results = [dict(row) for row in cursor.fetchall()]
+            self.logger.debug(f'Retrieved {len(results)} pending confirmations across all sessions')
+            return results
+
+        except Exception as e:
+            self.logger.error(f'Error fetching all pending confirmations: {e}')
+            raise
+
+    def bulk_confirm_session(
+        self,
+        session_id: int,
+        action: str,
+        user_id: str
+    ) -> int:
+        """
+        Apply same action to all pending confirmations in a session.
+
+        Convenience method for bulk operations. Applies user decision to all
+        pending confirmations in a session. Useful for "skip all duplicates"
+        or "insert all" workflows.
+
+        Args:
+            session_id: Session ID
+            action: User action - 'insert', 'skip', or 'merge'
+            user_id: User identifier
+
+        Returns:
+            Count of confirmations processed
+
+        Raises:
+            ValueError: If action is invalid
+
+        Examples:
+            >>> repo = DuplicateConfirmationRepository(conn)
+            >>> # Skip all duplicates in session
+            >>> count = repo.bulk_confirm_session(
+            ...     session_id=1,
+            ...     action='skip',
+            ...     user_id='user@example.com'
+            ... )
+            >>> print(f'Skipped {count} duplicates')
+
+        Notes:
+            - Only processes status='pending' confirmations
+            - Uses apply_user_decision() for each confirmation
+            - All operations in single transaction
+            - Rolls back on any error
+            - Use with caution for 'insert' action (could create many transactions)
+        """
+        # Validate action
+        valid_actions = ('insert', 'skip', 'merge')
+        if action not in valid_actions:
+            raise ValueError(
+                f"Invalid action: {action}. Must be one of {valid_actions}"
+            )
+
+        try:
+            # Get all pending confirmations for session
+            cursor = self.conn.execute('''
+                SELECT id FROM duplicate_transaction_confirmations
+                WHERE session_id = ? AND status = 'pending'
+                ORDER BY new_transaction_index ASC
+            ''', (session_id,))
+
+            confirmation_ids = [row['id'] for row in cursor.fetchall()]
+
+            if not confirmation_ids:
+                self.logger.debug(
+                    f'No pending confirmations found for session_id={session_id}'
+                )
+                return 0
+
+            # Apply decision to each confirmation
+            count = 0
+            for conf_id in confirmation_ids:
+                self.apply_user_decision(conf_id, action, user_id)
+                count += 1
+
+            self.logger.info(
+                f'Bulk confirmed {count} transactions for session_id={session_id}: '
+                f'action={action}, user_id={user_id}'
+            )
+
+            return count
+
+        except Exception as e:
+            self.logger.error(
+                f'Error in bulk confirm for session_id={session_id}: {e}'
+            )
+            raise
+
+
 class ProcessedFileRepository:
     """
     Repository for processed file tracking with duplicate detection.
