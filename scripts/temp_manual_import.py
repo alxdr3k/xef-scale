@@ -16,6 +16,7 @@ import os
 import re
 import logging
 import argparse
+import shutil
 from typing import List, Tuple, Dict
 from datetime import datetime
 
@@ -33,7 +34,7 @@ from src.models import Transaction
 # Configuration
 FILE_2024 = '2024.txt'
 FILE_2025 = '2025.txt'
-INSTITUTION_NAME = '수동입력'
+INSTITUTION_NAME = '알수없음'
 
 # Setup logging
 logging.basicConfig(
@@ -281,6 +282,65 @@ def parse_2025_file(file_path: str, verbose: bool = False) -> Tuple[List[Transac
     return transactions, stats
 
 
+def backup_db() -> str:
+    """
+    Create timestamped backup of database before recovery.
+
+    Returns:
+        str: Path to backup file
+
+    Raises:
+        Exception: If backup creation fails
+    """
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    src = 'data/expense_tracker.db'
+    dst = f'data/expense_tracker.db.backup.{timestamp}'
+
+    try:
+        shutil.copy2(src, dst)
+        logger.info(f'Backup created: {dst}')
+        return dst
+    except Exception as e:
+        logger.error(f'Failed to create backup: {e}')
+        raise
+
+
+def verify_recovery(conn):
+    """
+    Verify database recovery results after import.
+
+    Prints recovery statistics including total transaction count,
+    institution-specific counts, and success status.
+
+    Args:
+        conn: Database connection instance
+    """
+    # Total transaction count
+    cursor = conn.execute("SELECT COUNT(*) FROM transactions WHERE deleted_at IS NULL")
+    total = cursor.fetchone()[0]
+
+    # '알수없음' institution transaction count
+    cursor = conn.execute("""
+        SELECT COUNT(*) FROM transactions
+        WHERE institution_id = (SELECT id FROM financial_institutions WHERE name='알수없음')
+        AND deleted_at IS NULL
+    """)
+    unknown_count = cursor.fetchone()[0]
+
+    print('\n' + '='*80)
+    print('RECOVERY VERIFICATION')
+    print('='*80)
+    print(f'Total transactions in DB: {total}')
+    print(f'Transactions from 알수없음: {unknown_count}')
+    print(f'Expected: ~1,083 (18 existing + ~1,065 recovered)')
+
+    if total >= 1000:
+        print('✓ Recovery SUCCESSFUL!')
+    else:
+        print('⚠ Recovery INCOMPLETE - please review')
+    print('='*80 + '\n')
+
+
 def print_preview_summary(transactions: List[Transaction], stats_2024: Dict[str, int], stats_2025: Dict[str, int]):
     """
     Print summary for dry-run mode
@@ -390,6 +450,15 @@ def main():
         print_preview_summary(all_transactions, stats_2024, stats_2025)
         return 0
 
+    # Create database backup before insertion
+    logger.info('Creating database backup...')
+    try:
+        backup_path = backup_db()
+        logger.info(f'Database backed up to: {backup_path}')
+    except Exception as e:
+        logger.error(f'Backup failed: {e}')
+        return 1
+
     # Actually insert to database
     logger.info('Connecting to database...')
     conn = DatabaseConnection.get_instance()
@@ -420,6 +489,9 @@ def main():
         print(f'Total inserted: {inserted_count}')
         print(f'Duplicates skipped: {len(all_transactions) - inserted_count}')
         print('\n' + '='*80 + '\n')
+
+        # Verify recovery results
+        verify_recovery(conn)
 
         logger.info('Import completed successfully')
         return 0
