@@ -10,7 +10,7 @@ from fastapi.exceptions import RequestValidationError
 import logging
 
 from .core.config import settings
-from .api.routes import auth, transactions, categories, institutions, parsing
+from .api.routes import auth, transactions, categories, institutions, parsing, confirmations
 
 # Configure logging
 logging.basicConfig(
@@ -137,6 +137,7 @@ app.include_router(transactions.router, prefix=settings.API_PREFIX)
 app.include_router(categories.router, prefix=settings.API_PREFIX)
 app.include_router(institutions.router, prefix=settings.API_PREFIX)
 app.include_router(parsing.router, prefix=settings.API_PREFIX)
+app.include_router(confirmations.router, prefix=settings.API_PREFIX)
 
 
 # Health check endpoint

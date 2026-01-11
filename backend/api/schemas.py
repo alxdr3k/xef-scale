@@ -267,3 +267,43 @@ class ValidationErrorResponse(BaseModel):
     """Validation error response."""
     error: str = "Validation error"
     detail: List[Dict[str, Any]]
+
+
+# ==================== Duplicate Confirmation Schemas ====================
+
+class DuplicateConfirmationResponse(BaseModel):
+    """Duplicate confirmation response with full transaction details."""
+    id: int
+    session_id: int
+    new_transaction: Dict[str, Any]  # Parsed from JSON
+    new_transaction_index: int
+    existing_transaction: Dict[str, Any]  # Full transaction details
+    confidence_score: int
+    match_fields: List[str]
+    difference_summary: Optional[str] = None
+    status: str
+    created_at: str
+    expires_at: str
+
+    class Config:
+        from_attributes = True
+
+
+class ConfirmationActionRequest(BaseModel):
+    """Request schema for applying user decision to confirmation."""
+    action: str = Field(..., description="User action: insert, skip, or merge")
+
+    @field_validator("action")
+    @classmethod
+    def validate_action(cls, v: str) -> str:
+        """Validate action is one of the allowed values."""
+        valid_actions = {"insert", "skip", "merge"}
+        if v not in valid_actions:
+            raise ValueError(f"Action must be one of: {', '.join(valid_actions)}")
+        return v
+
+
+class BulkConfirmationResponse(BaseModel):
+    """Response for bulk confirmation operation."""
+    processed_count: int
+    session_id: int
