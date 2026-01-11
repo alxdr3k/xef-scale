@@ -81,7 +81,7 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, onDetail, onReviewDu
 
         {/* Main Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={4} style={{ width: '100%' }}>
             {/* File Name */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <FileTextOutlined />

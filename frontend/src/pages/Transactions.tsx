@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Table, Tag, message, Button, Space, Modal } from 'antd';
+import { Typography, Table, Tag, Button, Space } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined, LockOutlined } from '@ant-design/icons';
+import { message, modal } from '../lib/antd-static';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { SorterResult, FilterValue } from 'antd/es/table/interface';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
@@ -160,7 +161,7 @@ const Transactions: React.FC = () => {
       return;
     }
 
-    Modal.confirm({
+    modal.confirm({
       title: '거래 삭제',
       content: `"${transaction.merchant_name}" 거래를 삭제하시겠습니까?`,
       okText: '삭제',
@@ -301,7 +302,7 @@ const Transactions: React.FC = () => {
       key: 'institution',
       width: 120,
       render: (institution: string, record: TransactionAPIResponse) => (
-        <Space direction="vertical" size={0}>
+        <Space orientation="vertical" size={0}>
           <Tag color="blue">{institution}</Tag>
           {record.file_id !== null && (
             <Tag color="default" style={{ fontSize: 11 }}>

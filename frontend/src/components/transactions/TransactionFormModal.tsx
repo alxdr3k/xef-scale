@@ -7,14 +7,14 @@ import {
   Select,
   DatePicker,
   Button,
-  message,
   Space,
   Row,
   Col,
   Divider,
 } from 'antd';
+import { message } from '../../lib/antd-static';
 import { DownOutlined, UpOutlined } from '@ant-design/icons';
-import dayjs, { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import type {
   TransactionAPIResponse,
   CategoryAPIResponse,

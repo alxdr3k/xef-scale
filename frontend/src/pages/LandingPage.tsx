@@ -1,5 +1,6 @@
 import React from 'react';
-import { Typography, Space, Card, Row, Col, Tag, Divider, message } from 'antd';
+import { Typography, Space, Card, Row, Col, Tag, Divider } from 'antd';
+import { message } from '../lib/antd-static';
 import {
   FileSearchOutlined,
   PieChartOutlined,
@@ -153,7 +154,7 @@ const LandingPage: React.FC = () => {
                   boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
                 }}
               >
-                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                   <div
                     style={{
                       fontSize: '48px',

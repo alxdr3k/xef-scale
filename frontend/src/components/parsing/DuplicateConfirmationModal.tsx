@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   Card,
   Button,
   Space,
@@ -8,10 +7,11 @@ import {
   Divider,
   Typography,
   Spin,
-  message,
   Row,
   Col,
+  Modal,
 } from 'antd';
+import { message, modal } from '../../lib/antd-static';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -97,7 +97,7 @@ const DuplicateConfirmationModal: React.FC<DuplicateConfirmationModalProps> = ({
   };
 
   const handleBulkAction = async (action: ConfirmationAction) => {
-    Modal.confirm({
+    modal.confirm({
       title: '나머지 모두 일괄 처리',
       content: `나머지 ${confirmations.length - currentIndex}건을 모두 ${action === 'skip' ? '스킵' : '추가'}하시겠습니까?`,
       okText: '확인',
@@ -167,7 +167,7 @@ const DuplicateConfirmationModal: React.FC<DuplicateConfirmationModalProps> = ({
     };
 
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         {/* Header */}
         <div>
           <Title level={5}>
