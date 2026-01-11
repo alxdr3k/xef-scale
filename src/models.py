@@ -80,11 +80,13 @@ class ProcessingResult:
     and other consumers. Provides structured error handling and status tracking.
 
     Attributes:
-        status: Processing status ('success', 'duplicate', 'error')
+        status: Processing status ('success', 'pending_confirmation', 'duplicate', 'error')
         message: Human-readable message describing the outcome
         transaction_count: Number of transactions processed (0 for duplicate/error)
         file_id: Database ID of processed file (None for duplicate/error)
         file_hash: SHA256 hash of processed file (useful for duplicate identification)
+        transactions_pending: Number of transactions pending user confirmation (duplicate detection)
+        session_id: Parsing session ID for tracking confirmation workflow
 
     Examples:
         >>> # Successful processing
@@ -109,6 +111,19 @@ class ProcessingResult:
         >>> print(result.status)
         'duplicate'
 
+        >>> # Pending confirmation (duplicate transactions detected)
+        >>> result = ProcessingResult(
+        ...     status='pending_confirmation',
+        ...     message='3 potential duplicates detected. 82 unique transactions inserted.',
+        ...     transaction_count=82,
+        ...     transactions_pending=3,
+        ...     session_id=5,
+        ...     file_id=1,
+        ...     file_hash='abc123...'
+        ... )
+        >>> print(result.status)
+        'pending_confirmation'
+
         >>> # Error during processing
         >>> result = ProcessingResult(
         ...     status='error',
@@ -125,6 +140,8 @@ class ProcessingResult:
     transaction_count: int
     file_id: Optional[int] = None
     file_hash: Optional[str] = None
+    transactions_pending: int = 0
+    session_id: Optional[int] = None
 
     def is_success(self) -> bool:
         """Check if processing was successful."""
@@ -137,6 +154,10 @@ class ProcessingResult:
     def is_error(self) -> bool:
         """Check if processing failed with error."""
         return self.status == 'error'
+
+    def is_pending_confirmation(self) -> bool:
+        """Check if processing has pending duplicate confirmations."""
+        return self.status == 'pending_confirmation'
 
 
 class SkipReason:

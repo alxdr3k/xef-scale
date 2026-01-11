@@ -1052,6 +1052,84 @@ class ParsingSessionRepository:
             self.logger.error(f'Error marking session {session_id} as failed: {e}')
             raise
 
+    def update_status(self, session_id: int, status: str):
+        """
+        Update parsing session status.
+
+        Used to mark sessions as 'pending_confirmation' when duplicate transactions
+        are detected and require user review before insertion.
+
+        Args:
+            session_id: Session ID from create_session()
+            status: New status ('pending_confirmation', 'completed', 'failed', 'pending')
+
+        Examples:
+            >>> repo = ParsingSessionRepository(conn)
+            >>> repo.update_status(session_id=1, status='pending_confirmation')
+
+        Notes:
+            - Does not update completed_at timestamp (session still in progress)
+            - Commits immediately
+            - Used primarily for duplicate detection workflow
+            - Status values: 'pending', 'pending_confirmation', 'completed', 'failed'
+        """
+        try:
+            self.conn.execute('''
+                UPDATE parsing_sessions
+                SET status = ?
+                WHERE id = ?
+            ''', (status, session_id))
+
+            self.conn.commit()
+
+            self.logger.info(f'Updated parsing session {session_id} status to: {status}')
+
+        except Exception as e:
+            self.logger.error(f'Error updating session {session_id} status: {e}')
+            raise
+
+    def update_processing_result(self, session_id: int, rows_saved: int, rows_pending: int):
+        """
+        Update parsing session with partial processing results.
+
+        Used when some transactions are inserted but others are pending user
+        confirmation for duplicate resolution. Updates row counts without
+        marking session as completed.
+
+        Args:
+            session_id: Session ID from create_session()
+            rows_saved: Count of successfully inserted transactions (non-duplicates)
+            rows_pending: Count of transactions pending user confirmation (duplicates)
+
+        Examples:
+            >>> repo = ParsingSessionRepository(conn)
+            >>> repo.update_processing_result(session_id=1, rows_saved=82, rows_pending=3)
+
+        Notes:
+            - Does not set completed_at (session remains open for confirmation)
+            - Does not change status (use update_status() for that)
+            - Commits immediately
+            - Used in conjunction with update_status() for duplicate workflow
+            - rows_pending represents count of duplicate confirmations awaiting review
+        """
+        try:
+            self.conn.execute('''
+                UPDATE parsing_sessions
+                SET rows_saved = ?,
+                    rows_duplicate = ?
+                WHERE id = ?
+            ''', (rows_saved, rows_pending, session_id))
+
+            self.conn.commit()
+
+            self.logger.info(
+                f'Updated parsing session {session_id}: saved={rows_saved}, pending={rows_pending}'
+            )
+
+        except Exception as e:
+            self.logger.error(f'Error updating processing result for session {session_id}: {e}')
+            raise
+
     def get_recent_sessions(self, limit: int = 50, offset: int = 0) -> List[dict]:
         """
         Get recent parsing sessions with file and institution details.

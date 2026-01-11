@@ -8,6 +8,7 @@ import hashlib
 import os
 import shutil
 import logging
+import json
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -328,7 +329,102 @@ class FileProcessor:
                 )
                 self.logger.debug(f'Created parsing session: {session_id}')
 
-                # Step 7: Save transactions (UNCHANGED)
+                # Step 7: Check for duplicate transactions and handle accordingly
+                from src.duplicate_detector import DuplicateDetector
+                from src.db.repository import DuplicateConfirmationRepository
+
+                try:
+                    # Step 7a: Initialize duplicate detector
+                    duplicate_detector = DuplicateDetector(self.transaction_repo)
+                    self.logger.debug('Checking for duplicate transactions')
+
+                    # Step 7b: Check for duplicates
+                    duplicate_matches = duplicate_detector.check_for_duplicates(
+                        parse_result.transactions,
+                        file_id=file_id
+                    )
+
+                    if duplicate_matches:
+                        # Step 7c: Create confirmation records for duplicates
+                        self.logger.info(f'Found {len(duplicate_matches)} potential duplicate transactions')
+                        confirmation_repo = DuplicateConfirmationRepository(self.conn)
+
+                        for match in duplicate_matches:
+                            confirmation_repo.create_confirmation(
+                                session_id=session_id,
+                                new_transaction_data=json.dumps(match.new_transaction.to_dict()),
+                                new_transaction_index=match.new_transaction_index,
+                                existing_transaction_id=match.existing_transaction_id,
+                                confidence_score=match.confidence_score,
+                                match_fields=json.dumps(match.match_fields),
+                                difference_summary=match.difference_summary
+                            )
+
+                        # Step 7d: Mark session as pending confirmation
+                        self.parsing_session_repo.update_status(
+                            session_id=session_id,
+                            status='pending_confirmation'
+                        )
+                        self.logger.info(f'Session {session_id} marked as pending_confirmation')
+
+                        # Step 7e: Insert only non-duplicate transactions
+                        duplicate_indices = {match.new_transaction_index for match in duplicate_matches}
+                        non_duplicate_transactions = [
+                            t for i, t in enumerate(parse_result.transactions, start=1)
+                            if i not in duplicate_indices
+                        ]
+
+                        count = 0
+                        if non_duplicate_transactions:
+                            count = self.transaction_repo.batch_insert(
+                                non_duplicate_transactions,
+                                file_id=file_id
+                            )
+                            self.logger.info(f'Saved {count} non-duplicate transactions to database')
+
+                        # Step 7f: Update session with partial results
+                        self.parsing_session_repo.update_processing_result(
+                            session_id=session_id,
+                            rows_saved=count,
+                            rows_pending=len(duplicate_matches)
+                        )
+
+                        # Step 7g: Archive file (same as normal flow)
+                        archive_dir = DIRECTORIES['archive']
+                        dest_path = os.path.join(archive_dir, filename)
+
+                        if os.path.exists(dest_path):
+                            base, ext = os.path.splitext(filename)
+                            timestamp = int(datetime.now().timestamp())
+                            dest_path = os.path.join(archive_dir, f'{base}_{timestamp}{ext}')
+
+                        shutil.move(str(file_path), dest_path)
+                        self.logger.info(f'Archived file to: {dest_path}')
+
+                        # Step 7h: Update file record with archive path
+                        self.processed_file_repo.update_archive_path(file_id, dest_path)
+
+                        # Step 7i: Return pending confirmation result
+                        return ProcessingResult(
+                            status='pending_confirmation',
+                            message=f'{len(duplicate_matches)} potential duplicates detected. {count} unique transactions inserted.',
+                            transaction_count=count,
+                            transactions_pending=len(duplicate_matches),
+                            session_id=session_id,
+                            file_id=file_id,
+                            file_hash=file_hash
+                        )
+
+                    else:
+                        # No duplicates detected - proceed with normal flow
+                        self.logger.debug('No duplicate transactions detected')
+
+                except Exception as e:
+                    # If duplicate detection fails, log error but continue with normal flow
+                    self.logger.error(f'Duplicate detection failed: {e}', exc_info=True)
+                    self.logger.warning('Continuing with normal insertion flow despite duplicate detection error')
+
+                # Step 7j: Save all transactions (normal flow when no duplicates or detection failed)
                 count = self.transaction_repo.batch_insert(
                     parse_result.transactions,
                     file_id=file_id
