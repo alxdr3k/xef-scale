@@ -1,6 +1,7 @@
-import { MessageInstance } from 'antd/es/message/interface';
-import { ModalStaticFunctions } from 'antd/es/modal/confirm';
-import { NotificationInstance } from 'antd/es/notification/interface';
+// Antd v6 compatible types
+type MessageInstance = any;
+type NotificationInstance = any;
+type ModalStaticFunctions = any;
 
 let message: MessageInstance;
 let notification: NotificationInstance;
