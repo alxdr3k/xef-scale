@@ -7,9 +7,9 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Transaction CRUD Operations', () => {
-  // Setup: Login and navigate before each test
+  // Setup: Navigate before each test (authentication handled by setup file)
   test.beforeEach(async ({ page }) => {
-    // Navigate to transactions page (assumes authentication is handled)
+    // Navigate to transactions page (authentication state loaded from setup)
     await page.goto('/transactions');
 
     // Wait for page to load

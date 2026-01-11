@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Expense Tracker API"
     VERSION: str = "1.0.0"
     API_PREFIX: str = "/api"
+    ENVIRONMENT: str = "development"  # development, test, or production
 
     # Security settings
     SECRET_KEY: str = "CHANGE_THIS_IN_PRODUCTION_USE_openssl_rand_hex_32"
