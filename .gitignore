@@ -41,4 +41,6 @@ playwright-report/
 test-results/
 
 # Temporary import scripts
-scripts/
+scripts/*
+!scripts/update_gita_categories.py
+!scripts/README.md
