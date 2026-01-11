@@ -4,6 +4,9 @@ archive/
 data/
 logs/
 
+# MCP task manager data
+shrimp_data/
+
 # Python
 __pycache__/
 *.py[cod]
