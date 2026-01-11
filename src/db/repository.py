@@ -1190,7 +1190,7 @@ class ParsingSessionRepository:
                     file_id,
                     parser_type,
                     started_at,
-                    total_rows,
+                    total_rows_in_file,
                     status
                 ) VALUES (?, ?, ?, ?, 'pending')
             ''', (file_id, parser_type, started_at, total_rows))
