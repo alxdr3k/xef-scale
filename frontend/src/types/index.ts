@@ -38,6 +38,7 @@ export interface ParsingSession {
   rows_saved: number;
   rows_skipped: number;
   rows_duplicate: number;
+  rows_pending?: number; // Pending duplicate confirmations count
   status: string;
   error_message: string | null;
   validation_status: string | null;

@@ -3,6 +3,7 @@ import { Typography, Pagination, Spin, Alert } from 'antd';
 import { parsingApi } from '../api/parsing';
 import SessionCard from '../components/parsing/SessionCard';
 import SessionDetailModal from '../components/parsing/SessionDetailModal';
+import DuplicateConfirmationModal from '../components/parsing/DuplicateConfirmationModal';
 import EmptyState from '../components/common/EmptyState';
 import type { ParsingSession } from '../types';
 
@@ -23,6 +24,10 @@ const ParsingSessions: React.FC = () => {
   // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
+
+  // Duplicate confirmation modal state
+  const [confirmationModalVisible, setConfirmationModalVisible] = useState(false);
+  const [confirmationSessionId, setConfirmationSessionId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchSessions();
@@ -60,6 +65,22 @@ const ParsingSessions: React.FC = () => {
     setSelectedSessionId(null);
   };
 
+  const handleOpenConfirmation = (sessionId: number) => {
+    setConfirmationSessionId(sessionId);
+    setConfirmationModalVisible(true);
+  };
+
+  const handleCloseConfirmation = () => {
+    setConfirmationModalVisible(false);
+    setConfirmationSessionId(null);
+  };
+
+  const handleConfirmationComplete = () => {
+    setConfirmationModalVisible(false);
+    setConfirmationSessionId(null);
+    fetchSessions(); // Refresh session list
+  };
+
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px' }}>
       <Title level={2}>파싱 세션 현황</Title>
@@ -91,6 +112,11 @@ const ParsingSessions: React.FC = () => {
                 key={session.id}
                 session={session}
                 onDetail={() => handleOpenDetail(session.id)}
+                onReviewDuplicates={
+                  session.status === 'pending_confirmation'
+                    ? () => handleOpenConfirmation(session.id)
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -117,6 +143,16 @@ const ParsingSessions: React.FC = () => {
         sessionId={selectedSessionId}
         onClose={handleCloseModal}
       />
+
+      {/* Duplicate Confirmation Modal */}
+      {confirmationSessionId && (
+        <DuplicateConfirmationModal
+          sessionId={confirmationSessionId}
+          visible={confirmationModalVisible}
+          onClose={handleCloseConfirmation}
+          onComplete={handleConfirmationComplete}
+        />
+      )}
     </div>
   );
 };

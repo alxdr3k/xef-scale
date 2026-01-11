@@ -5,6 +5,7 @@ import {
   WarningOutlined,
   CloseCircleOutlined,
   FileTextOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -20,16 +21,20 @@ const { Text } = Typography;
 interface SessionCardProps {
   session: ParsingSession;
   onDetail: () => void;
+  onReviewDuplicates?: () => void;
 }
 
 /**
  * Card component to display a single parsing session summary
  * Shows file info, institution, status, and processing statistics
  */
-const SessionCard: React.FC<SessionCardProps> = ({ session, onDetail }) => {
+const SessionCard: React.FC<SessionCardProps> = ({ session, onDetail, onReviewDuplicates }) => {
   const getStatusIcon = () => {
     if (session.error_message) {
       return <CloseCircleOutlined style={{ color: '#f5222d', fontSize: 24 }} />;
+    }
+    if (session.status === 'pending_confirmation') {
+      return <ExclamationCircleOutlined style={{ color: '#faad14', fontSize: 24 }} />;
     }
     if (session.rows_skipped > 0) {
       return <WarningOutlined style={{ color: '#faad14', fontSize: 24 }} />;
@@ -110,11 +115,22 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, onDetail }) => {
           </Space>
         </div>
 
-        {/* Action Button */}
+        {/* Action Buttons */}
         <div style={{ flexShrink: 0 }}>
-          <Button type="default" onClick={onDetail}>
-            상세
-          </Button>
+          <Space>
+            {session.status === 'pending_confirmation' && onReviewDuplicates && (
+              <Button
+                type="primary"
+                icon={<ExclamationCircleOutlined />}
+                onClick={onReviewDuplicates}
+              >
+                중복 확인
+              </Button>
+            )}
+            <Button type="default" onClick={onDetail}>
+              상세
+            </Button>
+          </Space>
         </div>
       </div>
     </Card>
