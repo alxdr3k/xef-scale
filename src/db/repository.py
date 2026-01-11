@@ -1829,6 +1829,452 @@ class UserRepository:
             raise
 
 
+class CategoryMerchantMappingRepository:
+    """
+    Repository for category-merchant mapping management with smart lookup.
+
+    Manages merchant pattern mappings to categories for automated transaction
+    categorization. Supports both exact and partial matching strategies with
+    confidence scoring for reliable auto-categorization.
+
+    Attributes:
+        conn: SQLite database connection
+        logger: Logger instance for operations tracking
+
+    Examples:
+        >>> repo = CategoryMerchantMappingRepository(conn)
+        >>> category_id = repo.get_category_by_merchant('스타벅스')
+        >>> if category_id:
+        ...     print(f'Merchant maps to category {category_id}')
+        >>> # Add new mapping
+        >>> mapping_id = repo.add_mapping(
+        ...     category_id=1,
+        ...     merchant_pattern='블루보틀',
+        ...     match_type='exact',
+        ...     confidence=100,
+        ...     source='manual'
+        ... )
+    """
+
+    def __init__(self, connection: sqlite3.Connection):
+        """
+        Initialize repository with database connection.
+
+        Args:
+            connection: SQLite database connection instance
+        """
+        self.conn = connection
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('CategoryMerchantMappingRepository initialized')
+
+    def get_category_by_merchant(self, merchant_name: str) -> Optional[int]:
+        """
+        Get category_id for a merchant name using prioritized matching.
+
+        Priority:
+        1. Exact match (match_type='exact')
+        2. Partial match (match_type='partial', using LIKE)
+
+        Returns highest confidence match for each match type.
+        Returns None if no match found.
+
+        Args:
+            merchant_name: Merchant name to look up
+
+        Returns:
+            category_id or None
+
+        Examples:
+            >>> repo = CategoryMerchantMappingRepository(conn)
+            >>> category_id = repo.get_category_by_merchant('스타벅스')
+            >>> if category_id:
+            ...     print(f'Merchant categorized as {category_id}')
+            ... else:
+            ...     print('No mapping found')
+
+        Notes:
+            - First attempts exact match (fastest, O(1) via index)
+            - Falls back to partial match if no exact match found
+            - Returns highest confidence match for each strategy
+            - Partial matches prefer longer patterns for specificity
+        """
+        try:
+            # Strategy 1: Try exact match first (fastest, indexed lookup)
+            cursor = self.conn.execute('''
+                SELECT category_id
+                FROM category_merchant_mappings
+                WHERE merchant_pattern = ? AND match_type = 'exact'
+                ORDER BY confidence DESC
+                LIMIT 1
+            ''', (merchant_name,))
+
+            row = cursor.fetchone()
+            if row:
+                self.logger.debug(f'Exact match found for merchant: {merchant_name}')
+                return row['category_id']
+
+            # Strategy 2: Try partial match (fallback for variations)
+            # Use LIKE with pattern length for specificity ranking
+            cursor = self.conn.execute('''
+                SELECT category_id
+                FROM category_merchant_mappings
+                WHERE match_type = 'partial' AND ? LIKE '%' || merchant_pattern || '%'
+                ORDER BY confidence DESC, LENGTH(merchant_pattern) DESC
+                LIMIT 1
+            ''', (merchant_name,))
+
+            row = cursor.fetchone()
+            if row:
+                self.logger.debug(f'Partial match found for merchant: {merchant_name}')
+                return row['category_id']
+
+            self.logger.debug(f'No mapping found for merchant: {merchant_name}')
+            return None
+
+        except Exception as e:
+            self.logger.error(f'Error looking up merchant {merchant_name}: {e}')
+            raise
+
+    def add_mapping(
+        self,
+        category_id: int,
+        merchant_pattern: str,
+        match_type: str = 'exact',
+        confidence: int = 100,
+        source: str = 'manual'
+    ) -> int:
+        """
+        Add a new category-merchant mapping.
+
+        Uses INSERT OR REPLACE to handle duplicates gracefully, updating
+        existing mappings with new confidence and source if conflict occurs.
+
+        Args:
+            category_id: Category to map to
+            merchant_pattern: Merchant name or pattern
+            match_type: 'exact' or 'partial'
+            confidence: 0-100 confidence score
+            source: Source of mapping (e.g., 'manual', 'imported')
+
+        Returns:
+            mapping_id
+
+        Raises:
+            ValueError: If match_type is invalid or confidence out of range
+
+        Examples:
+            >>> repo = CategoryMerchantMappingRepository(conn)
+            >>> mapping_id = repo.add_mapping(
+            ...     category_id=1,
+            ...     merchant_pattern='블루보틀',
+            ...     match_type='exact',
+            ...     confidence=100,
+            ...     source='manual'
+            ... )
+            >>> print(f'Created mapping with ID: {mapping_id}')
+
+        Notes:
+            - Validates match_type and confidence before insert
+            - Uses INSERT OR REPLACE for idempotent operation
+            - Updates updated_at timestamp via trigger on conflict
+            - Commits immediately (single transaction)
+        """
+        # Validate inputs
+        if match_type not in ('exact', 'partial'):
+            raise ValueError(f"Invalid match_type: {match_type}. Must be 'exact' or 'partial'")
+
+        if not (0 <= confidence <= 100):
+            raise ValueError(f"Invalid confidence: {confidence}. Must be between 0 and 100")
+
+        try:
+            cursor = self.conn.execute('''
+                INSERT INTO category_merchant_mappings (
+                    category_id,
+                    merchant_pattern,
+                    match_type,
+                    confidence,
+                    source
+                ) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT (category_id, merchant_pattern, match_type) DO UPDATE SET
+                    confidence = excluded.confidence,
+                    source = excluded.source,
+                    updated_at = CURRENT_TIMESTAMP
+            ''', (category_id, merchant_pattern, match_type, confidence, source))
+
+            self.conn.commit()
+
+            # Get the mapping_id (either new or existing)
+            if cursor.lastrowid > 0:
+                mapping_id = cursor.lastrowid
+                self.logger.info(
+                    f'Added mapping: category_id={category_id}, pattern={merchant_pattern}, '
+                    f'type={match_type}, id={mapping_id}'
+                )
+            else:
+                # Fetch existing ID on conflict
+                cursor = self.conn.execute('''
+                    SELECT id FROM category_merchant_mappings
+                    WHERE category_id = ? AND merchant_pattern = ? AND match_type = ?
+                ''', (category_id, merchant_pattern, match_type))
+                row = cursor.fetchone()
+                mapping_id = row['id'] if row else 0
+                self.logger.info(
+                    f'Updated existing mapping: category_id={category_id}, pattern={merchant_pattern}, '
+                    f'type={match_type}, id={mapping_id}'
+                )
+
+            return mapping_id
+
+        except Exception as e:
+            self.logger.error(
+                f'Error adding mapping: category_id={category_id}, pattern={merchant_pattern} - {e}'
+            )
+            raise
+
+    def update_mapping(
+        self,
+        mapping_id: int,
+        category_id: Optional[int] = None,
+        confidence: Optional[int] = None
+    ) -> bool:
+        """
+        Update an existing mapping.
+
+        Allows partial updates (only provided fields are updated).
+        Automatically updates updated_at timestamp via trigger.
+
+        Args:
+            mapping_id: ID of mapping to update
+            category_id: New category_id (optional)
+            confidence: New confidence score (optional)
+
+        Returns:
+            True if updated, False if not found
+
+        Raises:
+            ValueError: If confidence out of range
+
+        Examples:
+            >>> repo = CategoryMerchantMappingRepository(conn)
+            >>> # Update only confidence
+            >>> success = repo.update_mapping(mapping_id=1, confidence=95)
+            >>> print(f'Update success: {success}')
+            >>> # Update only category
+            >>> success = repo.update_mapping(mapping_id=1, category_id=5)
+            >>> # Update both
+            >>> success = repo.update_mapping(mapping_id=1, category_id=5, confidence=90)
+
+        Notes:
+            - Only updates provided fields (None values skipped)
+            - Returns False if mapping_id doesn't exist
+            - Validates confidence range if provided
+            - Commits immediately
+        """
+        # Validate confidence if provided
+        if confidence is not None and not (0 <= confidence <= 100):
+            raise ValueError(f"Invalid confidence: {confidence}. Must be between 0 and 100")
+
+        # Build dynamic update query
+        updates = []
+        params = []
+
+        if category_id is not None:
+            updates.append('category_id = ?')
+            params.append(category_id)
+
+        if confidence is not None:
+            updates.append('confidence = ?')
+            params.append(confidence)
+
+        if not updates:
+            self.logger.debug(f'No updates provided for mapping_id={mapping_id}')
+            return False
+
+        params.append(mapping_id)
+
+        try:
+            sql = f"UPDATE category_merchant_mappings SET {', '.join(updates)} WHERE id = ?"
+            cursor = self.conn.execute(sql, tuple(params))
+            self.conn.commit()
+
+            if cursor.rowcount > 0:
+                self.logger.info(f'Updated mapping_id={mapping_id}: {updates}')
+                return True
+            else:
+                self.logger.debug(f'Mapping not found: mapping_id={mapping_id}')
+                return False
+
+        except Exception as e:
+            self.logger.error(f'Error updating mapping_id={mapping_id}: {e}')
+            raise
+
+    def delete_mapping(self, mapping_id: int) -> bool:
+        """
+        Delete a mapping.
+
+        Permanently removes mapping from database. Use with caution
+        as this affects auto-categorization behavior.
+
+        Args:
+            mapping_id: ID of mapping to delete
+
+        Returns:
+            True if deleted, False if not found
+
+        Examples:
+            >>> repo = CategoryMerchantMappingRepository(conn)
+            >>> success = repo.delete_mapping(mapping_id=1)
+            >>> if success:
+            ...     print('Mapping deleted successfully')
+            ... else:
+            ...     print('Mapping not found')
+
+        Notes:
+            - Permanent deletion (no soft delete)
+            - Returns False if mapping_id doesn't exist
+            - Commits immediately
+            - Consider archiving instead for audit trail
+        """
+        try:
+            cursor = self.conn.execute(
+                'DELETE FROM category_merchant_mappings WHERE id = ?',
+                (mapping_id,)
+            )
+            self.conn.commit()
+
+            if cursor.rowcount > 0:
+                self.logger.info(f'Deleted mapping_id={mapping_id}')
+                return True
+            else:
+                self.logger.debug(f'Mapping not found for deletion: mapping_id={mapping_id}')
+                return False
+
+        except Exception as e:
+            self.logger.error(f'Error deleting mapping_id={mapping_id}: {e}')
+            raise
+
+    def get_all(self, category_id: Optional[int] = None) -> List[Dict]:
+        """
+        Get all mappings, optionally filtered by category.
+
+        Joins with categories table to include category name for readability.
+        Useful for management UI and reporting.
+
+        Args:
+            category_id: Filter by category (optional)
+
+        Returns:
+            List of dicts with keys: id, category_id, category_name,
+                                    merchant_pattern, match_type, confidence, source
+
+        Examples:
+            >>> repo = CategoryMerchantMappingRepository(conn)
+            >>> # Get all mappings
+            >>> all_mappings = repo.get_all()
+            >>> print(f'Total mappings: {len(all_mappings)}')
+            >>> # Get mappings for specific category
+            >>> food_mappings = repo.get_all(category_id=1)
+            >>> for mapping in food_mappings:
+            ...     print(f"{mapping['merchant_pattern']} -> {mapping['category_name']}")
+
+        Notes:
+            - Returns all fields including confidence and source
+            - Joins with categories for category_name
+            - Ordered by category name, then confidence descending
+            - No pagination (use with caution on large datasets)
+        """
+        try:
+            if category_id is not None:
+                cursor = self.conn.execute('''
+                    SELECT
+                        cm.id,
+                        cm.category_id,
+                        c.name as category_name,
+                        cm.merchant_pattern,
+                        cm.match_type,
+                        cm.confidence,
+                        cm.source
+                    FROM category_merchant_mappings cm
+                    JOIN categories c ON cm.category_id = c.id
+                    WHERE cm.category_id = ?
+                    ORDER BY cm.confidence DESC, cm.merchant_pattern
+                ''', (category_id,))
+            else:
+                cursor = self.conn.execute('''
+                    SELECT
+                        cm.id,
+                        cm.category_id,
+                        c.name as category_name,
+                        cm.merchant_pattern,
+                        cm.match_type,
+                        cm.confidence,
+                        cm.source
+                    FROM category_merchant_mappings cm
+                    JOIN categories c ON cm.category_id = c.id
+                    ORDER BY c.name, cm.confidence DESC, cm.merchant_pattern
+                ''')
+
+            results = [dict(row) for row in cursor.fetchall()]
+            self.logger.debug(f'Retrieved {len(results)} mappings (category_id={category_id})')
+            return results
+
+        except Exception as e:
+            self.logger.error(f'Error fetching mappings (category_id={category_id}): {e}')
+            raise
+
+    def get_mappings_by_pattern(self, pattern: str) -> List[Dict]:
+        """
+        Search mappings by merchant pattern (partial match).
+
+        Case-insensitive search for management and debugging.
+        Joins with categories for category names.
+
+        Args:
+            pattern: Search pattern (case-insensitive)
+
+        Returns:
+            List of matching mappings with category names
+
+        Examples:
+            >>> repo = CategoryMerchantMappingRepository(conn)
+            >>> # Search for all Starbucks variations
+            >>> results = repo.get_mappings_by_pattern('스타벅스')
+            >>> for mapping in results:
+            ...     print(f"{mapping['merchant_pattern']} -> {mapping['category_name']}")
+            '스타벅스' -> '카페/간식'
+            '스타벅스 강남점' -> '카페/간식'
+
+        Notes:
+            - Case-insensitive search using LIKE
+            - Returns all fields with joined category names
+            - Ordered by confidence descending
+            - Useful for finding duplicate or similar patterns
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT
+                    cm.id,
+                    cm.category_id,
+                    c.name as category_name,
+                    cm.merchant_pattern,
+                    cm.match_type,
+                    cm.confidence,
+                    cm.source
+                FROM category_merchant_mappings cm
+                JOIN categories c ON cm.category_id = c.id
+                WHERE cm.merchant_pattern LIKE ?
+                ORDER BY cm.confidence DESC, cm.merchant_pattern
+            ''', (f'%{pattern}%',))
+
+            results = [dict(row) for row in cursor.fetchall()]
+            self.logger.debug(f'Found {len(results)} mappings matching pattern: {pattern}')
+            return results
+
+        except Exception as e:
+            self.logger.error(f'Error searching mappings by pattern {pattern}: {e}')
+            raise
+
+
 class ProcessedFileRepository:
     """
     Repository for processed file tracking with duplicate detection.
