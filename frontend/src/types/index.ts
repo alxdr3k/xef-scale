@@ -9,6 +9,39 @@ export interface Transaction {
   source: string; // 지출 위치 (bank/card name)
 }
 
+// Transaction creation request (POST /api/transactions)
+export interface TransactionCreateRequest {
+  date: string; // yyyy.mm.dd format
+  category: string; // Category name in Korean
+  merchant_name: string;
+  amount: number; // Must be positive integer
+  institution: string; // Institution name in Korean
+  installment_months?: number | null;
+  installment_current?: number | null;
+  original_amount?: number | null;
+  notes?: string | null;
+}
+
+// Transaction update request (PUT /api/transactions/:id)
+export interface TransactionUpdateRequest {
+  date?: string;
+  category?: string;
+  merchant_name?: string;
+  amount?: number;
+  institution?: string;
+  installment_months?: number | null;
+  installment_current?: number | null;
+  original_amount?: number | null;
+  notes?: string | null;
+}
+
+// Transaction delete response (DELETE /api/transactions/:id)
+export interface TransactionDeleteResponse {
+  id: number;
+  message: string;
+  deleted_at: string; // ISO timestamp
+}
+
 // User type for authentication (matches backend UserInfo schema)
 export interface User {
   id: string;

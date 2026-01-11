@@ -6,6 +6,9 @@
 import apiClient from './client';
 import type {
   PaginatedResponse,
+  TransactionCreateRequest,
+  TransactionUpdateRequest,
+  TransactionDeleteResponse
 } from '../types';
 
 /**
@@ -114,6 +117,45 @@ export const fetchTransactionById = async (
   id: number
 ): Promise<TransactionAPIResponse> => {
   const response = await apiClient.get<TransactionAPIResponse>(
+    `/api/transactions/${id}`
+  );
+  return response.data;
+};
+
+/**
+ * Create a new manual transaction
+ */
+export const createTransaction = async (
+  request: TransactionCreateRequest
+): Promise<TransactionAPIResponse> => {
+  const response = await apiClient.post<TransactionAPIResponse>(
+    '/api/transactions',
+    request
+  );
+  return response.data;
+};
+
+/**
+ * Update an existing manual transaction
+ */
+export const updateTransaction = async (
+  id: number,
+  request: TransactionUpdateRequest
+): Promise<TransactionAPIResponse> => {
+  const response = await apiClient.put<TransactionAPIResponse>(
+    `/api/transactions/${id}`,
+    request
+  );
+  return response.data;
+};
+
+/**
+ * Delete a manual transaction (soft delete)
+ */
+export const deleteTransaction = async (
+  id: number
+): Promise<TransactionDeleteResponse> => {
+  const response = await apiClient.delete<TransactionDeleteResponse>(
     `/api/transactions/${id}`
   );
   return response.data;
