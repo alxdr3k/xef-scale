@@ -44,3 +44,5 @@ test-results/
 scripts/*
 !scripts/update_gita_categories.py
 !scripts/README.md
+!scripts/temp_manual_import.py
+!scripts/recover_archive_files.py
