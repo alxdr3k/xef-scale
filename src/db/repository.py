@@ -136,6 +136,26 @@ class CategoryRepository:
         cursor = self.conn.execute('SELECT * FROM categories ORDER BY name')
         return [dict(row) for row in cursor.fetchall()]
 
+    def get_by_id(self, category_id: int) -> Optional[dict]:
+        """
+        Get category by ID.
+
+        Args:
+            category_id: Category ID
+
+        Returns:
+            Category dict or None if not found
+
+        Examples:
+            >>> repo = CategoryRepository(conn)
+            >>> category = repo.get_by_id(1)
+            >>> print(category['name'])
+            '식비'
+        """
+        cursor = self.conn.execute('SELECT * FROM categories WHERE id = ?', (category_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
     def get_by_name(self, name: str) -> Optional[dict]:
         """
         Get category by name.
