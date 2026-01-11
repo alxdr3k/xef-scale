@@ -682,7 +682,7 @@ class TransactionRepository:
                 FROM transactions t
                 JOIN categories c ON t.category_id = c.id
                 JOIN financial_institutions fi ON t.institution_id = fi.id
-                WHERE t.id = ?
+                WHERE t.id = ? AND t.deleted_at IS NULL
             ''', (transaction_id,))
 
             row = cursor.fetchone()
@@ -734,7 +734,7 @@ class TransactionRepository:
         """
         try:
             # Build WHERE clause dynamically
-            where_clauses = []
+            where_clauses = ['t.deleted_at IS NULL']  # Always exclude soft-deleted records
             params = []
 
             if year is not None:
@@ -757,7 +757,7 @@ class TransactionRepository:
                 where_clauses.append('t.merchant_name LIKE ?')
                 params.append(f'%{search}%')
 
-            where_sql = 'WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''
+            where_sql = 'WHERE ' + ' AND '.join(where_clauses)
 
             # Build ORDER BY clause
             sort_map = {
@@ -867,6 +867,259 @@ class TransactionRepository:
 
         except Exception as e:
             self.logger.error(f'Error in get_monthly_summary_with_stats: {e}')
+            raise
+
+    def is_editable(self, transaction_id: int) -> bool:
+        """
+        Check if a transaction is editable (manual, not parsed from file).
+
+        Only manual transactions (file_id IS NULL) that are active (deleted_at IS NULL)
+        can be edited or deleted. Transactions parsed from files are immutable.
+
+        Args:
+            transaction_id: Transaction ID to check
+
+        Returns:
+            bool: True if editable, False otherwise
+
+        Examples:
+            >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
+            >>> # Check manual transaction
+            >>> if repo.is_editable(123):
+            ...     repo.update(123, {'amount': 10000})
+            >>> # Check parsed transaction
+            >>> if not repo.is_editable(456):
+            ...     print("Cannot edit parsed transactions")
+
+        Notes:
+            - Returns False if transaction doesn't exist
+            - Returns False if transaction has file_id (parsed from file)
+            - Returns False if transaction is soft-deleted
+            - Use before update() or soft_delete() operations
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT file_id, deleted_at
+                FROM transactions
+                WHERE id = ?
+            ''', (transaction_id,))
+
+            row = cursor.fetchone()
+            if not row:
+                self.logger.debug(f'Transaction {transaction_id} not found')
+                return False
+
+            # Editable if file_id is NULL and not deleted
+            is_manual = row['file_id'] is None
+            is_active = row['deleted_at'] is None
+
+            self.logger.debug(
+                f'Transaction {transaction_id} editable check: '
+                f'manual={is_manual}, active={is_active}'
+            )
+
+            return is_manual and is_active
+
+        except Exception as e:
+            self.logger.error(f'Error checking editability for transaction {transaction_id}: {e}')
+            raise
+
+    def update(self, transaction_id: int, updates: dict, validate_editable: bool = True) -> bool:
+        """
+        Update manual transaction fields by ID.
+
+        Only manual transactions (file_id IS NULL) can be updated. Protected fields
+        (id, file_id, row_number_in_file, created_at, updated_at) cannot be modified.
+
+        Args:
+            transaction_id: Transaction ID to update
+            updates: Dict of field names to new values
+            validate_editable: If True, checks transaction is editable first (default: True)
+
+        Returns:
+            bool: True if update successful, False if transaction not found
+
+        Raises:
+            ValueError: If transaction is not editable or updates contain protected fields
+
+        Examples:
+            >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
+            >>> # Update amount
+            >>> repo.update(123, {'amount': 10000})
+            True
+            >>> # Update multiple fields
+            >>> repo.update(123, {
+            ...     'merchant_name': '스타벅스 강남점',
+            ...     'amount': 5500,
+            ...     'category': '식비'
+            ... })
+            True
+            >>> # Update with date (auto-extracts year/month)
+            >>> repo.update(123, {'transaction_date': '2025.09.15'})
+            True
+            >>> # Attempt to update parsed transaction
+            >>> repo.update(456, {'amount': 10000})
+            ValueError: Transaction 456 is not editable (parsed from file or deleted)
+
+        Notes:
+            - Protected fields: id, file_id, row_number_in_file, created_at, updated_at
+            - Date parsing: If transaction_date provided, auto-extracts year/month
+            - Category/institution: Converts names to IDs using get_or_create
+            - Only updates active (deleted_at IS NULL) transactions
+            - Automatically updates updated_at timestamp
+        """
+        try:
+            # Validate editability first if requested
+            if validate_editable and not self.is_editable(transaction_id):
+                raise ValueError(
+                    f'Transaction {transaction_id} is not editable '
+                    '(parsed from file or deleted)'
+                )
+
+            # Define protected fields that cannot be updated
+            protected_fields = {
+                'id', 'file_id', 'row_number_in_file', 'created_at', 'updated_at'
+            }
+
+            # Check for protected fields in updates
+            protected_in_updates = protected_fields.intersection(updates.keys())
+            if protected_in_updates:
+                raise ValueError(
+                    f'Cannot update protected fields: {protected_in_updates}'
+                )
+
+            if not updates:
+                self.logger.debug(f'No updates provided for transaction {transaction_id}')
+                return False
+
+            # Build SET clause dynamically
+            set_clauses = []
+            params = []
+
+            # Handle date parsing if transaction_date is provided
+            if 'transaction_date' in updates:
+                date_str = updates.pop('transaction_date')
+                db_date, year, month = self._parse_date(date_str)
+                updates['transaction_date'] = db_date
+                updates['transaction_year'] = year
+                updates['transaction_month'] = month
+
+            # Handle category name to ID conversion
+            if 'category' in updates:
+                category_name = updates.pop('category')
+                category_id = self.category_repo.get_or_create(category_name)
+                updates['category_id'] = category_id
+
+            # Handle institution name to ID conversion
+            if 'source' in updates or 'institution' in updates:
+                institution_name = updates.pop('source', None) or updates.pop('institution', None)
+                institution_id = self.institution_repo.get_or_create(institution_name)
+                updates['institution_id'] = institution_id
+
+            # Build SET clause for remaining fields
+            for field, value in updates.items():
+                set_clauses.append(f'{field} = ?')
+                params.append(value)
+
+            if not set_clauses:
+                self.logger.debug(f'No valid updates after processing for transaction {transaction_id}')
+                return False
+
+            # Add updated_at timestamp
+            set_clauses.append('updated_at = CURRENT_TIMESTAMP')
+
+            # Build and execute UPDATE query
+            set_sql = ', '.join(set_clauses)
+            query = f'''
+                UPDATE transactions
+                SET {set_sql}
+                WHERE id = ? AND deleted_at IS NULL
+            '''
+            params.append(transaction_id)
+
+            cursor = self.conn.execute(query, params)
+            self.conn.commit()
+
+            if cursor.rowcount > 0:
+                self.logger.info(
+                    f'Updated transaction {transaction_id}: {list(updates.keys())}'
+                )
+                return True
+            else:
+                self.logger.debug(
+                    f'Transaction {transaction_id} not found or already deleted'
+                )
+                return False
+
+        except Exception as e:
+            self.logger.error(f'Error updating transaction {transaction_id}: {e}')
+            raise
+
+    def soft_delete(self, transaction_id: int, validate_editable: bool = True) -> bool:
+        """
+        Soft delete a manual transaction by setting deleted_at timestamp.
+
+        Only manual transactions (file_id IS NULL) can be deleted. Parsed transactions
+        from files are immutable. Soft deletion preserves data for audit trails.
+
+        Args:
+            transaction_id: Transaction ID to soft delete
+            validate_editable: If True, checks transaction is editable first (default: True)
+
+        Returns:
+            bool: True if deletion successful, False if transaction not found
+
+        Raises:
+            ValueError: If transaction is not editable (parsed from file)
+
+        Examples:
+            >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
+            >>> # Delete manual transaction
+            >>> repo.soft_delete(123)
+            True
+            >>> # Verify deletion (should not be found)
+            >>> txn = repo.get_by_id(123)
+            >>> print(txn)
+            None
+            >>> # Attempt to delete parsed transaction
+            >>> repo.soft_delete(456)
+            ValueError: Transaction 456 is not editable (parsed from file or deleted)
+
+        Notes:
+            - Only deletes manual transactions (file_id IS NULL)
+            - Sets deleted_at = CURRENT_TIMESTAMP
+            - Soft-deleted transactions excluded from get_by_id() and get_filtered()
+            - Can be recovered by setting deleted_at = NULL (database-level operation)
+            - Idempotent: deleting already-deleted transaction returns False
+        """
+        try:
+            # Validate editability first if requested
+            if validate_editable and not self.is_editable(transaction_id):
+                raise ValueError(
+                    f'Transaction {transaction_id} is not editable '
+                    '(parsed from file or deleted)'
+                )
+
+            # Soft delete by setting deleted_at timestamp
+            cursor = self.conn.execute('''
+                UPDATE transactions
+                SET deleted_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND deleted_at IS NULL
+            ''', (transaction_id,))
+
+            self.conn.commit()
+
+            if cursor.rowcount > 0:
+                self.logger.info(f'Soft deleted transaction {transaction_id}')
+                return True
+            else:
+                self.logger.debug(
+                    f'Transaction {transaction_id} not found or already deleted'
+                )
+                return False
+
+        except Exception as e:
+            self.logger.error(f'Error soft deleting transaction {transaction_id}: {e}')
             raise
 
 
