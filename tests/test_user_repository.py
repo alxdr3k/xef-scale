@@ -11,7 +11,7 @@ from src.db.repository import UserRepository
 
 
 @pytest.fixture
-def user_repo():
+def user_repo(test_db_override):
     """Fixture providing UserRepository with test database connection."""
     conn = DatabaseConnection.get_instance()
     repo = UserRepository(conn)

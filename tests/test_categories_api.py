@@ -33,8 +33,8 @@ def auth_token():
 
 
 @pytest.fixture
-def db_connection():
-    """Fixture providing database connection for test setup."""
+def db_connection(test_db_override):
+    """Fixture providing test database connection for test setup."""
     conn = DatabaseConnection.get_instance()
     yield conn
 

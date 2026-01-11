@@ -42,8 +42,12 @@ def auth_token():
 
 
 @pytest.fixture
-def db_connection():
-    """Fixture providing database connection for test setup."""
+def db_connection(test_db_override):
+    """
+    Fixture providing test database connection for test setup.
+    
+    Uses test_db_override to ensure tests run against isolated test database.
+    """
     conn = DatabaseConnection.get_instance()
     yield conn
 
@@ -76,7 +80,7 @@ def test_data(db_connection):
         file_hash='test_hash_' + str(datetime.now().timestamp()),
         file_size=1024,
         institution_id=1,
-        processed_at=datetime.now()
+        processed_at=datetime.now().isoformat()
     )
 
     # Create parsing session

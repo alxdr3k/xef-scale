@@ -21,7 +21,7 @@ from src.models import Transaction
 
 
 @pytest.fixture
-def test_db():
+def test_db(test_db_override):
     """Fixture providing test database connection with cleanup."""
     conn = DatabaseConnection.get_instance()
 
