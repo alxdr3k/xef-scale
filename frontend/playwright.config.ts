@@ -30,7 +30,17 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     // Setup project that runs authentication once before all tests
-    { name: 'setup', testMatch: /.*\.setup\.ts/ },
+    { name: 'setup', testMatch: /.*auth\.setup\.ts/ },
+
+    // Data setup project that runs after authentication
+    {
+      name: 'data-setup',
+      testMatch: /.*data\.setup\.ts/,
+      use: {
+        storageState: 'tests/.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
 
     {
       name: 'chromium',
@@ -39,7 +49,7 @@ export default defineConfig({
         // Use pre-authenticated state from setup
         storageState: 'tests/.auth/user.json',
       },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'data-setup'],
     },
 
     {
@@ -48,7 +58,7 @@ export default defineConfig({
         ...devices['Desktop Firefox'],
         storageState: 'tests/.auth/user.json',
       },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'data-setup'],
     },
 
     {
@@ -57,7 +67,7 @@ export default defineConfig({
         ...devices['Desktop Safari'],
         storageState: 'tests/.auth/user.json',
       },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'data-setup'],
     },
 
     /* Test against mobile viewports. */
@@ -67,7 +77,7 @@ export default defineConfig({
         ...devices['Pixel 5'],
         storageState: 'tests/.auth/user.json',
       },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'data-setup'],
     },
     {
       name: 'Mobile Safari',
@@ -75,7 +85,7 @@ export default defineConfig({
         ...devices['iPhone 12'],
         storageState: 'tests/.auth/user.json',
       },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'data-setup'],
     },
   ],
 
