@@ -87,6 +87,216 @@ class TransactionResponse(TransactionBase):
         from_attributes = True
 
 
+class TransactionCreateRequest(BaseModel):
+    """
+    Request schema for creating a new transaction.
+
+    Required fields:
+    - date: Transaction date in yyyy.mm.dd format (Korean format)
+    - category: Category name in Korean (e.g., 식비, 교통)
+    - merchant_name: Merchant or item description (1-200 characters)
+    - amount: Transaction amount in KRW (positive integer)
+    - institution: Financial institution name in Korean
+
+    Optional fields:
+    - installment_months: Number of installment months (1-60)
+    - installment_current: Current installment number (must be <= installment_months)
+    - original_amount: Original amount for installment purchases
+    - notes: Additional notes (max 500 characters)
+    """
+    date: str = Field(..., description="거래 날짜 (yyyy.mm.dd 형식)")
+    category: str = Field(..., description="카테고리 이름 (예: 식비, 교통)")
+    merchant_name: str = Field(..., min_length=1, max_length=200, description="가맹점명 또는 거래 내역")
+    amount: int = Field(..., gt=0, description="거래 금액 (원)")
+    institution: str = Field(..., description="금융기관 이름 (예: 신한카드, 토스뱅크)")
+    installment_months: Optional[int] = Field(None, ge=1, le=60, description="할부 개월 수 (1-60)")
+    installment_current: Optional[int] = Field(None, ge=1, description="현재 할부 회차")
+    original_amount: Optional[int] = Field(None, gt=0, description="할부 시 원 거래 금액")
+    notes: Optional[str] = Field(None, max_length=500, description="메모 또는 추가 정보")
+
+    @field_validator("date")
+    @classmethod
+    def validate_date_format(cls, v: str) -> str:
+        """
+        Validate date is in yyyy.mm.dd format and represents a valid calendar date.
+
+        Args:
+            v: Date string to validate
+
+        Returns:
+            Validated date string
+
+        Raises:
+            ValueError: If date format is invalid or date values are out of range
+        """
+        try:
+            parts = v.split(".")
+            if len(parts) != 3:
+                raise ValueError("날짜는 yyyy.mm.dd 형식이어야 합니다")
+
+            year, month, day = map(int, parts)
+
+            # Validate year range
+            if not (1900 <= year <= 2100):
+                raise ValueError("연도는 1900-2100 범위이어야 합니다")
+
+            # Validate month
+            if not (1 <= month <= 12):
+                raise ValueError("월은 1-12 범위이어야 합니다")
+
+            # Validate day (basic check, not accounting for month-specific days)
+            if not (1 <= day <= 31):
+                raise ValueError("일은 1-31 범위이어야 합니다")
+
+            # Additional validation for specific months
+            if month in [4, 6, 9, 11] and day > 30:
+                raise ValueError(f"{month}월은 30일까지만 있습니다")
+            if month == 2:
+                # Check leap year
+                is_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+                max_day = 29 if is_leap else 28
+                if day > max_day:
+                    raise ValueError(f"{year}년 2월은 {max_day}일까지만 있습니다")
+
+            return v
+        except (ValueError, AttributeError) as e:
+            if isinstance(e, ValueError) and "월" in str(e):
+                raise e  # Re-raise our custom Korean error messages
+            raise ValueError("날짜는 yyyy.mm.dd 형식이어야 합니다")
+
+    @field_validator("installment_current")
+    @classmethod
+    def validate_installment_consistency(cls, v: Optional[int], info) -> Optional[int]:
+        """
+        Validate that installment_current is less than or equal to installment_months.
+
+        Args:
+            v: Current installment number
+            info: Validation context containing other field values
+
+        Returns:
+            Validated installment_current value
+
+        Raises:
+            ValueError: If installment_current > installment_months
+        """
+        if v is not None:
+            installment_months = info.data.get("installment_months")
+            if installment_months is not None and v > installment_months:
+                raise ValueError("현재 할부 회차는 총 할부 개월 수보다 클 수 없습니다")
+        return v
+
+
+class TransactionUpdateRequest(BaseModel):
+    """
+    Request schema for updating an existing transaction.
+
+    All fields are optional to support partial updates.
+    Only provided fields will be updated in the database.
+
+    Field validation rules are the same as TransactionCreateRequest:
+    - date: yyyy.mm.dd format validation
+    - merchant_name: 1-200 characters when provided
+    - amount: Must be positive when provided
+    - installment_current: Must be <= installment_months when both provided
+    """
+    date: Optional[str] = Field(None, description="거래 날짜 (yyyy.mm.dd 형식)")
+    category: Optional[str] = Field(None, description="카테고리 이름 (예: 식비, 교통)")
+    merchant_name: Optional[str] = Field(None, min_length=1, max_length=200, description="가맹점명 또는 거래 내역")
+    amount: Optional[int] = Field(None, gt=0, description="거래 금액 (원)")
+    institution: Optional[str] = Field(None, description="금융기관 이름 (예: 신한카드, 토스뱅크)")
+    installment_months: Optional[int] = Field(None, ge=1, le=60, description="할부 개월 수 (1-60)")
+    installment_current: Optional[int] = Field(None, ge=1, description="현재 할부 회차")
+    original_amount: Optional[int] = Field(None, gt=0, description="할부 시 원 거래 금액")
+    notes: Optional[str] = Field(None, max_length=500, description="메모 또는 추가 정보")
+
+    @field_validator("date")
+    @classmethod
+    def validate_date_format(cls, v: Optional[str]) -> Optional[str]:
+        """
+        Validate date is in yyyy.mm.dd format and represents a valid calendar date.
+
+        Args:
+            v: Date string to validate (None if not provided)
+
+        Returns:
+            Validated date string or None
+
+        Raises:
+            ValueError: If date format is invalid or date values are out of range
+        """
+        if v is None:
+            return v
+
+        try:
+            parts = v.split(".")
+            if len(parts) != 3:
+                raise ValueError("날짜는 yyyy.mm.dd 형식이어야 합니다")
+
+            year, month, day = map(int, parts)
+
+            # Validate year range
+            if not (1900 <= year <= 2100):
+                raise ValueError("연도는 1900-2100 범위이어야 합니다")
+
+            # Validate month
+            if not (1 <= month <= 12):
+                raise ValueError("월은 1-12 범위이어야 합니다")
+
+            # Validate day (basic check)
+            if not (1 <= day <= 31):
+                raise ValueError("일은 1-31 범위이어야 합니다")
+
+            # Additional validation for specific months
+            if month in [4, 6, 9, 11] and day > 30:
+                raise ValueError(f"{month}월은 30일까지만 있습니다")
+            if month == 2:
+                # Check leap year
+                is_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+                max_day = 29 if is_leap else 28
+                if day > max_day:
+                    raise ValueError(f"{year}년 2월은 {max_day}일까지만 있습니다")
+
+            return v
+        except (ValueError, AttributeError) as e:
+            if isinstance(e, ValueError) and "월" in str(e):
+                raise e  # Re-raise our custom Korean error messages
+            raise ValueError("날짜는 yyyy.mm.dd 형식이어야 합니다")
+
+    @field_validator("installment_current")
+    @classmethod
+    def validate_installment_consistency(cls, v: Optional[int], info) -> Optional[int]:
+        """
+        Validate that installment_current is less than or equal to installment_months.
+
+        Args:
+            v: Current installment number (None if not provided)
+            info: Validation context containing other field values
+
+        Returns:
+            Validated installment_current value or None
+
+        Raises:
+            ValueError: If installment_current > installment_months
+        """
+        if v is not None:
+            installment_months = info.data.get("installment_months")
+            if installment_months is not None and v > installment_months:
+                raise ValueError("현재 할부 회차는 총 할부 개월 수보다 클 수 없습니다")
+        return v
+
+
+class TransactionDeleteResponse(BaseModel):
+    """
+    Response schema for successful transaction deletion.
+
+    Returns the deleted transaction ID, confirmation message, and deletion timestamp.
+    """
+    id: int = Field(..., description="삭제된 거래 ID")
+    message: str = Field(default="Transaction deleted successfully", description="삭제 확인 메시지")
+    deleted_at: str = Field(..., description="삭제 시각 (ISO 8601 형식)")
+
+
 class TransactionListResponse(BaseModel):
     """Paginated transaction list response."""
     data: List[TransactionResponse]
