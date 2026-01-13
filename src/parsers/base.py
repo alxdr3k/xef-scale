@@ -24,7 +24,8 @@ class StatementParser(ABC):
     def __init__(
         self,
         mapping_repo: Optional['CategoryMerchantMappingRepository'] = None,
-        category_repo: Optional['CategoryRepository'] = None
+        category_repo: Optional['CategoryRepository'] = None,
+        gemini_client: Optional['GeminiClient'] = None
     ):
         """
         Initialize parser with CategoryMatcher instance.
@@ -32,15 +33,19 @@ class StatementParser(ABC):
         Args:
             mapping_repo: Optional repository for merchant mappings (enables database mode)
             category_repo: Optional repository for categories (enables database mode)
+            gemini_client: Optional Gemini API client for LLM-based categorization
 
         Notes:
             - When repos are None, CategoryMatcher operates in legacy mode (keyword rules only)
             - When repos provided, enables database-driven merchant categorization
-            - Backward compatible with existing code
+            - Gemini client is passed through to CategoryMatcher for LLM categorization
+            - Backward compatible: works without gemini_client
+            - All subclass parsers inherit this change automatically
         """
         self.matcher = CategoryMatcher(
             mapping_repo=mapping_repo,
-            category_repo=category_repo
+            category_repo=category_repo,
+            gemini_client=gemini_client
         )
 
     @abstractmethod
