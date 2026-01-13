@@ -3,6 +3,18 @@ Centralized configuration for expense tracking system.
 Contains directory paths, institution keywords, and category rules.
 """
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Gemini API Configuration
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+
+if not GEMINI_API_KEY:
+    import logging
+    logging.warning('GEMINI_API_KEY not set in .env - Gemini categorization disabled')
+
 # Directory configuration
 DIRECTORIES = {
     'inbox': './inbox',
