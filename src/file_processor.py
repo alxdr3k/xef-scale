@@ -127,12 +127,16 @@ class FileProcessor:
         self.skipped_transaction_repo = SkippedTransactionRepository(self.conn)
         self.logger.debug('Database repositories initialized')
 
+        # Initialize Gemini client
+        self.gemini_client = self._initialize_gemini_client()
+
         # Initialize router and parsers
         self.router = StatementRouter()
         self.parsers = {
             'HANA': HanaCardParser(
                 mapping_repo=self.mapping_repo,
-                category_repo=self.category_repo
+                category_repo=self.category_repo,
+                gemini_client=self.gemini_client
             )
             # Future: Add more parsers (TOSS, KAKAO, SHINHAN)
         }
@@ -142,6 +146,62 @@ class FileProcessor:
         duplicates_dir = os.path.join(DIRECTORIES['archive'], 'duplicates')
         os.makedirs(duplicates_dir, exist_ok=True)
         self.logger.debug(f'Duplicates directory: {duplicates_dir}')
+
+    def _initialize_gemini_client(self) -> Optional['GeminiClient']:
+        """
+        Initialize Gemini API client with error handling.
+
+        Returns:
+            GeminiClient instance or None if initialization fails
+
+        Notes:
+            - Loads API key from config
+            - Validates API key is present
+            - Fetches valid categories from database
+            - Returns None on error (fallback to keyword matching)
+            - Logs initialization status for debugging
+        """
+        from src.config import GEMINI_API_KEY
+        from src.gemini_client import GeminiClient
+
+        # Check if API key is configured
+        if not GEMINI_API_KEY:
+            self.logger.warning(
+                'GEMINI_API_KEY not set in .env - Gemini categorization disabled. '
+                'Transactions will use database exact match + keyword fallback only.'
+            )
+            return None
+
+        try:
+            # Fetch valid categories from database
+            categories = self.category_repo.get_all()
+            valid_category_names = [cat['name'] for cat in categories]
+
+            if not valid_category_names:
+                self.logger.error(
+                    'No categories found in database - cannot initialize Gemini client. '
+                    'Run database migrations first.'
+                )
+                return None
+
+            # Initialize Gemini client
+            gemini_client = GeminiClient(
+                api_key=GEMINI_API_KEY,
+                valid_categories=valid_category_names
+            )
+
+            self.logger.info(
+                f'Gemini client initialized successfully with {len(valid_category_names)} valid categories'
+            )
+            return gemini_client
+
+        except Exception as e:
+            self.logger.error(
+                f'Failed to initialize Gemini client: {e}. '
+                f'Falling back to database + keyword matching only.',
+                exc_info=True
+            )
+            return None
 
     def _validate_session(self, parse_result: ParseResult,
                          saved_count: int, duplicate_count: int) -> tuple:
