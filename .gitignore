@@ -46,3 +46,4 @@ scripts/*
 !scripts/README.md
 !scripts/temp_manual_import.py
 !scripts/recover_archive_files.py
+!scripts/build_mappings_from_txt.py
