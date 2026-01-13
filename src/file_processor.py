@@ -18,6 +18,7 @@ from src.models import ProcessingResult, ParseResult
 from src.db.connection import DatabaseConnection
 from src.db.repository import (
     CategoryRepository,
+    CategoryMerchantMappingRepository,
     InstitutionRepository,
     TransactionRepository,
     ProcessedFileRepository,
@@ -114,6 +115,7 @@ class FileProcessor:
         # Initialize database repositories
         self.conn = DatabaseConnection.get_instance()
         self.category_repo = CategoryRepository(self.conn)
+        self.mapping_repo = CategoryMerchantMappingRepository(self.conn)
         self.institution_repo = InstitutionRepository(self.conn)
         self.transaction_repo = TransactionRepository(
             self.conn,
@@ -128,7 +130,10 @@ class FileProcessor:
         # Initialize router and parsers
         self.router = StatementRouter()
         self.parsers = {
-            'HANA': HanaCardParser()
+            'HANA': HanaCardParser(
+                mapping_repo=self.mapping_repo,
+                category_repo=self.category_repo
+            )
             # Future: Add more parsers (TOSS, KAKAO, SHINHAN)
         }
         self.logger.debug(f'Parsers initialized: {list(self.parsers.keys())}')

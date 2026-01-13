@@ -5,7 +5,7 @@ First concrete implementation of StatementParser for 하나카드.
 
 import pandas as pd
 import re
-from typing import List
+from typing import List, Optional
 from src.parsers.base import StatementParser
 from src.models import Transaction, ParseResult, SkippedTransaction, SkipReason
 import logging
@@ -21,6 +21,20 @@ class HanaCardParser(StatementParser):
     Assumes CSV/Excel format with columns: date, merchant, amount
     Note: Real Hana Card format may differ - requires sample file to validate
     """
+
+    def __init__(
+        self,
+        mapping_repo: Optional['CategoryMerchantMappingRepository'] = None,
+        category_repo: Optional['CategoryRepository'] = None
+    ):
+        """
+        Initialize Hana Card parser with optional database repositories.
+
+        Args:
+            mapping_repo: Optional repository for merchant mappings (enables database mode)
+            category_repo: Optional repository for categories (enables database mode)
+        """
+        super().__init__(mapping_repo=mapping_repo, category_repo=category_repo)
 
     def parse(self, file_path: str) -> ParseResult:
         """

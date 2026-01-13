@@ -4,7 +4,7 @@ Defines the Strategy Pattern for institution-specific parser implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 from src.models import Transaction, ParseResult
 from src.category_matcher import CategoryMatcher
 
@@ -21,9 +21,27 @@ class StatementParser(ABC):
         matcher: CategoryMatcher instance for auto-categorizing transactions
     """
 
-    def __init__(self):
-        """Initialize parser with CategoryMatcher instance."""
-        self.matcher = CategoryMatcher()
+    def __init__(
+        self,
+        mapping_repo: Optional['CategoryMerchantMappingRepository'] = None,
+        category_repo: Optional['CategoryRepository'] = None
+    ):
+        """
+        Initialize parser with CategoryMatcher instance.
+
+        Args:
+            mapping_repo: Optional repository for merchant mappings (enables database mode)
+            category_repo: Optional repository for categories (enables database mode)
+
+        Notes:
+            - When repos are None, CategoryMatcher operates in legacy mode (keyword rules only)
+            - When repos provided, enables database-driven merchant categorization
+            - Backward compatible with existing code
+        """
+        self.matcher = CategoryMatcher(
+            mapping_repo=mapping_repo,
+            category_repo=category_repo
+        )
 
     @abstractmethod
     def parse(self, input_data: any) -> ParseResult:
