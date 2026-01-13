@@ -75,8 +75,8 @@ class GeminiClient:
         genai.configure(api_key=self.api_key)
 
         # Initialize Gemini model (fast, cost-effective)
-        # Using gemini-1.5-flash-latest for better availability
-        self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        # Using gemini-2.0-flash (stable, widely available)
+        self.model = genai.GenerativeModel('gemini-2.0-flash')
 
         self.logger.info(f'GeminiClient initialized with {len(valid_categories)} valid categories')
 
