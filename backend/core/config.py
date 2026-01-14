@@ -17,8 +17,8 @@ class Settings(BaseSettings):
         API_PREFIX: URL prefix for all API routes
         SECRET_KEY: Secret key for JWT token signing (MUST be set in production)
         ALGORITHM: JWT signing algorithm
-        ACCESS_TOKEN_EXPIRE_MINUTES: JWT access token lifetime
-        REFRESH_TOKEN_EXPIRE_DAYS: JWT refresh token lifetime
+        ACCESS_TOKEN_EXPIRE_MINUTES: JWT access token lifetime (default: 8 hours)
+        REFRESH_TOKEN_EXPIRE_DAYS: JWT refresh token lifetime (default: 7 days)
         ALLOWED_ORIGINS: CORS allowed origins for frontend
         GOOGLE_CLIENT_ID: Google OAuth client ID for ID token verification
 
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # Security settings
     SECRET_KEY: str = "CHANGE_THIS_IN_PRODUCTION_USE_openssl_rand_hex_32"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 hours (60 minutes × 8)
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS settings
