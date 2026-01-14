@@ -10,7 +10,7 @@ from fastapi.exceptions import RequestValidationError
 import logging
 
 from .core.config import settings
-from .api.routes import auth, transactions, categories, institutions, parsing, confirmations, test_auth
+from .api.routes import auth, transactions, categories, institutions, parsing, confirmations, test_auth, workspaces
 
 # Configure logging
 logging.basicConfig(
@@ -133,6 +133,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 # Include routers
 app.include_router(auth.router, prefix=settings.API_PREFIX)
+app.include_router(workspaces.router, prefix=settings.API_PREFIX)
 app.include_router(transactions.router, prefix=settings.API_PREFIX)
 app.include_router(categories.router, prefix=settings.API_PREFIX)
 app.include_router(institutions.router, prefix=settings.API_PREFIX)
