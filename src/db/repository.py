@@ -4802,3 +4802,498 @@ class WorkspaceInvitationRepository:
                 return False
 
         return True
+
+
+class AllowanceTransactionRepository:
+    """
+    Repository for managing personal allowance transactions.
+
+    Provides functionality for users to mark specific transactions as "personal spending"
+    (allowance) that should be hidden from other workspace members and excluded from
+    shared totals and statistics. Allowance transactions are visible only in the
+    user's personal allowance page.
+
+    Key Privacy Concept:
+        The allowance_transactions table creates a user-specific filter. When user A
+        marks transaction #123 as allowance, it disappears from workspace views for
+        everyone else but appears in user A's personal allowance page.
+
+    Attributes:
+        conn: SQLite database connection
+        logger: Logger instance for operations tracking
+
+    Examples:
+        >>> repo = AllowanceTransactionRepository(conn)
+        >>> # User marks transaction as personal allowance
+        >>> allowance_id = repo.mark_as_allowance(
+        ...     db=conn,
+        ...     transaction_id=123,
+        ...     user_id=1,
+        ...     workspace_id=1,
+        ...     notes="Personal gift purchase"
+        ... )
+        >>> # Get all allowances for user
+        >>> allowances, count = repo.get_user_allowances(conn, user_id=1, workspace_id=1)
+        >>> print(f"Found {count} personal allowance transactions")
+    """
+
+    def __init__(self, connection: sqlite3.Connection):
+        """
+        Initialize repository with database connection.
+
+        Args:
+            connection: SQLite database connection instance
+        """
+        self.conn = connection
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('AllowanceTransactionRepository initialized')
+
+    @staticmethod
+    def mark_as_allowance(
+        db: sqlite3.Connection,
+        transaction_id: int,
+        user_id: int,
+        workspace_id: int,
+        notes: Optional[str] = None
+    ) -> int:
+        """
+        Mark a transaction as personal allowance.
+
+        Creates a new allowance marking for the specified transaction. The UNIQUE
+        constraint (transaction_id, user_id, workspace_id) prevents duplicate markings.
+
+        Args:
+            db: Database connection
+            transaction_id: ID of transaction to mark
+            user_id: User marking the transaction
+            workspace_id: Workspace context
+            notes: Optional personal notes/justification
+
+        Returns:
+            int: Allowance record ID
+
+        Raises:
+            sqlite3.IntegrityError: If duplicate marking or invalid foreign keys
+
+        Examples:
+            >>> repo = AllowanceTransactionRepository(conn)
+            >>> allowance_id = repo.mark_as_allowance(
+            ...     db=conn,
+            ...     transaction_id=123,
+            ...     user_id=1,
+            ...     workspace_id=1,
+            ...     notes="Personal gift - birthday present"
+            ... )
+            >>> print(f"Marked as allowance with ID: {allowance_id}")
+
+        Notes:
+            - marked_at is automatically set to CURRENT_TIMESTAMP
+            - UNIQUE constraint prevents duplicate markings
+            - Foreign key constraints ensure valid transaction, user, and workspace IDs
+            - Commits immediately
+        """
+        logger = logging.getLogger(__name__)
+
+        try:
+            cursor = db.execute('''
+                INSERT INTO allowance_transactions (
+                    transaction_id,
+                    user_id,
+                    workspace_id,
+                    notes
+                ) VALUES (?, ?, ?, ?)
+            ''', (transaction_id, user_id, workspace_id, notes))
+
+            db.commit()
+
+            allowance_id = cursor.lastrowid
+            logger.info(
+                f'Marked transaction as allowance: transaction_id={transaction_id}, '
+                f'user_id={user_id}, workspace_id={workspace_id}, allowance_id={allowance_id}'
+            )
+
+            return allowance_id
+
+        except sqlite3.IntegrityError as e:
+            logger.error(
+                f'Failed to mark as allowance (duplicate or invalid FK): '
+                f'transaction_id={transaction_id}, user_id={user_id}, '
+                f'workspace_id={workspace_id} - {e}'
+            )
+            raise
+        except Exception as e:
+            logger.error(
+                f'Error marking transaction as allowance: transaction_id={transaction_id}, '
+                f'user_id={user_id}, workspace_id={workspace_id} - {e}'
+            )
+            raise
+
+    @staticmethod
+    def unmark_allowance(
+        db: sqlite3.Connection,
+        transaction_id: int,
+        user_id: int,
+        workspace_id: int
+    ) -> bool:
+        """
+        Remove allowance marking from a transaction.
+
+        Hard deletes the allowance marking (not soft delete). Used when user changes
+        their mind about marking a transaction as personal allowance.
+
+        Args:
+            db: Database connection
+            transaction_id: ID of transaction to unmark
+            user_id: User who marked it
+            workspace_id: Workspace context
+
+        Returns:
+            bool: True if marking was found and deleted, False if not found
+
+        Examples:
+            >>> repo = AllowanceTransactionRepository(conn)
+            >>> success = repo.unmark_allowance(
+            ...     db=conn,
+            ...     transaction_id=123,
+            ...     user_id=1,
+            ...     workspace_id=1
+            ... )
+            >>> if success:
+            ...     print('Allowance marking removed')
+            ... else:
+            ...     print('No allowance marking found')
+
+        Notes:
+            - Hard delete (permanent removal)
+            - Returns False if no matching marking exists
+            - Commits immediately
+            - Privacy enforced: requires matching user_id and workspace_id
+        """
+        logger = logging.getLogger(__name__)
+
+        try:
+            cursor = db.execute('''
+                DELETE FROM allowance_transactions
+                WHERE transaction_id = ?
+                  AND user_id = ?
+                  AND workspace_id = ?
+            ''', (transaction_id, user_id, workspace_id))
+
+            db.commit()
+
+            if cursor.rowcount == 0:
+                logger.warning(
+                    f'No allowance marking found to unmark: transaction_id={transaction_id}, '
+                    f'user_id={user_id}, workspace_id={workspace_id}'
+                )
+                return False
+
+            logger.info(
+                f'Unmarked allowance: transaction_id={transaction_id}, '
+                f'user_id={user_id}, workspace_id={workspace_id}'
+            )
+            return True
+
+        except Exception as e:
+            logger.error(
+                f'Error unmarking allowance: transaction_id={transaction_id}, '
+                f'user_id={user_id}, workspace_id={workspace_id} - {e}'
+            )
+            raise
+
+    @staticmethod
+    def get_user_allowances(
+        db: sqlite3.Connection,
+        user_id: int,
+        workspace_id: int,
+        filters: Optional[Dict] = None
+    ) -> tuple:
+        """
+        Get all transactions marked as allowance by specific user in workspace.
+
+        Joins with transactions, categories, and financial_institutions tables to
+        provide full transaction details. Applies optional filters for refined queries.
+
+        Args:
+            db: Database connection
+            user_id: User whose allowances to retrieve
+            workspace_id: Workspace context
+            filters: Optional dict with keys:
+                - year (int): Filter by transaction year
+                - month (int): Filter by transaction month
+                - category_id (int): Filter by category
+                - institution_id (int): Filter by financial institution
+                - search (str): Case-insensitive merchant name search
+
+        Returns:
+            tuple: (list of transaction dicts, total count)
+                Each dict contains all transaction fields plus:
+                - category_name: Name of category
+                - institution_name: Name of institution
+                - marked_at: Timestamp when marked as allowance
+                - allowance_notes: Personal notes about marking
+
+        Examples:
+            >>> repo = AllowanceTransactionRepository(conn)
+            >>> # Get all allowances
+            >>> allowances, count = repo.get_user_allowances(conn, user_id=1, workspace_id=1)
+            >>> print(f"Total: {count}")
+            >>>
+            >>> # Filter by year and category
+            >>> allowances, count = repo.get_user_allowances(
+            ...     conn,
+            ...     user_id=1,
+            ...     workspace_id=1,
+            ...     filters={'year': 2024, 'category_id': 5}
+            ... )
+            >>> for txn in allowances:
+            ...     print(f"{txn['transaction_date']} - {txn['merchant_name']} - {txn['amount']}")
+            ...     if txn['allowance_notes']:
+            ...         print(f"  Note: {txn['allowance_notes']}")
+
+        Notes:
+            - Privacy enforced: only returns allowances for specified user_id
+            - Excludes soft-deleted transactions (deleted_at IS NULL)
+            - Ordered by transaction_date DESC (most recent first)
+            - Returns empty list if no allowances found
+            - Search filter uses case-insensitive LIKE matching on merchant_name
+        """
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Build base query with JOINs
+            query = '''
+                SELECT
+                    t.*,
+                    c.name as category_name,
+                    fi.name as institution_name,
+                    at.marked_at,
+                    at.notes as allowance_notes
+                FROM allowance_transactions at
+                JOIN transactions t ON at.transaction_id = t.id
+                LEFT JOIN categories c ON t.category_id = c.id
+                LEFT JOIN financial_institutions fi ON t.institution_id = fi.id
+                WHERE at.user_id = ?
+                  AND at.workspace_id = ?
+                  AND t.deleted_at IS NULL
+            '''
+            params = [user_id, workspace_id]
+
+            # Apply optional filters
+            if filters:
+                if filters.get('year'):
+                    query += ' AND t.transaction_year = ?'
+                    params.append(filters['year'])
+
+                if filters.get('month'):
+                    query += ' AND t.transaction_month = ?'
+                    params.append(filters['month'])
+
+                if filters.get('category_id'):
+                    query += ' AND t.category_id = ?'
+                    params.append(filters['category_id'])
+
+                if filters.get('institution_id'):
+                    query += ' AND t.institution_id = ?'
+                    params.append(filters['institution_id'])
+
+                if filters.get('search'):
+                    query += ' AND t.merchant_name LIKE ?'
+                    params.append(f"%{filters['search']}%")
+
+            query += ' ORDER BY t.transaction_date DESC'
+
+            cursor = db.execute(query, params)
+            rows = cursor.fetchall()
+
+            result = [dict(row) for row in rows]
+            count = len(result)
+
+            logger.debug(
+                f'Retrieved {count} allowance transactions for user_id={user_id}, '
+                f'workspace_id={workspace_id}, filters={filters}'
+            )
+
+            return result, count
+
+        except Exception as e:
+            logger.error(
+                f'Error retrieving user allowances: user_id={user_id}, '
+                f'workspace_id={workspace_id} - {e}'
+            )
+            raise
+
+    @staticmethod
+    def get_allowance_summary(
+        db: sqlite3.Connection,
+        user_id: int,
+        workspace_id: int,
+        year: int,
+        month: int
+    ) -> dict:
+        """
+        Get allowance spending statistics for a specific month.
+
+        Calculates total spending, transaction count, and category-wise breakdown
+        for all allowance transactions in the specified month.
+
+        Args:
+            db: Database connection
+            user_id: User whose summary to calculate
+            workspace_id: Workspace context
+            year: Year to summarize (e.g., 2024)
+            month: Month to summarize (1-12)
+
+        Returns:
+            dict: Summary statistics with keys:
+                - total_amount (int): Sum of all allowance transaction amounts
+                - transaction_count (int): Count of allowance transactions
+                - by_category (list): List of dicts with keys:
+                    - category_id (int)
+                    - category_name (str)
+                    - amount (int): Total for this category
+                    - count (int): Transaction count for this category
+
+        Examples:
+            >>> repo = AllowanceTransactionRepository(conn)
+            >>> summary = repo.get_allowance_summary(
+            ...     conn,
+            ...     user_id=1,
+            ...     workspace_id=1,
+            ...     year=2024,
+            ...     month=12
+            ... )
+            >>> print(f"Total spending: {summary['total_amount']:,}원")
+            >>> print(f"Transactions: {summary['transaction_count']}")
+            >>> for cat in summary['by_category']:
+            ...     print(f"  {cat['category_name']}: {cat['amount']:,}원 ({cat['count']} txns)")
+
+        Notes:
+            - Privacy enforced: only summarizes specified user's allowances
+            - Excludes soft-deleted transactions
+            - Returns 0 values if no allowances found for the month
+            - Categories ordered by total amount DESC (highest spending first)
+        """
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Calculate total amount and count
+            cursor = db.execute('''
+                SELECT
+                    COALESCE(SUM(t.amount), 0) as total_amount,
+                    COUNT(t.id) as transaction_count
+                FROM allowance_transactions at
+                JOIN transactions t ON at.transaction_id = t.id
+                WHERE at.user_id = ?
+                  AND at.workspace_id = ?
+                  AND t.transaction_year = ?
+                  AND t.transaction_month = ?
+                  AND t.deleted_at IS NULL
+            ''', (user_id, workspace_id, year, month))
+
+            row = cursor.fetchone()
+            total_amount = row['total_amount']
+            transaction_count = row['transaction_count']
+
+            # Calculate by-category breakdown
+            cursor = db.execute('''
+                SELECT
+                    t.category_id,
+                    c.name as category_name,
+                    SUM(t.amount) as amount,
+                    COUNT(t.id) as count
+                FROM allowance_transactions at
+                JOIN transactions t ON at.transaction_id = t.id
+                LEFT JOIN categories c ON t.category_id = c.id
+                WHERE at.user_id = ?
+                  AND at.workspace_id = ?
+                  AND t.transaction_year = ?
+                  AND t.transaction_month = ?
+                  AND t.deleted_at IS NULL
+                GROUP BY t.category_id, c.name
+                ORDER BY amount DESC
+            ''', (user_id, workspace_id, year, month))
+
+            by_category = [dict(row) for row in cursor.fetchall()]
+
+            summary = {
+                'total_amount': total_amount,
+                'transaction_count': transaction_count,
+                'by_category': by_category
+            }
+
+            logger.debug(
+                f'Calculated allowance summary for user_id={user_id}, '
+                f'workspace_id={workspace_id}, year={year}, month={month}: '
+                f'total={total_amount}, count={transaction_count}'
+            )
+
+            return summary
+
+        except Exception as e:
+            logger.error(
+                f'Error calculating allowance summary: user_id={user_id}, '
+                f'workspace_id={workspace_id}, year={year}, month={month} - {e}'
+            )
+            raise
+
+    @staticmethod
+    def is_allowance(
+        db: sqlite3.Connection,
+        transaction_id: int,
+        user_id: int,
+        workspace_id: int
+    ) -> bool:
+        """
+        Check if specific transaction is marked as allowance by user.
+
+        Simple existence check used for conditional UI rendering and business logic.
+
+        Args:
+            db: Database connection
+            transaction_id: Transaction to check
+            user_id: User to check for
+            workspace_id: Workspace context
+
+        Returns:
+            bool: True if marked as allowance, False otherwise
+
+        Examples:
+            >>> repo = AllowanceTransactionRepository(conn)
+            >>> if repo.is_allowance(conn, transaction_id=123, user_id=1, workspace_id=1):
+            ...     print('This is a personal allowance transaction')
+            ... else:
+            ...     print('This is a shared workspace transaction')
+
+        Notes:
+            - Privacy enforced: checks specific user_id and workspace_id
+            - Efficient: uses COUNT(*) with early termination
+            - Returns False if no matching marking exists
+        """
+        logger = logging.getLogger(__name__)
+
+        try:
+            cursor = db.execute('''
+                SELECT COUNT(*) as count
+                FROM allowance_transactions
+                WHERE transaction_id = ?
+                  AND user_id = ?
+                  AND workspace_id = ?
+            ''', (transaction_id, user_id, workspace_id))
+
+            row = cursor.fetchone()
+            is_marked = row['count'] == 1
+
+            logger.debug(
+                f'Checked allowance status: transaction_id={transaction_id}, '
+                f'user_id={user_id}, workspace_id={workspace_id}, is_allowance={is_marked}'
+            )
+
+            return is_marked
+
+        except Exception as e:
+            logger.error(
+                f'Error checking allowance status: transaction_id={transaction_id}, '
+                f'user_id={user_id}, workspace_id={workspace_id} - {e}'
+            )
+            raise
