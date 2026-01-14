@@ -3,7 +3,7 @@ Pydantic schemas for API request/response validation.
 Defines data transfer objects for all API endpoints.
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -85,8 +85,13 @@ class TransactionResponse(TransactionBase):
     notes: Optional[str] = None
     created_at: str
 
-    class Config:
-        from_attributes = True
+    # Workspace-related fields
+    workspace_id: int
+    is_allowance: bool = False
+    uploaded_by: Optional[str] = None
+    uploaded_by_user_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TransactionCreateRequest(BaseModel):
@@ -350,8 +355,7 @@ class CategoryResponse(CategoryBase):
     created_at: str
     updated_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== Institution Schemas ====================
@@ -370,8 +374,7 @@ class InstitutionResponse(InstitutionBase):
     created_at: str
     updated_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== Parsing Session Schemas ====================
@@ -402,8 +405,7 @@ class ParsingSessionResponse(ParsingSessionBase):
     institution_name: Optional[str] = None
     institution_type: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ParsingSessionListResponse(BaseModel):
@@ -429,8 +431,7 @@ class SkippedTransactionResponse(BaseModel):
     skip_details: Optional[str] = None
     column_data: Optional[Dict] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== File Upload Schemas ====================
@@ -503,8 +504,7 @@ class DuplicateConfirmationResponse(BaseModel):
     created_at: str
     expires_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConfirmationActionRequest(BaseModel):
@@ -525,3 +525,152 @@ class BulkConfirmationResponse(BaseModel):
     """Response for bulk confirmation operation."""
     processed_count: int
     session_id: int
+
+
+# ==================== Workspace Schemas ====================
+
+class WorkspaceBase(BaseModel):
+    """Base workspace fields."""
+    name: str = Field(..., min_length=1, max_length=100, description="Workspace name")
+    description: Optional[str] = Field(None, max_length=500, description="Workspace description")
+
+
+class WorkspaceCreate(WorkspaceBase):
+    """Schema for creating a workspace."""
+    pass
+
+
+class WorkspaceUpdate(BaseModel):
+    """Schema for updating workspace (all fields optional)."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100, description="Workspace name")
+    description: Optional[str] = Field(None, max_length=500, description="Workspace description")
+
+
+class WorkspaceResponse(WorkspaceBase):
+    """Schema for workspace response."""
+    id: int
+    created_by_user_id: int
+    currency: str
+    timezone: str
+    is_active: bool
+    member_count: int  # From repository join
+    role: str  # User's role in this workspace
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class WorkspaceListResponse(BaseModel):
+    """Schema for listing workspaces."""
+    workspaces: List[WorkspaceResponse]
+
+
+# ==================== Membership Schemas ====================
+
+class MemberResponse(BaseModel):
+    """Schema for workspace member."""
+    user_id: int
+    name: str
+    email: str
+    profile_picture_url: Optional[str]
+    role: str  # OWNER, CO_OWNER, MEMBER_WRITE, MEMBER_READ
+    joined_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MemberListResponse(BaseModel):
+    """Schema for listing members."""
+    members: List[MemberResponse]
+
+
+class MemberRoleUpdate(BaseModel):
+    """Schema for updating member role."""
+    role: str = Field(..., pattern="^(OWNER|CO_OWNER|MEMBER_WRITE|MEMBER_READ)$", description="New role for member")
+
+
+# ==================== Invitation Schemas ====================
+
+class InvitationCreate(BaseModel):
+    """Schema for creating invitation."""
+    role: str = Field(..., pattern="^(CO_OWNER|MEMBER_WRITE|MEMBER_READ)$", description="Role to assign (cannot be OWNER)")
+    expires_in_days: int = Field(7, ge=1, le=90, description="Days until invitation expires (1-90)")
+    max_uses: Optional[int] = Field(None, ge=1, description="Maximum number of uses (unlimited if null)")
+
+
+class InvitationResponse(BaseModel):
+    """Schema for invitation response."""
+    id: int
+    workspace_id: int
+    token: str
+    invitation_url: str  # Constructed URL (e.g., https://app.example.com/join/{token})
+    role: str
+    expires_at: datetime
+    max_uses: Optional[int]
+    current_uses: int
+    is_active: bool
+    created_by_user_id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InvitationListResponse(BaseModel):
+    """Schema for listing invitations."""
+    invitations: List[InvitationResponse]
+
+
+class InvitationAcceptResponse(BaseModel):
+    """Schema for invitation acceptance result."""
+    workspace_id: int
+    workspace_name: str
+    role: str
+    message: str
+
+
+# ==================== Allowance Schemas ====================
+
+class AllowanceMarkRequest(BaseModel):
+    """Schema for marking transaction as allowance."""
+    transaction_id: int = Field(..., description="Transaction ID to mark as allowance")
+    notes: Optional[str] = Field(None, max_length=200, description="Optional notes about this allowance")
+
+
+class AllowanceUnmarkRequest(BaseModel):
+    """Schema for unmarking allowance (just transaction_id)."""
+    transaction_id: int = Field(..., description="Transaction ID to unmark as allowance")
+
+
+class AllowanceTransactionResponse(BaseModel):
+    """Schema for allowance transaction."""
+    id: int
+    transaction_id: int
+    # Transaction details
+    transaction_date: str  # yyyy.mm.dd
+    category_name: str
+    merchant_name: str
+    amount: int
+    institution_name: str
+    # Allowance-specific
+    marked_at: datetime
+    notes: Optional[str]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AllowanceListResponse(BaseModel):
+    """Schema for listing allowances."""
+    data: List[AllowanceTransactionResponse]
+    total: int
+    total_amount: int
+    workspace: Dict[str, Any]  # {id, name}
+
+
+class AllowanceSummaryResponse(BaseModel):
+    """Schema for allowance summary."""
+    year: int
+    month: int
+    total_amount: int
+    transaction_count: int
+    by_category: List[Dict[str, Any]]  # [{category_id, category_name, amount, count}]
