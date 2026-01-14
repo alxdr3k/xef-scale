@@ -16,7 +16,7 @@ import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import ParsingSessions from './pages/ParsingSessions';
 import Settings from './pages/Settings';
-import Allowances from './pages/Allowances';
+import AllowanceSpending from './pages/AllowanceSpending';
 import WorkspaceSettings from './pages/WorkspaceSettings';
 
 // Auth components
@@ -57,7 +57,7 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/parsing-sessions" element={<ParsingSessions />} />
-          <Route path="/allowances" element={<Allowances />} />
+          <Route path="/allowances" element={<AllowanceSpending />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/workspace-settings" element={<WorkspaceSettings />} />
         </Route>

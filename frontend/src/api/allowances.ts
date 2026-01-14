@@ -4,6 +4,7 @@
  */
 
 import apiClient from './client';
+import type { AllowanceTransactionResponse, AllowanceSummary, PaginatedResponse } from '../types';
 
 /**
  * Allowance mark request payload
@@ -14,23 +15,16 @@ export interface AllowanceMarkRequest {
 }
 
 /**
- * Allowance transaction response from backend
+ * Allowance filters for fetching allowance transactions
  */
-export interface AllowanceTransactionResponse {
-  allowance_id: number;
-  transaction_id: number;
-  user_id: number;
-  workspace_id: number;
-  notes: string | null;
-  marked_at: string;
-  // Transaction details
-  date: string;
-  category: string;
-  merchant_name: string;
-  amount: number;
-  institution: string;
-  category_id: number;
-  institution_id: number;
+export interface AllowanceFilters {
+  year?: number;
+  month?: number;
+  category_id?: number;
+  institution_id?: number;
+  page?: number;
+  limit?: number;
+  sort?: 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc';
 }
 
 /**
@@ -65,4 +59,39 @@ export const unmarkAllowance = async (
   transactionId: number
 ): Promise<void> => {
   await apiClient.delete(`/api/workspaces/${workspaceId}/allowances/${transactionId}`);
+};
+
+/**
+ * Fetch paginated allowance transactions with filters
+ * @param workspaceId - Workspace ID
+ * @param filters - Filter parameters
+ * @returns Paginated allowance transactions
+ */
+export const getAllowances = async (
+  workspaceId: number,
+  filters: AllowanceFilters = {}
+): Promise<PaginatedResponse<AllowanceTransactionResponse>> => {
+  const response = await apiClient.get<PaginatedResponse<AllowanceTransactionResponse>>(
+    `/api/workspaces/${workspaceId}/allowances`,
+    {
+      params: {
+        ...filters,
+      },
+    }
+  );
+  return response.data;
+};
+
+/**
+ * Fetch allowance summary statistics
+ * @param workspaceId - Workspace ID
+ * @returns Summary statistics for allowances
+ */
+export const getAllowanceSummary = async (
+  workspaceId: number
+): Promise<AllowanceSummary> => {
+  const response = await apiClient.get<AllowanceSummary>(
+    `/api/workspaces/${workspaceId}/allowances/summary`
+  );
+  return response.data;
 };

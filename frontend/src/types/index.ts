@@ -274,3 +274,19 @@ export interface AllowanceTransactionResponse {
   category_id: number;
   institution_id: number;
 }
+
+// Allowance summary statistics
+export interface AllowanceSummary {
+  current_month_total: number;
+  last_month_total: number;
+  month_over_month_change: number; // Percentage change
+  categories_breakdown: Array<{
+    category: string;
+    amount: number;
+    percentage: number;
+    count: number;
+  }>;
+  monthly_average: number; // Average over last 3-6 months
+  average_trend: 'up' | 'down' | 'stable'; // Trend indicator
+  total_count: number; // Current month transaction count
+}

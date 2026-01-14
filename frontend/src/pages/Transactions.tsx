@@ -28,7 +28,6 @@ import type {
   TransactionFilters,
 } from '../api/services';
 import { markAsAllowance } from '../api/allowances';
-import type { WorkspaceRole } from '../types';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -79,9 +78,6 @@ const Transactions: React.FC = () => {
   // Permission checks
   const canWrite = currentWorkspace
     ? ['OWNER', 'CO_OWNER', 'MEMBER_WRITE'].includes(currentWorkspace.role)
-    : false;
-  const canManage = currentWorkspace
-    ? ['OWNER', 'CO_OWNER'].includes(currentWorkspace.role)
     : false;
 
   // Load categories and institutions when workspace changes
