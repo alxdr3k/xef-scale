@@ -207,3 +207,17 @@ export const updateTransactionNotes = async (
   );
   return response.data;
 };
+
+/**
+ * Update transaction category
+ */
+export const updateTransactionCategory = async (
+  id: number,
+  category: string
+): Promise<TransactionAPIResponse> => {
+  const response = await apiClient.patch<TransactionAPIResponse>(
+    `/api/transactions/${id}/category`,
+    { category }
+  );
+  return response.data;
+};

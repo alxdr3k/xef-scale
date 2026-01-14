@@ -11,12 +11,14 @@ import type { FilterValues } from '../components/transactions/FilterPanel';
 import SummarySection from '../components/transactions/SummarySection';
 import TransactionFormModal from '../components/transactions/TransactionFormModal';
 import NotesCell from '../components/transactions/NotesCell';
+import CategoryCell from '../components/transactions/CategoryCell';
 import {
   fetchTransactions,
   fetchCategories,
   fetchInstitutions,
   deleteTransaction,
   updateTransactionNotes,
+  updateTransactionCategory,
 } from '../api/services';
 import type {
   TransactionAPIResponse,
@@ -24,7 +26,6 @@ import type {
   InstitutionAPIResponse,
   TransactionFilters,
 } from '../api/services';
-import { categoryColors } from '../theme.config';
 
 const { Title } = Typography;
 
@@ -145,10 +146,6 @@ const Transactions: React.FC = () => {
    * Handle edit transaction
    */
   const handleEdit = (transaction: TransactionAPIResponse) => {
-    if (transaction.file_id !== null) {
-      message.error('파일에서 가져온 거래는 수정할 수 없습니다');
-      return;
-    }
     setModalMode('edit');
     setSelectedTransaction(transaction);
     setModalVisible(true);
@@ -191,6 +188,19 @@ const Transactions: React.FC = () => {
       loadTransactions();
     } catch (error: any) {
       message.error(error.response?.data?.detail || '메모 저장에 실패했습니다');
+    }
+  };
+
+  /**
+   * Handle category update
+   */
+  const handleCategoryUpdate = async (transactionId: number, category: string) => {
+    try {
+      await updateTransactionCategory(transactionId, category);
+      message.success('카테고리가 변경되었습니다');
+      loadTransactions();
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || '카테고리 변경에 실패했습니다');
     }
   };
 
@@ -250,13 +260,6 @@ const Transactions: React.FC = () => {
   };
 
   /**
-   * Get category color for display
-   */
-  const getCategoryColor = (categoryName: string): string => {
-    return categoryColors[categoryName] || categoryColors['기타'];
-  };
-
-  /**
    * Table columns definition
    */
   const columns: ColumnsType<TransactionAPIResponse> = [
@@ -274,20 +277,12 @@ const Transactions: React.FC = () => {
       dataIndex: 'category',
       key: 'category',
       width: 150,
-      render: (category: string) => (
-        <span>
-          <span
-            style={{
-              display: 'inline-block',
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor: getCategoryColor(category),
-              marginRight: 8,
-            }}
-          />
-          {category}
-        </span>
+      render: (_: string, record: TransactionAPIResponse) => (
+        <CategoryCell
+          transaction={record}
+          categories={categories}
+          onUpdate={handleCategoryUpdate}
+        />
       ),
       responsive: ['md'],
     },
