@@ -13,6 +13,10 @@ Routes:
     GET    /api/workspaces/{workspace_id}/members       - List workspace members
     PATCH  /api/workspaces/{workspace_id}/members/{user_id}/role  - Update member role (CO_OWNER+)
     DELETE /api/workspaces/{workspace_id}/members/{user_id}       - Remove member (CO_OWNER+)
+    POST   /api/workspaces/{workspace_id}/invitations          - Create invitation (CO_OWNER+)
+    GET    /api/workspaces/{workspace_id}/invitations          - List invitations (CO_OWNER+)
+    POST   /api/invitations/{token}/accept                     - Accept invitation
+    DELETE /api/workspaces/{workspace_id}/invitations/{invitation_id} - Revoke invitation (CO_OWNER+)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -33,11 +37,16 @@ from backend.api.schemas import (
     WorkspaceListResponse,
     MemberResponse,
     MemberListResponse,
-    MemberRoleUpdate
+    MemberRoleUpdate,
+    InvitationCreate,
+    InvitationResponse,
+    InvitationListResponse,
+    InvitationAcceptResponse
 )
 from src.db.repository import (
     WorkspaceRepository,
-    WorkspaceMembershipRepository
+    WorkspaceMembershipRepository,
+    WorkspaceInvitationRepository
 )
 
 router = APIRouter(tags=["Workspaces"])
@@ -693,6 +702,303 @@ async def remove_member(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Failed to remove member"
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ==================== Invitation Management Endpoints ====================
+
+
+@router.post("/workspaces/{workspace_id}/invitations", response_model=InvitationResponse, status_code=status.HTTP_201_CREATED)
+async def create_invitation(
+    workspace_id: int,
+    invitation_data: InvitationCreate,
+    membership: dict = Depends(require_workspace_role(WorkspaceRole.CO_OWNER)),
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """
+    Create invitation link for workspace.
+
+    Requires: CO_OWNER or OWNER
+
+    Args:
+        invitation_data: Role, expires_in_days (1-90), max_uses (optional)
+
+    Returns:
+        Invitation with token and full URL
+
+    Raises:
+        HTTPException: 500 if creation fails
+
+    Examples:
+        >>> POST /api/workspaces/1/invitations
+        >>> Authorization: Bearer <token>
+        >>> Content-Type: application/json
+        {
+          "role": "MEMBER_WRITE",
+          "expires_in_days": 7,
+          "max_uses": 10
+        }
+
+        Response (201 Created):
+        {
+          "id": 1,
+          "workspace_id": 1,
+          "token": "abc123...",
+          "invitation_url": "http://localhost:5173/join/abc123...",
+          "role": "MEMBER_WRITE",
+          "expires_at": "2026-01-22T10:00:00Z",
+          "max_uses": 10,
+          "current_uses": 0,
+          "is_active": true,
+          "created_by_user_id": 1,
+          "created_at": "2026-01-15T10:00:00Z"
+        }
+
+    Notes:
+        - CO_OWNER or OWNER can create invitations
+        - Cannot create OWNER invitations (validated by Pydantic schema)
+        - Token is 32-character URL-safe random string
+        - Invitation URL uses hardcoded frontend URL (http://localhost:5173)
+    """
+    try:
+        # Create invitation (repository generates token)
+        invitation = WorkspaceInvitationRepository.create_invitation(
+            db,
+            workspace_id=workspace_id,
+            role=invitation_data.role,
+            created_by_user_id=int(current_user.id),
+            expires_in_days=invitation_data.expires_in_days,
+            max_uses=invitation_data.max_uses
+        )
+
+        # Construct invitation URL (hardcoded for now)
+        base_url = "http://localhost:5173"
+        invitation['invitation_url'] = f"{base_url}/join/{invitation['token']}"
+
+        return InvitationResponse(**invitation)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create invitation: {str(e)}"
+        )
+
+
+@router.get("/workspaces/{workspace_id}/invitations", response_model=InvitationListResponse)
+async def get_workspace_invitations(
+    workspace_id: int,
+    membership: dict = Depends(require_workspace_role(WorkspaceRole.CO_OWNER)),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """
+    Get all invitations for workspace (active and revoked).
+
+    Requires: CO_OWNER or OWNER
+
+    Returns invitations with creator names and usage stats.
+
+    Args:
+        workspace_id: Workspace ID
+
+    Returns:
+        InvitationListResponse: List of invitations with metadata
+
+    Examples:
+        >>> GET /api/workspaces/1/invitations
+        >>> Authorization: Bearer <token>
+
+        Response (200 OK):
+        {
+          "invitations": [
+            {
+              "id": 1,
+              "workspace_id": 1,
+              "token": "abc123...",
+              "invitation_url": "http://localhost:5173/join/abc123...",
+              "role": "MEMBER_WRITE",
+              "expires_at": "2026-01-22T10:00:00Z",
+              "max_uses": 10,
+              "current_uses": 3,
+              "is_active": true,
+              "created_by_user_id": 1,
+              "created_at": "2026-01-15T10:00:00Z"
+            }
+          ]
+        }
+
+    Notes:
+        - Returns all invitations (both active and revoked)
+        - Ordered by created_at DESC (newest first)
+        - Includes usage statistics and creator information
+    """
+    invitations = WorkspaceInvitationRepository.get_workspace_invitations(db, workspace_id)
+
+    # Add invitation URLs
+    base_url = "http://localhost:5173"
+    for inv in invitations:
+        inv['invitation_url'] = f"{base_url}/join/{inv['token']}"
+
+    return InvitationListResponse(invitations=invitations)
+
+
+@router.post("/invitations/{token}/accept", response_model=InvitationAcceptResponse)
+async def accept_invitation(
+    token: str,
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """
+    Accept invitation and join workspace.
+
+    Requires: Authenticated user
+
+    Args:
+        token: Invitation token from URL
+
+    Returns:
+        Workspace info and assigned role
+
+    Raises:
+        HTTPException: 400 if invalid/expired invitation
+        HTTPException: 404 if invitation not found
+        HTTPException: 409 if user already member
+
+    Examples:
+        >>> POST /api/invitations/abc123.../accept
+        >>> Authorization: Bearer <token>
+
+        Response (200 OK):
+        {
+          "workspace_id": 1,
+          "workspace_name": "Family Expenses",
+          "role": "MEMBER_WRITE",
+          "message": "Successfully joined Family Expenses as MEMBER_WRITE"
+        }
+
+        Error response (400 Bad Request):
+        {
+          "detail": "Invitation has expired"
+        }
+
+        Error response (409 Conflict):
+        {
+          "detail": "You are already a member of this workspace"
+        }
+
+    Notes:
+        - Validates invitation (expiration, revoked, max uses)
+        - Prevents duplicate membership
+        - Increments invitation usage count atomically
+        - Returns workspace name for confirmation
+    """
+    # Get invitation
+    invitation = WorkspaceInvitationRepository.get_by_token(db, token)
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found"
+        )
+
+    # Validate invitation
+    if not WorkspaceInvitationRepository.is_valid(db, token):
+        # Check specific reasons
+        if not invitation['is_active']:
+            detail = "Invitation has been revoked"
+        elif invitation['max_uses'] and invitation['current_uses'] >= invitation['max_uses']:
+            detail = "Invitation has reached maximum uses"
+        else:
+            detail = "Invitation has expired"
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail
+        )
+
+    # Check if user is already member
+    membership_repo = WorkspaceMembershipRepository(db)
+    existing_membership = membership_repo.get_user_membership(
+        invitation['workspace_id'], int(current_user.id)
+    )
+    if existing_membership and existing_membership['is_active']:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You are already a member of this workspace"
+        )
+
+    # Add user as member
+    membership_repo.add_member(
+        workspace_id=invitation['workspace_id'],
+        user_id=int(current_user.id),
+        role=invitation['role']
+    )
+
+    # Increment invitation usage
+    WorkspaceInvitationRepository.increment_uses(db, invitation['id'])
+
+    # Get workspace name
+    workspace_repo = WorkspaceRepository(db)
+    workspace = workspace_repo.get_by_id(invitation['workspace_id'])
+
+    return InvitationAcceptResponse(
+        workspace_id=invitation['workspace_id'],
+        workspace_name=workspace['name'],
+        role=invitation['role'],
+        message=f"Successfully joined {workspace['name']} as {invitation['role']}"
+    )
+
+
+@router.delete("/workspaces/{workspace_id}/invitations/{invitation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_invitation(
+    workspace_id: int,
+    invitation_id: int,
+    membership: dict = Depends(require_workspace_role(WorkspaceRole.CO_OWNER)),
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """
+    Revoke invitation link.
+
+    Requires: CO_OWNER or OWNER
+
+    Makes invitation unusable immediately (sets is_active=False).
+
+    Args:
+        workspace_id: Workspace ID
+        invitation_id: Invitation ID to revoke
+
+    Returns:
+        204 No Content on success
+
+    Raises:
+        HTTPException: 404 if invitation not found
+
+    Examples:
+        >>> DELETE /api/workspaces/1/invitations/1
+        >>> Authorization: Bearer <token>
+
+        Response (204 No Content): <empty body>
+
+        Error response (404 Not Found):
+        {
+          "detail": "Invitation not found"
+        }
+
+    Notes:
+        - Sets is_active=False immediately
+        - Idempotent (can revoke already-revoked invitations)
+        - Records revoked_by_user_id and revoked_at timestamp
+    """
+    success = WorkspaceInvitationRepository.revoke(
+        db, invitation_id, int(current_user.id)
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found"
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
