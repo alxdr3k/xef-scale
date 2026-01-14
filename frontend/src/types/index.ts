@@ -222,3 +222,31 @@ export interface WorkspaceUpdateRequest {
 export interface MemberRoleUpdateRequest {
   role: WorkspaceRole;
 }
+
+// Workspace invitation interface
+export interface WorkspaceInvitation {
+  id: number;
+  workspace_id: number;
+  token: string;
+  role: WorkspaceRole;
+  created_by_user_id: number;
+  created_by_name?: string;
+  expires_at: string;
+  max_uses: number | null;
+  current_uses: number;
+  is_active: boolean;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+// Invitation creation request
+export interface InvitationCreateRequest {
+  role: WorkspaceRole;
+  expires_in_days: number;
+  max_uses?: number | null;
+}
+
+// Invitation list response
+export interface WorkspaceInvitationListResponse {
+  invitations: WorkspaceInvitation[];
+}

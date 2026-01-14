@@ -10,7 +10,9 @@ import type {
   WorkspaceMember,
   WorkspaceMemberListResponse,
   WorkspaceUpdateRequest,
-  MemberRoleUpdateRequest,
+  WorkspaceInvitation,
+  WorkspaceInvitationListResponse,
+  InvitationCreateRequest,
 } from '../types';
 
 /**
@@ -91,4 +93,42 @@ export const leaveWorkspace = async (workspaceId: number, userId: number): Promi
  */
 export const deleteWorkspace = async (workspaceId: number): Promise<void> => {
   await apiClient.delete(`/api/workspaces/${workspaceId}`);
+};
+
+/**
+ * Create invitation link for workspace
+ * @param workspaceId - Workspace ID
+ * @param data - Invitation creation request (role, expires_in_days, max_uses)
+ * @returns Created invitation
+ */
+export const createInvitation = async (
+  workspaceId: number,
+  data: InvitationCreateRequest
+): Promise<WorkspaceInvitation> => {
+  const response = await apiClient.post<WorkspaceInvitation>(
+    `/api/workspaces/${workspaceId}/invitations`,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * Get all invitations for a workspace
+ * @param workspaceId - Workspace ID
+ * @returns List of invitations
+ */
+export const getInvitations = async (workspaceId: number): Promise<WorkspaceInvitation[]> => {
+  const response = await apiClient.get<WorkspaceInvitationListResponse>(
+    `/api/workspaces/${workspaceId}/invitations`
+  );
+  return response.data.invitations;
+};
+
+/**
+ * Revoke invitation link
+ * @param workspaceId - Workspace ID
+ * @param invitationId - Invitation ID to revoke
+ */
+export const revokeInvitation = async (workspaceId: number, invitationId: number): Promise<void> => {
+  await apiClient.delete(`/api/workspaces/${workspaceId}/invitations/${invitationId}`);
 };

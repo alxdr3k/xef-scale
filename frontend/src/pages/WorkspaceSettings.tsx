@@ -15,6 +15,9 @@ import {
   Popconfirm,
   Alert,
   Divider,
+  InputNumber,
+  Checkbox,
+  Tooltip,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import {
@@ -23,6 +26,8 @@ import {
   TeamOutlined,
   DeleteOutlined,
   LogoutOutlined,
+  CopyOutlined,
+  LinkOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useWorkspace } from '../contexts/WorkspaceContext';
@@ -34,8 +39,11 @@ import {
   removeMember,
   leaveWorkspace,
   deleteWorkspace,
+  createInvitation,
+  getInvitations,
+  revokeInvitation,
 } from '../api/workspaces';
-import type { WorkspaceMember, WorkspaceRole } from '../types';
+import type { WorkspaceMember, WorkspaceRole, WorkspaceInvitation } from '../types';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -54,6 +62,15 @@ const WorkspaceSettings: React.FC = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
+  // Invitation state
+  const [invitations, setInvitations] = useState<WorkspaceInvitation[]>([]);
+  const [loadingInvitations, setLoadingInvitations] = useState(false);
+  const [creatingInvitation, setCreatingInvitation] = useState(false);
+  const [invitationForm] = Form.useForm();
+  const [unlimitedUses, setUnlimitedUses] = useState(false);
+  const [isInvitationModalVisible, setIsInvitationModalVisible] = useState(false);
+  const [createdInvitation, setCreatedInvitation] = useState<WorkspaceInvitation | null>(null);
+
   // Load workspace members
   const loadMembers = async () => {
     if (!currentWorkspace) return;
@@ -70,6 +87,22 @@ const WorkspaceSettings: React.FC = () => {
     }
   };
 
+  // Load invitations
+  const loadInvitations = async () => {
+    if (!currentWorkspace) return;
+
+    setLoadingInvitations(true);
+    try {
+      const fetchedInvitations = await getInvitations(currentWorkspace.id);
+      setInvitations(fetchedInvitations);
+    } catch (error: any) {
+      message.error('초대 링크 목록을 불러오는데 실패했습니다');
+      console.error('Failed to load invitations:', error);
+    } finally {
+      setLoadingInvitations(false);
+    }
+  };
+
   useEffect(() => {
     if (currentWorkspace) {
       // Set form initial values
@@ -78,8 +111,16 @@ const WorkspaceSettings: React.FC = () => {
         description: currentWorkspace.description || '',
       });
 
-      // Load members
+      // Set invitation form defaults
+      invitationForm.setFieldsValue({
+        role: 'MEMBER_WRITE',
+        expires_in_days: 7,
+        max_uses: 10,
+      });
+
+      // Load members and invitations
       loadMembers();
+      loadInvitations();
     }
   }, [currentWorkspace]);
 
@@ -215,6 +256,97 @@ const WorkspaceSettings: React.FC = () => {
     }
   };
 
+  // Handle create invitation
+  const handleCreateInvitation = async (values: any) => {
+    if (!currentWorkspace) return;
+
+    setCreatingInvitation(true);
+    try {
+      const invitationData = {
+        role: values.role,
+        expires_in_days: values.expires_in_days,
+        max_uses: unlimitedUses ? null : values.max_uses,
+      };
+
+      const newInvitation = await createInvitation(currentWorkspace.id, invitationData);
+      message.success('초대 링크가 생성되었습니다');
+      setCreatedInvitation(newInvitation);
+      setIsInvitationModalVisible(true);
+      await loadInvitations();
+      invitationForm.resetFields();
+      invitationForm.setFieldsValue({
+        role: 'MEMBER_WRITE',
+        expires_in_days: 7,
+        max_uses: 10,
+      });
+      setUnlimitedUses(false);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || '초대 링크 생성에 실패했습니다';
+      message.error(errorMessage);
+      console.error('Failed to create invitation:', error);
+    } finally {
+      setCreatingInvitation(false);
+    }
+  };
+
+  // Handle revoke invitation
+  const handleRevokeInvitation = async (invitationId: number) => {
+    if (!currentWorkspace) return;
+
+    try {
+      await revokeInvitation(currentWorkspace.id, invitationId);
+      message.success('초대 링크가 취소되었습니다');
+      await loadInvitations();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || '초대 링크 취소에 실패했습니다';
+      message.error(errorMessage);
+      console.error('Failed to revoke invitation:', error);
+    }
+  };
+
+  // Copy invitation link to clipboard
+  const copyInvitationLink = (token: string) => {
+    const invitationUrl = `${window.location.origin}/join/${token}`;
+    navigator.clipboard.writeText(invitationUrl);
+    message.success('초대 링크가 클립보드에 복사되었습니다');
+  };
+
+  // Get invitation status
+  const getInvitationStatus = (invitation: WorkspaceInvitation): {
+    label: string;
+    color: string;
+  } => {
+    if (!invitation.is_active || invitation.revoked_at) {
+      return { label: '취소됨', color: 'default' };
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(invitation.expires_at);
+
+    if (expiresAt < now) {
+      return { label: '만료됨', color: 'red' };
+    }
+
+    if (invitation.max_uses !== null && invitation.current_uses >= invitation.max_uses) {
+      return { label: '사용 완료', color: 'default' };
+    }
+
+    return { label: '활성', color: 'green' };
+  };
+
+  // Calculate expiration date from days
+  const calculateExpirationDate = (days: number): string => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return date.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   // Role display helpers
   const getRoleColor = (role: WorkspaceRole): string => {
     switch (role) {
@@ -245,6 +377,98 @@ const WorkspaceSettings: React.FC = () => {
         return role;
     }
   };
+
+  // Table columns for invitations
+  const invitationColumns: TableColumnsType<WorkspaceInvitation> = [
+    {
+      title: '역할',
+      dataIndex: 'role',
+      key: 'role',
+      render: (role: WorkspaceRole) => <Tag color={getRoleColor(role)}>{getRoleLabel(role)}</Tag>,
+    },
+    {
+      title: '상태',
+      key: 'status',
+      render: (_: any, record: WorkspaceInvitation) => {
+        const status = getInvitationStatus(record);
+        return <Tag color={status.color}>{status.label}</Tag>;
+      },
+    },
+    {
+      title: '생성일',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      render: (date: string) =>
+        new Date(date).toLocaleString('ko-KR', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+    },
+    {
+      title: '만료일',
+      dataIndex: 'expires_at',
+      key: 'expires_at',
+      render: (date: string) =>
+        new Date(date).toLocaleString('ko-KR', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+    },
+    {
+      title: '사용 횟수',
+      key: 'uses',
+      render: (_: any, record: WorkspaceInvitation) => {
+        const maxUsesText = record.max_uses === null ? '무제한' : record.max_uses;
+        return `${record.current_uses} / ${maxUsesText}`;
+      },
+    },
+    {
+      title: '생성자',
+      dataIndex: 'created_by_name',
+      key: 'created_by_name',
+      render: (name: string | undefined) => name || '-',
+    },
+    {
+      title: '작업',
+      key: 'action',
+      render: (_: any, record: WorkspaceInvitation) => {
+        const status = getInvitationStatus(record);
+        const isActive = status.label === '활성';
+
+        return (
+          <Space>
+            <Tooltip title="링크 복사">
+              <Button
+                type="link"
+                icon={<CopyOutlined />}
+                onClick={() => copyInvitationLink(record.token)}
+              />
+            </Tooltip>
+            {canEdit && isActive && (
+              <Popconfirm
+                title="정말 이 초대 링크를 취소하시겠습니까?"
+                description="이 작업은 되돌릴 수 없습니다."
+                onConfirm={() => handleRevokeInvitation(record.id)}
+                okText="취소"
+                cancelText="닫기"
+                okButtonProps={{ danger: true }}
+              >
+                <Button type="link" danger>
+                  취소
+                </Button>
+              </Popconfirm>
+            )}
+          </Space>
+        );
+      },
+    },
+  ];
 
   // Table columns for members
   const memberColumns: TableColumnsType<WorkspaceMember> = [
@@ -442,14 +666,207 @@ const WorkspaceSettings: React.FC = () => {
     },
     {
       key: 'invitations',
-      label: '초대 링크',
+      label: (
+        <span>
+          <LinkOutlined />
+          초대 링크
+        </span>
+      ),
       children: (
         <Card>
-          <Alert
-            message="구현 예정"
-            description="초대 링크 관리는 다음 단계에서 구현됩니다 (Phase 7.2)"
-            type="info"
-          />
+          {!canEdit && (
+            <Alert
+              message="읽기 전용"
+              description="초대 링크를 생성하고 관리하려면 공동 소유자 이상의 권한이 필요합니다."
+              type="info"
+              style={{ marginBottom: 16 }}
+            />
+          )}
+
+          {canEdit && (
+            <>
+              <Title level={4}>초대 링크 생성</Title>
+              <Form
+                form={invitationForm}
+                layout="vertical"
+                onFinish={handleCreateInvitation}
+                style={{ marginBottom: 32 }}
+              >
+                <Form.Item
+                  label="역할"
+                  name="role"
+                  rules={[{ required: true, message: '역할을 선택해주세요' }]}
+                >
+                  <Select placeholder="초대할 멤버의 역할을 선택하세요">
+                    <Select.Option value="CO_OWNER">공동 소유자</Select.Option>
+                    <Select.Option value="MEMBER_WRITE">편집 권한</Select.Option>
+                    <Select.Option value="MEMBER_READ">읽기 전용</Select.Option>
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label="만료 기간 (일)"
+                  name="expires_in_days"
+                  rules={[
+                    { required: true, message: '만료 기간을 입력해주세요' },
+                    {
+                      type: 'number',
+                      min: 1,
+                      max: 90,
+                      message: '1-90일 사이의 값을 입력해주세요',
+                    },
+                  ]}
+                >
+                  <InputNumber
+                    min={1}
+                    max={90}
+                    style={{ width: '100%' }}
+                    placeholder="1-90일"
+                    addonAfter="일"
+                  />
+                </Form.Item>
+
+                <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.expires_in_days !== currentValues.expires_in_days}>
+                  {({ getFieldValue }) => {
+                    const days = getFieldValue('expires_in_days');
+                    if (days) {
+                      return (
+                        <Alert
+                          message={`만료 일시: ${calculateExpirationDate(days)}`}
+                          type="info"
+                          style={{ marginBottom: 16 }}
+                        />
+                      );
+                    }
+                    return null;
+                  }}
+                </Form.Item>
+
+                <Form.Item label="최대 사용 횟수">
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Checkbox
+                      checked={unlimitedUses}
+                      onChange={(e) => setUnlimitedUses(e.target.checked)}
+                    >
+                      무제한 사용
+                    </Checkbox>
+                    {!unlimitedUses && (
+                      <Form.Item
+                        name="max_uses"
+                        noStyle
+                        rules={[
+                          { required: !unlimitedUses, message: '최대 사용 횟수를 입력해주세요' },
+                          {
+                            type: 'number',
+                            min: 1,
+                            max: 100,
+                            message: '1-100 사이의 값을 입력해주세요',
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          min={1}
+                          max={100}
+                          style={{ width: '100%' }}
+                          placeholder="1-100회"
+                          addonAfter="회"
+                        />
+                      </Form.Item>
+                    )}
+                  </Space>
+                </Form.Item>
+
+                <Form.Item>
+                  <Button type="primary" htmlType="submit" loading={creatingInvitation}>
+                    초대 링크 생성
+                  </Button>
+                </Form.Item>
+              </Form>
+
+              <Divider />
+            </>
+          )}
+
+          <Title level={4}>활성 초대 링크</Title>
+          {invitations.length === 0 ? (
+            <Alert
+              message="아직 생성된 초대 링크가 없습니다"
+              description={canEdit ? '위 양식을 사용하여 초대 링크를 생성하세요.' : ''}
+              type="info"
+            />
+          ) : (
+            <Table
+              columns={invitationColumns}
+              dataSource={invitations}
+              loading={loadingInvitations}
+              rowKey="id"
+              pagination={{ pageSize: 10 }}
+              scroll={{ x: 'max-content' }}
+            />
+          )}
+
+          {/* Invitation Created Modal */}
+          <Modal
+            title="초대 링크가 생성되었습니다"
+            open={isInvitationModalVisible}
+            onOk={() => setIsInvitationModalVisible(false)}
+            onCancel={() => setIsInvitationModalVisible(false)}
+            footer={[
+              <Button key="close" type="primary" onClick={() => setIsInvitationModalVisible(false)}>
+                닫기
+              </Button>,
+            ]}
+          >
+            {createdInvitation && (
+              <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Alert
+                  message="이 링크를 공유하여 팀원을 초대하세요"
+                  type="success"
+                  showIcon
+                />
+
+                <div>
+                  <Text strong>초대 링크:</Text>
+                  <Input.TextArea
+                    value={`${window.location.origin}/join/${createdInvitation.token}`}
+                    readOnly
+                    autoSize={{ minRows: 2, maxRows: 3 }}
+                    style={{ marginTop: 8 }}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<CopyOutlined />}
+                    onClick={() => copyInvitationLink(createdInvitation.token)}
+                    style={{ marginTop: 8 }}
+                  >
+                    링크 복사
+                  </Button>
+                </div>
+
+                <div>
+                  <Text strong>역할:</Text> <Tag color={getRoleColor(createdInvitation.role)}>{getRoleLabel(createdInvitation.role)}</Tag>
+                </div>
+
+                <div>
+                  <Text strong>만료 일시:</Text>{' '}
+                  <Text>
+                    {new Date(createdInvitation.expires_at).toLocaleString('ko-KR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </div>
+
+                <div>
+                  <Text strong>최대 사용 횟수:</Text>{' '}
+                  <Text>{createdInvitation.max_uses === null ? '무제한' : `${createdInvitation.max_uses}회`}</Text>
+                </div>
+              </Space>
+            )}
+          </Modal>
         </Card>
       ),
     },
