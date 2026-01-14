@@ -6,7 +6,8 @@ Provides CRUD operations for categories, financial institutions, and transaction
 import sqlite3
 import logging
 import json
-from datetime import datetime
+import secrets
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict
 from src.models import Transaction, SkippedTransaction
 
@@ -4410,3 +4411,394 @@ class WorkspaceMembershipRepository:
         required_level = self.ROLE_HIERARCHY.get(required_role, 99)
 
         return user_level >= required_level
+
+
+class WorkspaceInvitationRepository:
+    """
+    Repository for managing workspace invitation links.
+
+    Provides token-based invitation system allowing workspace owners and co-owners
+    to invite new members via shareable links with expiration and usage limits.
+
+    Attributes:
+        conn: SQLite database connection
+        logger: Logger instance for operations tracking
+
+    Examples:
+        >>> repo = WorkspaceInvitationRepository(conn)
+        >>> invitation = repo.create_invitation(
+        ...     db=conn,
+        ...     workspace_id=1,
+        ...     role='MEMBER_WRITE',
+        ...     created_by_user_id=1,
+        ...     expires_in_days=7
+        ... )
+        >>> print(f"Token: {invitation['token']}")
+        >>> is_valid = repo.is_valid(conn, invitation['token'])
+        >>> print(f"Valid: {is_valid}")
+    """
+
+    def __init__(self, connection: sqlite3.Connection):
+        """
+        Initialize repository with database connection.
+
+        Args:
+            connection: SQLite database connection instance
+        """
+        self.conn = connection
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('WorkspaceInvitationRepository initialized')
+
+    @staticmethod
+    def create_invitation(
+        db: sqlite3.Connection,
+        workspace_id: int,
+        role: str,
+        created_by_user_id: int,
+        expires_in_days: int,
+        max_uses: Optional[int] = None
+    ) -> dict:
+        """
+        Create a new workspace invitation link.
+
+        Generates a cryptographically secure 32-character token for sharing.
+        Only CO_OWNER, MEMBER_WRITE, and MEMBER_READ roles can be assigned
+        (OWNER role cannot be assigned via invitations).
+
+        Args:
+            db: Database connection
+            workspace_id: Target workspace ID
+            role: Role to assign (CO_OWNER, MEMBER_WRITE, MEMBER_READ)
+            created_by_user_id: User creating the invitation
+            expires_in_days: Number of days until expiration
+            max_uses: Maximum number of uses (None = unlimited)
+
+        Returns:
+            dict: Full invitation record with all fields including generated token
+
+        Raises:
+            ValueError: If role is OWNER (not allowed via invitations)
+            sqlite3.IntegrityError: If workspace_id or created_by_user_id invalid
+
+        Examples:
+            >>> repo = WorkspaceInvitationRepository(conn)
+            >>> invitation = repo.create_invitation(
+            ...     db=conn,
+            ...     workspace_id=1,
+            ...     role='MEMBER_WRITE',
+            ...     created_by_user_id=1,
+            ...     expires_in_days=7,
+            ...     max_uses=10
+            ... )
+            >>> print(f"Share this token: {invitation['token']}")
+            >>> print(f"Expires: {invitation['expires_at']}")
+
+        Notes:
+            - Token is 32-character URL-safe random string (~192 bits entropy)
+            - expires_at calculated as now + expires_in_days
+            - Initial state: is_active=True, current_uses=0
+            - Token uniqueness enforced by UNIQUE constraint on token column
+        """
+        # Validate role
+        if role == 'OWNER':
+            raise ValueError('OWNER role cannot be assigned via invitations')
+
+        if role not in ('CO_OWNER', 'MEMBER_WRITE', 'MEMBER_READ'):
+            raise ValueError(f'Invalid role: {role}. Must be CO_OWNER, MEMBER_WRITE, or MEMBER_READ')
+
+        # Generate secure token
+        token = secrets.token_urlsafe(32)
+
+        # Calculate expiration
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(days=expires_in_days)
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            cursor = db.execute('''
+                INSERT INTO workspace_invitations (
+                    workspace_id,
+                    token,
+                    role,
+                    created_by_user_id,
+                    expires_at,
+                    max_uses,
+                    current_uses,
+                    is_active
+                ) VALUES (?, ?, ?, ?, ?, ?, 0, 1)
+            ''', (
+                workspace_id,
+                token,
+                role,
+                created_by_user_id,
+                expires_at.isoformat(),
+                max_uses
+            ))
+
+            db.commit()
+
+            # Fetch the created invitation
+            cursor = db.execute(
+                'SELECT * FROM workspace_invitations WHERE id = ?',
+                (cursor.lastrowid,)
+            )
+            row = cursor.fetchone()
+
+            logger.info(
+                f'Created invitation: workspace_id={workspace_id}, role={role}, '
+                f'created_by_user_id={created_by_user_id}, expires_at={expires_at.isoformat()}, '
+                f'max_uses={max_uses}, invitation_id={cursor.lastrowid}'
+            )
+
+            return dict(row)
+
+        except sqlite3.IntegrityError as e:
+            logger.error(
+                f'Failed to create invitation (foreign key or unique constraint): '
+                f'workspace_id={workspace_id}, created_by_user_id={created_by_user_id} - {e}'
+            )
+            raise
+        except Exception as e:
+            logger.error(f'Error creating invitation for workspace_id={workspace_id}: {e}')
+            raise
+
+    @staticmethod
+    def get_by_token(db: sqlite3.Connection, token: str) -> Optional[dict]:
+        """
+        Fetch invitation by token.
+
+        Args:
+            db: Database connection
+            token: Invitation token
+
+        Returns:
+            dict with all invitation fields or None if not found
+
+        Examples:
+            >>> repo = WorkspaceInvitationRepository(conn)
+            >>> invitation = repo.get_by_token(conn, 'abc123...')
+            >>> if invitation:
+            ...     print(f"Workspace: {invitation['workspace_id']}")
+            ...     print(f"Role: {invitation['role']}")
+            ...     print(f"Expires: {invitation['expires_at']}")
+
+        Notes:
+            - Returns all fields: id, workspace_id, token, role, created_by_user_id,
+              expires_at, max_uses, current_uses, is_active, revoked_at,
+              revoked_by_user_id, created_at, updated_at
+            - Does not validate expiration or usage limits (use is_valid() for that)
+        """
+        logger = logging.getLogger(__name__)
+
+        try:
+            cursor = db.execute(
+                'SELECT * FROM workspace_invitations WHERE token = ?',
+                (token,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+        except Exception as e:
+            logger.error(f'Error fetching invitation by token: {e}')
+            raise
+
+    @staticmethod
+    def get_workspace_invitations(db: sqlite3.Connection, workspace_id: int) -> List[dict]:
+        """
+        Fetch all invitations for a workspace (active and revoked).
+
+        Joins with users table to include creator name.
+
+        Args:
+            db: Database connection
+            workspace_id: Workspace ID
+
+        Returns:
+            List of invitation dicts with created_by_name field
+
+        Examples:
+            >>> repo = WorkspaceInvitationRepository(conn)
+            >>> invitations = repo.get_workspace_invitations(conn, workspace_id=1)
+            >>> for inv in invitations:
+            ...     print(f"Created by: {inv['created_by_name']}")
+            ...     print(f"Role: {inv['role']}, Active: {inv['is_active']}")
+            ...     print(f"Uses: {inv['current_uses']}/{inv['max_uses'] or 'unlimited'}")
+
+        Notes:
+            - Returns all invitations (both active and revoked)
+            - Each dict contains all invitation fields plus created_by_name
+            - Ordered by created_at DESC (newest first)
+            - Returns empty list if no invitations exist
+        """
+        logger = logging.getLogger(__name__)
+
+        try:
+            cursor = db.execute('''
+                SELECT
+                    i.*,
+                    u.name as created_by_name
+                FROM workspace_invitations i
+                JOIN users u ON u.id = i.created_by_user_id
+                WHERE i.workspace_id = ?
+                ORDER BY i.created_at DESC
+            ''', (workspace_id,))
+
+            return [dict(row) for row in cursor.fetchall()]
+
+        except Exception as e:
+            logger.error(f'Error fetching invitations for workspace_id={workspace_id}: {e}')
+            raise
+
+    @staticmethod
+    def increment_uses(db: sqlite3.Connection, invitation_id: int) -> bool:
+        """
+        Atomically increment invitation usage count.
+
+        Args:
+            db: Database connection
+            invitation_id: Invitation ID
+
+        Returns:
+            True if successful, False if invitation not found
+
+        Examples:
+            >>> repo = WorkspaceInvitationRepository(conn)
+            >>> success = repo.increment_uses(conn, invitation_id=1)
+            >>> if success:
+            ...     print('Usage count incremented')
+
+        Notes:
+            - Atomic operation: uses SQL increment (current_uses = current_uses + 1)
+            - Thread-safe: SQLite handles atomicity
+            - Does not validate max_uses limit (caller should check with is_valid())
+            - Commits immediately
+        """
+        logger = logging.getLogger(__name__)
+
+        try:
+            cursor = db.execute('''
+                UPDATE workspace_invitations
+                SET current_uses = current_uses + 1
+                WHERE id = ?
+            ''', (invitation_id,))
+
+            db.commit()
+
+            if cursor.rowcount == 0:
+                logger.warning(f'Invitation not found for increment: invitation_id={invitation_id}')
+                return False
+
+            logger.debug(f'Incremented uses for invitation_id={invitation_id}')
+            return True
+
+        except Exception as e:
+            logger.error(f'Error incrementing uses for invitation_id={invitation_id}: {e}')
+            raise
+
+    @staticmethod
+    def revoke(db: sqlite3.Connection, invitation_id: int, revoked_by_user_id: int) -> bool:
+        """
+        Revoke an invitation.
+
+        Sets is_active=False, revoked_at=CURRENT_TIMESTAMP, and revoked_by_user_id.
+        Idempotent: can revoke already-revoked invitations.
+
+        Args:
+            db: Database connection
+            invitation_id: Invitation ID to revoke
+            revoked_by_user_id: User performing the revocation
+
+        Returns:
+            True if successful, False if invitation not found
+
+        Examples:
+            >>> repo = WorkspaceInvitationRepository(conn)
+            >>> success = repo.revoke(conn, invitation_id=1, revoked_by_user_id=1)
+            >>> if success:
+            ...     print('Invitation revoked')
+
+        Notes:
+            - Idempotent: safe to call multiple times on same invitation
+            - Sets revoked_at to current timestamp
+            - Commits immediately
+            - revoked_at timestamp managed by SQL CURRENT_TIMESTAMP
+        """
+        logger = logging.getLogger(__name__)
+
+        try:
+            cursor = db.execute('''
+                UPDATE workspace_invitations
+                SET is_active = 0,
+                    revoked_at = CURRENT_TIMESTAMP,
+                    revoked_by_user_id = ?
+                WHERE id = ?
+            ''', (revoked_by_user_id, invitation_id))
+
+            db.commit()
+
+            if cursor.rowcount == 0:
+                logger.warning(f'Invitation not found for revocation: invitation_id={invitation_id}')
+                return False
+
+            logger.info(
+                f'Revoked invitation: invitation_id={invitation_id}, '
+                f'revoked_by_user_id={revoked_by_user_id}'
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f'Error revoking invitation_id={invitation_id}: {e}')
+            raise
+
+    @staticmethod
+    def is_valid(db: sqlite3.Connection, token: str) -> bool:
+        """
+        Check if invitation is valid for acceptance.
+
+        Validates all conditions:
+        - Invitation exists
+        - is_active = True
+        - expires_at > NOW
+        - (max_uses IS NULL OR current_uses < max_uses)
+
+        Args:
+            db: Database connection
+            token: Invitation token
+
+        Returns:
+            True if valid for use, False otherwise
+
+        Examples:
+            >>> repo = WorkspaceInvitationRepository(conn)
+            >>> if repo.is_valid(conn, token):
+            ...     print('Invitation is valid, proceed with acceptance')
+            ... else:
+            ...     print('Invitation expired, revoked, or at max uses')
+
+        Notes:
+            - Returns False if invitation doesn't exist
+            - Returns False if any validation condition fails
+            - All checks performed in single validation pass
+            - Does not modify invitation state
+        """
+        invitation = WorkspaceInvitationRepository.get_by_token(db, token)
+        if not invitation:
+            return False
+
+        # Check if active
+        if not invitation['is_active']:
+            return False
+
+        # Check if expired
+        expires_at = datetime.fromisoformat(invitation['expires_at'])
+        now = datetime.now(timezone.utc)
+        if now >= expires_at:
+            return False
+
+        # Check max uses
+        if invitation['max_uses'] is not None:
+            if invitation['current_uses'] >= invitation['max_uses']:
+                return False
+
+        return True
