@@ -5,11 +5,14 @@ Provides full CRUD operations for workspaces with role-based access control.
 Endpoints support multi-user collaboration with workspace ownership management.
 
 Routes:
-    GET    /api/workspaces                    - List user's workspaces
-    POST   /api/workspaces                    - Create new workspace
-    GET    /api/workspaces/{workspace_id}     - Get workspace detail
-    PUT    /api/workspaces/{workspace_id}     - Update workspace (CO_OWNER+)
-    DELETE /api/workspaces/{workspace_id}     - Delete workspace (OWNER only)
+    GET    /api/workspaces                              - List user's workspaces
+    POST   /api/workspaces                              - Create new workspace
+    GET    /api/workspaces/{workspace_id}               - Get workspace detail
+    PUT    /api/workspaces/{workspace_id}               - Update workspace (CO_OWNER+)
+    DELETE /api/workspaces/{workspace_id}               - Delete workspace (OWNER only)
+    GET    /api/workspaces/{workspace_id}/members       - List workspace members
+    PATCH  /api/workspaces/{workspace_id}/members/{user_id}/role  - Update member role (CO_OWNER+)
+    DELETE /api/workspaces/{workspace_id}/members/{user_id}       - Remove member (CO_OWNER+)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -27,7 +30,10 @@ from backend.api.schemas import (
     WorkspaceCreate,
     WorkspaceUpdate,
     WorkspaceResponse,
-    WorkspaceListResponse
+    WorkspaceListResponse,
+    MemberResponse,
+    MemberListResponse,
+    MemberRoleUpdate
 )
 from src.db.repository import (
     WorkspaceRepository,
@@ -394,6 +400,299 @@ async def delete_workspace(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Workspace not found"
+        )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ==================== Membership Management Endpoints ====================
+
+
+@router.get("/workspaces/{workspace_id}/members", response_model=MemberListResponse)
+async def get_workspace_members(
+    workspace_id: int,
+    membership: dict = Depends(get_workspace_membership),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """
+    Get all active members of workspace.
+
+    Requires: Any role (membership verified)
+
+    Returns members ordered by role hierarchy (OWNER first), then joined_at.
+
+    Args:
+        workspace_id: Workspace ID
+
+    Returns:
+        MemberListResponse: List of members with user details and roles
+
+    Raises:
+        HTTPException: 403 if user is not a member
+
+    Examples:
+        >>> GET /api/workspaces/1/members
+        >>> Authorization: Bearer <token>
+
+        Response (200 OK):
+        {
+          "members": [
+            {
+              "user_id": 1,
+              "name": "Alice",
+              "email": "alice@example.com",
+              "profile_picture_url": "https://example.com/avatar1.jpg",
+              "role": "OWNER",
+              "joined_at": "2026-01-01T00:00:00Z"
+            },
+            {
+              "user_id": 2,
+              "name": "Bob",
+              "email": "bob@example.com",
+              "profile_picture_url": null,
+              "role": "CO_OWNER",
+              "joined_at": "2026-01-02T00:00:00Z"
+            },
+            {
+              "user_id": 3,
+              "name": "Charlie",
+              "email": "charlie@example.com",
+              "profile_picture_url": null,
+              "role": "MEMBER_WRITE",
+              "joined_at": "2026-01-05T00:00:00Z"
+            }
+          ]
+        }
+
+    Notes:
+        - Any member can view the member list (MEMBER_READ, MEMBER_WRITE, CO_OWNER, OWNER)
+        - Members ordered by role hierarchy (OWNER > CO_OWNER > MEMBER_WRITE > MEMBER_READ)
+        - Within same role, ordered by joined_at ASC (earliest first)
+        - Only returns active members (is_active=True)
+    """
+    membership_repo = WorkspaceMembershipRepository(db)
+    members = membership_repo.get_workspace_members(workspace_id)
+    return MemberListResponse(members=members)
+
+
+@router.patch("/workspaces/{workspace_id}/members/{user_id}/role", response_model=MemberResponse)
+async def update_member_role(
+    workspace_id: int,
+    user_id: int,
+    role_update: MemberRoleUpdate,
+    membership: dict = Depends(require_workspace_role(WorkspaceRole.CO_OWNER)),
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """
+    Update member's role.
+
+    Requires: CO_OWNER or OWNER
+
+    Permission rules:
+    - OWNER can change any role
+    - CO_OWNER can only change MEMBER_READ/MEMBER_WRITE roles (not OWNER/CO_OWNER)
+    - Cannot change your own role
+    - Cannot demote yourself if you're the last OWNER
+
+    Args:
+        workspace_id: Workspace ID
+        user_id: User to modify
+        role_update: New role (OWNER, CO_OWNER, MEMBER_WRITE, MEMBER_READ)
+
+    Returns:
+        MemberResponse: Updated member information
+
+    Raises:
+        HTTPException: 400 if invalid role change (trying to change own role, last OWNER, etc.)
+        HTTPException: 403 if insufficient permissions (CO_OWNER trying to modify OWNER)
+        HTTPException: 404 if member not found
+
+    Examples:
+        >>> PATCH /api/workspaces/1/members/3/role
+        >>> Authorization: Bearer <token>
+        >>> Content-Type: application/json
+        {
+          "role": "MEMBER_WRITE"
+        }
+
+        Response (200 OK):
+        {
+          "user_id": 3,
+          "name": "Charlie",
+          "email": "charlie@example.com",
+          "profile_picture_url": null,
+          "role": "MEMBER_WRITE",
+          "joined_at": "2026-01-05T00:00:00Z"
+        }
+
+        Error response (400 Bad Request):
+        {
+          "detail": "Cannot change your own role"
+        }
+
+        Error response (403 Forbidden):
+        {
+          "detail": "CO_OWNER cannot modify OWNER or CO_OWNER roles"
+        }
+
+    Notes:
+        - Self-modification prevented (cannot change your own role)
+        - Last OWNER protection (cannot demote if only OWNER remaining)
+        - CO_OWNER permission restrictions enforced
+        - Role hierarchy: OWNER > CO_OWNER > MEMBER_WRITE > MEMBER_READ
+    """
+    membership_repo = WorkspaceMembershipRepository(db)
+
+    # Check if trying to change own role
+    if user_id == int(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change your own role"
+        )
+
+    # Get target member
+    target_member = membership_repo.get_user_membership(workspace_id, user_id)
+    if not target_member or not target_member['is_active']:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found"
+        )
+
+    # Permission check: CO_OWNER cannot modify OWNER/CO_OWNER roles
+    if membership['role'] == 'CO_OWNER':
+        target_role = WorkspaceRole(target_member['role'])
+        new_role = WorkspaceRole(role_update.role)
+
+        if target_role in [WorkspaceRole.OWNER, WorkspaceRole.CO_OWNER]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="CO_OWNER cannot modify OWNER or CO_OWNER roles"
+            )
+
+        if new_role in [WorkspaceRole.OWNER, WorkspaceRole.CO_OWNER]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="CO_OWNER cannot promote members to OWNER or CO_OWNER"
+            )
+
+    # If demoting OWNER, check it's not the last OWNER
+    if target_member['role'] == 'OWNER' and role_update.role != 'OWNER':
+        owner_count = membership_repo.get_owner_count(workspace_id)
+        if owner_count <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot demote the last OWNER. Promote another member to OWNER first."
+            )
+
+    # Update role
+    success = membership_repo.update_role(workspace_id, user_id, role_update.role)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Failed to update role"
+        )
+
+    # Get updated member (join with users table)
+    members = membership_repo.get_workspace_members(workspace_id)
+    member_data = next((m for m in members if m['user_id'] == user_id), None)
+
+    if not member_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found after update"
+        )
+
+    return MemberResponse(**member_data)
+
+
+@router.delete("/workspaces/{workspace_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_member(
+    workspace_id: int,
+    user_id: int,
+    membership: dict = Depends(require_workspace_role(WorkspaceRole.CO_OWNER)),
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
+):
+    """
+    Remove member from workspace (soft delete).
+
+    Requires: CO_OWNER or OWNER
+
+    Rules:
+    - OWNER can remove anyone (except themselves if last OWNER)
+    - CO_OWNER can only remove MEMBER_READ/MEMBER_WRITE
+    - Cannot remove yourself if you're the last OWNER
+    - Removing yourself = leaving workspace
+
+    Args:
+        workspace_id: Workspace ID
+        user_id: User to remove
+
+    Returns:
+        204 No Content on success
+
+    Raises:
+        HTTPException: 400 if cannot remove last OWNER
+        HTTPException: 403 if insufficient permissions
+        HTTPException: 404 if member not found
+
+    Examples:
+        >>> DELETE /api/workspaces/1/members/3
+        >>> Authorization: Bearer <token>
+
+        Response (204 No Content): <empty body>
+
+        Error response (400 Bad Request):
+        {
+          "detail": "Cannot remove the last OWNER. Promote another member to OWNER first."
+        }
+
+        Error response (403 Forbidden):
+        {
+          "detail": "CO_OWNER cannot remove OWNER or CO_OWNER members"
+        }
+
+    Notes:
+        - Soft delete: Sets is_active=False (preserves history)
+        - Last OWNER protection enforced
+        - CO_OWNER permission restrictions enforced
+        - Self-removal allowed (leaving workspace) if not last OWNER
+    """
+    membership_repo = WorkspaceMembershipRepository(db)
+
+    # Get target member
+    target_member = membership_repo.get_user_membership(workspace_id, user_id)
+    if not target_member or not target_member['is_active']:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found"
+        )
+
+    # Permission check: CO_OWNER cannot remove OWNER/CO_OWNER
+    if membership['role'] == 'CO_OWNER':
+        target_role = WorkspaceRole(target_member['role'])
+        if target_role in [WorkspaceRole.OWNER, WorkspaceRole.CO_OWNER]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="CO_OWNER cannot remove OWNER or CO_OWNER members"
+            )
+
+    # Check if removing last OWNER
+    if target_member['role'] == 'OWNER':
+        owner_count = membership_repo.get_owner_count(workspace_id)
+        if owner_count <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot remove the last OWNER. Promote another member to OWNER first."
+            )
+
+    # Remove member
+    success = membership_repo.remove_member(workspace_id, user_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Failed to remove member"
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
