@@ -15,6 +15,7 @@ import type {
  * Transaction API query parameters
  */
 export interface TransactionFilters {
+  workspace_id?: number;
   year?: number;
   month?: number;
   category_id?: number;
@@ -97,6 +98,7 @@ export const fetchTransactions = async (
     '/api/transactions',
     {
       params: {
+        workspace_id: filters.workspace_id,
         year: filters.year,
         month: filters.month,
         category_id: filters.category_id,
@@ -181,16 +183,20 @@ export const fetchMonthlySummary = async (
 /**
  * Fetch all categories
  */
-export const fetchCategories = async (): Promise<CategoryAPIResponse[]> => {
-  const response = await apiClient.get<CategoryAPIResponse[]>('/api/categories');
+export const fetchCategories = async (workspaceId?: number): Promise<CategoryAPIResponse[]> => {
+  const response = await apiClient.get<CategoryAPIResponse[]>('/api/categories', {
+    params: workspaceId ? { workspace_id: workspaceId } : undefined,
+  });
   return response.data;
 };
 
 /**
  * Fetch all institutions
  */
-export const fetchInstitutions = async (): Promise<InstitutionAPIResponse[]> => {
-  const response = await apiClient.get<InstitutionAPIResponse[]>('/api/institutions');
+export const fetchInstitutions = async (workspaceId?: number): Promise<InstitutionAPIResponse[]> => {
+  const response = await apiClient.get<InstitutionAPIResponse[]>('/api/institutions', {
+    params: workspaceId ? { workspace_id: workspaceId } : undefined,
+  });
   return response.data;
 };
 

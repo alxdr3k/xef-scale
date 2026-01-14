@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Table, Tag, Button, Space } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, LockOutlined } from '@ant-design/icons';
+import { Typography, Table, Tag, Button, Space, Modal, Input, Alert, Tooltip } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, LockOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { message, modal } from '../lib/antd-static';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { SorterResult, FilterValue } from 'antd/es/table/interface';
@@ -12,6 +12,7 @@ import SummarySection from '../components/transactions/SummarySection';
 import TransactionFormModal from '../components/transactions/TransactionFormModal';
 import NotesCell from '../components/transactions/NotesCell';
 import CategoryCell from '../components/transactions/CategoryCell';
+import { useWorkspace } from '../contexts/WorkspaceContext';
 import {
   fetchTransactions,
   fetchCategories,
@@ -26,14 +27,20 @@ import type {
   InstitutionAPIResponse,
   TransactionFilters,
 } from '../api/services';
+import { markAsAllowance } from '../api/allowances';
+import type { WorkspaceRole } from '../types';
 
 const { Title } = Typography;
+const { TextArea } = Input;
 
 /**
  * Transactions page component
  * Displays transaction list with filtering, sorting, and pagination
  */
 const Transactions: React.FC = () => {
+  // Workspace context
+  const { currentWorkspace, loading: workspaceLoading } = useWorkspace();
+
   // State management
   const [transactions, setTransactions] = useState<TransactionAPIResponse[]>([]);
   const [categories, setCategories] = useState<CategoryAPIResponse[]>([]);
@@ -54,6 +61,12 @@ const Transactions: React.FC = () => {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionAPIResponse | null>(null);
 
+  // Allowance modal state
+  const [allowanceModalVisible, setAllowanceModalVisible] = useState(false);
+  const [allowanceTransaction, setAllowanceTransaction] = useState<TransactionAPIResponse | null>(null);
+  const [allowanceNotes, setAllowanceNotes] = useState<string>('');
+  const [allowanceLoading, setAllowanceLoading] = useState(false);
+
   // Filter state - default to current year
   const currentYear = new Date().getFullYear();
   const [filters, setFilters] = useState<FilterValues>({
@@ -63,24 +76,38 @@ const Transactions: React.FC = () => {
   // Sort state
   const [sort, setSort] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
 
-  // Load categories and institutions on mount
+  // Permission checks
+  const canWrite = currentWorkspace
+    ? ['OWNER', 'CO_OWNER', 'MEMBER_WRITE'].includes(currentWorkspace.role)
+    : false;
+  const canManage = currentWorkspace
+    ? ['OWNER', 'CO_OWNER'].includes(currentWorkspace.role)
+    : false;
+
+  // Load categories and institutions when workspace changes
   useEffect(() => {
-    loadCategories();
-    loadInstitutions();
-  }, []);
+    if (currentWorkspace) {
+      loadCategories();
+      loadInstitutions();
+    }
+  }, [currentWorkspace]);
 
   // Load transactions when filters or pagination changes
   useEffect(() => {
-    loadTransactions();
-  }, [filters, pagination.current, pagination.pageSize, sort]);
+    if (currentWorkspace) {
+      loadTransactions();
+    }
+  }, [currentWorkspace, filters, pagination.current, pagination.pageSize, sort]);
 
   /**
    * Load categories from API
    */
   const loadCategories = async () => {
+    if (!currentWorkspace) return;
+
     try {
       setCategoriesLoading(true);
-      const data = await fetchCategories();
+      const data = await fetchCategories(currentWorkspace.id);
       setCategories(data);
     } catch (error) {
       console.error('Failed to load categories:', error);
@@ -94,9 +121,11 @@ const Transactions: React.FC = () => {
    * Load institutions from API
    */
   const loadInstitutions = async () => {
+    if (!currentWorkspace) return;
+
     try {
       setInstitutionsLoading(true);
-      const data = await fetchInstitutions();
+      const data = await fetchInstitutions(currentWorkspace.id);
       setInstitutions(data);
     } catch (error) {
       console.error('Failed to load institutions:', error);
@@ -110,9 +139,12 @@ const Transactions: React.FC = () => {
    * Load transactions from API with current filters
    */
   const loadTransactions = async () => {
+    if (!currentWorkspace) return;
+
     try {
       setLoading(true);
       const params: TransactionFilters = {
+        workspace_id: currentWorkspace.id,
         ...filters,
         page: pagination.current,
         limit: pagination.pageSize,
@@ -219,6 +251,51 @@ const Transactions: React.FC = () => {
    */
   const handleModalSuccess = () => {
     loadTransactions();
+  };
+
+  /**
+   * Handle mark as allowance button click
+   */
+  const handleMarkAsAllowance = (transaction: TransactionAPIResponse) => {
+    setAllowanceTransaction(transaction);
+    setAllowanceNotes('');
+    setAllowanceModalVisible(true);
+  };
+
+  /**
+   * Handle allowance modal confirm
+   */
+  const handleAllowanceConfirm = async () => {
+    if (!currentWorkspace || !allowanceTransaction) return;
+
+    try {
+      setAllowanceLoading(true);
+      await markAsAllowance(
+        currentWorkspace.id,
+        allowanceTransaction.id,
+        allowanceNotes || null
+      );
+      message.success('거래가 용돈으로 표시되었습니다');
+      setAllowanceModalVisible(false);
+      setAllowanceTransaction(null);
+      setAllowanceNotes('');
+      // Refresh transactions list to remove the marked transaction
+      loadTransactions();
+    } catch (error: any) {
+      console.error('Failed to mark as allowance:', error);
+      message.error(error.response?.data?.detail || '용돈 표시에 실패했습니다');
+    } finally {
+      setAllowanceLoading(false);
+    }
+  };
+
+  /**
+   * Handle allowance modal cancel
+   */
+  const handleAllowanceCancel = () => {
+    setAllowanceModalVisible(false);
+    setAllowanceTransaction(null);
+    setAllowanceNotes('');
   };
 
   /**
@@ -329,6 +406,31 @@ const Transactions: React.FC = () => {
       responsive: ['lg'],
     },
     {
+      title: '용돈',
+      key: 'allowance',
+      width: 120,
+      align: 'center',
+      render: (_, record: TransactionAPIResponse) => {
+        if (!canWrite) {
+          return null;
+        }
+
+        return (
+          <Tooltip title="이 거래를 개인 용돈으로 표시합니다. 다른 멤버에게는 보이지 않습니다.">
+            <Button
+              type="link"
+              size="small"
+              icon={<EyeInvisibleOutlined />}
+              onClick={() => handleMarkAsAllowance(record)}
+            >
+              용돈 표시
+            </Button>
+          </Tooltip>
+        );
+      },
+      responsive: ['lg'],
+    },
+    {
       title: '작업',
       key: 'actions',
       width: 120,
@@ -339,6 +441,14 @@ const Transactions: React.FC = () => {
             <Tag icon={<LockOutlined />} color="default">
               읽기 전용
             </Tag>
+          );
+        }
+
+        if (!canWrite) {
+          return (
+            <Tooltip title="편집 권한이 필요합니다">
+              <Tag color="default">권한 없음</Tag>
+            </Tooltip>
           );
         }
 
@@ -367,19 +477,48 @@ const Transactions: React.FC = () => {
     },
   ];
 
+  // Loading state while workspace initializes
+  if (workspaceLoading) {
+    return <LoadingSkeleton type="table" rows={5} />;
+  }
+
+  // No workspace selected
+  if (!currentWorkspace) {
+    return <EmptyState message="워크스페이스를 선택해주세요." />;
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={2}>지출 내역</Title>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleCreate}
-          size="large"
-        >
-          새 거래 추가
-        </Button>
+        <div>
+          <Title level={2}>지출 내역</Title>
+          <div style={{ color: '#8c8c8c', fontSize: '14px', marginTop: '-8px' }}>
+            워크스페이스: {currentWorkspace.name}
+          </div>
+        </div>
+        <Tooltip title={!canWrite ? '편집 권한이 필요합니다' : ''}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleCreate}
+            size="large"
+            disabled={!canWrite}
+          >
+            새 거래 추가
+          </Button>
+        </Tooltip>
       </div>
+
+      {/* Permission alert for read-only users */}
+      {!canWrite && (
+        <Alert
+          message="읽기 전용 권한"
+          description="읽기 전용 권한입니다. 거래를 수정하거나 추가할 수 없습니다."
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
 
       {/* Filter Panel */}
       <FilterPanel
@@ -433,6 +572,43 @@ const Transactions: React.FC = () => {
         onClose={handleModalClose}
         onSuccess={handleModalSuccess}
       />
+
+      {/* Allowance Mark Modal */}
+      <Modal
+        title="용돈으로 표시"
+        open={allowanceModalVisible}
+        onOk={handleAllowanceConfirm}
+        onCancel={handleAllowanceCancel}
+        okText="확인"
+        cancelText="취소"
+        confirmLoading={allowanceLoading}
+      >
+        <div>
+          <Alert
+            message="주의"
+            description="이 거래를 용돈으로 표시하시겠습니까? 다른 멤버에게는 이 거래가 보이지 않습니다."
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+          {allowanceTransaction && (
+            <div style={{ marginBottom: 16 }}>
+              <div><strong>거래처:</strong> {allowanceTransaction.merchant_name}</div>
+              <div><strong>금액:</strong> ₩{allowanceTransaction.amount.toLocaleString('ko-KR')}</div>
+              <div><strong>날짜:</strong> {allowanceTransaction.date}</div>
+            </div>
+          )}
+          <div>
+            <div style={{ marginBottom: 8 }}>메모 (선택사항)</div>
+            <TextArea
+              rows={3}
+              placeholder="용돈에 대한 메모를 입력하세요 (선택사항)"
+              value={allowanceNotes}
+              onChange={(e) => setAllowanceNotes(e.target.value)}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

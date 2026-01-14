@@ -250,3 +250,27 @@ export interface InvitationCreateRequest {
 export interface WorkspaceInvitationListResponse {
   invitations: WorkspaceInvitation[];
 }
+
+// Allowance mark request
+export interface AllowanceMarkRequest {
+  transaction_id: number;
+  notes?: string | null;
+}
+
+// Allowance transaction response
+export interface AllowanceTransactionResponse {
+  allowance_id: number;
+  transaction_id: number;
+  user_id: number;
+  workspace_id: number;
+  notes: string | null;
+  marked_at: string;
+  // Transaction details
+  date: string;
+  category: string;
+  merchant_name: string;
+  amount: number;
+  institution: string;
+  category_id: number;
+  institution_id: number;
+}
