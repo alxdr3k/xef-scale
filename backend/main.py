@@ -10,7 +10,7 @@ from fastapi.exceptions import RequestValidationError
 import logging
 
 from .core.config import settings
-from .api.routes import auth, transactions, categories, institutions, parsing, confirmations, test_auth, workspaces
+from .api.routes import auth, transactions, categories, institutions, parsing, confirmations, test_auth, workspaces, allowances
 
 # Configure logging
 logging.basicConfig(
@@ -139,6 +139,7 @@ app.include_router(categories.router, prefix=settings.API_PREFIX)
 app.include_router(institutions.router, prefix=settings.API_PREFIX)
 app.include_router(parsing.router, prefix=settings.API_PREFIX)
 app.include_router(confirmations.router, prefix=settings.API_PREFIX)
+app.include_router(allowances.router, prefix=settings.API_PREFIX)
 
 # Test authentication router (only enabled in development/test)
 if settings.ENVIRONMENT in ['development', 'test']:
