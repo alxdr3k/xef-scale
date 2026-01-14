@@ -104,6 +104,7 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
+  total_amount?: number; // Sum of all filtered transactions
 }
 
 // Parsing session list response

@@ -46,6 +46,7 @@ const Transactions: React.FC = () => {
     pageSize: 50,
     total: 0,
     totalPages: 0,
+    totalAmount: 0,
   });
 
   // Modal state
@@ -124,6 +125,7 @@ const Transactions: React.FC = () => {
         ...prev,
         total: response.total,
         totalPages: response.totalPages,
+        totalAmount: response.total_amount || 0,
       }));
     } catch (error) {
       console.error('Failed to load transactions:', error);
@@ -372,13 +374,6 @@ const Transactions: React.FC = () => {
     },
   ];
 
-  /**
-   * Calculate total amount from current transactions
-   */
-  const calculateTotalAmount = (): number => {
-    return transactions.reduce((sum, t) => sum + t.amount, 0);
-  };
-
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -405,7 +400,7 @@ const Transactions: React.FC = () => {
       {/* Summary Section */}
       {!loading && transactions.length > 0 && (
         <SummarySection
-          totalAmount={calculateTotalAmount()}
+          totalAmount={pagination.totalAmount}
           totalCount={pagination.total}
         />
       )}
