@@ -323,15 +323,8 @@ const Transactions: React.FC = () => {
       dataIndex: 'institution',
       key: 'institution',
       width: 120,
-      render: (institution: string, record: TransactionAPIResponse) => (
-        <Space orientation="vertical" size={0}>
-          <Tag color="blue">{institution}</Tag>
-          {record.file_id !== null && (
-            <Tag color="default" style={{ fontSize: 11 }}>
-              파일
-            </Tag>
-          )}
-        </Space>
+      render: (institution: string) => (
+        <Tag color="blue">{institution}</Tag>
       ),
       responsive: ['lg'],
     },
