@@ -21,6 +21,8 @@ class CategoryRepository:
     Attributes:
         conn: SQLite database connection
         _cache: In-memory dict mapping category names to IDs
+        _all_cache: Class-level cache for get_all() results
+        _all_cache_time: Timestamp of last cache update
         logger: Logger instance for operations tracking
 
     Examples:
@@ -29,6 +31,10 @@ class CategoryRepository:
         >>> print(category_id)
         1
     """
+
+    _all_cache: Optional[List[dict]] = None
+    _all_cache_time: float = 0
+    _cache_ttl: int = 300  # 5 minutes TTL
 
     def __init__(self, connection: sqlite3.Connection):
         """
@@ -124,6 +130,8 @@ class CategoryRepository:
         """
         Get all categories ordered by transaction count (descending), then by name.
 
+        Uses class-level cache with 5-minute TTL to avoid repeated DB queries.
+
         Returns:
             List of category dictionaries with all fields, sorted by usage frequency
 
@@ -133,6 +141,15 @@ class CategoryRepository:
             >>> print(categories[0]['name'])
             '편의점/마트/잡화'  # Most frequently used category
         """
+        import time
+
+        # Check cache validity
+        now = time.time()
+        if (CategoryRepository._all_cache is not None and
+            now - CategoryRepository._all_cache_time < CategoryRepository._cache_ttl):
+            return CategoryRepository._all_cache
+
+        # Cache miss or expired - query database
         cursor = self.conn.execute('''
             SELECT c.*
             FROM categories c
@@ -140,7 +157,14 @@ class CategoryRepository:
             GROUP BY c.id
             ORDER BY COUNT(t.id) DESC, c.name
         ''')
-        return [dict(row) for row in cursor.fetchall()]
+        result = [dict(row) for row in cursor.fetchall()]
+
+        # Update cache
+        CategoryRepository._all_cache = result
+        CategoryRepository._all_cache_time = now
+        self.logger.debug(f'Cached {len(result)} categories (TTL: {CategoryRepository._cache_ttl}s)')
+
+        return result
 
     def get_by_id(self, category_id: int) -> Optional[dict]:
         """
@@ -193,6 +217,8 @@ class InstitutionRepository:
     Attributes:
         conn: SQLite database connection
         _cache: In-memory dict mapping institution names to IDs
+        _all_cache: Class-level cache for get_all() results
+        _all_cache_time: Timestamp of last cache update
         logger: Logger instance for operations tracking
 
     Examples:
@@ -201,6 +227,10 @@ class InstitutionRepository:
         >>> print(id)
         1
     """
+
+    _all_cache: Optional[List[dict]] = None
+    _all_cache_time: float = 0
+    _cache_ttl: int = 300  # 5 minutes TTL
 
     def __init__(self, connection: sqlite3.Connection):
         """
@@ -325,6 +355,8 @@ class InstitutionRepository:
         """
         Get all active financial institutions ordered by transaction count (descending), then by name.
 
+        Uses class-level cache with 5-minute TTL to avoid repeated DB queries.
+
         Returns:
             List of institution dictionaries, sorted by usage frequency
 
@@ -334,6 +366,15 @@ class InstitutionRepository:
             >>> print(institutions[0]['name'])
             '알수없음'  # Most frequently used institution
         """
+        import time
+
+        # Check cache validity
+        now = time.time()
+        if (InstitutionRepository._all_cache is not None and
+            now - InstitutionRepository._all_cache_time < InstitutionRepository._cache_ttl):
+            return InstitutionRepository._all_cache
+
+        # Cache miss or expired - query database
         cursor = self.conn.execute('''
             SELECT fi.*
             FROM financial_institutions fi
@@ -342,7 +383,14 @@ class InstitutionRepository:
             GROUP BY fi.id
             ORDER BY COUNT(t.id) DESC, fi.name
         ''')
-        return [dict(row) for row in cursor.fetchall()]
+        result = [dict(row) for row in cursor.fetchall()]
+
+        # Update cache
+        InstitutionRepository._all_cache = result
+        InstitutionRepository._all_cache_time = now
+        self.logger.debug(f'Cached {len(result)} institutions (TTL: {InstitutionRepository._cache_ttl}s)')
+
+        return result
 
     def get_by_name(self, name: str) -> Optional[dict]:
         """
