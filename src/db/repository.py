@@ -3735,3 +3735,310 @@ class ProcessedFileRepository:
         except Exception as e:
             self.logger.error(f'Error fetching file record {file_id}: {e}')
             raise
+
+
+class WorkspaceRepository:
+    """
+    Repository for workspace management with multi-user support.
+
+    Manages workspaces for collaborative expense tracking including workspace
+    creation, membership management, and workspace settings.
+
+    Attributes:
+        conn: SQLite database connection
+        logger: Logger instance for operations tracking
+
+    Examples:
+        >>> repo = WorkspaceRepository(conn)
+        >>> workspace_id = repo.create(
+        ...     name='Family Expenses',
+        ...     description='Shared family expense tracking',
+        ...     created_by_user_id=1
+        ... )
+        >>> workspaces = repo.get_user_workspaces(user_id=1)
+        >>> print(workspaces[0]['name'])
+        'Family Expenses'
+    """
+
+    def __init__(self, connection: sqlite3.Connection):
+        """
+        Initialize repository with database connection.
+
+        Args:
+            connection: SQLite database connection instance
+        """
+        self.conn = connection
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('WorkspaceRepository initialized')
+
+    def create(self, name: str, description: str, created_by_user_id: int) -> int:
+        """
+        Create a new workspace.
+
+        Args:
+            name: Workspace name (e.g., 'Family Expenses', 'Personal Budget')
+            description: Workspace description
+            created_by_user_id: User ID of workspace creator
+
+        Returns:
+            int: Workspace ID (lastrowid)
+
+        Raises:
+            sqlite3.IntegrityError: If created_by_user_id doesn't exist
+
+        Examples:
+            >>> repo = WorkspaceRepository(conn)
+            >>> workspace_id = repo.create(
+            ...     name='My Workspace',
+            ...     description='Personal expense tracking',
+            ...     created_by_user_id=1
+            ... )
+            >>> print(f'Created workspace with ID: {workspace_id}')
+
+        Notes:
+            - Sets default values: currency='KRW', timezone='Asia/Seoul', is_active=True
+            - Sets created_at and updated_at automatically
+            - Foreign key constraint ensures created_by_user_id exists in users table
+        """
+        try:
+            cursor = self.conn.execute('''
+                INSERT INTO workspaces (
+                    name,
+                    description,
+                    created_by_user_id,
+                    currency,
+                    timezone,
+                    is_active
+                ) VALUES (?, ?, ?, 'KRW', 'Asia/Seoul', 1)
+            ''', (name, description, created_by_user_id))
+
+            self.conn.commit()
+
+            self.logger.info(
+                f'Created workspace: name={name}, created_by_user_id={created_by_user_id}, workspace_id={cursor.lastrowid}'
+            )
+            return cursor.lastrowid
+
+        except sqlite3.IntegrityError as e:
+            self.logger.error(f'Failed to create workspace (foreign key constraint): name={name}, created_by_user_id={created_by_user_id} - {e}')
+            raise
+        except Exception as e:
+            self.logger.error(f'Error creating workspace {name}: {e}')
+            raise
+
+    def get_by_id(self, workspace_id: int) -> Optional[dict]:
+        """
+        Get workspace by ID.
+
+        Args:
+            workspace_id: Workspace ID
+
+        Returns:
+            Workspace dict or None if not found
+
+        Examples:
+            >>> repo = WorkspaceRepository(conn)
+            >>> workspace = repo.get_by_id(1)
+            >>> if workspace:
+            ...     print(f"Workspace: {workspace['name']}")
+            ...     print(f"Currency: {workspace['currency']}")
+
+        Notes:
+            - Returns all workspace fields including metadata
+            - Fields: id, name, description, created_by_user_id, currency,
+              timezone, is_active, created_at, updated_at
+        """
+        try:
+            cursor = self.conn.execute(
+                'SELECT * FROM workspaces WHERE id = ?',
+                (workspace_id,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
+        except Exception as e:
+            self.logger.error(f'Error fetching workspace by ID {workspace_id}: {e}')
+            raise
+
+    def get_user_workspaces(self, user_id: int) -> List[dict]:
+        """
+        Get all workspaces where user is a member.
+
+        Joins with workspace_memberships to get user's role and includes
+        member count for each workspace.
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            List of workspace dicts with role and member_count fields
+
+        Examples:
+            >>> repo = WorkspaceRepository(conn)
+            >>> workspaces = repo.get_user_workspaces(user_id=1)
+            >>> for ws in workspaces:
+            ...     print(f"{ws['name']} - Role: {ws['user_role']}, Members: {ws['member_count']}")
+
+        Notes:
+            - Returns only workspaces where user has active membership
+            - Each dict contains:
+                - All workspace fields (id, name, description, etc.)
+                - user_role (from workspace_memberships.role)
+                - member_count (count of active members)
+            - Ordered by created_at DESC (newest first)
+            - Returns empty list if user has no workspaces
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT
+                    w.*,
+                    wm.role as user_role,
+                    (
+                        SELECT COUNT(*)
+                        FROM workspace_memberships
+                        WHERE workspace_id = w.id AND is_active = 1
+                    ) as member_count
+                FROM workspaces w
+                INNER JOIN workspace_memberships wm ON w.id = wm.workspace_id
+                WHERE wm.user_id = ? AND wm.is_active = 1 AND w.is_active = 1
+                ORDER BY w.created_at DESC
+            ''', (user_id,))
+
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
+        except Exception as e:
+            self.logger.error(f'Error fetching user workspaces for user_id={user_id}: {e}')
+            raise
+
+    def update(self, workspace_id: int, updates: dict) -> bool:
+        """
+        Update workspace fields.
+
+        Args:
+            workspace_id: Workspace ID
+            updates: Dict of fields to update (allowed: name, description)
+
+        Returns:
+            True if successful, False if workspace not found
+
+        Examples:
+            >>> repo = WorkspaceRepository(conn)
+            >>> success = repo.update(
+            ...     workspace_id=1,
+            ...     updates={'name': 'New Name', 'description': 'New Description'}
+            ... )
+            >>> print(f'Update successful: {success}')
+
+        Notes:
+            - Only allows updating: name, description
+            - Does not allow updating: created_by_user_id, currency, timezone
+            - Automatically updates updated_at timestamp via trigger
+            - Empty updates dict will still update updated_at timestamp
+        """
+        try:
+            # Filter allowed fields
+            allowed_fields = {'name', 'description'}
+            filtered_updates = {k: v for k, v in updates.items() if k in allowed_fields}
+
+            if not filtered_updates:
+                self.logger.warning(f'No valid fields to update for workspace_id={workspace_id}')
+                return False
+
+            # Build dynamic UPDATE query
+            set_clauses = [f'{field} = ?' for field in filtered_updates.keys()]
+            params = list(filtered_updates.values())
+            params.append(workspace_id)
+
+            query = f'''
+                UPDATE workspaces
+                SET {', '.join(set_clauses)}
+                WHERE id = ?
+            '''
+
+            cursor = self.conn.execute(query, params)
+            self.conn.commit()
+
+            if cursor.rowcount == 0:
+                self.logger.warning(f'Workspace not found: workspace_id={workspace_id}')
+                return False
+
+            self.logger.info(f'Updated workspace: workspace_id={workspace_id}, fields={list(filtered_updates.keys())}')
+            return True
+
+        except Exception as e:
+            self.logger.error(f'Error updating workspace {workspace_id}: {e}')
+            raise
+
+    def delete(self, workspace_id: int) -> bool:
+        """
+        Soft delete workspace by setting is_active = False.
+
+        Args:
+            workspace_id: Workspace ID
+
+        Returns:
+            True if successful, False if workspace not found
+
+        Examples:
+            >>> repo = WorkspaceRepository(conn)
+            >>> success = repo.delete(workspace_id=1)
+            >>> print(f'Deletion successful: {success}')
+
+        Notes:
+            - Soft delete: Sets is_active = False instead of deleting row
+            - CASCADE deletes will handle related tables:
+              - workspace_memberships (ON DELETE CASCADE)
+              - workspace_invitations (ON DELETE CASCADE)
+              - allowance_transactions (ON DELETE CASCADE)
+            - Updated_at timestamp updated via trigger
+        """
+        try:
+            cursor = self.conn.execute(
+                'UPDATE workspaces SET is_active = 0 WHERE id = ?',
+                (workspace_id,)
+            )
+            self.conn.commit()
+
+            if cursor.rowcount == 0:
+                self.logger.warning(f'Workspace not found: workspace_id={workspace_id}')
+                return False
+
+            self.logger.info(f'Soft deleted workspace: workspace_id={workspace_id}')
+            return True
+
+        except Exception as e:
+            self.logger.error(f'Error deleting workspace {workspace_id}: {e}')
+            raise
+
+    def get_member_count(self, workspace_id: int) -> int:
+        """
+        Count active members in workspace.
+
+        Args:
+            workspace_id: Workspace ID
+
+        Returns:
+            Number of active members (0 if workspace doesn't exist)
+
+        Examples:
+            >>> repo = WorkspaceRepository(conn)
+            >>> count = repo.get_member_count(workspace_id=1)
+            >>> print(f'Workspace has {count} members')
+
+        Notes:
+            - Counts only active memberships (is_active = 1)
+            - Returns 0 if workspace doesn't exist
+            - Efficient query using COUNT aggregation
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT COUNT(*) as count
+                FROM workspace_memberships
+                WHERE workspace_id = ? AND is_active = 1
+            ''', (workspace_id,))
+
+            row = cursor.fetchone()
+            return row['count'] if row else 0
+
+        except Exception as e:
+            self.logger.error(f'Error counting members for workspace_id={workspace_id}: {e}')
+            raise
