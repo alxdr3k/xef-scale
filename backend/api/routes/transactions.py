@@ -869,6 +869,43 @@ async def update_transaction_category(
 
         logger.info(f"Updated category for transaction ID={transaction_id} to '{category}' by user={current_user.username}")
 
+        # Auto-update category-merchant mapping based on user's category change
+        try:
+            from src.db.repository import CategoryMerchantMappingRepository
+
+            mapping_repo = CategoryMerchantMappingRepository(db)
+            merchant_name = updated_transaction['merchant_name']
+
+            if merchant_name:
+                # Delete any existing user_manual mappings for this merchant to avoid conflicts
+                # This ensures only the most recent user correction is kept
+                db.execute('''
+                    DELETE FROM category_merchant_mappings
+                    WHERE merchant_pattern = ? AND match_type = 'exact' AND source = 'user_manual'
+                ''', (merchant_name,))
+
+                # Add new mapping with user's chosen category
+                mapping_id = mapping_repo.add_mapping(
+                    category_id=category_id,
+                    merchant_pattern=merchant_name,
+                    match_type='exact',
+                    confidence=100,
+                    source='user_manual'
+                )
+                logger.info(
+                    f"Auto-created/updated merchant mapping: merchant='{merchant_name}' -> "
+                    f"category='{category}' (mapping_id={mapping_id})"
+                )
+            else:
+                logger.debug(f"No merchant_name found for transaction {transaction_id}, skipping mapping update")
+
+        except Exception as mapping_error:
+            # Log the error but don't fail the transaction update
+            logger.warning(
+                f"Failed to auto-update merchant mapping for transaction {transaction_id}: {str(mapping_error)}",
+                exc_info=True
+            )
+
         return _db_row_to_transaction_response(updated_transaction)
 
     except HTTPException:
