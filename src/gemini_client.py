@@ -7,7 +7,8 @@ with retry logic, validation, and cost tracking.
 
 import logging
 import time
-from typing import List, Optional
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 
 from google import genai
 
@@ -17,11 +18,14 @@ class GeminiClient:
     Wrapper for Google Gemini API transaction categorization.
 
     Features:
+    - Multi-model fallback strategy (5 models in priority order)
     - Prompt engineering for Korean merchant categorization
-    - Retry logic with exponential backoff (3 attempts)
+    - Retry logic with exponential backoff (3 attempts per model)
+    - Rate limit handling with automatic model switching
+    - Cooldown tracking to prevent repeated rate limit hits
     - Response validation against valid categories
     - Error handling with graceful fallback
-    - Cost tracking via logging
+    - Cost tracking and model usage statistics
 
     Gemini 1.5 Flash Pricing:
     - Input: $0.00001875 per 1K tokens (~$0.00002 per request)
@@ -43,7 +47,21 @@ class GeminiClient:
         >>> category = client.categorize_merchant('')
         >>> print(category)
         None
+        >>>
+        >>> # Check model usage statistics
+        >>> stats = client.get_model_stats()
+        >>> print(stats)
+        {'gemini-2.5-flash': {'success': 10, 'failed': 0, 'rate_limited': 2}, ...}
     """
+
+    # Model priority list (try in order)
+    MODELS = [
+        'gemini-2.5-flash',      # Latest flash (fastest, try first)
+        'gemini-2.5-pro',        # Latest pro (more capable)
+        'gemini-3.0-flash',      # Newest flash
+        'gemini-3.0-pro',        # Newest pro
+        'gemini-2.0-flash'       # Current stable
+    ]
 
     def __init__(self, api_key: str, valid_categories: List[str]):
         """
@@ -74,7 +92,20 @@ class GeminiClient:
         # Initialize client (new API)
         self.client = genai.Client(api_key=self.api_key)
 
+        # Track model usage stats
+        self.model_stats: Dict[str, Dict[str, int]] = {
+            model: {'success': 0, 'failed': 0, 'rate_limited': 0}
+            for model in self.MODELS
+        }
+
+        # Track when each model was last rate limited
+        self.model_cooldowns: Dict[str, Optional[datetime]] = {
+            model: None for model in self.MODELS
+        }
+        self.COOLDOWN_DURATION = 60  # seconds
+
         self.logger.info(f'GeminiClient initialized with {len(valid_categories)} valid categories')
+        self.logger.info(f'Multi-model fallback enabled: {len(self.MODELS)} models available')
 
     def categorize_merchant(self, merchant_name: str) -> Optional[str]:
         """
@@ -191,29 +222,68 @@ class GeminiClient:
 
         return prompt
 
+    def _is_model_on_cooldown(self, model_name: str) -> bool:
+        """
+        Check if model is in cooldown period after rate limit.
+
+        Args:
+            model_name: Name of the model to check
+
+        Returns:
+            True if model is on cooldown, False otherwise
+        """
+        cooldown_time = self.model_cooldowns.get(model_name)
+        if not cooldown_time:
+            return False
+
+        elapsed = (datetime.now() - cooldown_time).total_seconds()
+        if elapsed < self.COOLDOWN_DURATION:
+            remaining = self.COOLDOWN_DURATION - elapsed
+            self.logger.debug(f'{model_name} on cooldown ({remaining:.0f}s remaining)')
+            return True
+
+        return False
+
+    def get_model_stats(self) -> Dict[str, Dict[str, int]]:
+        """
+        Return model usage statistics for monitoring.
+
+        Returns:
+            Dictionary mapping model names to their usage stats
+            (success, failed, rate_limited counts)
+        """
+        return self.model_stats
+
     def _call_gemini_api(self, prompt: str, max_retries: int = 3) -> Optional[str]:
         """
-        Call Gemini API with exponential backoff retry.
+        Call Gemini API with multi-model fallback.
 
-        Retry Strategy:
+        Multi-Model Fallback Strategy:
+        - Tries models in priority order (MODELS list)
+        - On rate limit (429), tries next model immediately
+        - On other errors, retries same model with exponential backoff
+        - Tracks cooldowns to prevent repeated rate limit hits
+        - Returns None only after all models exhausted
+
+        Retry Strategy (per model):
         - Attempt 1: Immediate call
         - Attempt 2: Wait 1 second, retry
         - Attempt 3: Wait 2 seconds, retry
-        - After 3 failures: Give up and return None
+        - After 3 failures or rate limit: Try next model
 
         Handles:
         - Network timeouts
-        - Rate limit errors (429)
+        - Rate limit errors (429) - switches to next model
         - Invalid API keys
         - Empty responses
         - Any unexpected exceptions
 
         Args:
             prompt: Prompt to send to Gemini
-            max_retries: Maximum number of retry attempts (default: 3)
+            max_retries: Maximum number of retry attempts per model (default: 3)
 
         Returns:
-            Raw response text (stripped) or None on error
+            Raw response text (stripped) or None if all models exhausted
 
         Examples:
             >>> client = GeminiClient(api_key='key', valid_categories=['식비'])
@@ -223,38 +293,76 @@ class GeminiClient:
 
         Notes:
             - Logs all API calls for cost tracking
-            - Exponential backoff: 2^(attempt-1) seconds
-            - Catches all exceptions to prevent crashes
-            - Returns None after exhausting retries
+            - Exponential backoff: 2^(attempt-1) seconds per model
+            - Model statistics tracked for monitoring
+            - Cooldown tracking prevents repeated rate limit attempts
         """
-        for attempt in range(1, max_retries + 1):
-            try:
-                self.logger.info(f'Gemini API call (attempt {attempt}/{max_retries})')
+        for model_name in self.MODELS:
+            # Skip models on cooldown
+            if self._is_model_on_cooldown(model_name):
+                self.logger.info(f'⏸ Skipping {model_name} (cooling down)')
+                continue
 
-                # New API pattern
-                response = self.client.models.generate_content(
-                    model='gemini-2.0-flash',
-                    contents=prompt
-                )
+            self.logger.info(f'Attempting model: {model_name}')
 
-                if response and response.text:
-                    return response.text.strip()
-                else:
-                    self.logger.warning(f'Empty response from Gemini API (attempt {attempt})')
+            for attempt in range(1, max_retries + 1):
+                try:
+                    self.logger.debug(f'{model_name} - attempt {attempt}/{max_retries}')
 
-            except Exception as e:
-                self.logger.error(
-                    f'Gemini API error (attempt {attempt}/{max_retries}): {type(e).__name__} - {e}'
-                )
+                    # New API pattern
+                    response = self.client.models.generate_content(
+                        model=model_name,
+                        contents=prompt
+                    )
 
-                # Exponential backoff: 1s, 2s, 4s
-                if attempt < max_retries:
-                    backoff_time = 2 ** (attempt - 1)
-                    self.logger.debug(f'Retrying in {backoff_time}s...')
-                    time.sleep(backoff_time)
+                    if response and response.text:
+                        # Success! Update stats and return
+                        self.model_stats[model_name]['success'] += 1
+                        self.logger.info(f'✓ {model_name} succeeded (attempt {attempt})')
+                        return response.text.strip()
+                    else:
+                        self.logger.warning(f'{model_name} returned empty response')
 
-        # All retries failed
-        self.logger.error(f'Gemini API failed after {max_retries} attempts')
+                except Exception as e:
+                    error_type = type(e).__name__
+                    error_msg = str(e)
+
+                    # Check if this is a rate limit error
+                    is_rate_limit = (
+                        error_type == 'ResourceExhausted' or
+                        '429' in error_msg or
+                        'quota' in error_msg.lower() or
+                        'rate limit' in error_msg.lower()
+                    )
+
+                    if is_rate_limit:
+                        # Set cooldown for this model
+                        self.model_cooldowns[model_name] = datetime.now()
+                        self.model_stats[model_name]['rate_limited'] += 1
+                        self.logger.warning(
+                            f'✗ {model_name} rate limited (attempt {attempt}). '
+                            f'Cooldown: {self.COOLDOWN_DURATION}s. Trying next model...'
+                        )
+                        break  # Exit retry loop, try next model
+                    else:
+                        # Non-rate-limit error - log and retry same model
+                        self.model_stats[model_name]['failed'] += 1
+                        self.logger.error(
+                            f'{model_name} error (attempt {attempt}/{max_retries}): '
+                            f'{error_type} - {error_msg}'
+                        )
+
+                        if attempt < max_retries:
+                            backoff_time = 2 ** (attempt - 1)
+                            self.logger.debug(f'Retrying {model_name} in {backoff_time}s...')
+                            time.sleep(backoff_time)
+                        else:
+                            # All retries exhausted for this model, try next
+                            self.logger.error(f'{model_name} failed after {max_retries} attempts')
+                            break
+
+        # All models exhausted
+        self.logger.error(f'All {len(self.MODELS)} models exhausted or rate limited')
         return None
 
     def _validate_category(self, category: str) -> Optional[str]:
