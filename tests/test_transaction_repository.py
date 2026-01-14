@@ -499,9 +499,9 @@ class TestTransactionRepositoryCRUD(unittest.TestCase):
         txn_before = self.transaction_repo.get_by_id(self.manual_txn_id)
         updated_at_before = txn_before['updated_at']
 
-        # Small delay to ensure timestamp difference
+        # Delay to ensure timestamp difference (SQLite CURRENT_TIMESTAMP has 1-second precision)
         import time
-        time.sleep(0.1)
+        time.sleep(1.1)
 
         # Update notes
         self.transaction_repo.update_notes(self.manual_txn_id, "Updated notes")
