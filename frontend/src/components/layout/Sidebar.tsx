@@ -5,6 +5,7 @@ import {
   DashboardOutlined,
   TransactionOutlined,
   FileTextOutlined,
+  WalletOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
 
@@ -31,6 +32,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onMenuClick }) => {
       key: '/parsing-sessions',
       icon: <FileTextOutlined />,
       label: '파싱 현황',
+    },
+    {
+      key: '/allowances',
+      icon: <WalletOutlined />,
+      label: '용돈 내역',
     },
     {
       key: '/settings',

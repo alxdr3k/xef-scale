@@ -8,6 +8,7 @@ import {
 import type { MenuProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { WorkspaceSelector } from '../workspace';
 
 interface TopBarProps {
   onMenuClick?: () => void;
@@ -70,16 +71,23 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
           지출 추적기
         </div>
       </div>
-      <Dropdown menu={{ items: menuItems }} placement="bottomRight">
-        <Space style={{ cursor: 'pointer' }}>
-          <Avatar
-            src={user?.picture || undefined}
-            icon={<UserOutlined />}
-            style={{ backgroundColor: '#2196F3' }}
-          />
-          <span className="user-name">{user?.name || '사용자'}</span>
-        </Space>
-      </Dropdown>
+      <Space size="middle" style={{ display: 'flex', alignItems: 'center' }}>
+        {/* Workspace Selector - shown when authenticated */}
+        <div className="workspace-selector-container">
+          <WorkspaceSelector />
+        </div>
+        {/* User Profile Dropdown */}
+        <Dropdown menu={{ items: menuItems }} placement="bottomRight">
+          <Space style={{ cursor: 'pointer' }}>
+            <Avatar
+              src={user?.picture || undefined}
+              icon={<UserOutlined />}
+              style={{ backgroundColor: '#2196F3' }}
+            />
+            <span className="user-name">{user?.name || '사용자'}</span>
+          </Space>
+        </Dropdown>
+      </Space>
 
       <style>{`
         @media (min-width: 992px) {
@@ -90,6 +98,12 @@ const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
 
         @media (max-width: 991px) {
           .desktop-title {
+            display: none !important;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .workspace-selector-container {
             display: none !important;
           }
         }

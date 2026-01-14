@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ConfigProvider, App as AntdApp } from 'antd';
 import koKR from 'antd/locale/ko_KR';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { WorkspaceProvider } from './contexts/WorkspaceContext';
 import { theme } from './theme.config';
 import StaticApp from './components/common/StaticApp';
 
@@ -15,6 +16,7 @@ import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import ParsingSessions from './pages/ParsingSessions';
 import Settings from './pages/Settings';
+import Allowances from './pages/Allowances';
 
 // Auth components
 import PrivateRoute from './components/auth/PrivateRoute';
@@ -54,6 +56,7 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/parsing-sessions" element={<ParsingSessions />} />
+          <Route path="/allowances" element={<Allowances />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
 
@@ -73,7 +76,9 @@ function App() {
       <AntdApp>
         <StaticApp />
         <AuthProvider>
-          <AppRoutes />
+          <WorkspaceProvider>
+            <AppRoutes />
+          </WorkspaceProvider>
         </AuthProvider>
       </AntdApp>
     </ConfigProvider>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Select, Badge, Spin, Space, Tag } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
-import type { Workspace, WorkspaceRole } from '../../types';
+import type { WorkspaceRole } from '../../types';
 
 const { Option } = Select;
 
