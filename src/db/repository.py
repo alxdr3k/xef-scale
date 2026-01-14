@@ -1819,6 +1819,82 @@ class ParsingSessionRepository:
             self.logger.error(f'Error fetching parsing session {session_id}: {e}')
             raise
 
+    def get_recent_sessions_with_workspace(
+        self,
+        workspace_id: int,
+        limit: int = 50,
+        offset: int = 0
+    ) -> tuple[List[dict], int]:
+        """
+        Get parsing sessions for a specific workspace with pagination.
+
+        Filters sessions by workspace_id through processed_files join.
+        Returns both the sessions list and total count for pagination.
+
+        Args:
+            workspace_id: Workspace ID to filter by
+            limit: Maximum number of sessions to return (default: 50)
+            offset: Number of sessions to skip for pagination (default: 0)
+
+        Returns:
+            Tuple of (sessions list, total count)
+
+        Examples:
+            >>> repo = ParsingSessionRepository(conn)
+            >>> sessions, total = repo.get_recent_sessions_with_workspace(
+            ...     workspace_id=1, limit=20, offset=0
+            ... )
+            >>> print(f"Found {len(sessions)} of {total} total sessions")
+            'Found 20 of 157 total sessions'
+
+        Notes:
+            - Joins with processed_files to filter by workspace_id
+            - Joins with financial_institutions for institution details
+            - Includes uploaded_by_user_id from processed_files
+            - Ordered by started_at DESC (most recent first)
+            - Returns total count for pagination UI
+        """
+        try:
+            # Get total count for this workspace
+            cursor = self.conn.execute('''
+                SELECT COUNT(*)
+                FROM parsing_sessions ps
+                JOIN processed_files pf ON ps.file_id = pf.id
+                WHERE pf.workspace_id = ?
+            ''', (workspace_id,))
+            total = cursor.fetchone()[0]
+
+            # Get sessions with pagination
+            cursor = self.conn.execute('''
+                SELECT
+                    ps.*,
+                    pf.file_name,
+                    pf.file_hash,
+                    pf.workspace_id,
+                    pf.uploaded_by_user_id,
+                    fi.name as institution_name,
+                    fi.institution_type
+                FROM parsing_sessions ps
+                JOIN processed_files pf ON ps.file_id = pf.id
+                JOIN financial_institutions fi ON pf.institution_id = fi.id
+                WHERE pf.workspace_id = ?
+                ORDER BY ps.started_at DESC
+                LIMIT ? OFFSET ?
+            ''', (workspace_id, limit, offset))
+
+            sessions = [dict(row) for row in cursor.fetchall()]
+            self.logger.debug(
+                f'Retrieved {len(sessions)} sessions for workspace {workspace_id} '
+                f'(total={total}, limit={limit}, offset={offset})'
+            )
+            return sessions, total
+
+        except Exception as e:
+            self.logger.error(
+                f'Error fetching sessions for workspace {workspace_id}: {e}'
+            )
+            raise
+
 
 class SkippedTransactionRepository:
     """

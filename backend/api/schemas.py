@@ -407,6 +407,11 @@ class ParsingSessionResponse(ParsingSessionBase):
     institution_name: Optional[str] = None
     institution_type: Optional[str] = None
 
+    # Workspace and uploader fields (Phase 4.2)
+    workspace_id: Optional[int] = None
+    uploaded_by: Optional[str] = None  # Uploader name
+    uploaded_by_user_id: Optional[int] = None
+
     model_config = ConfigDict(from_attributes=True)
 
 

@@ -14,8 +14,17 @@ from backend.api.schemas import (
     ErrorResponse,
     UserInfo
 )
-from backend.api.dependencies import get_current_user, get_db
-from src.db.repository import ParsingSessionRepository, SkippedTransactionRepository
+from backend.api.dependencies import (
+    get_current_user,
+    get_db,
+    get_workspace_membership
+)
+from src.db.repository import (
+    ParsingSessionRepository,
+    SkippedTransactionRepository,
+    ProcessedFileRepository,
+    UserRepository
+)
 
 router = APIRouter(prefix="/parsing-sessions", tags=["Parsing Sessions"])
 
@@ -24,24 +33,29 @@ router = APIRouter(prefix="/parsing-sessions", tags=["Parsing Sessions"])
     "",
     response_model=ParsingSessionListResponse,
     responses={
-        401: {"model": ErrorResponse, "description": "Not authenticated"}
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Not a workspace member"}
     }
 )
 async def get_parsing_sessions(
+    workspace_id: int = Query(..., description="Workspace ID to filter sessions"),
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(50, ge=1, le=200, description="Items per page"),
+    membership: dict = Depends(get_workspace_membership),
     db: sqlite3.Connection = Depends(get_db),
     current_user: UserInfo = Depends(get_current_user)
 ):
     """
-    Get paginated list of parsing sessions.
+    Get paginated list of parsing sessions for a workspace.
 
-    Returns parsing sessions with file details and processing statistics,
-    sorted by start time (most recent first).
+    Shows all parsing sessions for the workspace (visible to all members).
+    Includes uploaded_by user information for each session.
 
     Args:
+        workspace_id: Required - filter sessions by workspace
         page: Page number for pagination (1-indexed)
         page_size: Number of items per page (max 200)
+        membership: User's workspace membership (from dependency)
         db: Database connection from dependency
         current_user: Current authenticated user
 
@@ -49,8 +63,8 @@ async def get_parsing_sessions(
         ParsingSessionListResponse with sessions array, total count, and pagination info
 
     Examples:
-        >>> # Get recent parsing sessions
-        >>> GET /api/parsing-sessions?page=1&page_size=20
+        >>> # Get recent parsing sessions for workspace 1
+        >>> GET /api/parsing-sessions?workspace_id=1&page=1&page_size=20
 
         >>> # Response
         >>> {
@@ -68,7 +82,10 @@ async def get_parsing_sessions(
         ...             "status": "completed",
         ...             "validation_status": "pass",
         ...             "file_name": "hana_statement.xls",
-        ...             "institution_name": "하나카드"
+        ...             "institution_name": "하나카드",
+        ...             "workspace_id": 1,
+        ...             "uploaded_by": "John Doe",
+        ...             "uploaded_by_user_id": 5
         ...         }
         ...     ],
         ...     "total": 50,
@@ -77,23 +94,33 @@ async def get_parsing_sessions(
         ... }
 
     Notes:
-        - Uses ParsingSessionRepository.get_recent_sessions()
+        - Uses ParsingSessionRepository.get_recent_sessions_with_workspace()
         - Sessions ordered by started_at DESC (most recent first)
         - Includes file name and institution name via joins
-        - Useful for monitoring file processing history
+        - Shows uploader information for each session
+        - Visible to all workspace members (no role restriction)
     """
     try:
         parsing_repo = ParsingSessionRepository(db)
+        user_repo = UserRepository(db)
 
         # Calculate offset from page (1-indexed)
         offset = (page - 1) * page_size
 
-        # Get sessions with pagination
-        sessions = parsing_repo.get_recent_sessions(limit=page_size, offset=offset)
+        # Get sessions with pagination filtered by workspace
+        sessions, total = parsing_repo.get_recent_sessions_with_workspace(
+            workspace_id=workspace_id,
+            limit=page_size,
+            offset=offset
+        )
 
-        # Get total count for pagination
-        cursor = db.execute('SELECT COUNT(*) FROM parsing_sessions')
-        total = cursor.fetchone()[0]
+        # Add uploaded_by information to each session
+        for session in sessions:
+            if session.get('uploaded_by_user_id'):
+                user = user_repo.get_by_id(session['uploaded_by_user_id'])
+                session['uploaded_by'] = user['name'] if user else None
+            else:
+                session['uploaded_by'] = None
 
         # Convert to response models
         session_responses = [
@@ -114,7 +141,10 @@ async def get_parsing_sessions(
                 file_name=session.get('file_name'),
                 file_hash=session.get('file_hash'),
                 institution_name=session.get('institution_name'),
-                institution_type=session.get('institution_type')
+                institution_type=session.get('institution_type'),
+                workspace_id=session.get('workspace_id'),
+                uploaded_by=session.get('uploaded_by'),
+                uploaded_by_user_id=session.get('uploaded_by_user_id')
             )
             for session in sessions
         ]
@@ -137,11 +167,14 @@ async def get_parsing_sessions(
     response_model=ParsingSessionResponse,
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Session not in workspace"},
         404: {"model": ErrorResponse, "description": "Session not found"}
     }
 )
 async def get_parsing_session_by_id(
     session_id: int,
+    workspace_id: int = Query(..., description="Workspace ID for access verification"),
+    membership: dict = Depends(get_workspace_membership),
     db: sqlite3.Connection = Depends(get_db),
     current_user: UserInfo = Depends(get_current_user)
 ):
@@ -149,10 +182,13 @@ async def get_parsing_session_by_id(
     Get single parsing session by ID with full details.
 
     Returns complete parsing session information including file details,
-    processing statistics, and validation results.
+    processing statistics, validation results, and uploader information.
+    Requires workspace membership to access.
 
     Args:
         session_id: Parsing session database ID
+        workspace_id: Required for access verification
+        membership: User's workspace membership (from dependency)
         db: Database connection from dependency
         current_user: Current authenticated user
 
@@ -161,10 +197,11 @@ async def get_parsing_session_by_id(
 
     Raises:
         HTTPException: 404 if session not found
+        HTTPException: 403 if session not in workspace
 
     Examples:
-        >>> # Get session with ID 123
-        >>> GET /api/parsing-sessions/123
+        >>> # Get session with ID 123 in workspace 1
+        >>> GET /api/parsing-sessions/123?workspace_id=1
 
         >>> # Response
         >>> {
@@ -183,17 +220,25 @@ async def get_parsing_session_by_id(
         ...     "file_name": "toss_statement.csv",
         ...     "file_hash": "abc123...",
         ...     "institution_name": "토스뱅크",
-        ...     "institution_type": "BANK"
+        ...     "institution_type": "BANK",
+        ...     "workspace_id": 1,
+        ...     "uploaded_by": "Jane Smith",
+        ...     "uploaded_by_user_id": 7
         ... }
 
     Notes:
         - Uses ParsingSessionRepository.get_with_stats()
         - Returns 404 if session doesn't exist
+        - Verifies session belongs to workspace via processed_files
         - Includes joined file and institution data
+        - Shows uploader information
         - Useful for debugging parsing issues
     """
     try:
         parsing_repo = ParsingSessionRepository(db)
+        file_repo = ProcessedFileRepository(db)
+        user_repo = UserRepository(db)
+
         session = parsing_repo.get_with_stats(session_id)
 
         if session is None:
@@ -201,6 +246,21 @@ async def get_parsing_session_by_id(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Parsing session {session_id} not found"
             )
+
+        # Verify session belongs to workspace (via processed_files)
+        file_record = file_repo.get_by_id(session['file_id'])
+        if not file_record or file_record['workspace_id'] != workspace_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Parsing session not in this workspace"
+            )
+
+        # Add uploaded_by information
+        uploaded_by = None
+        uploaded_by_user_id = file_record.get('uploaded_by_user_id')
+        if uploaded_by_user_id:
+            user = user_repo.get_by_id(uploaded_by_user_id)
+            uploaded_by = user['name'] if user else None
 
         return ParsingSessionResponse(
             id=session['id'],
@@ -219,7 +279,10 @@ async def get_parsing_session_by_id(
             file_name=session.get('file_name'),
             file_hash=session.get('file_hash'),
             institution_name=session.get('institution_name'),
-            institution_type=session.get('institution_type')
+            institution_type=session.get('institution_type'),
+            workspace_id=workspace_id,
+            uploaded_by=uploaded_by,
+            uploaded_by_user_id=uploaded_by_user_id
         )
     except HTTPException:
         raise
@@ -235,11 +298,14 @@ async def get_parsing_session_by_id(
     response_model=List[SkippedTransactionResponse],
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Session not in workspace"},
         404: {"model": ErrorResponse, "description": "Session not found"}
     }
 )
 async def get_skipped_transactions(
     session_id: int,
+    workspace_id: int = Query(..., description="Workspace ID for access verification"),
+    membership: dict = Depends(get_workspace_membership),
     db: sqlite3.Connection = Depends(get_db),
     current_user: UserInfo = Depends(get_current_user)
 ):
@@ -247,10 +313,12 @@ async def get_skipped_transactions(
     Get skipped transactions for a parsing session.
 
     Returns list of transactions that were skipped during parsing,
-    with reasons and debugging information.
+    with reasons and debugging information. Requires workspace membership to access.
 
     Args:
         session_id: Parsing session database ID
+        workspace_id: Required for access verification
+        membership: User's workspace membership (from dependency)
         db: Database connection from dependency
         current_user: Current authenticated user
 
@@ -259,10 +327,11 @@ async def get_skipped_transactions(
 
     Raises:
         HTTPException: 404 if session not found
+        HTTPException: 403 if session not in workspace
 
     Examples:
-        >>> # Get skipped transactions for session 123
-        >>> GET /api/parsing-sessions/123/skipped
+        >>> # Get skipped transactions for session 123 in workspace 1
+        >>> GET /api/parsing-sessions/123/skipped?workspace_id=1
 
         >>> # Response
         >>> [
@@ -288,6 +357,7 @@ async def get_skipped_transactions(
 
     Notes:
         - Uses SkippedTransactionRepository.get_by_session()
+        - Verifies session belongs to workspace via processed_files
         - Ordered by row_number for sequential inspection
         - Useful for debugging parsing issues
         - Returns empty list if no skipped transactions
@@ -296,12 +366,21 @@ async def get_skipped_transactions(
     try:
         # Verify session exists first
         parsing_repo = ParsingSessionRepository(db)
+        file_repo = ProcessedFileRepository(db)
         session = parsing_repo.get_with_stats(session_id)
 
         if session is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Parsing session {session_id} not found"
+            )
+
+        # Verify session belongs to workspace (via processed_files)
+        file_record = file_repo.get_by_id(session['file_id'])
+        if not file_record or file_record['workspace_id'] != workspace_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Parsing session not in this workspace"
             )
 
         # Get skipped transactions
