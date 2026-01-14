@@ -305,12 +305,13 @@ class TransactionDeleteResponse(BaseModel):
 
 
 class TransactionListResponse(BaseModel):
-    """Paginated transaction list response."""
+    """Paginated transaction list response with aggregated total."""
     data: List[TransactionResponse]
-    total: int
+    total: int  # Total number of transactions (for pagination)
     page: int
     limit: int
     total_pages: int
+    total_amount: int  # Total amount of ALL filtered transactions (not just current page)
 
 
 class TransactionSummary(BaseModel):

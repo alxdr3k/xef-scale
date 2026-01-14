@@ -806,6 +806,93 @@ class TransactionRepository:
             self.logger.error(f'Error in get_filtered: {e}')
             raise
 
+    def get_filtered_total_amount(
+        self,
+        year: Optional[int] = None,
+        month: Optional[int] = None,
+        category_id: Optional[int] = None,
+        institution_id: Optional[int] = None,
+        search: Optional[str] = None
+    ) -> int:
+        """
+        Calculate total amount for filtered transactions (all pages).
+
+        Uses the same filters as get_filtered() but returns only the sum of amounts
+        across ALL matching transactions (not just the current page). This is useful
+        for showing the total spending that matches the current filter criteria.
+
+        Args:
+            year: Optional year filter
+            month: Optional month filter (1-12)
+            category_id: Optional category ID filter
+            institution_id: Optional institution ID filter
+            search: Optional merchant name search (case-insensitive, partial match)
+
+        Returns:
+            int: Total amount of all filtered transactions, or 0 if no matches
+
+        Examples:
+            >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
+            >>> # Get total spending for September 2025 food expenses
+            >>> total_amount = repo.get_filtered_total_amount(year=2025, month=9, category_id=1)
+            >>> print(f"Total food spending in Sept: {total_amount}원")
+            >>> # Get total for Starbucks transactions
+            >>> total_amount = repo.get_filtered_total_amount(search='스타벅스')
+
+        Notes:
+            - Uses same WHERE clause logic as get_filtered() for consistency
+            - Returns 0 for empty result sets (COALESCE)
+            - Uses parameterized queries to prevent SQL injection
+            - Very fast even on large datasets (single aggregation query)
+            - Does NOT apply pagination (sums ALL matching records)
+        """
+        try:
+            # Build WHERE clause dynamically (same logic as get_filtered)
+            where_clauses = ['t.deleted_at IS NULL']  # Always exclude soft-deleted records
+            params = []
+
+            if year is not None:
+                where_clauses.append('t.transaction_year = ?')
+                params.append(year)
+
+            if month is not None:
+                where_clauses.append('t.transaction_month = ?')
+                params.append(month)
+
+            if category_id is not None:
+                where_clauses.append('t.category_id = ?')
+                params.append(category_id)
+
+            if institution_id is not None:
+                where_clauses.append('t.institution_id = ?')
+                params.append(institution_id)
+
+            if search is not None:
+                where_clauses.append('t.merchant_name LIKE ?')
+                params.append(f'%{search}%')
+
+            where_sql = 'WHERE ' + ' AND '.join(where_clauses)
+
+            # Query total amount with COALESCE to return 0 for empty result
+            query = f'''
+                SELECT COALESCE(SUM(t.amount), 0) as total_amount
+                FROM transactions t
+                {where_sql}
+            '''
+            cursor = self.conn.execute(query, params)
+            result = cursor.fetchone()
+            total_amount = result['total_amount']
+
+            self.logger.debug(
+                f'Calculated filtered total amount: filters={where_clauses}, total={total_amount}'
+            )
+
+            return total_amount
+
+        except Exception as e:
+            self.logger.error(f'Error in get_filtered_total_amount: {e}')
+            raise
+
     def get_monthly_summary_with_stats(self, year: int, month: int) -> dict:
         """
         Get comprehensive monthly spending summary with statistics.

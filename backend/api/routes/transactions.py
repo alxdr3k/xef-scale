@@ -160,6 +160,15 @@ async def get_transactions(
         offset=offset
     )
 
+    # Calculate total amount for ALL filtered transactions (not just current page)
+    total_amount = transaction_repo.get_filtered_total_amount(
+        year=year,
+        month=month,
+        category_id=category_id,
+        institution_id=institution_id,
+        search=search
+    )
+
     # Convert database rows to API response models
     transaction_responses = [_db_row_to_transaction_response(row) for row in transactions]
 
@@ -171,7 +180,8 @@ async def get_transactions(
         total=total,
         page=page,
         limit=limit,
-        total_pages=total_pages
+        total_pages=total_pages,
+        total_amount=total_amount
     )
 
 
