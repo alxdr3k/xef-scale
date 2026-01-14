@@ -99,6 +99,7 @@ class TransactionCreateRequest(BaseModel):
     Request schema for creating a new transaction.
 
     Required fields:
+    - workspace_id: Workspace ID where transaction will be created
     - date: Transaction date in yyyy.mm.dd format (Korean format)
     - category: Category name in Korean (e.g., 식비, 교통)
     - merchant_name: Merchant or item description (1-200 characters)
@@ -111,6 +112,7 @@ class TransactionCreateRequest(BaseModel):
     - original_amount: Original amount for installment purchases
     - notes: Additional notes (max 500 characters)
     """
+    workspace_id: int = Field(..., description="워크스페이스 ID")
     date: str = Field(..., description="거래 날짜 (yyyy.mm.dd 형식)")
     category: str = Field(..., description="카테고리 이름 (예: 식비, 교통)")
     merchant_name: str = Field(..., min_length=1, max_length=200, description="가맹점명 또는 거래 내역")

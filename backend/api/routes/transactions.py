@@ -20,9 +20,19 @@ from backend.api.schemas import (
     TransactionCategoryUpdateRequest,
     TransactionDeleteResponse
 )
-from backend.api.dependencies import get_current_user, get_db
+from backend.api.dependencies import (
+    get_current_user,
+    get_db,
+    get_workspace_membership,
+    WorkspaceRole
+)
 from backend.api.schemas import UserInfo
-from src.db.repository import TransactionRepository, CategoryRepository, InstitutionRepository
+from src.db.repository import (
+    TransactionRepository,
+    CategoryRepository,
+    InstitutionRepository,
+    AllowanceTransactionRepository
+)
 from src.models import Transaction
 
 logger = logging.getLogger(__name__)
@@ -77,10 +87,12 @@ def _db_row_to_transaction_response(row: dict) -> TransactionResponse:
     "",
     response_model=TransactionListResponse,
     responses={
-        401: {"model": ErrorResponse, "description": "Not authenticated"}
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "No access to workspace"}
     }
 )
 async def get_transactions(
+    workspace_id: int = Query(..., description="Workspace ID (required)"),
     year: Optional[int] = Query(None, description="Filter by year"),
     month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month (1-12)"),
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
@@ -89,16 +101,19 @@ async def get_transactions(
     sort: str = Query("date_desc", description="Sort order: date_desc, date_asc, amount_desc, amount_asc"),
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     limit: int = Query(50, ge=1, le=200, description="Items per page"),
-    db: sqlite3.Connection = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_user)
+    membership: dict = Depends(get_workspace_membership),
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """
-    Get paginated list of transactions with optional filters.
+    Get paginated list of transactions for workspace with optional filters.
 
     Returns transactions sorted by date (most recent first) with pagination
     and optional filtering by year, month, category, institution, and merchant search.
+    Excludes other users' allowance transactions (privacy).
 
     Args:
+        workspace_id: Required workspace ID filter
         year: Optional year filter (e.g., 2025)
         month: Optional month filter (1-12)
         category_id: Optional category ID filter
@@ -107,30 +122,34 @@ async def get_transactions(
         sort: Sort order (date_desc, date_asc, amount_desc, amount_asc)
         page: Page number for pagination (1-indexed)
         limit: Number of items per page (max 200)
-        db: Database connection from dependency
+        membership: Workspace membership details (from dependency)
         current_user: Current authenticated user
+        db: Database connection from dependency
 
     Returns:
         TransactionListResponse with data array, total count, and pagination info
 
     Examples:
-        >>> # Get all transactions for September 2025
-        >>> GET /api/transactions?year=2025&month=9
+        >>> # Get all transactions for September 2025 in workspace 1
+        >>> GET /api/transactions?workspace_id=1&year=2025&month=9
 
         >>> # Get food expenses (category_id=1) from Hana Card (institution_id=1)
-        >>> GET /api/transactions?category_id=1&institution_id=1
+        >>> GET /api/transactions?workspace_id=1&category_id=1&institution_id=1
 
         >>> # Search for Starbucks transactions
-        >>> GET /api/transactions?search=스타벅스
+        >>> GET /api/transactions?workspace_id=1&search=스타벅스
 
         >>> # Paginate through results
-        >>> GET /api/transactions?page=2&limit=100
+        >>> GET /api/transactions?workspace_id=1&page=2&limit=100
 
     Notes:
+        - workspace_id is REQUIRED
         - Default limit is 50, max is 200
         - Default sort is date_desc (most recent first)
         - All filters can be combined
         - Search is case-insensitive and matches partial merchant names
+        - Excludes other users' allowance transactions
+        - User's own allowances are included
     """
     # Initialize repositories
     category_repo = CategoryRepository(db)
@@ -148,8 +167,10 @@ async def get_transactions(
     # Calculate offset from page number
     offset = (page - 1) * limit
 
-    # Query transactions with filters
+    # Query transactions with workspace filtering and allowance exclusion
     transactions, total = transaction_repo.get_filtered(
+        workspace_id=workspace_id,
+        exclude_allowances_for_user_id=int(current_user.id),
         year=year,
         month=month,
         category_id=category_id,
@@ -162,6 +183,8 @@ async def get_transactions(
 
     # Calculate total amount for ALL filtered transactions (not just current page)
     total_amount = transaction_repo.get_filtered_total_amount(
+        workspace_id=workspace_id,
+        exclude_allowances_for_user_id=int(current_user.id),
         year=year,
         month=month,
         category_id=category_id,
@@ -169,8 +192,19 @@ async def get_transactions(
         search=search
     )
 
-    # Convert database rows to API response models
-    transaction_responses = [_db_row_to_transaction_response(row) for row in transactions]
+    # Convert database rows to API response models and add allowance flags
+    transaction_responses = []
+    for row in transactions:
+        response = _db_row_to_transaction_response(row)
+        # Check if current user marked this as allowance
+        response.is_allowance = AllowanceTransactionRepository.is_allowance(
+            db,
+            row['id'],
+            int(current_user.id),
+            workspace_id
+        )
+        response.workspace_id = workspace_id
+        transaction_responses.append(response)
 
     # Calculate total pages
     total_pages = math.ceil(total / limit) if total > 0 else 0
@@ -190,38 +224,45 @@ async def get_transactions(
     response_model=TransactionResponse,
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "No access to workspace"},
         404: {"model": ErrorResponse, "description": "Transaction not found"}
     }
 )
 async def get_transaction_by_id(
     transaction_id: int,
-    db: sqlite3.Connection = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_user)
+    workspace_id: int = Query(..., description="Workspace ID (required)"),
+    membership: dict = Depends(get_workspace_membership),
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """
     Get single transaction by ID.
 
     Returns detailed information for a specific transaction including
-    category and institution names.
+    category and institution names. Verifies workspace access.
 
     Args:
         transaction_id: Transaction database ID
-        db: Database connection from dependency
+        workspace_id: Workspace ID (required)
+        membership: Workspace membership details (from dependency)
         current_user: Current authenticated user
+        db: Database connection from dependency
 
     Returns:
         TransactionResponse with all transaction details
 
     Raises:
         HTTPException: 404 if transaction not found
+        HTTPException: 403 if transaction not in workspace
 
     Examples:
-        >>> # Get transaction with ID 123
-        >>> GET /api/transactions/123
+        >>> # Get transaction with ID 123 in workspace 1
+        >>> GET /api/transactions/123?workspace_id=1
 
     Notes:
         - Joins with categories and institutions for readable names
         - Returns 404 if transaction doesn't exist
+        - Verifies transaction belongs to workspace
     """
     # Initialize repositories
     category_repo = CategoryRepository(db)
@@ -237,42 +278,62 @@ async def get_transaction_by_id(
             detail=f"Transaction with ID {transaction_id} not found"
         )
 
+    # Verify transaction belongs to workspace
+    if transaction['workspace_id'] != workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Transaction not in this workspace"
+        )
+
     # Convert to API response
-    return _db_row_to_transaction_response(transaction)
+    response = _db_row_to_transaction_response(transaction)
+    response.is_allowance = AllowanceTransactionRepository.is_allowance(
+        db,
+        transaction_id,
+        int(current_user.id),
+        workspace_id
+    )
+    response.workspace_id = workspace_id
+    return response
 
 
 @router.get(
     "/summary/monthly",
     response_model=MonthlySummaryResponse,
     responses={
-        401: {"model": ErrorResponse, "description": "Not authenticated"}
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "No access to workspace"}
     }
 )
 async def get_monthly_summary(
+    workspace_id: int = Query(..., description="Workspace ID (required)"),
     year: int = Query(..., description="Year for summary"),
     month: int = Query(..., ge=1, le=12, description="Month for summary (1-12)"),
-    db: sqlite3.Connection = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_user)
+    membership: dict = Depends(get_workspace_membership),
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """
-    Get monthly spending summary aggregated by category.
+    Get monthly spending summary aggregated by category for workspace.
 
     Returns total spending for each category in the specified month,
     sorted by total spending (highest first), along with transaction counts
-    and overall totals.
+    and overall totals. Excludes other users' allowance transactions.
 
     Args:
+        workspace_id: Workspace ID (required)
         year: Year for summary (required)
         month: Month for summary, 1-12 (required)
-        db: Database connection from dependency
+        membership: Workspace membership details (from dependency)
         current_user: Current authenticated user
+        db: Database connection from dependency
 
     Returns:
         MonthlySummaryResponse with category summaries and total spending
 
     Examples:
-        >>> # Get September 2025 summary
-        >>> GET /api/transactions/summary/monthly?year=2025&month=9
+        >>> # Get September 2025 summary for workspace 1
+        >>> GET /api/transactions/summary/monthly?workspace_id=1&year=2025&month=9
 
         >>> # Response
         >>> {
@@ -288,18 +349,25 @@ async def get_monthly_summary(
         ... }
 
     Notes:
+        - workspace_id is REQUIRED
         - Categories sorted by spending amount (highest first)
         - Includes both amount and transaction count per category
         - Useful for monthly expense analysis and budgeting
         - Can be used to generate charts/graphs
+        - Excludes other users' allowance transactions from totals
     """
     # Initialize repositories
     category_repo = CategoryRepository(db)
     institution_repo = InstitutionRepository(db)
     transaction_repo = TransactionRepository(db, category_repo, institution_repo)
 
-    # Get comprehensive monthly summary
-    summary = transaction_repo.get_monthly_summary_with_stats(year, month)
+    # Get comprehensive monthly summary with workspace filtering and allowance exclusion
+    summary = transaction_repo.get_monthly_summary_with_stats(
+        workspace_id=workspace_id,
+        exclude_allowances_for_user_id=int(current_user.id),
+        year=year,
+        month=month
+    )
 
     # Convert category summaries to API response models
     category_summaries = [
@@ -328,24 +396,28 @@ async def get_monthly_summary(
     responses={
         400: {"model": ErrorResponse, "description": "Validation error or duplicate transaction"},
         401: {"model": ErrorResponse, "description": "Not authenticated"},
+        403: {"model": ErrorResponse, "description": "Insufficient permissions or no access to workspace"},
         500: {"model": ErrorResponse, "description": "Database error"}
     }
 )
 async def create_transaction(
     request: TransactionCreateRequest,
-    db: sqlite3.Connection = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_user)
+    membership: dict = Depends(get_workspace_membership),
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """
-    Create a new manual transaction.
+    Create a new manual transaction in workspace.
 
     Creates a transaction that is marked as manually entered (file_id IS NULL).
     Manual transactions can be updated and deleted, unlike parsed transactions.
+    Requires MEMBER_WRITE role or higher.
 
     Args:
-        request: Transaction creation request with required fields
-        db: Database connection from dependency
+        request: Transaction creation request with required fields (including workspace_id)
+        membership: Workspace membership details (from dependency)
         current_user: Current authenticated user
+        db: Database connection from dependency
 
     Returns:
         TransactionResponse with the created transaction details
@@ -353,12 +425,14 @@ async def create_transaction(
     Raises:
         HTTPException: 400 if duplicate transaction detected or validation fails
         HTTPException: 401 if not authenticated
+        HTTPException: 403 if MEMBER_READ role (insufficient permissions)
         HTTPException: 500 if database error occurs
 
     Examples:
-        >>> # Create a food expense
+        >>> # Create a food expense in workspace 1
         >>> POST /api/transactions
         >>> {
+        ...     "workspace_id": 1,
         ...     "date": "2025.09.15",
         ...     "category": "식비",
         ...     "merchant_name": "스타벅스 강남점",
@@ -368,11 +442,21 @@ async def create_transaction(
         ... }
 
     Notes:
+        - workspace_id is REQUIRED
         - Manual transactions (file_id IS NULL) can be edited and deleted
         - Duplicate detection checks: date, institution, merchant, amount
         - Date format is yyyy.mm.dd (Korean format)
         - All amounts in KRW (Korean Won)
+        - MEMBER_READ users cannot create transactions
     """
+    # Check write permission
+    user_role = WorkspaceRole(membership['role'])
+    if user_role.level < WorkspaceRole.MEMBER_WRITE.level:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="MEMBER_READ cannot create transactions. Requires MEMBER_WRITE role or higher."
+        )
+
     try:
         # Initialize repositories
         category_repo = CategoryRepository(db)
@@ -406,7 +490,7 @@ async def create_transaction(
         # Insert transaction with file_id=None, row_number=None (marks as manual)
         transaction_id = transaction_repo.insert(
             transaction,
-            auto_commit=True,
+            auto_commit=False,  # Don't commit yet, need to set workspace_id
             file_id=None,
             row_number=None
         )
@@ -418,13 +502,21 @@ async def create_transaction(
                 detail="동일한 거래가 이미 존재합니다. (날짜, 금융기관, 가맹점, 금액이 모두 같음)"
             )
 
+        # Set workspace_id for the transaction
+        db.execute(
+            'UPDATE transactions SET workspace_id = ? WHERE id = ?',
+            (request.workspace_id, transaction_id)
+        )
+
         # If notes provided, update them separately
         if request.notes:
-            transaction_repo.update(
-                transaction_id,
-                {'notes': request.notes},
-                validate_editable=False  # Just created, safe to update
+            db.execute(
+                'UPDATE transactions SET notes = ? WHERE id = ?',
+                (request.notes, transaction_id)
             )
+
+        # Commit all changes together
+        db.commit()
 
         # Fetch created transaction
         created_transaction = transaction_repo.get_by_id(transaction_id)
@@ -435,9 +527,16 @@ async def create_transaction(
                 detail="거래가 생성되었지만 조회할 수 없습니다."
             )
 
-        logger.info(f"Created manual transaction ID={transaction_id} by user={current_user.username}")
+        logger.info(
+            f"Created manual transaction ID={transaction_id} in workspace={request.workspace_id} "
+            f"by user={current_user.email}"
+        )
 
-        return _db_row_to_transaction_response(created_transaction)
+        # Convert to response and add workspace context
+        response = _db_row_to_transaction_response(created_transaction)
+        response.is_allowance = False  # Newly created, not marked as allowance yet
+        response.workspace_id = request.workspace_id
+        return response
 
     except HTTPException:
         raise
@@ -455,62 +554,91 @@ async def create_transaction(
     responses={
         400: {"model": ErrorResponse, "description": "Validation error"},
         401: {"model": ErrorResponse, "description": "Not authenticated"},
-        403: {"model": ErrorResponse, "description": "Cannot edit parsed transaction"},
+        403: {"model": ErrorResponse, "description": "Cannot edit parsed transaction or insufficient permissions"},
         404: {"model": ErrorResponse, "description": "Transaction not found"}
     }
 )
 async def update_transaction(
     transaction_id: int,
     request: TransactionUpdateRequest,
-    db: sqlite3.Connection = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_user)
+    workspace_id: int = Query(..., description="Workspace ID (required)"),
+    membership: dict = Depends(get_workspace_membership),
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """
-    Update an existing manual transaction.
+    Update an existing manual transaction in workspace.
 
     Only manual transactions (file_id IS NULL) can be updated. Transactions
     parsed from files are immutable and will return 403 Forbidden.
+    Requires MEMBER_WRITE role or higher.
 
     Args:
         transaction_id: Transaction database ID to update
         request: Transaction update request with optional fields
-        db: Database connection from dependency
+        workspace_id: Workspace ID (required)
+        membership: Workspace membership details (from dependency)
         current_user: Current authenticated user
+        db: Database connection from dependency
 
     Returns:
         TransactionResponse with the updated transaction details
 
     Raises:
-        HTTPException: 403 if transaction is from parsed file (not editable)
+        HTTPException: 403 if transaction is from parsed file (not editable), not in workspace, or insufficient permissions
         HTTPException: 404 if transaction not found
         HTTPException: 400 if validation fails
         HTTPException: 401 if not authenticated
 
     Examples:
-        >>> # Update merchant name and amount
-        >>> PUT /api/transactions/123
+        >>> # Update merchant name and amount for transaction in workspace 1
+        >>> PUT /api/transactions/123?workspace_id=1
         >>> {
         ...     "merchant_name": "스타벅스 역삼점",
         ...     "amount": 6000
         ... }
 
         >>> # Update category only
-        >>> PUT /api/transactions/123
+        >>> PUT /api/transactions/123?workspace_id=1
         >>> {
         ...     "category": "교통"
         ... }
 
     Notes:
+        - workspace_id is REQUIRED
         - Only provided fields will be updated (partial updates supported)
         - Parsed transactions (with file_id) cannot be edited
         - Category and institution are referenced by name, not ID
         - Date format must be yyyy.mm.dd if provided
+        - MEMBER_READ users cannot update transactions
     """
+    # Check write permission
+    user_role = WorkspaceRole(membership['role'])
+    if user_role.level < WorkspaceRole.MEMBER_WRITE.level:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="MEMBER_READ cannot update transactions. Requires MEMBER_WRITE role or higher."
+        )
+
     try:
         # Initialize repositories
         category_repo = CategoryRepository(db)
         institution_repo = InstitutionRepository(db)
         transaction_repo = TransactionRepository(db, category_repo, institution_repo)
+
+        # Get transaction and verify it belongs to workspace
+        transaction = transaction_repo.get_by_id(transaction_id)
+        if not transaction:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
+            )
+
+        if transaction['workspace_id'] != workspace_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Transaction not in this workspace"
+            )
 
         # Check if transaction is editable
         if not transaction_repo.is_editable(transaction_id):
@@ -576,9 +704,21 @@ async def update_transaction(
                 detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
             )
 
-        logger.info(f"Updated transaction ID={transaction_id} by user={current_user.username}")
+        logger.info(
+            f"Updated transaction ID={transaction_id} in workspace={workspace_id} "
+            f"by user={current_user.email}"
+        )
 
-        return _db_row_to_transaction_response(updated_transaction)
+        # Convert to response and add workspace context
+        response = _db_row_to_transaction_response(updated_transaction)
+        response.is_allowance = AllowanceTransactionRepository.is_allowance(
+            db,
+            transaction_id,
+            int(current_user.id),
+            workspace_id
+        )
+        response.workspace_id = workspace_id
+        return response
 
     except HTTPException:
         raise
@@ -595,38 +735,43 @@ async def update_transaction(
     response_model=TransactionDeleteResponse,
     responses={
         401: {"model": ErrorResponse, "description": "Not authenticated"},
-        403: {"model": ErrorResponse, "description": "Cannot delete parsed transaction"},
+        403: {"model": ErrorResponse, "description": "Cannot delete parsed transaction or insufficient permissions"},
         404: {"model": ErrorResponse, "description": "Transaction not found"}
     }
 )
 async def delete_transaction(
     transaction_id: int,
-    db: sqlite3.Connection = Depends(get_db),
-    current_user: UserInfo = Depends(get_current_user)
+    workspace_id: int = Query(..., description="Workspace ID (required)"),
+    membership: dict = Depends(get_workspace_membership),
+    current_user: UserInfo = Depends(get_current_user),
+    db: sqlite3.Connection = Depends(get_db)
 ):
     """
-    Soft delete a manual transaction.
+    Soft delete a manual transaction from workspace.
 
     Only manual transactions (file_id IS NULL) can be deleted. Transactions
     parsed from files are immutable and will return 403 Forbidden. Soft deletion
     sets the deleted_at timestamp, preserving data for audit trails.
+    Requires MEMBER_WRITE role or higher.
 
     Args:
         transaction_id: Transaction database ID to delete
-        db: Database connection from dependency
+        workspace_id: Workspace ID (required)
+        membership: Workspace membership details (from dependency)
         current_user: Current authenticated user
+        db: Database connection from dependency
 
     Returns:
         TransactionDeleteResponse with deletion confirmation and timestamp
 
     Raises:
-        HTTPException: 403 if transaction is from parsed file (not editable)
+        HTTPException: 403 if transaction is from parsed file (not editable), not in workspace, or insufficient permissions
         HTTPException: 404 if transaction not found
         HTTPException: 401 if not authenticated
 
     Examples:
-        >>> # Delete transaction
-        >>> DELETE /api/transactions/123
+        >>> # Delete transaction from workspace 1
+        >>> DELETE /api/transactions/123?workspace_id=1
 
         >>> # Response
         >>> {
@@ -636,16 +781,40 @@ async def delete_transaction(
         ... }
 
     Notes:
+        - workspace_id is REQUIRED
         - Soft deletion preserves transaction data (sets deleted_at timestamp)
         - Deleted transactions are excluded from queries by default
         - Only manual transactions can be deleted
         - Parsed transactions (with file_id) cannot be deleted
+        - MEMBER_READ users cannot delete transactions
     """
+    # Check write permission
+    user_role = WorkspaceRole(membership['role'])
+    if user_role.level < WorkspaceRole.MEMBER_WRITE.level:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="MEMBER_READ cannot delete transactions. Requires MEMBER_WRITE role or higher."
+        )
+
     try:
         # Initialize repositories
         category_repo = CategoryRepository(db)
         institution_repo = InstitutionRepository(db)
         transaction_repo = TransactionRepository(db, category_repo, institution_repo)
+
+        # Get transaction and verify it belongs to workspace
+        transaction = transaction_repo.get_by_id(transaction_id)
+        if not transaction:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
+            )
+
+        if transaction['workspace_id'] != workspace_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Transaction not in this workspace"
+            )
 
         # Check if transaction is editable
         if not transaction_repo.is_editable(transaction_id):
@@ -678,7 +847,10 @@ async def delete_transaction(
 
         deleted_at = row[0]
 
-        logger.info(f"Soft deleted transaction ID={transaction_id} by user={current_user.username}")
+        logger.info(
+            f"Soft deleted transaction ID={transaction_id} in workspace={workspace_id} "
+            f"by user={current_user.email}"
+        )
 
         return TransactionDeleteResponse(
             id=transaction_id,
