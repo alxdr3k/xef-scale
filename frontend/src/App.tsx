@@ -17,6 +17,7 @@ import Transactions from './pages/Transactions';
 import ParsingSessions from './pages/ParsingSessions';
 import Settings from './pages/Settings';
 import Allowances from './pages/Allowances';
+import WorkspaceSettings from './pages/WorkspaceSettings';
 
 // Auth components
 import PrivateRoute from './components/auth/PrivateRoute';
@@ -58,6 +59,7 @@ function AppRoutes() {
           <Route path="/parsing-sessions" element={<ParsingSessions />} />
           <Route path="/allowances" element={<Allowances />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/workspace-settings" element={<WorkspaceSettings />} />
         </Route>
 
         {/* Fallback route - redirect based on authentication state */}

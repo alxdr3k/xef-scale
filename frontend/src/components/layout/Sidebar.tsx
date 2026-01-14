@@ -7,6 +7,7 @@ import {
   FileTextOutlined,
   WalletOutlined,
   SettingOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 
 interface SidebarProps {
@@ -37,6 +38,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onMenuClick }) => {
       key: '/allowances',
       icon: <WalletOutlined />,
       label: '용돈 내역',
+    },
+    {
+      key: '/workspace-settings',
+      icon: <TeamOutlined />,
+      label: '워크스페이스 설정',
     },
     {
       key: '/settings',

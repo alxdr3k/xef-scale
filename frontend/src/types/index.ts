@@ -196,3 +196,29 @@ export interface Workspace {
 export interface WorkspaceListResponse {
   data: Workspace[];
 }
+
+// Workspace member interface
+export interface WorkspaceMember {
+  user_id: number;
+  name: string;
+  email: string;
+  profile_picture_url: string | null;
+  role: WorkspaceRole;
+  joined_at: string;
+}
+
+// Workspace member list response
+export interface WorkspaceMemberListResponse {
+  members: WorkspaceMember[];
+}
+
+// Workspace update request
+export interface WorkspaceUpdateRequest {
+  name?: string;
+  description?: string;
+}
+
+// Member role update request
+export interface MemberRoleUpdateRequest {
+  role: WorkspaceRole;
+}
