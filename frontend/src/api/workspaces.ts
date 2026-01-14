@@ -13,6 +13,8 @@ import type {
   WorkspaceInvitation,
   WorkspaceInvitationListResponse,
   InvitationCreateRequest,
+  InvitationPreview,
+  InvitationAcceptResponse,
 } from '../types';
 
 /**
@@ -131,4 +133,33 @@ export const getInvitations = async (workspaceId: number): Promise<WorkspaceInvi
  */
 export const revokeInvitation = async (workspaceId: number, invitationId: number): Promise<void> => {
   await apiClient.delete(`/api/workspaces/${workspaceId}/invitations/${invitationId}`);
+};
+
+/**
+ * Get invitation details by token (for preview before joining)
+ * @param token - Invitation token from URL
+ * @returns Invitation details including workspace info
+ */
+export const getInvitationByToken = async (token: string): Promise<InvitationPreview> => {
+  // Since backend doesn't have a dedicated preview endpoint, we'll construct
+  // the preview from the invitation data. The validation happens on accept.
+  // For now, we'll need to attempt accept and handle errors gracefully.
+  // This function will be used in conjunction with accept_invitation.
+
+  // Note: Backend doesn't expose a GET /invitations/{token} endpoint for preview.
+  // The accept endpoint validates everything, so we'll need to show invitation
+  // based on the token validation response during accept.
+  throw new Error('getInvitationByToken not implemented - use acceptInvitation directly');
+};
+
+/**
+ * Accept invitation and join workspace
+ * @param token - Invitation token from URL
+ * @returns Workspace info and assigned role
+ */
+export const acceptInvitation = async (token: string): Promise<InvitationAcceptResponse> => {
+  const response = await apiClient.post<InvitationAcceptResponse>(
+    `/api/invitations/${token}/accept`
+  );
+  return response.data;
 };

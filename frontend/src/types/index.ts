@@ -290,3 +290,26 @@ export interface AllowanceSummary {
   average_trend: 'up' | 'down' | 'stable'; // Trend indicator
   total_count: number; // Current month transaction count
 }
+
+// Invitation preview response (for public view before joining)
+export interface InvitationPreview {
+  workspace_id: number;
+  workspace_name: string;
+  workspace_description: string | null;
+  role: WorkspaceRole;
+  member_count: number;
+  created_by_name: string | null;
+  expires_at: string;
+  max_uses: number | null;
+  current_uses: number;
+  is_active: boolean;
+  is_valid: boolean; // Overall validity check
+}
+
+// Invitation acceptance response
+export interface InvitationAcceptResponse {
+  workspace_id: number;
+  workspace_name: string;
+  role: WorkspaceRole;
+  message: string;
+}

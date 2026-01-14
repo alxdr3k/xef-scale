@@ -18,6 +18,7 @@ import ParsingSessions from './pages/ParsingSessions';
 import Settings from './pages/Settings';
 import AllowanceSpending from './pages/AllowanceSpending';
 import WorkspaceSettings from './pages/WorkspaceSettings';
+import JoinWorkspace from './pages/JoinWorkspace';
 
 // Auth components
 import PrivateRoute from './components/auth/PrivateRoute';
@@ -45,6 +46,16 @@ function AppRoutes() {
             }
           />
         </Route>
+
+        {/* Semi-public route: Join workspace (requires auth but uses PublicLayout) */}
+        <Route
+          path="/join/:token"
+          element={
+            <PrivateRoute>
+              <JoinWorkspace />
+            </PrivateRoute>
+          }
+        />
 
         {/* Protected routes */}
         <Route
