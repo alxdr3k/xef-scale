@@ -9,7 +9,7 @@ import logging
 import time
 from typing import List, Optional
 
-import google.generativeai as genai
+from google import genai
 
 
 class GeminiClient:
@@ -71,12 +71,8 @@ class GeminiClient:
         self.valid_categories = set(valid_categories)  # O(1) lookup
         self.logger = logging.getLogger(__name__)
 
-        # Configure API
-        genai.configure(api_key=self.api_key)
-
-        # Initialize Gemini model (fast, cost-effective)
-        # Using gemini-2.0-flash (stable, widely available)
-        self.model = genai.GenerativeModel('gemini-2.0-flash')
+        # Initialize client (new API)
+        self.client = genai.Client(api_key=self.api_key)
 
         self.logger.info(f'GeminiClient initialized with {len(valid_categories)} valid categories')
 
@@ -235,7 +231,11 @@ class GeminiClient:
             try:
                 self.logger.info(f'Gemini API call (attempt {attempt}/{max_retries})')
 
-                response = self.model.generate_content(prompt)
+                # New API pattern
+                response = self.client.models.generate_content(
+                    model='gemini-2.0-flash',
+                    contents=prompt
+                )
 
                 if response and response.text:
                     return response.text.strip()
