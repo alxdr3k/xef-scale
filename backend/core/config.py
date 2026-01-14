@@ -4,7 +4,7 @@ Centralizes environment variables and application settings.
 """
 
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 
 
 class Settings(BaseSettings):
@@ -57,6 +57,9 @@ class Settings(BaseSettings):
 
     # Google OAuth settings
     GOOGLE_CLIENT_ID: str = ""
+
+    # Gemini API settings (for file processor integration)
+    GEMINI_API_KEY: Optional[str] = None
 
     class Config:
         env_file = ".env"
