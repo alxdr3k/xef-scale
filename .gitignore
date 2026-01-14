@@ -47,3 +47,5 @@ scripts/*
 !scripts/temp_manual_import.py
 !scripts/recover_archive_files.py
 !scripts/build_mappings_from_txt.py
+!scripts/test_multimodel_fallback.py
+!scripts/list_gemini_models.py
