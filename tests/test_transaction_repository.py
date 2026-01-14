@@ -427,5 +427,123 @@ class TestTransactionRepositoryCRUD(unittest.TestCase):
         self.assertEqual(len(deleted_ids), 0)
 
 
+    # ==================== update_notes() Tests ====================
+
+    def test_update_notes_manual_transaction(self):
+        """Test updating notes for manual transaction."""
+        notes_text = "회의 중 커피 구매"
+
+        result = self.transaction_repo.update_notes(self.manual_txn_id, notes_text)
+
+        self.assertTrue(result)
+
+        # Verify notes were persisted
+        txn = self.transaction_repo.get_by_id(self.manual_txn_id)
+        self.assertEqual(txn['notes'], notes_text)
+
+    def test_update_notes_parsed_transaction(self):
+        """Test updating notes for parsed transaction (should succeed)."""
+        notes_text = "자동 파싱된 거래에 메모 추가"
+
+        result = self.transaction_repo.update_notes(self.parsed_txn_id, notes_text)
+
+        self.assertTrue(result)
+
+        # Verify notes were persisted for parsed transaction
+        txn = self.transaction_repo.get_by_id(self.parsed_txn_id)
+        self.assertEqual(txn['notes'], notes_text)
+
+    def test_update_notes_clear_notes(self):
+        """Test clearing notes by setting to None."""
+        # First add notes
+        self.transaction_repo.update_notes(self.manual_txn_id, "Original notes")
+
+        # Then clear notes
+        result = self.transaction_repo.update_notes(self.manual_txn_id, None)
+
+        self.assertTrue(result)
+
+        # Verify notes were cleared
+        txn = self.transaction_repo.get_by_id(self.manual_txn_id)
+        self.assertIsNone(txn['notes'])
+
+    def test_update_notes_empty_string(self):
+        """Test setting notes to empty string."""
+        result = self.transaction_repo.update_notes(self.manual_txn_id, "")
+
+        self.assertTrue(result)
+
+        # Verify empty string was stored
+        txn = self.transaction_repo.get_by_id(self.manual_txn_id)
+        self.assertEqual(txn['notes'], "")
+
+    def test_update_notes_nonexistent_transaction(self):
+        """Test updating notes for non-existent transaction returns False."""
+        result = self.transaction_repo.update_notes(999999, "Test notes")
+
+        self.assertFalse(result)
+
+    def test_update_notes_deleted_transaction(self):
+        """Test updating notes for soft-deleted transaction returns False."""
+        # Soft delete transaction
+        self.transaction_repo.soft_delete(self.manual_txn_id)
+
+        # Attempt to update notes
+        result = self.transaction_repo.update_notes(self.manual_txn_id, "Should fail")
+
+        self.assertFalse(result)
+
+    def test_update_notes_updates_timestamp(self):
+        """Test that updating notes also updates updated_at timestamp."""
+        # Get original updated_at
+        txn_before = self.transaction_repo.get_by_id(self.manual_txn_id)
+        updated_at_before = txn_before['updated_at']
+
+        # Small delay to ensure timestamp difference
+        import time
+        time.sleep(0.1)
+
+        # Update notes
+        self.transaction_repo.update_notes(self.manual_txn_id, "Updated notes")
+
+        # Get updated updated_at
+        txn_after = self.transaction_repo.get_by_id(self.manual_txn_id)
+        updated_at_after = txn_after['updated_at']
+
+        # Verify timestamp changed
+        self.assertNotEqual(updated_at_before, updated_at_after)
+
+    def test_update_notes_preserves_other_fields(self):
+        """Test that updating notes doesn't affect other transaction fields."""
+        # Get original transaction data
+        txn_before = self.transaction_repo.get_by_id(self.manual_txn_id)
+        original_merchant = txn_before['merchant_name']
+        original_amount = txn_before['amount']
+        original_category = txn_before['category_id']
+
+        # Update notes
+        self.transaction_repo.update_notes(self.manual_txn_id, "Test preservation")
+
+        # Verify other fields unchanged
+        txn_after = self.transaction_repo.get_by_id(self.manual_txn_id)
+        self.assertEqual(txn_after['merchant_name'], original_merchant)
+        self.assertEqual(txn_after['amount'], original_amount)
+        self.assertEqual(txn_after['category_id'], original_category)
+        self.assertEqual(txn_after['notes'], "Test preservation")
+
+    def test_update_notes_long_text(self):
+        """Test updating notes with long text (up to 500 chars)."""
+        long_notes = "A" * 500  # 500 character string
+
+        result = self.transaction_repo.update_notes(self.manual_txn_id, long_notes)
+
+        self.assertTrue(result)
+
+        # Verify long notes were stored
+        txn = self.transaction_repo.get_by_id(self.manual_txn_id)
+        self.assertEqual(txn['notes'], long_notes)
+        self.assertEqual(len(txn['notes']), 500)
+
+
 if __name__ == '__main__':
     unittest.main()

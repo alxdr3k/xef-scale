@@ -1056,6 +1056,64 @@ class TransactionRepository:
             self.logger.error(f'Error updating transaction {transaction_id}: {e}')
             raise
 
+    def update_notes(self, transaction_id: int, notes: Optional[str]) -> bool:
+        """
+        Update notes for any transaction (including parsed transactions).
+
+        Unlike other transaction fields, notes can be updated for BOTH manual and
+        file-based transactions. This allows users to add context to any transaction
+        regardless of its source.
+
+        Args:
+            transaction_id: Transaction ID to update
+            notes: New notes text or None to clear notes
+
+        Returns:
+            bool: True if update successful, False if transaction not found
+
+        Examples:
+            >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
+            >>> # Add notes to any transaction
+            >>> repo.update_notes(123, "회의 중 커피 구매")
+            True
+            >>> # Clear notes
+            >>> repo.update_notes(123, None)
+            True
+            >>> # Update notes for parsed transaction (allowed)
+            >>> repo.update_notes(456, "자동 파싱된 거래에 메모 추가")
+            True
+
+        Notes:
+            - Works for BOTH manual and parsed transactions (no file_id check)
+            - No editability validation required
+            - Only updates active (deleted_at IS NULL) transactions
+            - Automatically updates updated_at timestamp
+        """
+        try:
+            query = '''
+                UPDATE transactions
+                SET notes = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND deleted_at IS NULL
+            '''
+
+            cursor = self.conn.execute(query, (notes, transaction_id))
+            self.conn.commit()
+
+            if cursor.rowcount > 0:
+                self.logger.info(
+                    f'Updated notes for transaction {transaction_id}'
+                )
+                return True
+            else:
+                self.logger.debug(
+                    f'Transaction {transaction_id} not found or already deleted'
+                )
+                return False
+
+        except Exception as e:
+            self.logger.error(f'Error updating notes for transaction {transaction_id}: {e}')
+            raise
+
     def soft_delete(self, transaction_id: int, validate_editable: bool = True) -> bool:
         """
         Soft delete a manual transaction by setting deleted_at timestamp.

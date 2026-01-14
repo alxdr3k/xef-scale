@@ -785,5 +785,190 @@ class TestTransactionsCRUDAPI(unittest.TestCase):
         self.assertIsNone(txn)  # Filtered from results
 
 
+    # ==================== PATCH /api/transactions/{id}/notes Tests ====================
+
+    def test_update_notes_manual_transaction(self):
+        """Test updating notes for a manual transaction."""
+
+        request_data = {
+            "notes": "회의 중 커피 구매"
+        }
+
+        response = self.client.patch(
+            f'/api/transactions/{self.manual_txn_id}/notes',
+            json=request_data
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        # Verify notes were updated
+        self.assertEqual(data['notes'], "회의 중 커피 구매")
+        self.assertEqual(data['id'], self.manual_txn_id)
+
+    def test_update_notes_parsed_transaction(self):
+        """Test updating notes for a parsed transaction (should succeed)."""
+
+        request_data = {
+            "notes": "자동 파싱된 거래에 메모 추가"
+        }
+
+        response = self.client.patch(
+            f'/api/transactions/{self.parsed_txn_id}/notes',
+            json=request_data
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        # Verify notes were updated for parsed transaction
+        self.assertEqual(data['notes'], "자동 파싱된 거래에 메모 추가")
+        self.assertEqual(data['id'], self.parsed_txn_id)
+
+    def test_update_notes_clear_notes(self):
+        """Test clearing notes by setting to null."""
+
+        # First add notes
+        self.client.patch(
+            f'/api/transactions/{self.manual_txn_id}/notes',
+            json={"notes": "Original notes"}
+        )
+
+        # Then clear notes
+        response = self.client.patch(
+            f'/api/transactions/{self.manual_txn_id}/notes',
+            json={"notes": None}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        # Verify notes were cleared
+        self.assertIsNone(data['notes'])
+
+    def test_update_notes_empty_string(self):
+        """Test setting notes to empty string."""
+
+        request_data = {
+            "notes": ""
+        }
+
+        response = self.client.patch(
+            f'/api/transactions/{self.manual_txn_id}/notes',
+            json=request_data
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        # Verify empty string is stored
+        self.assertEqual(data['notes'], "")
+
+    def test_update_notes_not_found(self):
+        """Test updating notes for non-existent transaction returns 404."""
+
+        request_data = {
+            "notes": "Test notes"
+        }
+
+        response = self.client.patch(
+            '/api/transactions/999999/notes',
+            json=request_data
+        )
+
+        self.assertEqual(response.status_code, 404)
+        data = response.json()
+        self.assertIn('거래 내역을 찾을 수 없습니다', data['detail'])
+
+    def test_update_notes_response_structure(self):
+        """Test notes update response contains all transaction fields."""
+
+        request_data = {
+            "notes": "Full response test"
+        }
+
+        response = self.client.patch(
+            f'/api/transactions/{self.manual_txn_id}/notes',
+            json=request_data
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        # Verify all required transaction fields are present
+        self.assertIn('id', data)
+        self.assertIn('date', data)
+        self.assertIn('category', data)
+        self.assertIn('merchant_name', data)
+        self.assertIn('amount', data)
+        self.assertIn('institution', data)
+        self.assertIn('notes', data)
+        self.assertIn('created_at', data)
+
+        # Verify notes field has correct value
+        self.assertEqual(data['notes'], "Full response test")
+
+    def test_update_notes_persists_in_database(self):
+        """Test notes are persisted correctly in database."""
+
+        request_data = {
+            "notes": "Persistence test"
+        }
+
+        # Update notes
+        response = self.client.patch(
+            f'/api/transactions/{self.manual_txn_id}/notes',
+            json=request_data
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Verify notes persisted by fetching transaction
+        get_response = self.client.get(f'/api/transactions/{self.manual_txn_id}')
+        self.assertEqual(get_response.status_code, 200)
+        data = get_response.json()
+
+        self.assertEqual(data['notes'], "Persistence test")
+
+    def test_get_transactions_includes_notes(self):
+        """Test GET /api/transactions includes notes field in response."""
+
+        # Add notes to manual transaction
+        self.client.patch(
+            f'/api/transactions/{self.manual_txn_id}/notes',
+            json={"notes": "List query test"}
+        )
+
+        # Fetch transactions list
+        response = self.client.get('/api/transactions?limit=100')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        # Find manual transaction in list
+        manual_txn = next(
+            (t for t in data['data'] if t['id'] == self.manual_txn_id),
+            None
+        )
+
+        self.assertIsNotNone(manual_txn)
+        self.assertEqual(manual_txn['notes'], "List query test")
+
+    def test_update_notes_without_authentication(self):
+        """Test updating notes without authentication returns 401."""
+
+        # Clear authentication override
+        app.dependency_overrides.clear()
+
+        request_data = {
+            "notes": "Unauthorized test"
+        }
+
+        response = self.client.patch(
+            f'/api/transactions/{self.manual_txn_id}/notes',
+            json=request_data
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+
 if __name__ == '__main__':
     unittest.main()

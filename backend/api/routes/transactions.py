@@ -3,7 +3,7 @@ Transaction routes for querying expense data.
 Provides filtering, pagination, and aggregation endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from typing import Optional
 import sqlite3
 import math
@@ -67,6 +67,7 @@ def _db_row_to_transaction_response(row: dict) -> TransactionResponse:
         institution_id=row['institution_id'],
         file_id=row.get('file_id'),
         row_number_in_file=row.get('row_number_in_file'),
+        notes=row.get('notes'),
         created_at=row['created_at']
     )
 
@@ -681,4 +682,95 @@ async def delete_transaction(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"거래 삭제 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.patch(
+    "/{transaction_id}/notes",
+    response_model=TransactionResponse,
+    responses={
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        404: {"model": ErrorResponse, "description": "Transaction not found"}
+    }
+)
+async def update_transaction_notes(
+    transaction_id: int,
+    notes: Optional[str] = Body(None, embed=True),
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: UserInfo = Depends(get_current_user)
+):
+    """
+    Update notes for any transaction (including parsed transactions).
+
+    Unlike other transaction fields, notes can be updated for BOTH manual and
+    file-based transactions. This allows users to add context to any transaction
+    regardless of its source.
+
+    Args:
+        transaction_id: Transaction database ID to update
+        notes: New notes text (max 500 characters) or None to clear notes
+        db: Database connection from dependency
+        current_user: Current authenticated user
+
+    Returns:
+        TransactionResponse with the updated transaction details
+
+    Raises:
+        HTTPException: 404 if transaction not found
+        HTTPException: 401 if not authenticated
+
+    Examples:
+        >>> # Add notes to a transaction
+        >>> PATCH /api/transactions/123/notes
+        >>> {
+        ...     "notes": "회의 중 커피 구매"
+        ... }
+
+        >>> # Clear notes
+        >>> PATCH /api/transactions/123/notes
+        >>> {
+        ...     "notes": null
+        ... }
+
+    Notes:
+        - Works for BOTH manual and parsed transactions
+        - No file_id validation required
+        - Notes can be up to 500 characters
+        - Passing null clears the notes field
+    """
+    try:
+        # Initialize repositories
+        category_repo = CategoryRepository(db)
+        institution_repo = InstitutionRepository(db)
+        transaction_repo = TransactionRepository(db, category_repo, institution_repo)
+
+        # Update notes using the repository method
+        success = transaction_repo.update_notes(transaction_id, notes)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
+            )
+
+        # Fetch updated transaction
+        updated_transaction = transaction_repo.get_by_id(transaction_id)
+
+        if updated_transaction is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
+            )
+
+        logger.info(f"Updated notes for transaction ID={transaction_id} by user={current_user.username}")
+
+        return _db_row_to_transaction_response(updated_transaction)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update notes for transaction {transaction_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"메모 업데이트 중 오류가 발생했습니다: {str(e)}"
         )

@@ -82,6 +82,7 @@ class TransactionResponse(TransactionBase):
     institution_id: int
     file_id: Optional[int] = None
     row_number_in_file: Optional[int] = None
+    notes: Optional[str] = None
     created_at: str
 
     class Config:
