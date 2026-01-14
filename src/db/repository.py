@@ -122,18 +122,24 @@ class CategoryRepository:
 
     def get_all(self) -> List[dict]:
         """
-        Get all categories ordered by name.
+        Get all categories ordered by transaction count (descending), then by name.
 
         Returns:
-            List of category dictionaries with all fields
+            List of category dictionaries with all fields, sorted by usage frequency
 
         Examples:
             >>> repo = CategoryRepository(conn)
             >>> categories = repo.get_all()
             >>> print(categories[0]['name'])
-            '식비'
+            '편의점/마트/잡화'  # Most frequently used category
         """
-        cursor = self.conn.execute('SELECT * FROM categories ORDER BY name')
+        cursor = self.conn.execute('''
+            SELECT c.*
+            FROM categories c
+            LEFT JOIN transactions t ON c.id = t.category_id AND t.deleted_at IS NULL
+            GROUP BY c.id
+            ORDER BY COUNT(t.id) DESC, c.name
+        ''')
         return [dict(row) for row in cursor.fetchall()]
 
     def get_by_id(self, category_id: int) -> Optional[dict]:
@@ -317,20 +323,25 @@ class InstitutionRepository:
 
     def get_all(self) -> List[dict]:
         """
-        Get all active financial institutions ordered by name.
+        Get all active financial institutions ordered by transaction count (descending), then by name.
 
         Returns:
-            List of institution dictionaries
+            List of institution dictionaries, sorted by usage frequency
 
         Examples:
             >>> repo = InstitutionRepository(conn)
             >>> institutions = repo.get_all()
             >>> print(institutions[0]['name'])
-            '신한카드'
+            '알수없음'  # Most frequently used institution
         """
-        cursor = self.conn.execute(
-            'SELECT * FROM financial_institutions WHERE is_active = 1 ORDER BY name'
-        )
+        cursor = self.conn.execute('''
+            SELECT fi.*
+            FROM financial_institutions fi
+            LEFT JOIN transactions t ON fi.id = t.institution_id AND t.deleted_at IS NULL
+            WHERE fi.is_active = 1
+            GROUP BY fi.id
+            ORDER BY COUNT(t.id) DESC, fi.name
+        ''')
         return [dict(row) for row in cursor.fetchall()]
 
     def get_by_name(self, name: str) -> Optional[dict]:
