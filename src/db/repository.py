@@ -4042,3 +4042,371 @@ class WorkspaceRepository:
         except Exception as e:
             self.logger.error(f'Error counting members for workspace_id={workspace_id}: {e}')
             raise
+
+
+class WorkspaceMembershipRepository:
+    """
+    Repository for workspace membership management with role-based access control.
+
+    Manages user membership in workspaces including role assignment, permission checks,
+    and member lifecycle operations. Implements role hierarchy for access control.
+
+    Role Hierarchy (highest to lowest):
+        OWNER (4) > CO_OWNER (3) > MEMBER_WRITE (2) > MEMBER_READ (1)
+
+    Role Permissions:
+        - OWNER: Full control (manage members, change roles, delete workspace)
+        - CO_OWNER: Manage members, change roles (except OWNER roles)
+        - MEMBER_WRITE: Read/write transactions, mark allowances
+        - MEMBER_READ: Read-only access
+
+    Attributes:
+        conn: SQLite database connection
+        logger: Logger instance for operations tracking
+
+    Examples:
+        >>> repo = WorkspaceMembershipRepository(conn)
+        >>> membership_id = repo.add_member(workspace_id=1, user_id=2, role='MEMBER_WRITE')
+        >>> members = repo.get_workspace_members(workspace_id=1)
+        >>> has_access = repo.has_permission(workspace_id=1, user_id=2, required_role='MEMBER_READ')
+    """
+
+    # Role hierarchy mapping for permission checks
+    ROLE_HIERARCHY = {
+        'MEMBER_READ': 1,
+        'MEMBER_WRITE': 2,
+        'CO_OWNER': 3,
+        'OWNER': 4
+    }
+
+    def __init__(self, connection: sqlite3.Connection):
+        """
+        Initialize repository with database connection.
+
+        Args:
+            connection: SQLite database connection instance
+        """
+        self.conn = connection
+        self.logger = logging.getLogger(__name__)
+        self.logger.debug('WorkspaceMembershipRepository initialized')
+
+    def add_member(self, workspace_id: int, user_id: int, role: str) -> int:
+        """
+        Add new member to workspace with specified role.
+
+        Args:
+            workspace_id: Workspace ID
+            user_id: User ID to add
+            role: Role to assign (OWNER, CO_OWNER, MEMBER_WRITE, MEMBER_READ)
+
+        Returns:
+            int: Membership ID (lastrowid)
+
+        Raises:
+            sqlite3.IntegrityError: If workspace/user doesn't exist or duplicate membership
+            ValueError: If role is invalid
+
+        Examples:
+            >>> repo = WorkspaceMembershipRepository(conn)
+            >>> membership_id = repo.add_member(workspace_id=1, user_id=2, role='MEMBER_WRITE')
+            >>> print(f'Created membership ID: {membership_id}')
+
+        Notes:
+            - Validates role against allowed values
+            - Sets is_active=True and joined_at=CURRENT_TIMESTAMP
+            - UNIQUE constraint prevents duplicate active memberships
+            - Foreign keys enforce workspace and user existence
+        """
+        # Validate role
+        if role not in self.ROLE_HIERARCHY:
+            raise ValueError(f'Invalid role: {role}. Must be one of {list(self.ROLE_HIERARCHY.keys())}')
+
+        try:
+            cursor = self.conn.execute('''
+                INSERT INTO workspace_memberships (workspace_id, user_id, role, is_active)
+                VALUES (?, ?, ?, 1)
+            ''', (workspace_id, user_id, role))
+
+            self.conn.commit()
+            membership_id = cursor.lastrowid
+
+            self.logger.info(f'Added member: workspace_id={workspace_id}, user_id={user_id}, role={role}, membership_id={membership_id}')
+            return membership_id
+
+        except sqlite3.IntegrityError as e:
+            self.logger.error(f'Failed to add member (constraint violation): workspace_id={workspace_id}, user_id={user_id}, role={role} - {e}')
+            raise
+        except Exception as e:
+            self.logger.error(f'Error adding member: workspace_id={workspace_id}, user_id={user_id}, role={role} - {e}')
+            raise
+
+    def get_workspace_members(self, workspace_id: int) -> List[dict]:
+        """
+        Get all active members of workspace with user details.
+
+        Joins with users table to include user information.
+        Orders by role hierarchy (OWNER first) then by join date.
+
+        Args:
+            workspace_id: Workspace ID
+
+        Returns:
+            List of member dicts with user details and membership info
+
+        Examples:
+            >>> repo = WorkspaceMembershipRepository(conn)
+            >>> members = repo.get_workspace_members(workspace_id=1)
+            >>> for member in members:
+            ...     print(f"{member['name']} - {member['role']} (joined: {member['joined_at']})")
+
+        Notes:
+            - Returns only active memberships (is_active = 1)
+            - Each dict contains:
+                - user_id, name, email, profile_picture_url (from users table)
+                - role, joined_at (from workspace_memberships table)
+            - Ordered by role hierarchy DESC (OWNER first), then joined_at ASC
+            - Returns empty list if workspace has no members
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT
+                    u.id as user_id,
+                    u.name,
+                    u.email,
+                    u.profile_picture_url,
+                    wm.role,
+                    wm.joined_at
+                FROM workspace_memberships wm
+                INNER JOIN users u ON wm.user_id = u.id
+                WHERE wm.workspace_id = ? AND wm.is_active = 1
+                ORDER BY
+                    CASE wm.role
+                        WHEN 'OWNER' THEN 4
+                        WHEN 'CO_OWNER' THEN 3
+                        WHEN 'MEMBER_WRITE' THEN 2
+                        WHEN 'MEMBER_READ' THEN 1
+                        ELSE 0
+                    END DESC,
+                    wm.joined_at ASC
+            ''', (workspace_id,))
+
+            members = [dict(row) for row in cursor.fetchall()]
+            self.logger.debug(f'Retrieved {len(members)} members for workspace_id={workspace_id}')
+            return members
+
+        except Exception as e:
+            self.logger.error(f'Error fetching workspace members: workspace_id={workspace_id} - {e}')
+            raise
+
+    def get_user_membership(self, workspace_id: int, user_id: int) -> Optional[dict]:
+        """
+        Get user's membership in specific workspace.
+
+        Args:
+            workspace_id: Workspace ID
+            user_id: User ID
+
+        Returns:
+            Membership dict or None if user is not a member
+
+        Examples:
+            >>> repo = WorkspaceMembershipRepository(conn)
+            >>> membership = repo.get_user_membership(workspace_id=1, user_id=2)
+            >>> if membership:
+            ...     print(f"Role: {membership['role']}, Active: {membership['is_active']}")
+            >>> else:
+            ...     print("User is not a member of this workspace")
+
+        Notes:
+            - Returns membership regardless of is_active status
+            - Returns None if membership doesn't exist
+            - Fields: id, workspace_id, user_id, role, is_active, joined_at, updated_at
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT *
+                FROM workspace_memberships
+                WHERE workspace_id = ? AND user_id = ?
+            ''', (workspace_id, user_id))
+
+            row = cursor.fetchone()
+            return dict(row) if row else None
+
+        except Exception as e:
+            self.logger.error(f'Error fetching user membership: workspace_id={workspace_id}, user_id={user_id} - {e}')
+            raise
+
+    def update_role(self, workspace_id: int, user_id: int, new_role: str) -> bool:
+        """
+        Update user's role in workspace.
+
+        Args:
+            workspace_id: Workspace ID
+            user_id: User ID
+            new_role: New role to assign (OWNER, CO_OWNER, MEMBER_WRITE, MEMBER_READ)
+
+        Returns:
+            True if successful, False if membership not found
+
+        Raises:
+            ValueError: If new_role is invalid
+
+        Examples:
+            >>> repo = WorkspaceMembershipRepository(conn)
+            >>> success = repo.update_role(workspace_id=1, user_id=2, new_role='CO_OWNER')
+            >>> print(f'Role update successful: {success}')
+
+        Notes:
+            - Does NOT validate role permissions (API layer handles that)
+            - Validates role against allowed values
+            - Updated_at timestamp updated via trigger
+            - Returns False if membership doesn't exist
+        """
+        # Validate role
+        if new_role not in self.ROLE_HIERARCHY:
+            raise ValueError(f'Invalid role: {new_role}. Must be one of {list(self.ROLE_HIERARCHY.keys())}')
+
+        try:
+            cursor = self.conn.execute('''
+                UPDATE workspace_memberships
+                SET role = ?
+                WHERE workspace_id = ? AND user_id = ?
+            ''', (new_role, workspace_id, user_id))
+
+            self.conn.commit()
+
+            if cursor.rowcount == 0:
+                self.logger.warning(f'Membership not found: workspace_id={workspace_id}, user_id={user_id}')
+                return False
+
+            self.logger.info(f'Updated role: workspace_id={workspace_id}, user_id={user_id}, new_role={new_role}')
+            return True
+
+        except Exception as e:
+            self.logger.error(f'Error updating role: workspace_id={workspace_id}, user_id={user_id}, new_role={new_role} - {e}')
+            raise
+
+    def remove_member(self, workspace_id: int, user_id: int) -> bool:
+        """
+        Remove member from workspace (soft delete).
+
+        Sets is_active = False instead of deleting the record.
+        This preserves membership history for audit purposes.
+
+        Args:
+            workspace_id: Workspace ID
+            user_id: User ID to remove
+
+        Returns:
+            True if successful, False if membership not found
+
+        Examples:
+            >>> repo = WorkspaceMembershipRepository(conn)
+            >>> success = repo.remove_member(workspace_id=1, user_id=2)
+            >>> print(f'Member removal successful: {success}')
+
+        Notes:
+            - Soft delete: Sets is_active = False
+            - Does NOT check for last OWNER (API layer handles that)
+            - Preserves membership record for audit trail
+            - Updated_at timestamp updated via trigger
+        """
+        try:
+            cursor = self.conn.execute('''
+                UPDATE workspace_memberships
+                SET is_active = 0
+                WHERE workspace_id = ? AND user_id = ?
+            ''', (workspace_id, user_id))
+
+            self.conn.commit()
+
+            if cursor.rowcount == 0:
+                self.logger.warning(f'Membership not found: workspace_id={workspace_id}, user_id={user_id}')
+                return False
+
+            self.logger.info(f'Removed member: workspace_id={workspace_id}, user_id={user_id}')
+            return True
+
+        except Exception as e:
+            self.logger.error(f'Error removing member: workspace_id={workspace_id}, user_id={user_id} - {e}')
+            raise
+
+    def get_owner_count(self, workspace_id: int) -> int:
+        """
+        Count active OWNER members in workspace.
+
+        Used to prevent removing the last OWNER from a workspace.
+
+        Args:
+            workspace_id: Workspace ID
+
+        Returns:
+            Number of active OWNER members (0 if none or workspace doesn't exist)
+
+        Examples:
+            >>> repo = WorkspaceMembershipRepository(conn)
+            >>> owner_count = repo.get_owner_count(workspace_id=1)
+            >>> if owner_count == 1:
+            ...     print('Warning: Only one owner remaining')
+            >>> print(f'Workspace has {owner_count} owners')
+
+        Notes:
+            - Counts only active memberships with role='OWNER'
+            - Returns 0 if workspace has no owners or doesn't exist
+            - Critical for enforcing "at least one OWNER" business rule
+        """
+        try:
+            cursor = self.conn.execute('''
+                SELECT COUNT(*) as count
+                FROM workspace_memberships
+                WHERE workspace_id = ? AND role = 'OWNER' AND is_active = 1
+            ''', (workspace_id,))
+
+            row = cursor.fetchone()
+            return row['count'] if row else 0
+
+        except Exception as e:
+            self.logger.error(f'Error counting owners for workspace_id={workspace_id}: {e}')
+            raise
+
+    def has_permission(self, workspace_id: int, user_id: int, required_role: str) -> bool:
+        """
+        Check if user has required role or higher in workspace.
+
+        Implements role hierarchy: OWNER > CO_OWNER > MEMBER_WRITE > MEMBER_READ
+        Returns True if user's role level >= required role level.
+
+        Args:
+            workspace_id: Workspace ID
+            user_id: User ID
+            required_role: Minimum required role
+
+        Returns:
+            True if user has required role or higher, False otherwise
+
+        Examples:
+            >>> repo = WorkspaceMembershipRepository(conn)
+            >>> # User with OWNER role can perform CO_OWNER actions
+            >>> can_manage = repo.has_permission(workspace_id=1, user_id=1, required_role='CO_OWNER')
+            >>> print(f'Can manage members: {can_manage}')  # True for OWNER
+            >>>
+            >>> # User with MEMBER_READ cannot perform MEMBER_WRITE actions
+            >>> can_write = repo.has_permission(workspace_id=1, user_id=3, required_role='MEMBER_WRITE')
+            >>> print(f'Can write: {can_write}')  # False for MEMBER_READ
+
+        Notes:
+            - Returns False if user is not a member
+            - Returns False if membership is inactive (is_active=0)
+            - Role hierarchy: OWNER(4) > CO_OWNER(3) > MEMBER_WRITE(2) > MEMBER_READ(1)
+            - Case-sensitive role comparison
+        """
+        # Get user's membership
+        membership = self.get_user_membership(workspace_id, user_id)
+        if not membership or not membership['is_active']:
+            return False
+
+        # Compare role levels
+        user_level = self.ROLE_HIERARCHY.get(membership['role'], 0)
+        required_level = self.ROLE_HIERARCHY.get(required_role, 99)
+
+        return user_level >= required_level
