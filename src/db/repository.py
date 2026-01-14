@@ -1114,6 +1114,61 @@ class TransactionRepository:
             self.logger.error(f'Error updating notes for transaction {transaction_id}: {e}')
             raise
 
+    def update_category(self, transaction_id: int, category_id: int) -> bool:
+        """
+        Update category for any transaction (including parsed transactions).
+
+        Unlike other transaction fields, category can be updated for BOTH manual and
+        file-based transactions. This allows users to recategorize any transaction
+        regardless of its source.
+
+        Args:
+            transaction_id: Transaction ID to update
+            category_id: New category ID
+
+        Returns:
+            bool: True if update successful, False if transaction not found
+
+        Examples:
+            >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
+            >>> # Update category for any transaction
+            >>> repo.update_category(123, 5)
+            True
+            >>> # Works for parsed transactions too
+            >>> repo.update_category(456, 3)
+            True
+
+        Notes:
+            - Works for BOTH manual and parsed transactions (no file_id check)
+            - No editability validation required
+            - Only updates active (deleted_at IS NULL) transactions
+            - Automatically updates updated_at timestamp
+        """
+        try:
+            query = '''
+                UPDATE transactions
+                SET category_id = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND deleted_at IS NULL
+            '''
+
+            cursor = self.conn.execute(query, (category_id, transaction_id))
+            self.conn.commit()
+
+            if cursor.rowcount > 0:
+                self.logger.info(
+                    f'Updated category for transaction {transaction_id} to category_id={category_id}'
+                )
+                return True
+            else:
+                self.logger.debug(
+                    f'Transaction {transaction_id} not found or already deleted'
+                )
+                return False
+
+        except Exception as e:
+            self.logger.error(f'Error updating category for transaction {transaction_id}: {e}')
+            raise
+
     def soft_delete(self, transaction_id: int, validate_editable: bool = True) -> bool:
         """
         Soft delete a manual transaction by setting deleted_at timestamp.

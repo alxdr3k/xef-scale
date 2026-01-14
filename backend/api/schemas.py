@@ -288,6 +288,11 @@ class TransactionUpdateRequest(BaseModel):
         return v
 
 
+class TransactionCategoryUpdateRequest(BaseModel):
+    """Request schema for updating transaction category only."""
+    category: str = Field(..., description="카테고리 이름")
+
+
 class TransactionDeleteResponse(BaseModel):
     """
     Response schema for successful transaction deletion.

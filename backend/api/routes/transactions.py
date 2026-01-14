@@ -17,6 +17,7 @@ from backend.api.schemas import (
     ErrorResponse,
     TransactionCreateRequest,
     TransactionUpdateRequest,
+    TransactionCategoryUpdateRequest,
     TransactionDeleteResponse
 )
 from backend.api.dependencies import get_current_user, get_db
@@ -773,4 +774,98 @@ async def update_transaction_notes(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"메모 업데이트 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.patch(
+    "/{transaction_id}/category",
+    response_model=TransactionResponse,
+    responses={
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        404: {"model": ErrorResponse, "description": "Transaction not found"}
+    }
+)
+async def update_transaction_category(
+    transaction_id: int,
+    category: str = Body(..., embed=True),
+    db: sqlite3.Connection = Depends(get_db),
+    current_user: UserInfo = Depends(get_current_user)
+):
+    """
+    Update category for any transaction (including parsed transactions).
+
+    This is the ONLY field that can be updated for file-based transactions.
+    Unlike other transaction fields, category updates are allowed for BOTH manual
+    and file-based transactions to support user-driven categorization.
+
+    Args:
+        transaction_id: Transaction database ID to update
+        category: Category name in Korean (e.g., 식비, 교통)
+        db: Database connection from dependency
+        current_user: Current authenticated user
+
+    Returns:
+        TransactionResponse with the updated transaction details
+
+    Raises:
+        HTTPException: 404 if transaction not found
+        HTTPException: 401 if not authenticated
+
+    Examples:
+        >>> # Update category for any transaction
+        >>> PATCH /api/transactions/123/category
+        >>> {
+        ...     "category": "식비"
+        ... }
+
+        >>> # Works for file-based transactions too
+        >>> PATCH /api/transactions/456/category
+        >>> {
+        ...     "category": "교통"
+        ... }
+
+    Notes:
+        - Works for BOTH manual and parsed transactions
+        - No file_id validation required
+        - Category is automatically created if it doesn't exist
+        - This is the ONLY editable field for file-based transactions
+    """
+    try:
+        # Initialize repositories
+        category_repo = CategoryRepository(db)
+        institution_repo = InstitutionRepository(db)
+        transaction_repo = TransactionRepository(db, category_repo, institution_repo)
+
+        # Get or create category ID from category name
+        category_id = category_repo.get_or_create(category)
+
+        # Update category using the repository method
+        success = transaction_repo.update_category(transaction_id, category_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
+            )
+
+        # Fetch updated transaction
+        updated_transaction = transaction_repo.get_by_id(transaction_id)
+
+        if updated_transaction is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
+            )
+
+        logger.info(f"Updated category for transaction ID={transaction_id} to '{category}' by user={current_user.username}")
+
+        return _db_row_to_transaction_response(updated_transaction)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update category for transaction {transaction_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"카테고리 업데이트 중 오류가 발생했습니다: {str(e)}"
         )
