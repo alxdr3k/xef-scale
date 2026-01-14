@@ -45,6 +45,7 @@ export interface TransactionAPIResponse {
   file_id?: number | null;
   row_number_in_file?: number | null;
   created_at: string;
+  notes?: string | null;
 }
 
 /**
@@ -190,5 +191,19 @@ export const fetchCategories = async (): Promise<CategoryAPIResponse[]> => {
  */
 export const fetchInstitutions = async (): Promise<InstitutionAPIResponse[]> => {
   const response = await apiClient.get<InstitutionAPIResponse[]>('/api/institutions');
+  return response.data;
+};
+
+/**
+ * Update transaction notes
+ */
+export const updateTransactionNotes = async (
+  id: number,
+  notes: string | null
+): Promise<TransactionAPIResponse> => {
+  const response = await apiClient.patch<TransactionAPIResponse>(
+    `/api/transactions/${id}/notes`,
+    { notes }
+  );
   return response.data;
 };

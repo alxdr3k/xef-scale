@@ -10,11 +10,13 @@ import FilterPanel from '../components/transactions/FilterPanel';
 import type { FilterValues } from '../components/transactions/FilterPanel';
 import SummarySection from '../components/transactions/SummarySection';
 import TransactionFormModal from '../components/transactions/TransactionFormModal';
+import NotesCell from '../components/transactions/NotesCell';
 import {
   fetchTransactions,
   fetchCategories,
   fetchInstitutions,
   deleteTransaction,
+  updateTransactionNotes,
 } from '../api/services';
 import type {
   TransactionAPIResponse,
@@ -180,6 +182,19 @@ const Transactions: React.FC = () => {
   };
 
   /**
+   * Handle notes update
+   */
+  const handleNotesUpdate = async (transactionId: number, notes: string | null) => {
+    try {
+      await updateTransactionNotes(transactionId, notes);
+      message.success('메모가 저장되었습니다');
+      loadTransactions();
+    } catch (error: any) {
+      message.error(error.response?.data?.detail || '메모 저장에 실패했습니다');
+    }
+  };
+
+  /**
    * Handle modal close
    */
   const handleModalClose = () => {
@@ -282,6 +297,16 @@ const Transactions: React.FC = () => {
       key: 'merchant_name',
       ellipsis: true,
       render: (text: string) => text,
+    },
+    {
+      title: '메모',
+      dataIndex: 'notes',
+      key: 'notes',
+      width: 200,
+      ellipsis: true,
+      render: (_: string | null, record: TransactionAPIResponse) => (
+        <NotesCell transaction={record} onUpdate={handleNotesUpdate} />
+      ),
     },
     {
       title: '금액',
