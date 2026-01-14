@@ -173,3 +173,26 @@ export interface BulkConfirmationResponse {
   processed_count: number;
   session_id: number;
 }
+
+// Workspace role types
+export type WorkspaceRole = 'OWNER' | 'CO_OWNER' | 'MEMBER_WRITE' | 'MEMBER_READ';
+
+// Workspace interface
+export interface Workspace {
+  id: number;
+  name: string;
+  description: string | null;
+  created_by_user_id: number;
+  currency: string;
+  timezone: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  role: WorkspaceRole;
+  member_count: number;
+}
+
+// Workspace list response
+export interface WorkspaceListResponse {
+  data: Workspace[];
+}
