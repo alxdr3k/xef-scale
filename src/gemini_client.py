@@ -56,11 +56,11 @@ class GeminiClient:
 
     # Model priority list (try in order)
     MODELS = [
-        'gemini-2.5-flash',      # Latest flash (fastest, try first)
-        'gemini-2.5-pro',        # Latest pro (more capable)
-        'gemini-3.0-flash',      # Newest flash
-        'gemini-3.0-pro',        # Newest pro
-        'gemini-2.0-flash'       # Current stable
+        'gemini-2.5-flash',          # Latest flash (fastest, try first)
+        'gemini-2.5-pro',            # Latest pro (more capable)
+        'gemini-2.0-flash-exp',      # Experimental 2.0 flash
+        'gemini-2.0-flash',          # Stable 2.0 flash
+        'gemini-exp-1206'            # Experimental fallback
     ]
 
     def __init__(self, api_key: str, valid_categories: List[str]):
