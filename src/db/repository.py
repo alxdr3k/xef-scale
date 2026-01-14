@@ -755,7 +755,8 @@ class TransactionRepository:
             self.logger.error(f'Error fetching transaction by ID {transaction_id}: {e}')
             raise
 
-    def get_filtered(self, year: Optional[int] = None, month: Optional[int] = None,
+    def get_filtered(self, workspace_id: int, exclude_allowances_for_user_id: int,
+                     year: Optional[int] = None, month: Optional[int] = None,
                      category_id: Optional[int] = None, institution_id: Optional[int] = None,
                      search: Optional[str] = None, sort: str = 'date_desc',
                      limit: int = 50, offset: int = 0) -> tuple[List[dict], int]:
@@ -764,8 +765,11 @@ class TransactionRepository:
 
         Supports multiple filters, sorting, and pagination. Returns both
         the matching transactions and total count for pagination metadata.
+        Enforces workspace isolation and excludes other users' allowance transactions.
 
         Args:
+            workspace_id: Required workspace ID filter (multi-tenant isolation)
+            exclude_allowances_for_user_id: Required user ID to exclude other users' allowances
             year: Optional year filter
             month: Optional month filter (1-12)
             category_id: Optional category ID filter
@@ -780,16 +784,23 @@ class TransactionRepository:
 
         Examples:
             >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
-            >>> # Get September 2025 food expenses
-            >>> txns, total = repo.get_filtered(year=2025, month=9, category_id=1)
+            >>> # Get September 2025 food expenses for workspace 1, user 2
+            >>> txns, total = repo.get_filtered(
+            ...     workspace_id=1, exclude_allowances_for_user_id=2,
+            ...     year=2025, month=9, category_id=1
+            ... )
             >>> print(f"Found {total} transactions, showing first {len(txns)}")
-            >>> # Search for Starbucks transactions
-            >>> txns, total = repo.get_filtered(search='스타벅스', limit=10)
-            >>> # Get page 2 of all transactions
-            >>> txns, total = repo.get_filtered(limit=50, offset=50)
+            >>> # Search for Starbucks transactions (excluding other users' allowances)
+            >>> txns, total = repo.get_filtered(
+            ...     workspace_id=1, exclude_allowances_for_user_id=2,
+            ...     search='스타벅스', limit=10
+            ... )
 
         Notes:
-            - All filters are optional and can be combined
+            - workspace_id and exclude_allowances_for_user_id are REQUIRED for security
+            - All other filters are optional and can be combined
+            - Excludes transactions marked as allowance by OTHER users
+            - Includes transactions marked as allowance by the CURRENT user
             - Uses indexed queries for performance
             - Search is case-insensitive and matches partial merchant names
             - Total count reflects filtered results (not offset/limit)
@@ -797,8 +808,11 @@ class TransactionRepository:
         """
         try:
             # Build WHERE clause dynamically
-            where_clauses = ['t.deleted_at IS NULL']  # Always exclude soft-deleted records
-            params = []
+            where_clauses = [
+                't.deleted_at IS NULL',  # Exclude soft-deleted records
+                't.workspace_id = ?',     # Workspace isolation
+            ]
+            params = [workspace_id]
 
             if year is not None:
                 where_clauses.append('t.transaction_year = ?')
@@ -819,6 +833,10 @@ class TransactionRepository:
             if search is not None:
                 where_clauses.append('t.merchant_name LIKE ?')
                 params.append(f'%{search}%')
+
+            # Exclude other users' allowances: show transaction if NOT marked as allowance OR if marked by current user
+            where_clauses.append('(at.id IS NULL OR at.user_id = ?)')
+            params.append(exclude_allowances_for_user_id)
 
             where_sql = 'WHERE ' + ' AND '.join(where_clauses)
 
@@ -835,6 +853,7 @@ class TransactionRepository:
             count_query = f'''
                 SELECT COUNT(*) as count
                 FROM transactions t
+                LEFT JOIN allowance_transactions at ON t.id = at.transaction_id
                 {where_sql}
             '''
             cursor = self.conn.execute(count_query, params)
@@ -848,6 +867,7 @@ class TransactionRepository:
                     fi.name as institution_name,
                     fi.institution_type
                 FROM transactions t
+                LEFT JOIN allowance_transactions at ON t.id = at.transaction_id
                 JOIN categories c ON t.category_id = c.id
                 JOIN financial_institutions fi ON t.institution_id = fi.id
                 {where_sql}
@@ -858,8 +878,9 @@ class TransactionRepository:
             transactions = [dict(row) for row in cursor.fetchall()]
 
             self.logger.debug(
-                f'Filtered transactions: filters={where_clauses}, '
-                f'total={total_count}, returned={len(transactions)}'
+                f'Filtered transactions: workspace_id={workspace_id}, '
+                f'exclude_allowances_for_user_id={exclude_allowances_for_user_id}, '
+                f'filters={where_clauses}, total={total_count}, returned={len(transactions)}'
             )
 
             return transactions, total_count
@@ -870,6 +891,8 @@ class TransactionRepository:
 
     def get_filtered_total_amount(
         self,
+        workspace_id: int,
+        exclude_allowances_for_user_id: int,
         year: Optional[int] = None,
         month: Optional[int] = None,
         category_id: Optional[int] = None,
@@ -882,8 +905,11 @@ class TransactionRepository:
         Uses the same filters as get_filtered() but returns only the sum of amounts
         across ALL matching transactions (not just the current page). This is useful
         for showing the total spending that matches the current filter criteria.
+        Enforces workspace isolation and excludes other users' allowance transactions.
 
         Args:
+            workspace_id: Required workspace ID filter (multi-tenant isolation)
+            exclude_allowances_for_user_id: Required user ID to exclude other users' allowances
             year: Optional year filter
             month: Optional month filter (1-12)
             category_id: Optional category ID filter
@@ -896,13 +922,22 @@ class TransactionRepository:
         Examples:
             >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
             >>> # Get total spending for September 2025 food expenses
-            >>> total_amount = repo.get_filtered_total_amount(year=2025, month=9, category_id=1)
+            >>> total_amount = repo.get_filtered_total_amount(
+            ...     workspace_id=1, exclude_allowances_for_user_id=2,
+            ...     year=2025, month=9, category_id=1
+            ... )
             >>> print(f"Total food spending in Sept: {total_amount}원")
             >>> # Get total for Starbucks transactions
-            >>> total_amount = repo.get_filtered_total_amount(search='스타벅스')
+            >>> total_amount = repo.get_filtered_total_amount(
+            ...     workspace_id=1, exclude_allowances_for_user_id=2,
+            ...     search='스타벅스'
+            ... )
 
         Notes:
+            - workspace_id and exclude_allowances_for_user_id are REQUIRED for security
             - Uses same WHERE clause logic as get_filtered() for consistency
+            - Excludes other users' allowances from total
+            - Includes current user's allowances in total
             - Returns 0 for empty result sets (COALESCE)
             - Uses parameterized queries to prevent SQL injection
             - Very fast even on large datasets (single aggregation query)
@@ -910,8 +945,11 @@ class TransactionRepository:
         """
         try:
             # Build WHERE clause dynamically (same logic as get_filtered)
-            where_clauses = ['t.deleted_at IS NULL']  # Always exclude soft-deleted records
-            params = []
+            where_clauses = [
+                't.deleted_at IS NULL',  # Exclude soft-deleted records
+                't.workspace_id = ?',     # Workspace isolation
+            ]
+            params = [workspace_id]
 
             if year is not None:
                 where_clauses.append('t.transaction_year = ?')
@@ -933,12 +971,17 @@ class TransactionRepository:
                 where_clauses.append('t.merchant_name LIKE ?')
                 params.append(f'%{search}%')
 
+            # Exclude other users' allowances: show transaction if NOT marked as allowance OR if marked by current user
+            where_clauses.append('(at.id IS NULL OR at.user_id = ?)')
+            params.append(exclude_allowances_for_user_id)
+
             where_sql = 'WHERE ' + ' AND '.join(where_clauses)
 
             # Query total amount with COALESCE to return 0 for empty result
             query = f'''
                 SELECT COALESCE(SUM(t.amount), 0) as total_amount
                 FROM transactions t
+                LEFT JOIN allowance_transactions at ON t.id = at.transaction_id
                 {where_sql}
             '''
             cursor = self.conn.execute(query, params)
@@ -946,7 +989,9 @@ class TransactionRepository:
             total_amount = result['total_amount']
 
             self.logger.debug(
-                f'Calculated filtered total amount: filters={where_clauses}, total={total_amount}'
+                f'Calculated filtered total amount: workspace_id={workspace_id}, '
+                f'exclude_allowances_for_user_id={exclude_allowances_for_user_id}, '
+                f'filters={where_clauses}, total={total_amount}'
             )
 
             return total_amount
@@ -955,14 +1000,19 @@ class TransactionRepository:
             self.logger.error(f'Error in get_filtered_total_amount: {e}')
             raise
 
-    def get_monthly_summary_with_stats(self, year: int, month: int) -> dict:
+    def get_monthly_summary_with_stats(self, workspace_id: int,
+                                        exclude_allowances_for_user_id: int,
+                                        year: int, month: int) -> dict:
         """
         Get comprehensive monthly spending summary with statistics.
 
         Provides detailed monthly analysis including category breakdown,
         total spending, and transaction count.
+        Enforces workspace isolation and excludes other users' allowance transactions.
 
         Args:
+            workspace_id: Required workspace ID filter (multi-tenant isolation)
+            exclude_allowances_for_user_id: Required user ID to exclude other users' allowances
             year: Year to query (e.g., 2025)
             month: Month to query (1-12)
 
@@ -974,20 +1024,26 @@ class TransactionRepository:
 
         Examples:
             >>> repo = TransactionRepository(conn, cat_repo, inst_repo)
-            >>> summary = repo.get_monthly_summary_with_stats(2025, 9)
+            >>> summary = repo.get_monthly_summary_with_stats(
+            ...     workspace_id=1, exclude_allowances_for_user_id=2,
+            ...     year=2025, month=9
+            ... )
             >>> print(f"Total: {summary['total_amount']}원")
             >>> print(f"Transactions: {summary['transaction_count']}")
             >>> for cat in summary['by_category']:
             ...     print(f"{cat['category_name']}: {cat['amount']}원 ({cat['count']} txns)")
 
         Notes:
+            - workspace_id and exclude_allowances_for_user_id are REQUIRED for security
+            - Excludes other users' allowances from summary
+            - Includes current user's allowances in summary
             - Uses indexed query (transaction_year, transaction_month)
             - Groups by category with counts and sums
             - Ordered by spending amount (highest first)
             - Useful for monthly reports and dashboards
         """
         try:
-            # Get category breakdown
+            # Get category breakdown with allowance exclusion
             cursor = self.conn.execute('''
                 SELECT
                     c.id as category_id,
@@ -995,17 +1051,29 @@ class TransactionRepository:
                     SUM(t.amount) as amount,
                     COUNT(*) as count
                 FROM transactions t
+                LEFT JOIN allowance_transactions at ON t.id = at.transaction_id
                 JOIN categories c ON t.category_id = c.id
-                WHERE t.transaction_year = ? AND t.transaction_month = ?
+                WHERE t.transaction_year = ?
+                  AND t.transaction_month = ?
+                  AND t.workspace_id = ?
+                  AND t.deleted_at IS NULL
+                  AND (at.id IS NULL OR at.user_id = ?)
                 GROUP BY c.id, c.name
                 ORDER BY amount DESC
-            ''', (year, month))
+            ''', (year, month, workspace_id, exclude_allowances_for_user_id))
 
             by_category = [dict(row) for row in cursor.fetchall()]
 
             # Calculate totals
             total_amount = sum(cat['amount'] for cat in by_category)
             transaction_count = sum(cat['count'] for cat in by_category)
+
+            self.logger.debug(
+                f'Monthly summary: workspace_id={workspace_id}, '
+                f'exclude_allowances_for_user_id={exclude_allowances_for_user_id}, '
+                f'year={year}, month={month}, total_amount={total_amount}, '
+                f'transaction_count={transaction_count}'
+            )
 
             return {
                 'year': year,
