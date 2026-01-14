@@ -34,7 +34,7 @@ class CategoryRepository:
 
     _all_cache: Optional[List[dict]] = None
     _all_cache_time: float = 0
-    _cache_ttl: int = 300  # 5 minutes TTL
+    _cache_ttl: int = 86400  # 24 hours TTL (data updated monthly)
 
     def __init__(self, connection: sqlite3.Connection):
         """
@@ -130,7 +130,8 @@ class CategoryRepository:
         """
         Get all categories ordered by transaction count (descending), then by name.
 
-        Uses class-level cache with 5-minute TTL to avoid repeated DB queries.
+        Uses class-level cache with 24-hour TTL. Category rankings change slowly
+        (monthly data imports), so aggressive caching is appropriate.
 
         Returns:
             List of category dictionaries with all fields, sorted by usage frequency
@@ -162,7 +163,7 @@ class CategoryRepository:
         # Update cache
         CategoryRepository._all_cache = result
         CategoryRepository._all_cache_time = now
-        self.logger.debug(f'Cached {len(result)} categories (TTL: {CategoryRepository._cache_ttl}s)')
+        self.logger.info(f'Cached {len(result)} categories (TTL: 24h)')
 
         return result
 
@@ -230,7 +231,7 @@ class InstitutionRepository:
 
     _all_cache: Optional[List[dict]] = None
     _all_cache_time: float = 0
-    _cache_ttl: int = 300  # 5 minutes TTL
+    _cache_ttl: int = 86400  # 24 hours TTL (data updated monthly)
 
     def __init__(self, connection: sqlite3.Connection):
         """
@@ -355,7 +356,8 @@ class InstitutionRepository:
         """
         Get all active financial institutions ordered by transaction count (descending), then by name.
 
-        Uses class-level cache with 5-minute TTL to avoid repeated DB queries.
+        Uses class-level cache with 24-hour TTL. Institution rankings change slowly
+        (monthly data imports), so aggressive caching is appropriate.
 
         Returns:
             List of institution dictionaries, sorted by usage frequency
@@ -388,7 +390,7 @@ class InstitutionRepository:
         # Update cache
         InstitutionRepository._all_cache = result
         InstitutionRepository._all_cache_time = now
-        self.logger.debug(f'Cached {len(result)} institutions (TTL: {InstitutionRepository._cache_ttl}s)')
+        self.logger.info(f'Cached {len(result)} institutions (TTL: 24h)')
 
         return result
 
