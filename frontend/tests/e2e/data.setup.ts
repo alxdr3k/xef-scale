@@ -30,6 +30,31 @@ setup('seed test data', async ({ request }) => {
     'Authorization': `Bearer ${accessToken}`
   };
 
+  // Get or create a default workspace for testing
+  console.log('\nGetting/creating test workspace...');
+  const workspacesResponse = await request.get(`${baseUrl}/api/workspaces`, { headers });
+  expect(workspacesResponse.ok()).toBeTruthy();
+  const workspacesData = await workspacesResponse.json();
+
+  let workspaceId: number;
+  if (workspacesData.workspaces && workspacesData.workspaces.length > 0) {
+    workspaceId = workspacesData.workspaces[0].id;
+    console.log(`✓ Using existing workspace ID: ${workspaceId}`);
+  } else {
+    // Create a new workspace
+    const createWorkspaceResponse = await request.post(`${baseUrl}/api/workspaces`, {
+      headers,
+      data: {
+        name: 'Test Workspace',
+        description: 'E2E Test Workspace'
+      }
+    });
+    expect(createWorkspaceResponse.ok()).toBeTruthy();
+    const workspaceData = await createWorkspaceResponse.json();
+    workspaceId = workspaceData.id;
+    console.log(`✓ Created new workspace ID: ${workspaceId}`);
+  }
+
   // Define test categories and institutions that will be created via transactions
   const categories = ['식비', '교통', '쇼핑', '생활', '기타'];
   const institutions = [
@@ -43,6 +68,7 @@ setup('seed test data', async ({ request }) => {
   // These transactions will automatically create categories and institutions
   const manualTransactions = [
     {
+      workspace_id: workspaceId,
       date: '2025.01.15',
       category: '식비',
       merchant_name: '스타벅스 강남점',
@@ -51,6 +77,7 @@ setup('seed test data', async ({ request }) => {
       notes: '회의 중 커피'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.16',
       category: '교통',
       merchant_name: '카카오T 택시',
@@ -58,6 +85,7 @@ setup('seed test data', async ({ request }) => {
       institution: '하나카드'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.17',
       category: '쇼핑',
       merchant_name: '쿠팡',
@@ -66,6 +94,7 @@ setup('seed test data', async ({ request }) => {
       notes: '생필품 구매'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.18',
       category: '식비',
       merchant_name: '맥도날드',
@@ -73,6 +102,7 @@ setup('seed test data', async ({ request }) => {
       institution: '카카오뱅크'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.19',
       category: '생활',
       merchant_name: 'GS25 편의점',
@@ -80,6 +110,7 @@ setup('seed test data', async ({ request }) => {
       institution: '신한카드'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.20',
       category: '기타',
       merchant_name: '다이소',
@@ -87,6 +118,7 @@ setup('seed test data', async ({ request }) => {
       institution: '하나카드'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.21',
       category: '식비',
       merchant_name: '이디야커피',
@@ -94,6 +126,7 @@ setup('seed test data', async ({ request }) => {
       institution: '토스뱅크'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.22',
       category: '교통',
       merchant_name: '지하철',
@@ -101,6 +134,7 @@ setup('seed test data', async ({ request }) => {
       institution: '카카오뱅크'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.23',
       category: '쇼핑',
       merchant_name: '무신사',
@@ -109,6 +143,7 @@ setup('seed test data', async ({ request }) => {
       notes: '겨울 재킷'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.24',
       category: '식비',
       merchant_name: '김밥천국',
@@ -119,7 +154,7 @@ setup('seed test data', async ({ request }) => {
 
   console.log('Creating manual transactions...');
   for (const transaction of manualTransactions) {
-    const response = await request.post(`${baseUrl}/api/transactions`, {
+    const response = await request.post(`${baseUrl}/api/transactions?workspace_id=${workspaceId}`, {
       headers,
       data: transaction
     });
@@ -141,6 +176,7 @@ setup('seed test data', async ({ request }) => {
   // In a real scenario, these would be created by the file parser
   const parsedStyleTransactions = [
     {
+      workspace_id: workspaceId,
       date: '2025.01.10',
       category: '식비',
       merchant_name: '올리브영',
@@ -148,6 +184,7 @@ setup('seed test data', async ({ request }) => {
       institution: '신한카드'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.11',
       category: '교통',
       merchant_name: 'SK주유소',
@@ -155,6 +192,7 @@ setup('seed test data', async ({ request }) => {
       institution: '하나카드'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.12',
       category: '쇼핑',
       merchant_name: '애플스토어',
@@ -165,6 +203,7 @@ setup('seed test data', async ({ request }) => {
       original_amount: 1290000
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.13',
       category: '식비',
       merchant_name: '도미노피자',
@@ -172,6 +211,7 @@ setup('seed test data', async ({ request }) => {
       institution: '카카오뱅크'
     },
     {
+      workspace_id: workspaceId,
       date: '2025.01.14',
       category: '생활',
       merchant_name: '홈플러스',
@@ -182,7 +222,7 @@ setup('seed test data', async ({ request }) => {
 
   console.log('\nCreating parsed-style transactions...');
   for (const transaction of parsedStyleTransactions) {
-    const response = await request.post(`${baseUrl}/api/transactions`, {
+    const response = await request.post(`${baseUrl}/api/transactions?workspace_id=${workspaceId}`, {
       headers,
       data: transaction
     });
@@ -198,21 +238,21 @@ setup('seed test data', async ({ request }) => {
 
   // Verify that categories were created
   console.log('\nVerifying categories...');
-  const categoriesResponse = await request.get(`${baseUrl}/api/categories`, { headers });
+  const categoriesResponse = await request.get(`${baseUrl}/api/categories?workspace_id=${workspaceId}`, { headers });
   expect(categoriesResponse.ok()).toBeTruthy();
   const categoriesData = await categoriesResponse.json();
   console.log(`✓ Found ${categoriesData.length} categories:`, categoriesData.map((c: any) => c.name).join(', '));
 
   // Verify that institutions were created
   console.log('\nVerifying institutions...');
-  const institutionsResponse = await request.get(`${baseUrl}/api/institutions`, { headers });
+  const institutionsResponse = await request.get(`${baseUrl}/api/institutions?workspace_id=${workspaceId}`, { headers });
   expect(institutionsResponse.ok()).toBeTruthy();
   const institutionsData = await institutionsResponse.json();
   console.log(`✓ Found ${institutionsData.length} institutions:`, institutionsData.map((i: any) => i.name).join(', '));
 
   // Verify that transactions were created
   console.log('\nVerifying transactions...');
-  const transactionsResponse = await request.get(`${baseUrl}/api/transactions?limit=100`, { headers });
+  const transactionsResponse = await request.get(`${baseUrl}/api/transactions?workspace_id=${workspaceId}&limit=100`, { headers });
   expect(transactionsResponse.ok()).toBeTruthy();
   const transactionsData = await transactionsResponse.json();
   console.log(`✓ Found ${transactionsData.total} total transactions`);

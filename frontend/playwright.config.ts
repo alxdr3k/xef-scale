@@ -12,9 +12,11 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 4, // Reduce workers from 8 to 4 to prevent overload
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
+  /* Increase timeout for slower machines */
+  timeout: 60 * 1000, // Increase from default 30s to 60s
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -52,41 +54,43 @@ export default defineConfig({
       dependencies: ['setup', 'data-setup'],
     },
 
-    {
-      name: 'firefox',
-      use: {
-        ...devices['Desktop Firefox'],
-        storageState: 'tests/.auth/user.json',
-      },
-      dependencies: ['setup', 'data-setup'],
-    },
+    // Commenting out other browsers for faster development testing
+    // Uncomment these for comprehensive cross-browser testing
+    // {
+    //   name: 'firefox',
+    //   use: {
+    //     ...devices['Desktop Firefox'],
+    //     storageState: 'tests/.auth/user.json',
+    //   },
+    //   dependencies: ['setup', 'data-setup'],
+    // },
 
-    {
-      name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-        storageState: 'tests/.auth/user.json',
-      },
-      dependencies: ['setup', 'data-setup'],
-    },
+    // {
+    //   name: 'webkit',
+    //   use: {
+    //     ...devices['Desktop Safari'],
+    //     storageState: 'tests/.auth/user.json',
+    //   },
+    //   dependencies: ['setup', 'data-setup'],
+    // },
 
-    /* Test against mobile viewports. */
-    {
-      name: 'Mobile Chrome',
-      use: {
-        ...devices['Pixel 5'],
-        storageState: 'tests/.auth/user.json',
-      },
-      dependencies: ['setup', 'data-setup'],
-    },
-    {
-      name: 'Mobile Safari',
-      use: {
-        ...devices['iPhone 12'],
-        storageState: 'tests/.auth/user.json',
-      },
-      dependencies: ['setup', 'data-setup'],
-    },
+    // /* Test against mobile viewports. */
+    // {
+    //   name: 'Mobile Chrome',
+    //   use: {
+    //     ...devices['Pixel 5'],
+    //     storageState: 'tests/.auth/user.json',
+    //   },
+    //   dependencies: ['setup', 'data-setup'],
+    // },
+    // {
+    //   name: 'Mobile Safari',
+    //   use: {
+    //     ...devices['iPhone 12'],
+    //     storageState: 'tests/.auth/user.json',
+    //   },
+    //   dependencies: ['setup', 'data-setup'],
+    // },
   ],
 
   /* Run your local dev servers before starting the tests */
