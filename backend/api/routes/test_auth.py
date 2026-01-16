@@ -34,9 +34,10 @@ async def test_login():
             detail="Test authentication endpoint is only available in development/test environment"
         )
 
-    # Create test user data
+    # Create test user data using existing user id=1 from database
+    # This allows the test user to access workspace memberships properly
     test_user = UserInfo(
-        id="test-user-e2e-12345",
+        id="1",  # Uses existing user in database
         email="e2e-test@example.com",
         name="E2E Test User",
         picture=None

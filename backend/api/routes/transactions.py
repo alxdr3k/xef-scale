@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
 
-def _db_row_to_transaction_response(row: dict) -> TransactionResponse:
+def _db_row_to_transaction_response(row: dict, workspace_id: int = None) -> TransactionResponse:
     """
     Convert database row dict to TransactionResponse schema.
 
@@ -48,6 +48,7 @@ def _db_row_to_transaction_response(row: dict) -> TransactionResponse:
 
     Args:
         row: Database row as dict (with Row factory)
+        workspace_id: Workspace ID to include in response (uses row value if not provided)
 
     Returns:
         TransactionResponse with all fields populated
@@ -61,6 +62,9 @@ def _db_row_to_transaction_response(row: dict) -> TransactionResponse:
     # Convert date format from SQL (yyyy-mm-dd) to API (yyyy.mm.dd)
     date_parts = row['transaction_date'].split('-')
     formatted_date = f"{date_parts[0]}.{date_parts[1]}.{date_parts[2]}"
+
+    # Use provided workspace_id or get from row
+    ws_id = workspace_id if workspace_id is not None else row.get('workspace_id')
 
     return TransactionResponse(
         id=row['id'],
@@ -79,7 +83,8 @@ def _db_row_to_transaction_response(row: dict) -> TransactionResponse:
         file_id=row.get('file_id'),
         row_number_in_file=row.get('row_number_in_file'),
         notes=row.get('notes'),
-        created_at=row['created_at']
+        created_at=row['created_at'],
+        workspace_id=ws_id
     )
 
 
@@ -195,7 +200,7 @@ async def get_transactions(
     # Convert database rows to API response models and add allowance flags
     transaction_responses = []
     for row in transactions:
-        response = _db_row_to_transaction_response(row)
+        response = _db_row_to_transaction_response(row, workspace_id=workspace_id)
         # Check if current user marked this as allowance
         response.is_allowance = AllowanceTransactionRepository.is_allowance(
             db,
@@ -203,7 +208,6 @@ async def get_transactions(
             int(current_user.id),
             workspace_id
         )
-        response.workspace_id = workspace_id
         transaction_responses.append(response)
 
     # Calculate total pages
@@ -286,14 +290,13 @@ async def get_transaction_by_id(
         )
 
     # Convert to API response
-    response = _db_row_to_transaction_response(transaction)
+    response = _db_row_to_transaction_response(transaction, workspace_id=workspace_id)
     response.is_allowance = AllowanceTransactionRepository.is_allowance(
         db,
         transaction_id,
         int(current_user.id),
         workspace_id
     )
-    response.workspace_id = workspace_id
     return response
 
 
@@ -533,9 +536,8 @@ async def create_transaction(
         )
 
         # Convert to response and add workspace context
-        response = _db_row_to_transaction_response(created_transaction)
+        response = _db_row_to_transaction_response(created_transaction, workspace_id=request.workspace_id)
         response.is_allowance = False  # Newly created, not marked as allowance yet
-        response.workspace_id = request.workspace_id
         return response
 
     except HTTPException:
@@ -710,14 +712,13 @@ async def update_transaction(
         )
 
         # Convert to response and add workspace context
-        response = _db_row_to_transaction_response(updated_transaction)
+        response = _db_row_to_transaction_response(updated_transaction, workspace_id=workspace_id)
         response.is_allowance = AllowanceTransactionRepository.is_allowance(
             db,
             transaction_id,
             int(current_user.id),
             workspace_id
         )
-        response.workspace_id = workspace_id
         return response
 
     except HTTPException:
@@ -945,9 +946,9 @@ async def update_transaction_notes(
                 detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
             )
 
-        logger.info(f"Updated notes for transaction ID={transaction_id} by user={current_user.username}")
+        logger.info(f"Updated notes for transaction ID={transaction_id} by user={current_user.email}")
 
-        return _db_row_to_transaction_response(updated_transaction)
+        return _db_row_to_transaction_response(updated_transaction, workspace_id=updated_transaction.get('workspace_id'))
 
     except HTTPException:
         raise
@@ -1039,7 +1040,7 @@ async def update_transaction_category(
                 detail=f"거래 내역을 찾을 수 없습니다. (ID: {transaction_id})"
             )
 
-        logger.info(f"Updated category for transaction ID={transaction_id} to '{category}' by user={current_user.username}")
+        logger.info(f"Updated category for transaction ID={transaction_id} to '{category}' by user={current_user.email}")
 
         # Auto-update category-merchant mapping based on user's category change
         try:
@@ -1078,7 +1079,7 @@ async def update_transaction_category(
                 exc_info=True
             )
 
-        return _db_row_to_transaction_response(updated_transaction)
+        return _db_row_to_transaction_response(updated_transaction, workspace_id=updated_transaction.get('workspace_id'))
 
     except HTTPException:
         raise
