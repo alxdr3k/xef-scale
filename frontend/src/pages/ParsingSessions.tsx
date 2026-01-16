@@ -43,7 +43,19 @@ const ParsingSessions: React.FC = () => {
       setTotal(response.total);
     } catch (err: any) {
       console.error('Failed to fetch parsing sessions:', err);
-      setError(err.response?.data?.detail || '파싱 세션 목록을 불러오는데 실패했습니다');
+
+      // Handle error message properly
+      let errorMessage = '파싱 세션 목록을 불러오는데 실패했습니다';
+      if (err.response?.data?.detail) {
+        // If detail is a string, use it; if it's an object, stringify it
+        errorMessage = typeof err.response.data.detail === 'string'
+          ? err.response.data.detail
+          : JSON.stringify(err.response.data.detail);
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
       setSessions([]);
       setTotal(0);
     } finally {
