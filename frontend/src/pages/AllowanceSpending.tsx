@@ -49,6 +49,7 @@ import {
 } from '../api/allowances';
 import type { AllowanceFilters } from '../api/allowances';
 import type { AllowanceTransactionResponse, AllowanceSummary } from '../types';
+import { getErrorMessage } from '../utils/error';
 
 const { Title, Text } = Typography;
 
@@ -222,7 +223,7 @@ const AllowanceSpending: React.FC = () => {
       loadSummary();
     } catch (error: any) {
       console.error('Failed to restore transaction:', error);
-      message.error(error.response?.data?.detail || '거래 복원에 실패했습니다');
+      message.error(getErrorMessage(error, '거래 복원에 실패했습니다'));
     } finally {
       setRestoreLoading(false);
     }
@@ -245,7 +246,7 @@ const AllowanceSpending: React.FC = () => {
       message.success('메모가 저장되었습니다');
       loadTransactions();
     } catch (error: any) {
-      message.error(error.response?.data?.detail || '메모 저장에 실패했습니다');
+      message.error(getErrorMessage(error, '메모 저장에 실패했습니다'));
     }
   };
 
@@ -259,7 +260,7 @@ const AllowanceSpending: React.FC = () => {
       loadTransactions();
       loadSummary(); // Refresh summary as category changed
     } catch (error: any) {
-      message.error(error.response?.data?.detail || '카테고리 변경에 실패했습니다');
+      message.error(getErrorMessage(error, '카테고리 변경에 실패했습니다'));
     }
   };
 

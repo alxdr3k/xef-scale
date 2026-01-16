@@ -18,6 +18,7 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { confirmationsApi } from '../../api/confirmations';
+import { getErrorMessage } from '../../utils/error';
 import type { DuplicateConfirmation, ConfirmationAction } from '../../types';
 
 const { Text, Title } = Typography;
@@ -64,7 +65,7 @@ const DuplicateConfirmationModal: React.FC<DuplicateConfirmationModalProps> = ({
       }
     } catch (error: any) {
       console.error('Failed to fetch confirmations:', error);
-      message.error(error.response?.data?.detail || '중복 확인 목록을 불러오는데 실패했습니다');
+      message.error(getErrorMessage(error, '중복 확인 목록을 불러오는데 실패했습니다'));
     } finally {
       setLoading(false);
     }
@@ -90,7 +91,7 @@ const DuplicateConfirmationModal: React.FC<DuplicateConfirmationModalProps> = ({
       }
     } catch (error: any) {
       console.error('Failed to confirm duplicate:', error);
-      message.error(error.response?.data?.detail || '확인 처리에 실패했습니다');
+      message.error(getErrorMessage(error, '확인 처리에 실패했습니다'));
     } finally {
       setProcessing(false);
     }
@@ -110,7 +111,7 @@ const DuplicateConfirmationModal: React.FC<DuplicateConfirmationModalProps> = ({
           onComplete();
         } catch (error: any) {
           console.error('Failed to bulk confirm:', error);
-          message.error(error.response?.data?.detail || '일괄 처리에 실패했습니다');
+          message.error(getErrorMessage(error, '일괄 처리에 실패했습니다'));
         } finally {
           setProcessing(false);
         }

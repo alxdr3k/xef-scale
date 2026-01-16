@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons';
 import { acceptInvitation } from '../api/workspaces';
 import { useAuth } from '../contexts/AuthContext';
+import { getErrorMessage } from '../utils/error';
 import type { InvitationAcceptResponse } from '../types';
 
 const { Title, Paragraph } = Typography;
@@ -86,23 +87,22 @@ const JoinWorkspace: React.FC = () => {
       let errorMessage = '초대 링크를 처리하는 중 오류가 발생했습니다.';
 
       // Parse error from backend
-      if (error.response?.data?.detail) {
-        const detail = error.response.data.detail;
+      const detail = error.response?.data?.detail;
+      const detailStr = typeof detail === 'string' ? detail : getErrorMessage(error, '');
 
-        // Map backend error messages to Korean
-        if (detail.includes('not found')) {
-          errorMessage = '유효하지 않은 초대 링크입니다.';
-        } else if (detail.includes('expired')) {
-          errorMessage = '이 초대 링크는 만료되었습니다.';
-        } else if (detail.includes('revoked')) {
-          errorMessage = '이 초대 링크는 취소되었습니다.';
-        } else if (detail.includes('maximum uses')) {
-          errorMessage = '이 초대 링크는 사용 횟수를 모두 소진했습니다.';
-        } else if (detail.includes('already a member')) {
-          errorMessage = '이미 이 워크스페이스의 멤버입니다.';
-        } else {
-          errorMessage = detail;
-        }
+      // Map backend error messages to Korean
+      if (detailStr.includes('not found')) {
+        errorMessage = '유효하지 않은 초대 링크입니다.';
+      } else if (detailStr.includes('expired')) {
+        errorMessage = '이 초대 링크는 만료되었습니다.';
+      } else if (detailStr.includes('revoked')) {
+        errorMessage = '이 초대 링크는 취소되었습니다.';
+      } else if (detailStr.includes('maximum uses')) {
+        errorMessage = '이 초대 링크는 사용 횟수를 모두 소진했습니다.';
+      } else if (detailStr.includes('already a member')) {
+        errorMessage = '이미 이 워크스페이스의 멤버입니다.';
+      } else if (detailStr) {
+        errorMessage = detailStr;
       } else if (error.response?.status === 401) {
         errorMessage = '로그인이 필요합니다.';
       } else if (error.response?.status === 403) {

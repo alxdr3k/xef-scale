@@ -44,6 +44,7 @@ import {
   revokeInvitation,
 } from '../api/workspaces';
 import type { WorkspaceMember, WorkspaceRole, WorkspaceInvitation } from '../types';
+import { getErrorMessage } from '../utils/error';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -196,7 +197,7 @@ const WorkspaceSettings: React.FC = () => {
       message.success('멤버 역할이 업데이트되었습니다');
       await loadMembers();
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || '역할 업데이트에 실패했습니다';
+      const errorMessage = getErrorMessage(error, '역할 업데이트에 실패했습니다');
       message.error(errorMessage);
       console.error('Failed to update member role:', error);
     } finally {
@@ -213,7 +214,7 @@ const WorkspaceSettings: React.FC = () => {
       message.success(`${memberName}님이 제거되었습니다`);
       await loadMembers();
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || '멤버 제거에 실패했습니다';
+      const errorMessage = getErrorMessage(error, '멤버 제거에 실패했습니다');
       message.error(errorMessage);
       console.error('Failed to remove member:', error);
     }
@@ -229,7 +230,7 @@ const WorkspaceSettings: React.FC = () => {
       await refreshWorkspaces();
       navigate('/dashboard');
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || '워크스페이스 나가기에 실패했습니다';
+      const errorMessage = getErrorMessage(error, '워크스페이스 나가기에 실패했습니다');
       message.error(errorMessage);
       console.error('Failed to leave workspace:', error);
     }
@@ -250,7 +251,7 @@ const WorkspaceSettings: React.FC = () => {
       navigate('/dashboard');
       setIsDeleteModalVisible(false);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || '워크스페이스 삭제에 실패했습니다';
+      const errorMessage = getErrorMessage(error, '워크스페이스 삭제에 실패했습니다');
       message.error(errorMessage);
       console.error('Failed to delete workspace:', error);
     }
@@ -281,7 +282,7 @@ const WorkspaceSettings: React.FC = () => {
       });
       setUnlimitedUses(false);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || '초대 링크 생성에 실패했습니다';
+      const errorMessage = getErrorMessage(error, '초대 링크 생성에 실패했습니다');
       message.error(errorMessage);
       console.error('Failed to create invitation:', error);
     } finally {
@@ -298,7 +299,7 @@ const WorkspaceSettings: React.FC = () => {
       message.success('초대 링크가 취소되었습니다');
       await loadInvitations();
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || '초대 링크 취소에 실패했습니다';
+      const errorMessage = getErrorMessage(error, '초대 링크 취소에 실패했습니다');
       message.error(errorMessage);
       console.error('Failed to revoke invitation:', error);
     }

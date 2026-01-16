@@ -60,7 +60,18 @@ apiClient.interceptors.response.use(
     }
     // Handle other client errors (4xx)
     else if (error.response?.status && error.response.status >= 400 && error.response.status < 500) {
-      const errorMessage = (error.response.data as any)?.detail || '요청 처리 중 오류가 발생했습니다.';
+      const detail = (error.response.data as any)?.detail;
+      let errorMessage = '요청 처리 중 오류가 발생했습니다.';
+
+      if (typeof detail === 'string') {
+        errorMessage = detail;
+      } else if (Array.isArray(detail)) {
+        // Handle Pydantic validation errors (array of {field, message, type})
+        errorMessage = detail.map((e: any) => e.msg || e.message || JSON.stringify(e)).join(', ');
+      } else if (detail && typeof detail === 'object') {
+        errorMessage = detail.message || detail.msg || JSON.stringify(detail);
+      }
+
       message.error(errorMessage);
       console.error('Client error:', error);
     }

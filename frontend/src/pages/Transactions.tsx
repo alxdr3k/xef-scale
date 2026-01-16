@@ -28,6 +28,7 @@ import type {
   TransactionFilters,
 } from '../api/services';
 import { markAsAllowance } from '../api/allowances';
+import { getErrorMessage } from '../utils/error';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -202,7 +203,7 @@ const Transactions: React.FC = () => {
           message.success('거래가 삭제되었습니다');
           loadTransactions();
         } catch (error: any) {
-          message.error(error.response?.data?.detail || '거래 삭제에 실패했습니다');
+          message.error(getErrorMessage(error, '거래 삭제에 실패했습니다'));
         }
       },
     });
@@ -217,7 +218,7 @@ const Transactions: React.FC = () => {
       message.success('메모가 저장되었습니다');
       loadTransactions();
     } catch (error: any) {
-      message.error(error.response?.data?.detail || '메모 저장에 실패했습니다');
+      message.error(getErrorMessage(error, '메모 저장에 실패했습니다'));
     }
   };
 
@@ -230,7 +231,7 @@ const Transactions: React.FC = () => {
       message.success('카테고리가 변경되었습니다');
       loadTransactions();
     } catch (error: any) {
-      message.error(error.response?.data?.detail || '카테고리 변경에 실패했습니다');
+      message.error(getErrorMessage(error, '카테고리 변경에 실패했습니다'));
     }
   };
 
@@ -279,7 +280,7 @@ const Transactions: React.FC = () => {
       loadTransactions();
     } catch (error: any) {
       console.error('Failed to mark as allowance:', error);
-      message.error(error.response?.data?.detail || '용돈 표시에 실패했습니다');
+      message.error(getErrorMessage(error, '용돈 표시에 실패했습니다'));
     } finally {
       setAllowanceLoading(false);
     }

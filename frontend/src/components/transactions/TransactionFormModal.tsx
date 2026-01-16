@@ -22,6 +22,7 @@ import type {
 } from '../../api/services';
 import type { TransactionCreateRequest, TransactionUpdateRequest } from '../../types';
 import { createTransaction, updateTransaction } from '../../api/services';
+import { getErrorMessage } from '../../utils/error';
 
 const { TextArea } = Input;
 
@@ -161,7 +162,7 @@ const TransactionFormModal: React.FC<TransactionFormModalProps> = ({
       if (error.response?.status === 403) {
         message.error('파일에서 가져온 거래는 수정할 수 없습니다');
       } else if (error.response?.status === 400) {
-        const errorDetail = error.response?.data?.detail || '';
+        const errorDetail = getErrorMessage(error, '');
         if (errorDetail.includes('duplicate') || errorDetail.includes('중복')) {
           message.error('동일한 거래가 이미 존재합니다');
         } else {
