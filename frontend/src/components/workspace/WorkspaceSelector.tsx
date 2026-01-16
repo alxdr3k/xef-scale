@@ -54,7 +54,7 @@ const WorkspaceSelector: React.FC = () => {
       value={currentWorkspace?.id}
       onChange={handleChange}
       style={{ minWidth: 200 }}
-      dropdownStyle={{ minWidth: 280 }}
+      styles={{ popup: { root: { minWidth: 280 } } }}
       placeholder="워크스페이스 선택"
       size="middle"
     >
