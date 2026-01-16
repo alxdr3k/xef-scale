@@ -41,7 +41,7 @@ const WorkspaceSelector: React.FC = () => {
   }
 
   // Handle empty workspace list
-  if (workspaces.length === 0) {
+  if (!workspaces || workspaces.length === 0) {
     return (
       <div style={{ padding: '8px 12px', color: '#8c8c8c', fontSize: 14 }}>
         사용 가능한 워크스페이스가 없습니다
