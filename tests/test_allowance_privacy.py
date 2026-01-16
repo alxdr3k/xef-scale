@@ -1,5 +1,5 @@
 """
-Comprehensive integration tests for allowance privacy enforcement.
+Comprehensive integration tests for allowance privacy enforcement (Phase 11.2).
 
 CRITICAL FEATURE: Privacy is the primary feature of the allowance system.
 User A's allowances must be completely hidden from User B across ALL API endpoints.
@@ -8,11 +8,21 @@ Test Coverage:
 - Transaction list privacy (User B cannot see User A's allowances)
 - Total amount calculations exclude other users' allowances
 - Monthly summaries exclude other users' allowances
+- Category breakdown respects privacy
 - Allowance list privacy (User B cannot see User A's allowances)
 - Unmark restores visibility to all users
 - Multiple users marking different transactions
 - Same transaction marked by multiple users
 - Cross-workspace privacy isolation
+- Edge cases (zero allowances, all transactions as allowances)
+
+Phase 11.2 Tests:
+1. Mark Transaction as Allowance
+2. Allowance Hidden from Other Users - Transaction List
+3. Allowance Hidden from Other Users - Monthly Summary
+4. Allowance Hidden from Other Users - Category Breakdown
+5. Multiple Users' Allowances
+6. Unmark Allowance (Restore to Shared)
 """
 
 import pytest

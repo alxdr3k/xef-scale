@@ -140,7 +140,7 @@ export const revokeInvitation = async (workspaceId: number, invitationId: number
  * @param token - Invitation token from URL
  * @returns Invitation details including workspace info
  */
-export const getInvitationByToken = async (token: string): Promise<InvitationPreview> => {
+export const getInvitationByToken = async (_token: string): Promise<InvitationPreview> => {
   // Since backend doesn't have a dedicated preview endpoint, we'll construct
   // the preview from the invitation data. The validation happens on accept.
   // For now, we'll need to attempt accept and handle errors gracefully.

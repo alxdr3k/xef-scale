@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Spin, Alert, Typography, Descriptions, Tag, Space } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   TeamOutlined,
-  ClockCircleOutlined,
-  UserOutlined,
 } from '@ant-design/icons';
 import { acceptInvitation } from '../api/workspaces';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,7 +35,6 @@ interface JoinState {
 const JoinWorkspace: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [state, setState] = useState<JoinState>({

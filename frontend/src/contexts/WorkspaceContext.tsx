@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { getWorkspaces } from '../api/workspaces';
 import type { Workspace } from '../types';
+import { useAuth } from './AuthContext';
 
 interface WorkspaceContextType {
   currentWorkspace: Workspace | null;
@@ -28,12 +29,22 @@ interface WorkspaceProviderProps {
 const STORAGE_KEY = 'selectedWorkspaceId';
 
 export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }) => {
+  const { isAuthenticated } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [currentWorkspace, setCurrentWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch workspaces and restore selected workspace from localStorage
   useEffect(() => {
+    // Only fetch workspaces if user is authenticated
+    if (!isAuthenticated) {
+      // Clear workspace data when user logs out
+      setWorkspaces([]);
+      setCurrentWorkspace(null);
+      setLoading(false);
+      return;
+    }
+
     const initWorkspaces = async () => {
       try {
         const fetchedWorkspaces = await getWorkspaces();
@@ -67,7 +78,7 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
     };
 
     initWorkspaces();
-  }, []);
+  }, [isAuthenticated]);
 
   // Helper function to select the first workspace
   const selectFirstWorkspace = (workspaceList: Workspace[]) => {
@@ -92,6 +103,11 @@ export const WorkspaceProvider: React.FC<WorkspaceProviderProps> = ({ children }
 
   // Refresh workspaces from API
   const refreshWorkspaces = async () => {
+    // Only refresh if user is authenticated
+    if (!isAuthenticated) {
+      return;
+    }
+
     try {
       setLoading(true);
       const fetchedWorkspaces = await getWorkspaces();
