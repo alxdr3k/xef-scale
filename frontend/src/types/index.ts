@@ -194,7 +194,7 @@ export interface Workspace {
 
 // Workspace list response
 export interface WorkspaceListResponse {
-  data: Workspace[];
+  workspaces: Workspace[];
 }
 
 // Workspace member interface

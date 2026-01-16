@@ -23,7 +23,7 @@ import type {
  */
 export const getWorkspaces = async (): Promise<Workspace[]> => {
   const response = await apiClient.get<WorkspaceListResponse>('/api/workspaces');
-  return response.data.data;
+  return response.data.workspaces;
 };
 
 /**
