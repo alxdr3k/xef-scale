@@ -275,7 +275,8 @@ async def get_workspace_membership(
     from src.db.repository import WorkspaceRepository, WorkspaceMembershipRepository
 
     # Check workspace exists
-    workspace = WorkspaceRepository.get_by_id(db, workspace_id)
+    workspace_repo = WorkspaceRepository(db)
+    workspace = workspace_repo.get_by_id(workspace_id)
     if not workspace:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -283,9 +284,8 @@ async def get_workspace_membership(
         )
 
     # Check user membership
-    membership = WorkspaceMembershipRepository.get_user_membership(
-        db, workspace_id, int(current_user.id)
-    )
+    membership_repo = WorkspaceMembershipRepository(db)
+    membership = membership_repo.get_user_membership(workspace_id, int(current_user.id))
 
     if not membership or not membership['is_active']:
         raise HTTPException(
