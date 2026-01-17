@@ -101,7 +101,7 @@
             <% end %>
             <%= form_with url: commit_workspace_parsing_session_path(@workspace, @parsing_session),
                 method: :post, class: 'inline-block', data: { turbo_confirm: "#{@transactions.count}건의 거래를 거래 내역에 반영하시겠습니까?" } do %>
-              <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
                 거래 내역 반영
               </button>
             <% end %>
