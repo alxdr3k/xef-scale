@@ -1,0 +1,113 @@
+<%= turbo_frame_tag dom_id(transaction) do %>
+  <tr id="row_<%= dom_id(transaction) %>" class="<%= 'bg-red-50 opacity-60' if transaction.deleted? %>">
+    <% unless read_only %>
+      <td class="px-4 py-4">
+        <% unless transaction.deleted? %>
+          <input type="checkbox" value="<%= transaction.id %>"
+                 data-action="change->bulk-select#toggle"
+                 data-bulk-select-target="checkbox"
+                 class="rounded border-gray-300 text-indigo-600">
+        <% end %>
+      </td>
+    <% end %>
+
+    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+      <%= transaction.formatted_date %>
+    </td>
+
+    <td class="px-4 py-4">
+      <div class="text-sm font-medium text-gray-900"><%= transaction.merchant %></div>
+      <% if transaction.description.present? && transaction.description != transaction.merchant %>
+        <div class="text-sm text-gray-500"><%= truncate(transaction.description, length: 40) %></div>
+      <% end %>
+    </td>
+
+    <td class="px-4 py-4 whitespace-nowrap">
+      <% if read_only %>
+        <% if transaction.category %>
+          <span class="px-2 py-1 text-xs rounded-full bg-indigo-100 text-indigo-800">
+            <%= transaction.category.name %>
+          </span>
+        <% else %>
+          <span class="text-gray-400 text-sm">미분류</span>
+        <% end %>
+      <% else %>
+        <%= form_with model: transaction,
+            url: update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: transaction.id),
+            method: :patch, data: { controller: 'auto-submit' } do |f| %>
+          <%= f.collection_select :category_id, categories, :id, :name,
+              { include_blank: '미분류' },
+              class: 'text-sm rounded border-gray-300',
+              data: { action: 'change->auto-submit#submit' } %>
+        <% end %>
+      <% end %>
+    </td>
+
+    <td class="px-4 py-4 whitespace-nowrap text-sm">
+      <% if read_only || !transaction.source_editable? %>
+        <%= transaction.financial_institution&.name || '알수없음' %>
+      <% else %>
+        <%= form_with model: transaction,
+            url: update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: transaction.id),
+            method: :patch, data: { controller: 'auto-submit' } do |f| %>
+          <%= f.collection_select :financial_institution_id, institutions, :id, :name,
+              { include_blank: '알수없음' },
+              class: 'text-sm rounded border-gray-300',
+              data: { action: 'change->auto-submit#submit' } %>
+        <% end %>
+      <% end %>
+    </td>
+
+    <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+      <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+    </td>
+
+    <td class="px-4 py-4 whitespace-nowrap text-center">
+      <% if read_only %>
+        <% if transaction.allowance? %>
+          <span class="text-yellow-500 text-lg">★</span>
+        <% end %>
+      <% else %>
+        <%= form_with url: toggle_allowance_workspace_transaction_path(@workspace, transaction),
+            method: :post, class: 'inline' do %>
+          <button type="submit" class="text-lg focus:outline-none">
+            <% if transaction.allowance? %>
+              <span class="text-yellow-500" title="용돈 해제">★</span>
+            <% else %>
+              <span class="text-gray-300 hover:text-yellow-500" title="용돈 표시">☆</span>
+            <% end %>
+          </button>
+        <% end %>
+      <% end %>
+    </td>
+
+    <td class="px-4 py-4">
+      <% if read_only %>
+        <span class="text-sm text-gray-500"><%= truncate(transaction.notes, length: 20) %></span>
+      <% else %>
+        <%= form_with model: transaction,
+            url: update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: transaction.id),
+            method: :patch, data: { controller: 'auto-submit' } do |f| %>
+          <%= f.text_field :notes, placeholder: '메모...',
+              class: 'text-sm rounded border-gray-300 w-24',
+              data: { action: 'blur->auto-submit#submit' } %>
+        <% end %>
+      <% end %>
+    </td>
+
+    <% unless read_only %>
+      <td class="px-4 py-4 whitespace-nowrap text-right">
+        <% if transaction.deleted? %>
+          <span class="text-red-500 text-xs">삭제됨</span>
+        <% else %>
+          <%= button_to workspace_transaction_path(@workspace, transaction),
+              method: :delete,
+              data: { confirm: '이 거래를 삭제하시겠습니까?', turbo: false },
+              class: 'text-red-600 hover:text-red-900 text-sm' do %>
+            삭제
+          <% end %>
+        <% end %>
+      </td>
+    <% end %>
+  </tr>
+<% end %>

@@ -1,0 +1,159 @@
+<div class="max-w-7xl mx-auto" data-controller="bulk-select">
+  <%= link_to '← 업로드 목록', workspace_parsing_sessions_path(@workspace),
+      class: 'text-indigo-600 hover:text-indigo-800 mb-4 inline-block' %>
+
+  <div class="flex justify-between items-start mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">거래 검토</h1>
+      <p class="text-gray-600"><%= @parsing_session.processed_file.filename %></p>
+    </div>
+
+    <div class="flex items-center space-x-2">
+      <% if @parsing_session.review_pending? %>
+        <span class="px-3 py-1 text-sm rounded-full bg-yellow-100 text-yellow-800">검토 대기</span>
+      <% elsif @parsing_session.review_committed? %>
+        <span class="px-3 py-1 text-sm rounded-full bg-green-100 text-green-800">확정됨</span>
+      <% elsif @parsing_session.review_rolled_back? %>
+        <span class="px-3 py-1 text-sm rounded-full bg-red-100 text-red-800">롤백됨</span>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-lg shadow p-4">
+      <div class="text-sm text-gray-500">전체</div>
+      <div class="text-2xl font-bold text-gray-900"><%= @parsing_session.total_count || 0 %>건</div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+      <div class="text-sm text-gray-500">성공</div>
+      <div class="text-2xl font-bold text-green-600"><%= @parsing_session.success_count || 0 %>건</div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+      <div class="text-sm text-gray-500">총 금액</div>
+      <div class="text-2xl font-bold text-indigo-600">
+        <%= number_to_currency(@transactions.sum(&:amount), unit: '₩', precision: 0) %>
+      </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+      <div class="text-sm text-gray-500">상태</div>
+      <div class="text-lg font-bold">
+        <% if @read_only %>
+          읽기 전용
+        <% else %>
+          편집 가능
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Bar -->
+  <% unless @read_only %>
+    <div class="bg-white rounded-lg shadow p-4 mb-6">
+      <div class="flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center space-x-4" data-bulk-select-target="actions" style="display: none;">
+          <span class="text-sm text-gray-600">
+            <span data-bulk-select-target="count">0</span>개 선택됨
+          </span>
+
+          <%= form_with url: bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+              method: :post, class: 'flex flex-wrap items-center gap-2', data: { turbo: false } do %>
+            <input type="hidden" name="transaction_ids" data-bulk-select-target="ids" value="">
+
+            <button type="submit" name="bulk_action" value="delete"
+                    class="px-3 py-1 text-sm border border-red-300 text-red-700 rounded hover:bg-red-50"
+                    data-confirm="선택한 거래를 삭제하시겠습니까?">
+              삭제
+            </button>
+            <button type="submit" name="bulk_action" value="mark_allowance"
+                    class="px-3 py-1 text-sm border border-yellow-300 text-yellow-700 rounded hover:bg-yellow-50">
+              용돈 표시
+            </button>
+            <button type="submit" name="bulk_action" value="unmark_allowance"
+                    class="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50">
+              용돈 해제
+            </button>
+
+            <div class="flex items-center space-x-2">
+              <select name="category_id" class="text-sm rounded border-gray-300">
+                <option value="">카테고리 선택</option>
+                <% @categories.each do |cat| %>
+                  <option value="<%= cat.id %>"><%= cat.name %></option>
+                <% end %>
+              </select>
+              <button type="submit" name="bulk_action" value="change_category"
+                      class="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                카테고리 변경
+              </button>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="flex items-center space-x-3 ml-auto">
+          <% if @parsing_session.review_pending? %>
+            <%= button_to '전체 확정', commit_workspace_parsing_session_path(@workspace, @parsing_session),
+                method: :post,
+                data: { confirm: "#{@transactions.count}건의 거래를 확정하시겠습니까?" },
+                class: 'px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700' %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @read_only && @parsing_session.review_committed? %>
+    <div class="bg-white rounded-lg shadow p-4 mb-6">
+      <div class="flex justify-between items-center">
+        <div class="text-gray-600">
+          <span class="font-medium">확정일:</span>
+          <%= @parsing_session.committed_at&.strftime('%Y-%m-%d %H:%M') %>
+        </div>
+        <%= button_to '전체 롤백', rollback_workspace_parsing_session_path(@workspace, @parsing_session),
+            method: :post,
+            data: { confirm: '모든 거래를 롤백하시겠습니까? 이 작업은 되돌릴 수 없습니다.' },
+            class: 'px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700' %>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Transactions Table -->
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <% unless @read_only %>
+              <th class="px-4 py-3 w-10">
+                <input type="checkbox" data-action="change->bulk-select#toggleAll"
+                       data-bulk-select-target="selectAll"
+                       class="rounded border-gray-300 text-indigo-600">
+              </th>
+            <% end %>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">날짜</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">내역</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">카테고리</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">금융기관</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">금액</th>
+            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">용돈</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">메모</th>
+            <% unless @read_only %>
+              <th class="px-4 py-3 w-16"></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200" id="transactions-review-list">
+          <% @transactions.each do |tx| %>
+            <%= render 'reviews/transaction_row', transaction: tx, read_only: @read_only,
+                categories: @categories, institutions: @institutions %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <% if @pagy.pages > 1 %>
+    <div class="mt-6">
+      <%== pagy_nav(@pagy) %>
+    </div>
+  <% end %>
+</div>
