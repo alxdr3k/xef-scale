@@ -1,0 +1,43 @@
+<div class="max-w-lg mx-auto">
+  <%= link_to '← 카테고리 목록', workspace_categories_path(@workspace), class: 'text-indigo-600 hover:text-indigo-800 mb-4 inline-block' %>
+
+  <h1 class="text-2xl font-bold text-gray-900 mb-6">카테고리 수정</h1>
+
+  <div class="bg-white rounded-lg shadow p-6">
+    <%= form_with model: [@workspace, @category], local: true, class: 'space-y-4' do |f| %>
+      <% if @category.errors.any? %>
+        <div class="bg-red-50 border border-red-200 rounded-md p-4">
+          <h3 class="text-sm font-medium text-red-800">
+            <%= pluralize(@category.errors.count, "error") %> prevented this category from being saved:
+          </h3>
+          <ul class="mt-2 text-sm text-red-700 list-disc list-inside">
+            <% @category.errors.full_messages.each do |message| %>
+              <li><%= message %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">이름</label>
+        <%= f.text_field :name, class: 'block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">키워드</label>
+        <%= f.text_field :keyword, class: 'block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+        <p class="mt-1 text-sm text-gray-500">거래 내역에서 이 키워드가 포함되면 자동으로 분류됩니다.</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">색상</label>
+        <%= f.color_field :color, class: 'block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <%= link_to '취소', workspace_categories_path(@workspace), class: 'px-4 py-2 text-gray-700 hover:text-gray-900' %>
+        <%= f.submit '저장', class: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer' %>
+      </div>
+    <% end %>
+  </div>
+</div>

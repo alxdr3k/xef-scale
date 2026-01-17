@@ -1,0 +1,101 @@
+<div class="max-w-7xl mx-auto">
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900"><%= @workspace.name %></h1>
+      <p class="text-gray-600">
+        <%= @year %>년 <%= @month %>월
+      </p>
+    </div>
+    <%= link_to '거래 내역 보기', workspace_transactions_path(@workspace, year: @year, month: @month),
+        class: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700' %>
+  </div>
+
+  <!-- Month navigation -->
+  <div class="flex items-center gap-4 mb-6">
+    <%
+      prev_month = @month == 1 ? 12 : @month - 1
+      prev_year = @month == 1 ? @year - 1 : @year
+      next_month = @month == 12 ? 1 : @month + 1
+      next_year = @month == 12 ? @year + 1 : @year
+    %>
+    <%= link_to '← 이전 달', workspace_path(@workspace, year: prev_year, month: prev_month),
+        class: 'text-indigo-600 hover:text-indigo-800' %>
+    <span class="flex-1 text-center text-lg font-medium">
+      <%= @year %>년 <%= @month %>월
+    </span>
+    <%= link_to '다음 달 →', workspace_path(@workspace, year: next_year, month: next_month),
+        class: 'text-indigo-600 hover:text-indigo-800' %>
+  </div>
+
+  <!-- Summary -->
+  <div class="grid grid-cols-3 gap-4 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm text-gray-500 mb-1">총 거래</div>
+      <div class="text-2xl font-bold text-gray-900"><%= @transactions.count %>건</div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm text-gray-500 mb-1">총 지출</div>
+      <div class="text-2xl font-bold text-red-600">
+        <%= number_to_currency(@transactions.sum(:amount), unit: '₩', precision: 0) %>
+      </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm text-gray-500 mb-1">일평균</div>
+      <div class="text-2xl font-bold text-gray-900">
+        <% daily_avg = @transactions.any? ? (@transactions.sum(:amount) / Date.civil(@year, @month, -1).day) : 0 %>
+        <%= number_to_currency(daily_avg, unit: '₩', precision: 0) %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent transactions -->
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+      <h2 class="text-lg font-semibold text-gray-900">최근 거래</h2>
+      <%= link_to '전체 보기 →', workspace_transactions_path(@workspace, year: @year, month: @month),
+          class: 'text-indigo-600 hover:text-indigo-800 text-sm' %>
+    </div>
+
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내역</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">분류</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">금액</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% @transactions.limit(10).each do |transaction| %>
+          <tr>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <%= transaction.formatted_date %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <%= transaction.merchant %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <% if transaction.category %>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                      style="background-color: <%= transaction.category.color %>20; color: <%= transaction.category.color %>">
+                  <%= transaction.category.name %>
+                </span>
+              <% end %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+              <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+            </td>
+          </tr>
+        <% end %>
+
+        <% if @transactions.empty? %>
+          <tr>
+            <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+              이 달에 거래 내역이 없습니다.
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,64 @@
+<%= form_with model: [@workspace, transaction], class: 'space-y-6' do |f| %>
+  <% if transaction.errors.any? %>
+    <div class="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
+      <ul class="list-disc list-inside">
+        <% transaction.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="bg-white shadow rounded-lg p-6 space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">날짜 *</label>
+      <%= f.date_field :date, required: true,
+          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">가맹점/내역 *</label>
+      <%= f.text_field :merchant, required: true,
+          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">금액 *</label>
+      <%= f.number_field :amount, required: true, min: 0,
+          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">카테고리</label>
+      <%= f.collection_select :category_id, @categories, :id, :name,
+          { include_blank: '선택하세요' },
+          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">금융기관</label>
+      <%= f.collection_select :financial_institution_id, @institutions, :id, :name,
+          { include_blank: '선택하세요' },
+          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
+      <%= f.text_field :description,
+          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">메모</label>
+      <%= f.text_area :notes, rows: 3,
+          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+    </div>
+  </div>
+
+  <div class="flex justify-end space-x-3">
+    <%= link_to '취소', workspace_transactions_path(@workspace),
+        class: 'px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50' %>
+    <%= f.submit transaction.persisted? ? '수정' : '추가',
+        class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
+  </div>
+<% end %>

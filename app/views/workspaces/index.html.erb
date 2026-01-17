@@ -1,0 +1,37 @@
+<div class="max-w-4xl mx-auto">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">워크스페이스</h1>
+    <%= link_to '+ 새 워크스페이스', new_workspace_path,
+        class: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700' %>
+  </div>
+
+  <div class="grid gap-4">
+    <% @workspaces.each do |workspace| %>
+      <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">
+              <%= link_to workspace.name, workspace_path(workspace), class: 'hover:text-indigo-600' %>
+            </h2>
+            <p class="text-sm text-gray-500">
+              소유자: <%= workspace.owner.name || workspace.owner.email %>
+              · 멤버 <%= workspace.members.count %>명
+            </p>
+          </div>
+          <% if current_user.admin_of?(workspace) %>
+            <%= link_to '설정', settings_workspace_path(workspace),
+                class: 'text-gray-400 hover:text-gray-600' %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @workspaces.empty? %>
+      <div class="bg-white rounded-lg shadow p-12 text-center">
+        <p class="text-gray-500 mb-4">아직 워크스페이스가 없습니다.</p>
+        <%= link_to '첫 워크스페이스 만들기', new_workspace_path,
+            class: 'text-indigo-600 hover:text-indigo-800 font-medium' %>
+      </div>
+    <% end %>
+  </div>
+</div>

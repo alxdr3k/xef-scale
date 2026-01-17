@@ -1,0 +1,50 @@
+<div class="min-h-screen bg-gradient-to-br from-indigo-500 to-purple-600">
+  <div class="container mx-auto px-4 py-16">
+    <nav class="flex justify-between items-center mb-16">
+      <h1 class="text-2xl font-bold text-white">지출 추적</h1>
+      <div class="space-x-4">
+        <%= link_to '로그인', new_user_session_path, class: 'text-white hover:text-indigo-200' %>
+        <%= link_to '회원가입', new_user_registration_path, class: 'bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50' %>
+      </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto text-center">
+      <h2 class="text-5xl font-bold text-white mb-6">
+        쉽고 빠른 가계부 관리
+      </h2>
+      <p class="text-xl text-indigo-100 mb-12">
+        은행/카드 명세서를 업로드하면 자동으로 분류하고 분석해 드립니다.
+      </p>
+
+      <div class="flex justify-center items-center space-x-4 mb-16">
+        <%= button_to user_google_oauth2_omniauth_authorize_path, method: :post, data: { turbo: false },
+            class: 'inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50 shadow-lg cursor-pointer' do %>
+          <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+          </svg>
+          Google로 시작하기
+        <% end %>
+        <%= link_to '이메일로 가입', new_user_registration_path,
+            class: 'inline-flex items-center px-6 py-3 border-2 border-white text-base font-medium rounded-md text-white hover:bg-white hover:text-indigo-600' %>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-8 text-white">
+        <div class="bg-white/10 rounded-xl p-6">
+          <div class="text-4xl mb-4">📊</div>
+          <h3 class="text-xl font-semibold mb-2">자동 분류</h3>
+          <p class="text-indigo-100">명세서를 업로드하면 AI가 자동으로 카테고리를 분류합니다.</p>
+        </div>
+        <div class="bg-white/10 rounded-xl p-6">
+          <div class="text-4xl mb-4">👨‍👩‍👧‍👦</div>
+          <h3 class="text-xl font-semibold mb-2">가족 공유</h3>
+          <p class="text-indigo-100">워크스페이스를 만들어 가족과 함께 가계부를 관리하세요.</p>
+        </div>
+        <div class="bg-white/10 rounded-xl p-6">
+          <div class="text-4xl mb-4">🔒</div>
+          <h3 class="text-xl font-semibold mb-2">프라이버시</h3>
+          <p class="text-indigo-100">용돈 기능으로 개인 지출을 비공개로 관리할 수 있습니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

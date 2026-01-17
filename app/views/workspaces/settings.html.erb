@@ -1,0 +1,134 @@
+<div class="max-w-4xl mx-auto">
+  <h1 class="text-2xl font-bold text-gray-900 mb-6">워크스페이스 설정</h1>
+  <p class="text-gray-600 mb-8"><%= @workspace.name %></p>
+
+  <!-- Basic Settings -->
+  <div class="bg-white shadow rounded-lg p-6 mb-8">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">기본 설정</h2>
+
+    <%= form_with model: @workspace, class: 'space-y-4' do |f| %>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">워크스페이스 이름</label>
+        <%= f.text_field :name, class: 'w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+      </div>
+      <div>
+        <%= f.submit '저장', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Members -->
+  <div class="bg-white shadow rounded-lg p-6 mb-8">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">멤버</h2>
+
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead>
+        <tr>
+          <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">멤버</th>
+          <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">역할</th>
+          <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-200">
+        <% @memberships.each do |membership| %>
+          <tr>
+            <td class="py-3">
+              <div class="flex items-center">
+                <% if membership.user.avatar_url.present? %>
+                  <img src="<%= membership.user.avatar_url %>" class="w-8 h-8 rounded-full mr-3">
+                <% else %>
+                  <span class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-medium mr-3">
+                    <%= membership.user.name&.first&.upcase || membership.user.email&.first&.upcase %>
+                  </span>
+                <% end %>
+                <div>
+                  <div class="font-medium text-gray-900"><%= membership.user.name || membership.user.email %></div>
+                  <% if membership.user.name.present? %>
+                    <div class="text-sm text-gray-500"><%= membership.user.email %></div>
+                  <% end %>
+                </div>
+              </div>
+            </td>
+            <td class="py-3">
+              <% if membership.role == 'owner' %>
+                <span class="text-sm text-gray-700">소유자</span>
+              <% else %>
+                <%= form_with model: [@workspace, membership], url: workspace_membership_path(@workspace, membership), local: true do |f| %>
+                  <%= f.select :role,
+                      [['공동 관리자', 'co_owner'], ['편집 가능', 'member_write'], ['읽기 전용', 'member_read']],
+                      {}, { onchange: 'this.form.submit()', class: 'text-sm rounded-md border-gray-300' } %>
+                <% end %>
+              <% end %>
+            </td>
+            <td class="py-3 text-right">
+              <% unless membership.role == 'owner' || membership.user == current_user %>
+                <%= button_to '제거', workspace_membership_path(@workspace, membership),
+                    method: :delete,
+                    data: { confirm: '정말 이 멤버를 제거하시겠습니까?' },
+                    class: 'text-red-600 hover:text-red-800 text-sm' %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Invitations -->
+  <div class="bg-white shadow rounded-lg p-6 mb-8">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">초대 링크</h2>
+
+    <%= form_with model: [@workspace, WorkspaceInvitation.new], url: workspace_invitations_path(@workspace), local: true, class: 'flex gap-4 mb-4' do |f| %>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">만료일 (선택)</label>
+        <%= f.datetime_local_field :expires_at, class: 'rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">최대 사용 횟수 (선택)</label>
+        <%= f.number_field :max_uses, min: 1, placeholder: '무제한', class: 'w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+      </div>
+      <div class="flex items-end">
+        <%= f.submit '초대 링크 생성', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
+      </div>
+    <% end %>
+
+    <% if @invitations.any? %>
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead>
+          <tr>
+            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">생성자</th>
+            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">만료</th>
+            <th class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider pb-3">사용</th>
+            <th class="text-right text-xs font-medium text-gray-500 uppercase tracking-wider pb-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <% @invitations.each do |invitation| %>
+            <tr>
+              <td class="py-3 text-sm"><%= invitation.invited_by.name || invitation.invited_by.email %></td>
+              <td class="py-3 text-sm"><%= invitation.expires_at ? l(invitation.expires_at, format: :short) : '없음' %></td>
+              <td class="py-3 text-sm"><%= invitation.current_uses %>/<%= invitation.max_uses || '∞' %></td>
+              <td class="py-3 text-right">
+                <button onclick="navigator.clipboard.writeText('<%= join_workspace_url(invitation.token) %>')" class="text-indigo-600 hover:text-indigo-800 text-sm mr-2">복사</button>
+                <%= button_to '삭제', workspace_invitation_path(@workspace, invitation),
+                    method: :delete, class: 'text-red-600 hover:text-red-800 text-sm' %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="text-gray-500 text-sm">활성 초대 링크가 없습니다.</p>
+    <% end %>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="bg-white shadow rounded-lg p-6 border-2 border-red-200">
+    <h2 class="text-lg font-semibold text-red-600 mb-4">위험 구역</h2>
+    <p class="text-gray-600 mb-4">워크스페이스를 삭제하면 모든 거래 내역과 설정이 영구적으로 삭제됩니다.</p>
+    <%= button_to '워크스페이스 삭제', workspace_path(@workspace),
+        method: :delete,
+        data: { confirm: "정말 '#{@workspace.name}' 워크스페이스를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다." },
+        class: 'px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700' %>
+  </div>
+</div>

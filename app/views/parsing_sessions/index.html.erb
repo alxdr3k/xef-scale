@@ -1,0 +1,108 @@
+<div class="max-w-4xl mx-auto">
+  <h1 class="text-2xl font-bold text-gray-900 mb-2">파일 업로드</h1>
+  <p class="text-gray-600 mb-6">은행/카드 명세서를 업로드하여 거래 내역을 자동으로 등록하세요.</p>
+
+  <!-- Upload Form -->
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">새 파일 업로드</h2>
+
+    <%= form_with url: workspace_parsing_sessions_path(@workspace), method: :post, multipart: true, local: true, class: 'space-y-4' do |f| %>
+      <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+        <input type="file" name="file" id="file"
+               accept=".xlsx,.xls,.csv,.pdf"
+               class="hidden"
+               onchange="document.getElementById('file-name').textContent = this.files[0]?.name || '파일을 선택하세요'">
+        <label for="file" class="cursor-pointer">
+          <div class="text-4xl mb-4">📄</div>
+          <div id="file-name" class="text-gray-600 mb-2">파일을 선택하세요</div>
+          <div class="text-sm text-gray-400">Excel(.xlsx, .xls), CSV, PDF 파일 지원</div>
+        </label>
+      </div>
+
+      <div class="text-sm text-gray-500">
+        <strong>지원 금융기관:</strong> 신한카드, 하나카드, 토스뱅크, 카카오뱅크
+      </div>
+
+      <div class="flex justify-end">
+        <%= submit_tag '업로드', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Upload History -->
+  <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">업로드 기록</h2>
+    </div>
+
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">파일명</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">결과</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">업로드 시간</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        <% @parsing_sessions.each do |session| %>
+          <tr>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <%= session.processed_file.original_filename %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <% case session.status %>
+              <% when 'pending' %>
+                <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">대기중</span>
+              <% when 'processing' %>
+                <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">처리중</span>
+              <% when 'completed' %>
+                <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">완료</span>
+              <% when 'failed' %>
+                <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">실패</span>
+              <% end %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <% if session.completed? %>
+                성공 <%= session.success_count %>건
+                <% if session.duplicate_count.to_i > 0 %>
+                  · 중복 <%= session.duplicate_count %>건
+                <% end %>
+                <% if session.error_count.to_i > 0 %>
+                  · 오류 <%= session.error_count %>건
+                <% end %>
+              <% end %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <%= time_ago_in_words(session.created_at) %> 전
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <% if session.has_duplicates? && session.pending_duplicates.any? %>
+                <%= link_to '중복 확인', workspace_parsing_session_path(@workspace, session),
+                    class: 'text-indigo-600 hover:text-indigo-900' %>
+              <% elsif session.completed? %>
+                <%= link_to '상세', workspace_parsing_session_path(@workspace, session),
+                    class: 'text-gray-600 hover:text-gray-900' %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+
+        <% if @parsing_sessions.empty? %>
+          <tr>
+            <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+              업로드 기록이 없습니다.
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if @pagy.pages > 1 %>
+    <div class="mt-6">
+      <%== pagy_nav(@pagy) %>
+    </div>
+  <% end %>
+</div>

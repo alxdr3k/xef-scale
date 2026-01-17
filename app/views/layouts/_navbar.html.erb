@@ -1,0 +1,68 @@
+<nav class="bg-white shadow-sm border-b border-gray-200">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16">
+      <div class="flex">
+        <div class="flex-shrink-0 flex items-center">
+          <%= link_to '지출 추적', authenticated_root_path, class: 'text-xl font-bold text-indigo-600' %>
+        </div>
+        <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+          <%= link_to '대시보드', dashboard_path,
+              class: "#{request.path == dashboard_path ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" %>
+
+          <% if current_workspace %>
+            <%= link_to '거래 내역', workspace_transactions_path(current_workspace),
+                class: "#{request.path.include?('/transactions') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" %>
+
+            <%= link_to '파일 업로드', workspace_parsing_sessions_path(current_workspace),
+                class: "#{request.path.include?('/parsing_sessions') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" %>
+          <% end %>
+
+          <%= link_to '용돈', allowances_path,
+              class: "#{request.path == allowances_path ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" %>
+        </div>
+      </div>
+
+      <div class="hidden sm:ml-6 sm:flex sm:items-center">
+        <% if current_workspace %>
+          <div class="mr-4">
+            <%= form_with url: workspaces_path, method: :get, local: true, class: 'inline' do %>
+              <select name="workspace_id" onchange="this.form.submit()"
+                      class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                <% current_user.workspaces.each do |ws| %>
+                  <option value="<%= ws.id %>" <%= 'selected' if ws == current_workspace %>>
+                    <%= ws.name %>
+                  </option>
+                <% end %>
+              </select>
+            <% end %>
+          </div>
+        <% end %>
+
+        <div class="ml-3 relative" data-controller="dropdown">
+          <button type="button" data-action="click->dropdown#toggle"
+                  class="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <span class="sr-only">Open user menu</span>
+            <% if current_user.avatar_url.present? %>
+              <img class="h-8 w-8 rounded-full" src="<%= current_user.avatar_url %>" alt="">
+            <% else %>
+              <span class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm font-medium">
+                <%= current_user.name&.first&.upcase || current_user.email&.first&.upcase %>
+              </span>
+            <% end %>
+          </button>
+
+          <div data-dropdown-target="menu" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
+            <div class="px-4 py-2 text-sm text-gray-700 border-b">
+              <%= current_user.name || current_user.email %>
+            </div>
+            <%= link_to '워크스페이스', workspaces_path, class: 'block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100' %>
+            <% if current_workspace %>
+              <%= link_to '설정', settings_workspace_path(current_workspace), class: 'block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100' %>
+            <% end %>
+            <%= button_to '로그아웃', destroy_user_session_path, method: :delete, class: 'block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100' %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
