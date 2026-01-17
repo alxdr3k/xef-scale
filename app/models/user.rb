@@ -8,6 +8,7 @@ class User < ApplicationRecord
   has_many :workspaces, through: :workspace_memberships
   has_many :allowance_transactions, dependent: :destroy
   has_many :sent_invitations, class_name: 'WorkspaceInvitation', foreign_key: :invited_by_id
+  has_many :notifications, dependent: :destroy
 
   validates :email, presence: true, uniqueness: true
 
@@ -33,5 +34,11 @@ class User < ApplicationRecord
   def can_read?(workspace)
     can_write?(workspace) ||
       workspace_memberships.exists?(workspace: workspace, role: 'member_read')
+  end
+
+  def unread_notifications_count(workspace = nil)
+    scope = notifications.unread
+    scope = scope.for_workspace(workspace) if workspace
+    scope.count
   end
 end

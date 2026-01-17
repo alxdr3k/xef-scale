@@ -1,15 +1,23 @@
 class ParsingSession < ApplicationRecord
   belongs_to :workspace
   belongs_to :processed_file
+  belongs_to :committed_by, class_name: 'User', optional: true
+  belongs_to :rolled_back_by, class_name: 'User', optional: true
   has_many :duplicate_confirmations, dependent: :destroy
-  has_many :transactions, class_name: 'Transaction'
+  has_many :transactions, dependent: :nullify
+  has_many :notifications, as: :notifiable, dependent: :destroy
 
   STATUSES = %w[pending processing completed failed].freeze
+  REVIEW_STATUSES = %w[pending_review committed rolled_back].freeze
 
   validates :status, inclusion: { in: STATUSES }
+  validates :review_status, inclusion: { in: REVIEW_STATUSES }, allow_nil: true
 
   scope :recent, -> { order(created_at: :desc) }
   scope :completed, -> { where(status: 'completed') }
+  scope :pending_review, -> { where(review_status: 'pending_review') }
+  scope :review_committed, -> { where(review_status: 'committed') }
+  scope :needs_review, -> { completed.pending_review }
 
   def pending?
     status == 'pending'
@@ -57,5 +65,63 @@ class ParsingSession < ApplicationRecord
 
   def pending_duplicates
     duplicate_confirmations.where(status: 'pending')
+  end
+
+  def review_pending?
+    review_status == 'pending_review'
+  end
+
+  def review_committed?
+    review_status == 'committed'
+  end
+
+  def review_rolled_back?
+    review_status == 'rolled_back'
+  end
+
+  def can_commit?
+    completed? && review_pending?
+  end
+
+  def can_rollback?
+    completed? && review_committed?
+  end
+
+  def commit_all!(user)
+    return false unless can_commit?
+
+    ActiveRecord::Base.transaction do
+      transactions.pending_review.find_each do |tx|
+        tx.commit!(user)
+      end
+      update!(
+        review_status: 'committed',
+        committed_at: Time.current,
+        committed_by: user
+      )
+    end
+    true
+  end
+
+  def rollback_all!(user)
+    return false unless can_rollback?
+
+    ActiveRecord::Base.transaction do
+      transactions.committed.where(parsing_session_id: id).find_each(&:rollback!)
+      update!(
+        review_status: 'rolled_back',
+        rolled_back_at: Time.current,
+        rolled_back_by: user
+      )
+    end
+    true
+  end
+
+  def reviewable_transactions
+    transactions.reviewable.order(date: :desc)
+  end
+
+  def pending_transaction_count
+    transactions.pending_review.count
   end
 end

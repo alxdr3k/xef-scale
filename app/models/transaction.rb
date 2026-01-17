@@ -2,6 +2,8 @@ class Transaction < ApplicationRecord
   belongs_to :workspace
   belongs_to :category, optional: true
   belongs_to :financial_institution, optional: true
+  belongs_to :parsing_session, optional: true
+  belongs_to :committed_by, class_name: 'User', optional: true
 
   has_one :allowance_transaction, foreign_key: :expense_transaction_id, dependent: :destroy
   has_many :duplicate_confirmations_as_original, class_name: 'DuplicateConfirmation',
@@ -9,11 +11,19 @@ class Transaction < ApplicationRecord
   has_many :duplicate_confirmations_as_new, class_name: 'DuplicateConfirmation',
            foreign_key: :new_transaction_id, dependent: :destroy
 
+  STATUSES = %w[pending_review committed rolled_back].freeze
+
   validates :date, presence: true
   validates :amount, presence: true, numericality: { only_integer: true }
+  validates :status, inclusion: { in: STATUSES }
 
-  scope :active, -> { where(deleted: false) }
+  scope :active, -> { where(deleted: false, status: 'committed') }
   scope :deleted, -> { where(deleted: true) }
+  scope :pending_review, -> { where(status: 'pending_review') }
+  scope :committed, -> { where(status: 'committed') }
+  scope :rolled_back, -> { where(status: 'rolled_back') }
+  scope :for_session, ->(session_id) { where(parsing_session_id: session_id) }
+  scope :reviewable, -> { where(deleted: false).where.not(status: 'rolled_back') }
   scope :for_month, ->(year, month) {
     start_date = Date.new(year.to_i, month.to_i, 1)
     end_date = start_date.end_of_month
@@ -54,5 +64,29 @@ class Transaction < ApplicationRecord
 
   def allowance?
     allowance_transaction.present?
+  end
+
+  def pending_review?
+    status == 'pending_review'
+  end
+
+  def committed?
+    status == 'committed'
+  end
+
+  def rolled_back?
+    status == 'rolled_back'
+  end
+
+  def commit!(user)
+    update!(status: 'committed', committed_at: Time.current, committed_by: user)
+  end
+
+  def rollback!
+    update!(status: 'rolled_back')
+  end
+
+  def source_editable?
+    financial_institution.nil? || financial_institution.identifier == 'unknown'
   end
 end
