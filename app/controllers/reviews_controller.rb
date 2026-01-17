@@ -11,7 +11,7 @@ class ReviewsController < ApplicationController
     @pagy, @transactions = pagy(@transactions, items: 50)
     @categories = @workspace.categories.order(:name)
     @institutions = FinancialInstitution.all
-    @read_only = @parsing_session.review_committed? || @parsing_session.review_rolled_back?
+    @read_only = @parsing_session.review_committed? || @parsing_session.review_rolled_back? || @parsing_session.review_discarded?
   end
 
   def commit
@@ -31,6 +31,16 @@ class ReviewsController < ApplicationController
     else
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
                   alert: '롤백에 실패했습니다.'
+    end
+  end
+
+  def discard
+    if @parsing_session.discard_all!
+      redirect_to workspace_parsing_sessions_path(@workspace),
+                  notice: '업로드가 취소되었습니다.'
+    else
+      redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
+                  alert: '취소에 실패했습니다.'
     end
   end
 

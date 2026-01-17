@@ -8,7 +8,7 @@ class ParsingSession < ApplicationRecord
   has_many :notifications, as: :notifiable, dependent: :destroy
 
   STATUSES = %w[pending processing completed failed].freeze
-  REVIEW_STATUSES = %w[pending_review committed rolled_back].freeze
+  REVIEW_STATUSES = %w[pending_review committed rolled_back discarded].freeze
 
   validates :status, inclusion: { in: STATUSES }
   validates :review_status, inclusion: { in: REVIEW_STATUSES }, allow_nil: true
@@ -79,12 +79,20 @@ class ParsingSession < ApplicationRecord
     review_status == 'rolled_back'
   end
 
+  def review_discarded?
+    review_status == 'discarded'
+  end
+
   def can_commit?
     completed? && review_pending?
   end
 
   def can_rollback?
     completed? && review_committed?
+  end
+
+  def can_discard?
+    completed? && review_pending?
   end
 
   def commit_all!(user)
@@ -113,6 +121,16 @@ class ParsingSession < ApplicationRecord
         rolled_back_at: Time.current,
         rolled_back_by: user
       )
+    end
+    true
+  end
+
+  def discard_all!
+    return false unless can_discard?
+
+    ActiveRecord::Base.transaction do
+      transactions.pending_review.destroy_all
+      update!(review_status: 'discarded')
     end
     true
   end

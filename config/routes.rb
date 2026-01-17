@@ -51,6 +51,7 @@ Rails.application.routes.draw do
         get :review, to: 'reviews#show'
         post :commit, to: 'reviews#commit'
         post :rollback, to: 'reviews#rollback'
+        post :discard, to: 'reviews#discard'
         post :bulk_update, to: 'reviews#bulk_update'
         patch 'transactions/:transaction_id', to: 'reviews#update_transaction', as: :update_transaction
       end

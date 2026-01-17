@@ -15,6 +15,8 @@
         <span class="px-3 py-1 text-sm rounded-full bg-green-100 text-green-800">확정됨</span>
       <% elsif @parsing_session.review_rolled_back? %>
         <span class="px-3 py-1 text-sm rounded-full bg-red-100 text-red-800">롤백됨</span>
+      <% elsif @parsing_session.review_discarded? %>
+        <span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-800">취소됨</span>
       <% end %>
     </div>
   </div>
@@ -91,9 +93,13 @@
 
         <div class="flex items-center space-x-3 ml-auto">
           <% if @parsing_session.review_pending? %>
-            <%= button_to '전체 확정', commit_workspace_parsing_session_path(@workspace, @parsing_session),
+            <%= button_to '취소하기', discard_workspace_parsing_session_path(@workspace, @parsing_session),
                 method: :post,
-                data: { confirm: "#{@transactions.count}건의 거래를 확정하시겠습니까?" },
+                data: { confirm: '모든 거래를 취소하고 업로드를 폐기하시겠습니까? 이 작업은 되돌릴 수 없습니다.' },
+                class: 'px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50' %>
+            <%= button_to '거래 내역 반영', commit_workspace_parsing_session_path(@workspace, @parsing_session),
+                method: :post,
+                data: { confirm: "#{@transactions.count}건의 거래를 거래 내역에 반영하시겠습니까?" },
                 class: 'px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700' %>
           <% end %>
         </div>
