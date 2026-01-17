@@ -6,3 +6,15 @@ import { application } from "./application"
 
 import HelloController from "./hello_controller"
 application.register("hello", HelloController)
+
+import DropdownController from "./dropdown_controller"
+application.register("dropdown", DropdownController)
+
+import BulkSelectController from "./bulk_select_controller"
+application.register("bulk-select", BulkSelectController)
+
+import AutoSubmitController from "./auto_submit_controller"
+application.register("auto-submit", AutoSubmitController)
+
+import NotificationsController from "./notifications_controller"
+application.register("notifications", NotificationsController)
