@@ -47,6 +47,13 @@ Rails.application.routes.draw do
     # File uploads and parsing
     resources :parsing_sessions, only: [:index, :show, :create] do
       resources :duplicate_confirmations, only: [:update]
+      member do
+        get :review, to: 'reviews#show'
+        post :commit, to: 'reviews#commit'
+        post :rollback, to: 'reviews#rollback'
+        post :bulk_update, to: 'reviews#bulk_update'
+        patch 'transactions/:transaction_id', to: 'reviews#update_transaction', as: :update_transaction
+      end
     end
   end
 
@@ -58,4 +65,15 @@ Rails.application.routes.draw do
 
   # Dashboard
   resource :dashboard, only: [:show]
+
+  # Notifications
+  resources :notifications, only: [:index] do
+    member do
+      post :mark_read
+    end
+    collection do
+      post :mark_all_read
+      get :unread_count
+    end
+  end
 end

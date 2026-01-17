@@ -14,6 +14,13 @@ class ParsingSessionsController < ApplicationController
 
   def show
     @parsing_session = @workspace.parsing_sessions.find(params[:id])
+
+    # Redirect to review page if session is completed
+    if @parsing_session.completed?
+      redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session)
+      return
+    end
+
     @duplicate_confirmations = @parsing_session.duplicate_confirmations
                                                .includes(:original_transaction, :new_transaction)
                                                .order(:created_at)
