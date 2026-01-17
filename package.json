@@ -11,5 +11,8 @@
     "@tailwindcss/postcss": "^4.1.18",
     "esbuild": "^0.27.2",
     "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0"
   }
 }

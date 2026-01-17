@@ -1,0 +1,54 @@
+import { Page, expect } from '@playwright/test';
+
+export async function login(page: Page, email: string = 'test@example.com', password: string = 'password123') {
+  await page.goto('/users/sign_in');
+  await page.fill('#user_email', email);
+  await page.fill('#user_password', password);
+  await page.click('input[type="submit"]');
+  await page.waitForURL(/dashboard|workspaces/);
+}
+
+export async function selectWorkspace(page: Page, workspaceName: string) {
+  const select = page.locator('select[name="workspace_id"]');
+  if (await select.isVisible()) {
+    await select.selectOption({ label: workspaceName });
+    await page.waitForLoadState('networkidle');
+  }
+}
+
+export async function navigateToParsingSessions(page: Page) {
+  await page.click('a:has-text("파일 업로드")');
+  await page.waitForURL(/parsing_sessions/);
+}
+
+export async function uploadFile(page: Page, filePath: string) {
+  await navigateToParsingSessions(page);
+  const fileInput = page.locator('input[type="file"]');
+  await fileInput.setInputFiles(filePath);
+  await page.click('input[type="submit"][value="업로드"]');
+  await page.waitForLoadState('networkidle');
+}
+
+export async function waitForParsingComplete(page: Page, maxWaitTime: number = 30000) {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxWaitTime) {
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const completedBadge = page.locator('span:has-text("완료")').first();
+    if (await completedBadge.isVisible()) {
+      return true;
+    }
+
+    await page.waitForTimeout(1000);
+  }
+
+  return false;
+}
+
+export async function goToReviewPage(page: Page) {
+  const reviewLink = page.locator('a:has-text("검토하기")').first();
+  await reviewLink.click();
+  await page.waitForURL(/review/);
+}
