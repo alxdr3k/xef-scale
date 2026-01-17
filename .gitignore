@@ -81,3 +81,7 @@ shrimp_data/
 
 # Claude
 .claude/settings.local.json
+
+# User uploaded files
+*.xls
+*.xlsx
