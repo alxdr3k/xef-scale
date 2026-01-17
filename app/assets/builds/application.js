@@ -6777,13 +6777,13 @@ var AttributeObserver = class {
   }
 };
 function add(map, key, value) {
-  fetch(map, key).add(value);
+  fetch2(map, key).add(value);
 }
 function del(map, key, value) {
-  fetch(map, key).delete(value);
+  fetch2(map, key).delete(value);
   prune(map, key);
 }
-function fetch(map, key) {
+function fetch2(map, key) {
   let values = map.get(key);
   if (!values) {
     values = /* @__PURE__ */ new Set();
@@ -8653,8 +8653,143 @@ var hello_controller_default = class extends Controller {
   }
 };
 
+// app/javascript/controllers/dropdown_controller.js
+var dropdown_controller_default = class extends Controller {
+  static targets = ["menu"];
+  connect() {
+    this.closeOnClickOutside = this.closeOnClickOutside.bind(this);
+  }
+  toggle() {
+    if (this.menuTarget.classList.contains("hidden")) {
+      this.open();
+    } else {
+      this.close();
+    }
+  }
+  open() {
+    this.menuTarget.classList.remove("hidden");
+    document.addEventListener("click", this.closeOnClickOutside);
+  }
+  close() {
+    this.menuTarget.classList.add("hidden");
+    document.removeEventListener("click", this.closeOnClickOutside);
+  }
+  closeOnClickOutside(event) {
+    if (!this.element.contains(event.target)) {
+      this.close();
+    }
+  }
+  disconnect() {
+    document.removeEventListener("click", this.closeOnClickOutside);
+  }
+};
+
+// app/javascript/controllers/bulk_select_controller.js
+var bulk_select_controller_default = class extends Controller {
+  static targets = ["checkbox", "actions", "count", "ids", "selectAll"];
+  connect() {
+    this.updateUI();
+  }
+  toggle() {
+    this.updateUI();
+  }
+  toggleAll(event) {
+    const checked = event.target.checked;
+    this.checkboxTargets.forEach((checkbox) => {
+      checkbox.checked = checked;
+    });
+    this.updateUI();
+  }
+  updateUI() {
+    const selected = this.checkboxTargets.filter((cb) => cb.checked);
+    const count = selected.length;
+    if (this.hasActionsTarget) {
+      if (count > 0) {
+        this.actionsTarget.style.display = "flex";
+        if (this.hasCountTarget) {
+          this.countTarget.textContent = count;
+        }
+        if (this.hasIdsTarget) {
+          this.idsTarget.value = selected.map((cb) => cb.value).join(",");
+        }
+      } else {
+        this.actionsTarget.style.display = "none";
+      }
+    }
+    if (this.hasSelectAllTarget && this.checkboxTargets.length > 0) {
+      const allChecked = this.checkboxTargets.every((cb) => cb.checked);
+      const someChecked = this.checkboxTargets.some((cb) => cb.checked);
+      this.selectAllTarget.checked = allChecked;
+      this.selectAllTarget.indeterminate = someChecked && !allChecked;
+    }
+  }
+};
+
+// app/javascript/controllers/auto_submit_controller.js
+var auto_submit_controller_default = class extends Controller {
+  submit() {
+    this.element.requestSubmit();
+  }
+};
+
+// app/javascript/controllers/notifications_controller.js
+var notifications_controller_default = class extends Controller {
+  static targets = ["dropdown"];
+  connect() {
+    this.boundCloseOnOutsideClick = this.closeOnOutsideClick.bind(this);
+    document.addEventListener("click", this.boundCloseOnOutsideClick);
+  }
+  disconnect() {
+    document.removeEventListener("click", this.boundCloseOnOutsideClick);
+  }
+  toggle(event) {
+    event.stopPropagation();
+    this.dropdownTarget.classList.toggle("hidden");
+  }
+  closeOnOutsideClick(event) {
+    if (!this.element.contains(event.target)) {
+      this.dropdownTarget.classList.add("hidden");
+    }
+  }
+  markRead(event) {
+    const notificationId = event.currentTarget.dataset.notificationId;
+    if (notificationId) {
+      fetch(`/notifications/${notificationId}/mark_read`, {
+        method: "POST",
+        headers: {
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content,
+          "Accept": "application/json"
+        }
+      }).then(() => {
+        this.updateBadge();
+      });
+    }
+  }
+  updateBadge() {
+    fetch("/notifications/unread_count", {
+      headers: {
+        "Accept": "application/json"
+      }
+    }).then((response) => response.json()).then((data) => {
+      const badge = document.getElementById("notification-badge");
+      if (badge) {
+        if (data.count > 0) {
+          badge.textContent = data.count > 9 ? "9+" : data.count;
+          badge.style.display = "flex";
+        } else {
+          badge.style.display = "none";
+        }
+      }
+    });
+  }
+};
+
 // app/javascript/controllers/index.js
 application.register("hello", hello_controller_default);
+application.register("dropdown", dropdown_controller_default);
+application.register("bulk-select", bulk_select_controller_default);
+application.register("auto-submit", auto_submit_controller_default);
+application.register("notifications", notifications_controller_default);
 /*! Bundled license information:
 
 @hotwired/turbo/dist/turbo.es2017-esm.js:
