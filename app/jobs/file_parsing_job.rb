@@ -9,7 +9,8 @@ class FileParsingJob < ApplicationJob
 
     parsing_session = processed_file.create_parsing_session!(
       workspace_id: processed_file.workspace_id,
-      status: 'processing'
+      status: 'processing',
+      review_status: 'pending_review'
     )
     parsing_session.start!
 
@@ -21,9 +22,9 @@ class FileParsingJob < ApplicationJob
 
       result.each do |tx_data|
         begin
-          transaction = create_transaction(processed_file.workspace, tx_data)
+          transaction = create_transaction(processed_file.workspace, tx_data, parsing_session)
 
-          # Check for duplicates
+          # Check for duplicates (only against committed transactions)
           duplicate = find_duplicate(processed_file.workspace, transaction)
           if duplicate
             parsing_session.duplicate_confirmations.create!(
@@ -43,6 +44,9 @@ class FileParsingJob < ApplicationJob
 
       parsing_session.complete!(stats)
       processed_file.mark_completed!
+
+      # Create notifications for workspace members
+      create_completion_notifications(parsing_session)
 
     rescue StandardError => e
       Rails.logger.error "Parsing failed: #{e.message}"
@@ -93,7 +97,7 @@ class FileParsingJob < ApplicationJob
     tempfile
   end
 
-  def create_transaction(workspace, tx_data)
+  def create_transaction(workspace, tx_data, parsing_session)
     category = match_category(workspace, tx_data[:merchant])
     institution = FinancialInstitution.find_by(identifier: tx_data[:institution_identifier])
 
@@ -103,7 +107,9 @@ class FileParsingJob < ApplicationJob
       description: tx_data[:description],
       amount: tx_data[:amount],
       category: category,
-      financial_institution: institution
+      financial_institution: institution,
+      status: 'pending_review',
+      parsing_session: parsing_session
     )
   end
 
@@ -115,8 +121,25 @@ class FileParsingJob < ApplicationJob
 
   def find_duplicate(workspace, transaction)
     workspace.transactions
+             .committed
              .where(date: transaction.date, merchant: transaction.merchant, amount: transaction.amount)
              .where.not(id: transaction.id)
              .first
+  end
+
+  def create_completion_notifications(parsing_session)
+    workspace = parsing_session.workspace
+
+    # Notify workspace owner
+    if workspace.owner
+      Notification.create_parsing_complete!(parsing_session, workspace.owner)
+    end
+
+    # Notify workspace members with write access
+    workspace.workspace_memberships.where(role: %w[co_owner member_write]).find_each do |membership|
+      next if membership.user_id == workspace.owner_id
+
+      Notification.create_parsing_complete!(parsing_session, membership.user)
+    end
   end
 end
