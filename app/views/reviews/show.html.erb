@@ -93,14 +93,18 @@
 
         <div class="flex items-center space-x-3 ml-auto">
           <% if @parsing_session.review_pending? %>
-            <%= button_to '취소하기', discard_workspace_parsing_session_path(@workspace, @parsing_session),
-                method: :post,
-                data: { confirm: '모든 거래를 취소하고 업로드를 폐기하시겠습니까? 이 작업은 되돌릴 수 없습니다.' },
-                class: 'px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50' %>
-            <%= button_to '거래 내역 반영', commit_workspace_parsing_session_path(@workspace, @parsing_session),
-                method: :post,
-                data: { confirm: "#{@transactions.count}건의 거래를 거래 내역에 반영하시겠습니까?" },
-                class: 'px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700' %>
+            <%= form_with url: discard_workspace_parsing_session_path(@workspace, @parsing_session),
+                method: :post, class: 'inline-block', data: { turbo_confirm: '모든 거래를 취소하고 업로드를 폐기하시겠습니까? 이 작업은 되돌릴 수 없습니다.' } do %>
+              <button type="submit" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                취소하기
+              </button>
+            <% end %>
+            <%= form_with url: commit_workspace_parsing_session_path(@workspace, @parsing_session),
+                method: :post, class: 'inline-block', data: { turbo_confirm: "#{@transactions.count}건의 거래를 거래 내역에 반영하시겠습니까?" } do %>
+              <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                거래 내역 반영
+              </button>
+            <% end %>
           <% end %>
         </div>
       </div>
@@ -114,10 +118,12 @@
           <span class="font-medium">확정일:</span>
           <%= @parsing_session.committed_at&.strftime('%Y-%m-%d %H:%M') %>
         </div>
-        <%= button_to '전체 롤백', rollback_workspace_parsing_session_path(@workspace, @parsing_session),
-            method: :post,
-            data: { confirm: '모든 거래를 롤백하시겠습니까? 이 작업은 되돌릴 수 없습니다.' },
-            class: 'px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700' %>
+        <%= form_with url: rollback_workspace_parsing_session_path(@workspace, @parsing_session),
+            method: :post, class: 'inline-block', data: { turbo_confirm: '모든 거래를 롤백하시겠습니까? 이 작업은 되돌릴 수 없습니다.' } do %>
+          <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+            전체 롤백
+          </button>
+        <% end %>
       </div>
     </div>
   <% end %>
