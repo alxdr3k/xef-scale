@@ -1,0 +1,22 @@
+# Test processed files
+
+completed_file:
+  workspace: main_workspace
+  filename: stored_shinhan_202401.xlsx
+  original_filename: shinhan_202401.xlsx
+  file_hash: abc123def456
+  status: completed
+
+pending_file:
+  workspace: main_workspace
+  filename: stored_hana_202401.csv
+  original_filename: hana_202401.csv
+  file_hash: xyz789ghi012
+  status: pending
+
+failed_file:
+  workspace: main_workspace
+  filename: stored_unknown_format.pdf
+  original_filename: unknown_format.pdf
+  file_hash: failed123456
+  status: failed

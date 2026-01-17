@@ -1,0 +1,31 @@
+# Test categories
+
+food:
+  workspace: main_workspace
+  name: 식비
+  keyword: 식당,음식,배달,마라탕,치킨,피자
+  color: '#FF6B6B'
+
+transport:
+  workspace: main_workspace
+  name: 교통/자동차
+  keyword: 주유,택시,지하철,버스,카카오T
+  color: '#45B7D1'
+
+shopping:
+  workspace: main_workspace
+  name: 쇼핑
+  keyword: 쿠팡,네이버,무신사
+  color: '#DDA0DD'
+
+etc:
+  workspace: main_workspace
+  name: 기타
+  keyword: ''
+  color: '#D3D3D3'
+
+other_category:
+  workspace: other_workspace
+  name: 기타
+  keyword: ''
+  color: '#D3D3D3'

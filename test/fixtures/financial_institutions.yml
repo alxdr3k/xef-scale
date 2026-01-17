@@ -1,0 +1,26 @@
+# Test financial institutions
+
+shinhan_card:
+  name: 신한카드
+  identifier: shinhan_card
+  institution_type: card
+
+hana_card:
+  name: 하나카드
+  identifier: hana_card
+  institution_type: card
+
+toss_bank:
+  name: 토스뱅크
+  identifier: toss_bank
+  institution_type: bank
+
+kakao_bank:
+  name: 카카오뱅크
+  identifier: kakao_bank
+  institution_type: bank
+
+toss_pay:
+  name: 토스페이
+  identifier: toss_pay
+  institution_type: pay

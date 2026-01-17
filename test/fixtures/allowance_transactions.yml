@@ -1,0 +1,5 @@
+# Test allowance transactions
+
+admin_allowance:
+  expense_transaction: allowance_transaction_linked
+  user: admin

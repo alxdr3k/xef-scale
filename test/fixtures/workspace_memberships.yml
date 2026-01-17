@@ -1,0 +1,21 @@
+# Test workspace memberships
+
+admin_owner:
+  user: admin
+  workspace: main_workspace
+  role: owner
+
+member_writer:
+  user: member
+  workspace: main_workspace
+  role: member_write
+
+reader_membership:
+  user: reader
+  workspace: main_workspace
+  role: member_read
+
+other_owner:
+  user: other_user
+  workspace: other_workspace
+  role: owner

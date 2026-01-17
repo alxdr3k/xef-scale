@@ -1,0 +1,9 @@
+# Test workspaces
+
+main_workspace:
+  name: 가계부
+  owner: admin
+
+other_workspace:
+  name: 회사 경비
+  owner: other_user

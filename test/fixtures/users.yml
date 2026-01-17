@@ -1,0 +1,29 @@
+# Test users for expense tracker
+
+admin:
+  email: admin@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
+  name: Admin User
+  provider: google_oauth2
+  uid: admin_uid_123
+
+member:
+  email: member@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
+  name: Member User
+  provider: google_oauth2
+  uid: member_uid_456
+
+reader:
+  email: reader@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
+  name: Reader User
+  provider: google_oauth2
+  uid: reader_uid_789
+
+other_user:
+  email: other@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, 'password123') %>
+  name: Other User
+  provider: google_oauth2
+  uid: other_uid_000

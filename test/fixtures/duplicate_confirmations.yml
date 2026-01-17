@@ -1,0 +1,13 @@
+# Test duplicate confirmations
+
+pending_duplicate:
+  parsing_session: completed_session
+  original_transaction: food_transaction
+  new_transaction: transport_transaction
+  status: pending
+
+resolved_duplicate:
+  parsing_session: completed_session
+  original_transaction: shopping_transaction
+  new_transaction: deleted_transaction
+  status: keep_original
