@@ -75,7 +75,12 @@ class ReviewsController < ApplicationController
       notice = "#{count}건의 거래가 용돈에서 해제되었습니다."
     when 'change_category'
       category = @workspace.categories.find_by(id: params[:category_id])
-      count = transactions.update_all(category_id: category&.id)
+      count = 0
+      transactions.find_each do |tx|
+        tx.update!(category_id: category&.id)
+        create_category_mapping(tx, category) if category
+        count += 1
+      end
       notice = "#{count}건의 거래 카테고리가 변경되었습니다."
     else
       notice = '알 수 없는 작업입니다.'
@@ -95,10 +100,18 @@ class ReviewsController < ApplicationController
     # Allow source change only if currently unknown
     permitted << :financial_institution_id if @transaction.source_editable?
 
-    if @transaction.update(params.require(:transaction).permit(permitted))
+    old_category_id = @transaction.category_id
+    transaction_params = params.require(:transaction).permit(permitted)
+
+    if @transaction.update(transaction_params)
+      # 카테고리가 변경되었으면 매핑 생성
+      if transaction_params[:category_id].present? && transaction_params[:category_id].to_i != old_category_id
+        create_category_mapping(@transaction, @transaction.category)
+      end
+
       respond_to do |format|
         format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), notice: '거래가 수정되었습니다.' }
-        format.turbo_stream
+        format.turbo_stream { flash.now[:notice] = '거래가 수정되었습니다.' }
       end
     else
       respond_to do |format|
@@ -128,5 +141,21 @@ class ReviewsController < ApplicationController
     unless current_user.can_write?(@workspace)
       redirect_to root_path, alert: '수정 권한이 없습니다.'
     end
+  end
+
+  def create_category_mapping(transaction, category)
+    return if transaction.merchant.blank? || category.nil?
+
+    # 이미 매핑이 있으면 업데이트, 없으면 생성
+    mapping = CategoryMapping.find_or_initialize_by(
+      workspace: @workspace,
+      merchant_pattern: transaction.merchant
+    )
+
+    mapping.category = category
+    mapping.source = 'manual'
+    mapping.save!
+  rescue ActiveRecord::RecordInvalid => e
+    Rails.logger.warn "[ReviewsController] 매핑 생성 실패: #{e.message}"
   end
 end

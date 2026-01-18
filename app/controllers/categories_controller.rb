@@ -18,7 +18,7 @@ class CategoriesController < ApplicationController
     if @category.save
       respond_to do |format|
         format.html { redirect_to workspace_categories_path(@workspace), notice: '카테고리가 추가되었습니다.' }
-        format.turbo_stream
+        format.turbo_stream { flash.now[:notice] = '카테고리가 추가되었습니다.' }
       end
     else
       render :new, status: :unprocessable_entity
@@ -32,7 +32,7 @@ class CategoriesController < ApplicationController
     if @category.update(category_params)
       respond_to do |format|
         format.html { redirect_to workspace_categories_path(@workspace), notice: '카테고리가 수정되었습니다.' }
-        format.turbo_stream
+        format.turbo_stream { flash.now[:notice] = '카테고리가 수정되었습니다.' }
       end
     else
       render :edit, status: :unprocessable_entity
@@ -44,7 +44,7 @@ class CategoriesController < ApplicationController
 
     respond_to do |format|
       format.html { redirect_to workspace_categories_path(@workspace), notice: '카테고리가 삭제되었습니다.' }
-      format.turbo_stream
+      format.turbo_stream { flash.now[:notice] = '카테고리가 삭제되었습니다.' }
     end
   end
 

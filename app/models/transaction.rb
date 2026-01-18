@@ -41,6 +41,9 @@ class Transaction < ApplicationRecord
     where('merchant LIKE ? OR description LIKE ? OR notes LIKE ?',
           "%#{query}%", "%#{query}%", "%#{query}%")
   }
+  scope :excluding_allowance, -> {
+    where.not(id: AllowanceTransaction.select(:expense_transaction_id))
+  }
 
   def soft_delete!
     update!(deleted: true)
