@@ -64,11 +64,28 @@ class TransactionsController < ApplicationController
 
   def update
     old_category_id = @transaction.category_id
+    old_allowance_status = @transaction.allowance?
 
     if @transaction.update(transaction_params)
       # 카테고리가 변경되었으면 매핑 생성
       if transaction_params[:category_id].present? && transaction_params[:category_id].to_i != old_category_id
         create_category_mapping(@transaction, @transaction.category)
+      end
+
+      # Handle allowance toggle if present in params
+      if params[:allowance].present?
+        new_allowance_status = params[:allowance] == '1'
+        if new_allowance_status != old_allowance_status
+          if new_allowance_status
+            AllowanceTransaction.mark_as_allowance!(@transaction, current_user)
+          else
+            AllowanceTransaction.unmark_as_allowance!(@transaction, current_user)
+          end
+          # Reload to get updated allowance status
+          @transaction = @workspace.transactions
+                                   .includes(:allowance_transaction, :category, :financial_institution)
+                                   .find(@transaction.id)
+        end
       end
 
       respond_to do |format|
