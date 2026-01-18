@@ -1,5 +1,18 @@
 import { Page, expect } from '@playwright/test';
 
+// Test login using email (bypasses OAuth)
+export async function loginAsUser(page: Page, email: string = 'test@example.com') {
+  await page.goto(`/test_login?email=${encodeURIComponent(email)}`);
+  // Wait for redirect to complete (authenticated root is dashboard at /)
+  await page.waitForLoadState('networkidle');
+}
+
+// Alias for test user (development seeds user)
+export async function loginAsAdmin(page: Page) {
+  await loginAsUser(page, 'test@example.com');
+}
+
+// Legacy login function (kept for compatibility)
 export async function login(page: Page, email: string = 'test@example.com', password: string = 'password123') {
   await page.goto('/users/sign_in');
   await page.fill('#user_email', email);
