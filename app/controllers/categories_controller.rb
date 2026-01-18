@@ -1,4 +1,6 @@
 class CategoriesController < ApplicationController
+  include ActionView::RecordIdentifier
+
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_admin_access

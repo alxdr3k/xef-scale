@@ -6,6 +6,7 @@
     <div class="flex items-center gap-3">
       <%= link_to '전체 보기 →',
           workspace_transactions_path(@workspace, year: @year, month: @month, category_id: @category.id),
+          data: { turbo_frame: '_top' },
           class: 'text-indigo-600 hover:text-indigo-800 text-sm' %>
       <button data-action="click->dashboard-category#clearSelection"
               class="text-gray-400 hover:text-gray-600 text-lg"
