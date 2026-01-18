@@ -72,10 +72,11 @@
         </div>
 
         <hr class="my-1">
-        <a href="<%= new_workspace_category_path(@workspace) %>"
-           class="block px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50">
+        <button type="button"
+                data-action="click->category-selector#openSlideover"
+                class="w-full text-left px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50">
           + 새 카테고리 만들기
-        </a>
+        </button>
         <a href="<%= workspace_categories_path(@workspace) %>"
            class="block px-3 py-2 text-sm text-gray-500 hover:bg-gray-50">
           카테고리 관리
