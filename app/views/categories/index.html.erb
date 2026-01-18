@@ -14,23 +14,13 @@
           <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">작업</th>
         </tr>
       </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
+      <tbody id="categories-list" class="bg-white divide-y divide-gray-200">
         <% @categories.each do |category| %>
-          <tr>
-            <td class="px-6 py-4">
-              <div class="w-6 h-6 rounded-full" style="background-color: <%= category.color %>"></div>
-            </td>
-            <td class="px-6 py-4 text-sm text-gray-900"><%= category.name %></td>
-            <td class="px-6 py-4 text-sm text-gray-500"><%= category.keyword %></td>
-            <td class="px-6 py-4 text-right text-sm">
-              <%= link_to '수정', edit_workspace_category_path(@workspace, category), class: 'text-indigo-600 hover:text-indigo-900 mr-3' %>
-              <%= link_to '삭제', workspace_category_path(@workspace, category), method: :delete, data: { confirm: '정말 삭제하시겠습니까?' }, class: 'text-red-600 hover:text-red-900' %>
-            </td>
-          </tr>
+          <%= render 'category_row', category: category %>
         <% end %>
 
         <% if @categories.empty? %>
-          <tr>
+          <tr id="no-categories-row">
             <td colspan="4" class="px-6 py-12 text-center text-gray-500">등록된 카테고리가 없습니다.</td>
           </tr>
         <% end %>

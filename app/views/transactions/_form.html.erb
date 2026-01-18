@@ -1,4 +1,5 @@
-<%= form_with model: [@workspace, transaction], class: 'space-y-6' do |f| %>
+<%= form_with model: [@workspace, transaction], class: 'space-y-6', data: { turbo: false } do |f| %>
+  <%= hidden_field_tag :return_to, params[:return_to] %>
   <% if transaction.errors.any? %>
     <div class="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
       <ul class="list-disc list-inside">
@@ -56,7 +57,7 @@
   </div>
 
   <div class="flex justify-end space-x-3">
-    <%= link_to '취소', workspace_transactions_path(@workspace),
+    <%= link_to '취소', params[:return_to].presence || workspace_transactions_path(@workspace),
         class: 'px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50' %>
     <%= f.submit transaction.persisted? ? '수정' : '추가',
         class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>

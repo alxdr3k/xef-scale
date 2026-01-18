@@ -21,7 +21,7 @@
             <td class="px-6 py-4 text-sm text-gray-500"><%= invitation.expires_at&.strftime('%Y-%m-%d %H:%M') || '없음' %></td>
             <td class="px-6 py-4 text-sm text-gray-500"><%= invitation.current_uses %> / <%= invitation.max_uses || '∞' %></td>
             <td class="px-6 py-4 text-right text-sm">
-              <%= link_to '삭제', workspace_invitation_path(@workspace, invitation), method: :delete, data: { confirm: '정말 삭제하시겠습니까?' }, class: 'text-red-600 hover:text-red-900' %>
+              <%= link_to '삭제', workspace_invitation_path(@workspace, invitation), method: :delete, data: { turbo_confirm: '정말 삭제하시겠습니까?' }, class: 'text-red-600 hover:text-red-900' %>
             </td>
           </tr>
         <% end %>

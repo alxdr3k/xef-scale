@@ -21,7 +21,7 @@
             </td>
             <td class="px-6 py-4 text-right text-sm">
               <% unless membership.role == 'owner' %>
-                <%= link_to '제거', workspace_membership_path(@workspace, membership), method: :delete, data: { confirm: '정말 제거하시겠습니까?' }, class: 'text-red-600 hover:text-red-900' %>
+                <%= link_to '제거', workspace_membership_path(@workspace, membership), method: :delete, data: { turbo_confirm: '정말 제거하시겠습니까?' }, class: 'text-red-600 hover:text-red-900' %>
               <% end %>
             </td>
           </tr>
