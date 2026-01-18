@@ -1,0 +1,29 @@
+<div class="bg-white rounded-lg shadow p-6">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-lg font-semibold text-gray-900">최근 거래</h2>
+    <%= link_to '전체 보기 →', workspace_transactions_path(@workspace, year: @year, month: @month), class: 'text-indigo-600 hover:text-indigo-800 text-sm' %>
+  </div>
+
+  <div class="space-y-3">
+    <% @recent_transactions.each do |tx| %>
+      <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+        <div>
+          <div class="font-medium text-gray-900"><%= tx.merchant %></div>
+          <div class="text-sm text-gray-500">
+            <%= tx.formatted_date %>
+            <% if tx.category %>
+              · <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100"><%= tx.category.name %></span>
+            <% end %>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="font-semibold text-gray-900"><%= number_to_currency(tx.amount, unit: '₩', precision: 0) %></div>
+        </div>
+      </div>
+    <% end %>
+
+    <% if @recent_transactions.empty? %>
+      <p class="text-gray-500 text-center py-4">최근 거래 내역이 없습니다.</p>
+    <% end %>
+  </div>
+</div>

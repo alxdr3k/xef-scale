@@ -20,6 +20,25 @@ class DashboardsController < ApplicationController
     render :monthly
   end
 
+  def category_transactions
+    @year = params[:year]&.to_i || Date.current.year
+    @month = params[:month]&.to_i || Date.current.month
+    @category = @workspace.categories.find(params[:category_id])
+
+    @transactions = @workspace.transactions
+                              .active
+                              .for_month(@year, @month)
+                              .where(category_id: @category.id)
+                              .includes(:category, :financial_institution)
+                              .order(date: :desc)
+                              .limit(10)
+
+    respond_to do |format|
+      format.turbo_stream
+      format.html { redirect_to monthly_dashboard_path(year: @year, month: @month) }
+    end
+  end
+
   def yearly
     @view_type = 'yearly'
     @year = params[:year]&.to_i || Date.current.year
@@ -69,6 +88,7 @@ class DashboardsController < ApplicationController
     category_totals.map do |category_id, amount|
       category = Category.find_by(id: category_id)
       {
+        id: category_id,
         name: category&.name || '미분류',
         amount: amount,
         color: category&.color || '#9CA3AF',
