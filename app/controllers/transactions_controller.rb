@@ -46,9 +46,10 @@ class TransactionsController < ApplicationController
     @transaction = @workspace.transactions.build(transaction_params)
 
     if @transaction.save
+      @categories = @workspace.categories.order(:name)
       respond_to do |format|
         format.html { redirect_to workspace_transactions_path(@workspace), notice: '거래가 추가되었습니다.' }
-        format.turbo_stream { flash.now[:notice] = '거래가 추가되었습니다.' }
+        format.turbo_stream { flash[:notice] = '거래가 추가되었습니다.' }
       end
     else
       @categories = @workspace.categories
@@ -88,9 +89,10 @@ class TransactionsController < ApplicationController
         end
       end
 
+      @categories = @workspace.categories.order(:name)
       respond_to do |format|
         format.html { redirect_to params[:return_to].presence || workspace_transactions_path(@workspace), notice: '거래가 수정되었습니다.' }
-        format.turbo_stream { flash.now[:notice] = '거래가 수정되었습니다.' }
+        format.turbo_stream { flash[:notice] = '거래가 수정되었습니다.' }
       end
     else
       @categories = @workspace.categories
@@ -123,10 +125,10 @@ class TransactionsController < ApplicationController
                              .find(@transaction.id)
 
     # turbo_stream 응답을 위한 변수 설정
+    @categories = @workspace.categories.order(:name)
     @source = params[:source]
     if @source == 'review'
       @parsing_session = @workspace.parsing_sessions.find(params[:parsing_session_id])
-      @categories = @workspace.categories.order(:name)
       @institutions = FinancialInstitution.all
       @read_only = false
     end

@@ -1,5 +1,7 @@
 <%= turbo_stream.update "flash", partial: "shared/flash" %>
-<% if @source == 'review' %>
+<% if @source == 'allowance' && !@transaction.allowance? %>
+  <%= turbo_stream.remove dom_id(@transaction) %>
+<% elsif @source == 'review' %>
   <%= turbo_stream.replace dom_id(@transaction),
       partial: 'reviews/transaction_row',
       locals: {
