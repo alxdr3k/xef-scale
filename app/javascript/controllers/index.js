@@ -18,3 +18,9 @@ application.register("auto-submit", AutoSubmitController)
 
 import NotificationsController from "./notifications_controller"
 application.register("notifications", NotificationsController)
+
+import AutoFilterController from "./auto_filter_controller"
+application.register("auto-filter", AutoFilterController)
+
+import EditModalController from "./edit_modal_controller"
+application.register("edit-modal", EditModalController)

@@ -8,6 +8,9 @@
       <div class="text-sm text-gray-500"><%= truncate(transaction.description, length: 30) %></div>
     <% end %>
   </td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+    <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+  </td>
   <td class="px-6 py-4 whitespace-nowrap">
     <% if transaction.category %>
       <span class="px-2 py-1 text-xs rounded-full" style="background-color: <%= transaction.category.color %>20; color: <%= transaction.category.color %>">
@@ -20,23 +23,16 @@
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
     <%= transaction.financial_institution&.name || '-' %>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-    <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
-  </td>
-  <td class="px-6 py-4 whitespace-nowrap text-center">
-    <%= form_with url: toggle_allowance_workspace_transaction_path(@workspace, transaction),
-        method: :post, class: 'inline' do %>
-      <button type="submit" class="text-xl focus:outline-none transition-opacity">
-        <% if transaction.allowance? %>
-          <span class="opacity-100" title="용돈 해제">💰</span>
-        <% else %>
-          <span class="opacity-30 hover:opacity-70" title="용돈 표시">💰</span>
-        <% end %>
-      </button>
-    <% end %>
-  </td>
   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-    <%= link_to '수정', edit_workspace_transaction_path(@workspace, transaction, return_to: request.fullpath), class: 'text-indigo-600 hover:text-indigo-900' %>
+    <button type="button"
+            data-controller="edit-modal"
+            data-edit-modal-url-value="<%= edit_workspace_transaction_path(@workspace, transaction) %>"
+            data-edit-modal-transaction-id-value="<%= transaction.id %>"
+            data-edit-modal-allowance-value="<%= transaction.allowance? %>"
+            data-action="click->edit-modal#open"
+            class="text-indigo-600 hover:text-indigo-900">
+      수정
+    </button>
     <%= button_to '삭제', workspace_transaction_path(@workspace, transaction), method: :delete,
         data: { turbo_confirm: '정말 삭제하시겠습니까?' },
         class: 'text-red-600 hover:text-red-900 ml-2' %>
