@@ -88,3 +88,7 @@ shrimp_data/
 # User uploaded files
 *.xls
 *.xlsx
+
+# Playwright E2E test artifacts
+playwright-report/
+test-results/
