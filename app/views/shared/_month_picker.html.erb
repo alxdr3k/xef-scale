@@ -1,0 +1,55 @@
+<div data-controller="month-picker" class="relative inline-block">
+  <!-- Current Month Display (clickable) -->
+  <button type="button"
+          data-action="click->month-picker#toggle"
+          class="flex items-center space-x-2 px-4 py-2 font-semibold text-lg text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+    <span data-month-picker-target="currentDisplay"><%= year %>년 <%= month %>월</span>
+    <svg class="w-5 h-5 text-gray-500 transition-transform" data-month-picker-target="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+    </svg>
+  </button>
+
+  <!-- Dropdown Panel -->
+  <div data-month-picker-target="dropdown"
+       class="hidden absolute left-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-50 w-80">
+
+    <!-- Year Selector -->
+    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <button type="button"
+              data-action="click->month-picker#previousYear"
+              class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+        </svg>
+      </button>
+
+      <span data-month-picker-target="yearDisplay" class="font-semibold text-gray-900"><%= year %>년</span>
+
+      <button type="button"
+              data-action="click->month-picker#nextYear"
+              class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Month Grid (4x3) -->
+    <div class="grid grid-cols-4 gap-2 p-4">
+      <% (1..12).each do |m| %>
+        <button type="button"
+                data-action="click->month-picker#selectMonth"
+                data-month="<%= m %>"
+                class="px-3 py-2 text-sm font-medium rounded-lg transition-colors
+                       <%= m == month ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100' %>">
+          <%= m %>월
+        </button>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Hidden form fields to store current state -->
+  <input type="hidden" data-month-picker-target="currentYear" value="<%= year %>">
+  <input type="hidden" data-month-picker-target="currentMonth" value="<%= month %>">
+  <input type="hidden" data-month-picker-target="basePath" value="<%= base_path %>">
+</div>
