@@ -1,0 +1,15 @@
+<%= turbo_stream.update "flash", partial: "shared/flash" %>
+<% if @source == 'review' %>
+  <%= turbo_stream.replace dom_id(@transaction),
+      partial: 'reviews/transaction_row',
+      locals: {
+        transaction: @transaction,
+        categories: @categories,
+        institutions: @institutions,
+        read_only: @read_only
+      } %>
+<% else %>
+  <%= turbo_stream.replace dom_id(@transaction),
+      partial: 'transactions/transaction_row',
+      locals: { transaction: @transaction } %>
+<% end %>

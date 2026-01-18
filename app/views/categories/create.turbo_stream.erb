@@ -1,0 +1,3 @@
+<%= turbo_stream.update "flash", partial: "shared/flash" %>
+<%= turbo_stream.remove "no-categories-row" %>
+<%= turbo_stream.prepend "categories-list", partial: "category_row", locals: { category: @category } %>
