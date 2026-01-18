@@ -85,7 +85,5 @@ group :development do
 end
 
 group :test do
-  # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
-  gem "capybara"
-  gem "selenium-webdriver"
+  # E2E testing now uses Playwright (see e2e/ directory)
 end

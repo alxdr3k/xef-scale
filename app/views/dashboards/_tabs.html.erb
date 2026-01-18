@@ -1,0 +1,8 @@
+<div class="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit mb-6">
+  <%= link_to '월별',
+      monthly_dashboard_path(year: @year, month: defined?(@month) ? @month : Date.current.month),
+      class: "px-4 py-2 rounded-md text-sm font-medium transition-colors #{@view_type == 'monthly' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" %>
+  <%= link_to '연도별',
+      yearly_dashboard_path(year: @year),
+      class: "px-4 py-2 rounded-md text-sm font-medium transition-colors #{@view_type == 'yearly' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" %>
+</div>

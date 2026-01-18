@@ -3,6 +3,11 @@ Rails.application.routes.draw do
     omniauth_callbacks: 'users/omniauth_callbacks'
   }
 
+  # Test login (development/test only)
+  if Rails.env.development? || Rails.env.test?
+    get 'test_login', to: 'test_sessions#create'
+  end
+
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check
 
@@ -13,7 +18,7 @@ Rails.application.routes.draw do
 
   # Authenticated routes
   authenticated :user do
-    root 'dashboards#show', as: :authenticated_root
+    root 'dashboards#monthly', as: :authenticated_root
   end
 
   # Default root
@@ -65,7 +70,11 @@ Rails.application.routes.draw do
   resources :allowances, only: [:index]
 
   # Dashboard
-  resource :dashboard, only: [:show]
+  resource :dashboard, only: [] do
+    get :monthly, action: :monthly
+    get :yearly, action: :yearly
+  end
+  get 'dashboard', to: 'dashboards#monthly', as: :dashboard
 
   # Notifications
   resources :notifications, only: [:index] do

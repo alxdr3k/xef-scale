@@ -4,23 +4,35 @@
 
 import { application } from "./application"
 
-import HelloController from "./hello_controller"
-application.register("hello", HelloController)
-
-import DropdownController from "./dropdown_controller"
-application.register("dropdown", DropdownController)
-
-import BulkSelectController from "./bulk_select_controller"
-application.register("bulk-select", BulkSelectController)
+import AutoFilterController from "./auto_filter_controller"
+application.register("auto-filter", AutoFilterController)
 
 import AutoSubmitController from "./auto_submit_controller"
 application.register("auto-submit", AutoSubmitController)
 
-import NotificationsController from "./notifications_controller"
-application.register("notifications", NotificationsController)
+import BulkSelectController from "./bulk_select_controller"
+application.register("bulk-select", BulkSelectController)
 
-import AutoFilterController from "./auto_filter_controller"
-application.register("auto-filter", AutoFilterController)
+import ChartController from "./chart_controller"
+application.register("chart", ChartController)
+
+import ChartTabsController from "./chart_tabs_controller"
+application.register("chart-tabs", ChartTabsController)
+
+import ControllerNameController from "./controller_name_controller"
+application.register("controller-name", ControllerNameController)
+
+import DropdownController from "./dropdown_controller"
+application.register("dropdown", DropdownController)
 
 import EditModalController from "./edit_modal_controller"
 application.register("edit-modal", EditModalController)
+
+import HelloController from "./hello_controller"
+application.register("hello", HelloController)
+
+import MonthPickerController from "./month_picker_controller"
+application.register("month-picker", MonthPickerController)
+
+import NotificationsController from "./notifications_controller"
+application.register("notifications", NotificationsController)

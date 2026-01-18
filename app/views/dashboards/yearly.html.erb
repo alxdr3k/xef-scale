@@ -1,0 +1,113 @@
+<div class="max-w-7xl mx-auto">
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">대시보드</h1>
+    <p class="text-gray-600"><%= @workspace.name %> - <%= @year %>년</p>
+  </div>
+
+  <%= render 'tabs' %>
+
+  <!-- Year Navigation -->
+  <div class="flex items-center space-x-4 mb-6">
+    <%= link_to '← 이전 연도', yearly_dashboard_path(year: @year - 1),
+        class: 'text-indigo-600 hover:text-indigo-800' %>
+    <span class="text-lg font-semibold text-gray-900"><%= @year %>년</span>
+    <%= link_to '다음 연도 →', yearly_dashboard_path(year: @year + 1),
+        class: 'text-indigo-600 hover:text-indigo-800' %>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-medium text-gray-500">연간 총 지출</div>
+      <div class="text-3xl font-bold text-gray-900 mt-2">
+        <%= number_to_currency(@total_spending, unit: '₩', precision: 0) %>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-medium text-gray-500">월 평균 지출</div>
+      <div class="text-3xl font-bold text-gray-900 mt-2">
+        <%= number_to_currency(@monthly_average, unit: '₩', precision: 0) %>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-medium text-gray-500">최고 지출 월</div>
+      <div class="text-2xl font-bold text-gray-900 mt-2">
+        <% if @highest_month %>
+          <%= @highest_month[:month] %>월
+          <div class="text-sm font-normal text-gray-500"><%= number_to_currency(@highest_month[:amount], unit: '₩', precision: 0) %></div>
+        <% else %>
+          <span class="text-gray-400">-</span>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-medium text-gray-500">최저 지출 월</div>
+      <div class="text-2xl font-bold text-gray-900 mt-2">
+        <% if @lowest_month %>
+          <%= @lowest_month[:month] %>월
+          <div class="text-sm font-normal text-gray-500"><%= number_to_currency(@lowest_month[:amount], unit: '₩', precision: 0) %></div>
+        <% else %>
+          <span class="text-gray-400">-</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly Spending Chart -->
+  <div class="bg-white rounded-lg shadow p-6 mb-8"
+       data-controller="chart-tabs"
+       data-chart-tabs-data-value="<%= @monthly_data.to_json %>">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">월별 카테고리 지출</h2>
+
+    <% if @monthly_data[:datasets].any? %>
+      <!-- Tabs -->
+      <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8">
+          <button data-chart-tabs-target="tab"
+                  data-view="integrated"
+                  data-action="click->chart-tabs#switchTab"
+                  class="text-indigo-600 border-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+            통합 보기
+          </button>
+          <button data-chart-tabs-target="tab"
+                  data-view="trend"
+                  data-action="click->chart-tabs#switchTab"
+                  class="text-gray-500 hover:text-gray-700 border-transparent whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+            추세 보기
+          </button>
+        </nav>
+      </div>
+
+      <!-- Integrated View (Default) -->
+      <div data-chart-tabs-target="integratedView">
+        <p class="text-sm text-gray-500 mb-4">범례를 클릭하여 카테고리를 숨기거나 표시할 수 있습니다</p>
+        <div class="h-80">
+          <canvas id="monthly-chart"
+                  data-controller="chart"
+                  data-chart-type-value="line"
+                  data-chart-data-value="<%= @monthly_data.to_json %>">
+          </canvas>
+        </div>
+      </div>
+
+      <!-- Trend View (Small Multiples) -->
+      <div data-chart-tabs-target="trendView" class="hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+             data-chart-tabs-target="sparklineContainer">
+          <!-- Sparklines will be injected here by JavaScript -->
+        </div>
+      </div>
+    <% else %>
+      <p class="text-gray-500 text-center py-12">해당 연도의 거래 내역이 없습니다.</p>
+    <% end %>
+  </div>
+
+  <!-- Category Breakdown -->
+  <div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">카테고리별 연간 지출</h2>
+    <%= render 'category_breakdown' %>
+  </div>
+</div>
