@@ -24,12 +24,13 @@
       <%= render 'layouts/navbar' %>
     <% end %>
 
-    <div id="flash">
-      <%= render 'shared/flash' %>
-    </div>
-
     <main class="<%= user_signed_in? ? 'pt-4 px-4 pb-8' : '' %>">
       <%= yield %>
     </main>
+
+    <!-- Toast Notifications Container -->
+    <div id="flash" class="fixed top-6 right-6 z-50 space-y-3 max-w-sm w-full pointer-events-none">
+      <%= render 'shared/flash' %>
+    </div>
   </body>
 </html>
