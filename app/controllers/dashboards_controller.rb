@@ -19,9 +19,18 @@ class DashboardsController < ApplicationController
                               .order(date: :desc)
 
     @total_spending = @transactions.sum(:amount)
-    @category_breakdown = @transactions.group(:category_id)
-                                       .sum(:amount)
-                                       .transform_keys { |id| Category.find_by(id: id)&.name || '미분류' }
+
+    # Get category breakdown with full category objects
+    category_totals = @transactions.group(:category_id).sum(:amount)
+    @category_breakdown = category_totals.map do |category_id, amount|
+      category = Category.find_by(id: category_id)
+      {
+        name: category&.name || '미분류',
+        amount: amount,
+        color: category&.color || '#9CA3AF',
+        percentage: @total_spending > 0 ? (amount.to_f / @total_spending * 100).round(1) : 0
+      }
+    end.sort_by { |c| -c[:amount] }
 
     @recent_transactions = @transactions.limit(10)
   end
