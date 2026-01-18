@@ -13,14 +13,17 @@ application.register("auto-submit", AutoSubmitController)
 import BulkSelectController from "./bulk_select_controller"
 application.register("bulk-select", BulkSelectController)
 
+import CategorySelectorController from "./category_selector_controller"
+application.register("category-selector", CategorySelectorController)
+
 import ChartController from "./chart_controller"
 application.register("chart", ChartController)
 
 import ChartTabsController from "./chart_tabs_controller"
 application.register("chart-tabs", ChartTabsController)
 
-import ControllerNameController from "./controller_name_controller"
-application.register("controller-name", ControllerNameController)
+import DashboardCategoryController from "./dashboard_category_controller"
+application.register("dashboard-category", DashboardCategoryController)
 
 import DropdownController from "./dropdown_controller"
 application.register("dropdown", DropdownController)
@@ -36,3 +39,6 @@ application.register("month-picker", MonthPickerController)
 
 import NotificationsController from "./notifications_controller"
 application.register("notifications", NotificationsController)
+
+import SlideoverController from "./slideover_controller"
+application.register("slideover", SlideoverController)
