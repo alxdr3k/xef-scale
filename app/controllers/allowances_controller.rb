@@ -2,6 +2,7 @@ class AllowancesController < ApplicationController
   before_action :authenticate_user!
 
   def index
+    @workspace = current_workspace
     @year = params[:year]&.to_i || Date.current.year
     @month = params[:month]&.to_i || Date.current.month
 

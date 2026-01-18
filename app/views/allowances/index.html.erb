@@ -9,7 +9,7 @@
     <%= link_to '← 이전 달', allowances_path(year: prev_year, month: prev_month),
         class: 'text-indigo-600 hover:text-indigo-800' %>
 
-    <span class="font-semibold text-lg"><%= @year %>년 <%= @month %>월</span>
+    <%= render 'shared/month_picker', year: @year, month: @month, base_path: allowances_path %>
 
     <% next_month = @month == 12 ? 1 : @month + 1 %>
     <% next_year = @month == 12 ? @year + 1 : @year %>
@@ -32,8 +32,10 @@
         <tr>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내역</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">카테고리</th>
           <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">금액</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">카테고리</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">금융기관</th>
+          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
@@ -42,8 +44,11 @@
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
               <%= at.expense_transaction.formatted_date %>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap">
+            <td class="px-6 py-4">
               <div class="text-sm font-medium text-gray-900"><%= at.merchant %></div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+              <%= number_to_currency(at.amount, unit: '₩', precision: 0) %>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
               <% if at.category %>
@@ -54,15 +59,21 @@
                 <span class="text-gray-400 text-sm">미분류</span>
               <% end %>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-              <%= number_to_currency(at.amount, unit: '₩', precision: 0) %>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+              <%= at.expense_transaction.financial_institution&.name || '알 수 없음' %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center">
+              <%= button_to '해제', toggle_allowance_workspace_transaction_path(@workspace, at.expense_transaction),
+                  method: :post,
+                  data: { turbo_confirm: '용돈에서 해제하시겠습니까?' },
+                  class: 'text-red-600 hover:text-red-800 text-sm font-medium' %>
             </td>
           </tr>
         <% end %>
 
         <% if @allowance_transactions.empty? %>
           <tr>
-            <td colspan="4" class="px-6 py-12 text-center text-gray-500">
+            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
               이번 달 용돈 내역이 없습니다.
             </td>
           </tr>
