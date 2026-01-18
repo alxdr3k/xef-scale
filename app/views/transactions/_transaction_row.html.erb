@@ -89,7 +89,6 @@
   </td>
   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
     <button type="button"
-            data-controller="edit-modal"
             data-edit-modal-url-value="<%= edit_workspace_transaction_path(@workspace, transaction) %>"
             data-edit-modal-transaction-id-value="<%= transaction.id %>"
             data-edit-modal-allowance-value="<%= transaction.allowance? %>"
@@ -97,8 +96,10 @@
             class="text-indigo-600 hover:text-indigo-900">
       수정
     </button>
-    <%= button_to '삭제', workspace_transaction_path(@workspace, transaction), method: :delete,
+    <%= button_to '삭제', workspace_transaction_path(@workspace, transaction),
+        method: :delete,
         data: { turbo_confirm: '정말 삭제하시겠습니까?' },
-        class: 'text-red-600 hover:text-red-900 ml-2' %>
+        class: 'text-red-600 hover:text-red-900 ml-2',
+        form: { class: 'inline' } %>
   </td>
 </tr>

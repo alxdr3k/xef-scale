@@ -1,16 +1,44 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["modal", "content"]
   static values = {
     url: String,
     transactionId: Number,
     allowance: Boolean
   }
 
-  async open() {
+  get modalElement() {
+    return document.getElementById("edit-modal")
+  }
+
+  get contentElement() {
+    return document.querySelector('[data-edit-modal-target="content"]')
+  }
+
+  get titleElement() {
+    return document.querySelector('[data-edit-modal-target="title"]')
+  }
+
+  get isNewTransaction() {
+    return this.urlValue?.includes('/new')
+  }
+
+  async open(event) {
+    // Get values from the clicked button if triggered by action
+    const button = event?.currentTarget
+    if (button) {
+      this.urlValue = button.dataset.editModalUrlValue
+      this.transactionIdValue = parseInt(button.dataset.editModalTransactionIdValue) || null
+      this.allowanceValue = button.dataset.editModalAllowanceValue === "true"
+    }
+
+    // Update modal title based on action type
+    if (this.titleElement) {
+      this.titleElement.textContent = this.isNewTransaction ? "거래 추가" : "거래 수정"
+    }
+
     // Show modal
-    this.modalTarget.classList.remove("hidden")
+    this.modalElement.classList.remove("hidden")
     document.body.style.overflow = "hidden"
 
     // Fetch edit form
@@ -29,16 +57,16 @@ export default class extends Controller {
       // Extract form from the response
       const parser = new DOMParser()
       const doc = parser.parseFromString(html, "text/html")
-      const form = doc.querySelector("form")
+      const form = doc.querySelector("form[action*='transactions']")
 
       if (form) {
         // Modify form to use turbo_stream and add allowance checkbox
         form.setAttribute("data-turbo", "true")
         form.setAttribute("data-action", "turbo:submit-end->edit-modal#handleSubmit")
 
-        // Add allowance checkbox before submit buttons
+        // Add allowance checkbox before submit buttons (only for edit, not new)
         const submitDiv = form.querySelector(".flex.justify-end")
-        if (submitDiv) {
+        if (submitDiv && !this.isNewTransaction) {
           const allowanceDiv = document.createElement("div")
           allowanceDiv.className = "mb-4 flex items-center"
 
@@ -60,32 +88,34 @@ export default class extends Controller {
           submitDiv.parentNode.insertBefore(allowanceDiv, submitDiv)
         }
 
-        this.contentTarget.textContent = ""
-        this.contentTarget.appendChild(form)
+        this.contentElement.textContent = ""
+        this.contentElement.appendChild(form)
       }
     } catch (error) {
       console.error("Error loading form:", error)
       const errorDiv = document.createElement("div")
       errorDiv.className = "text-red-600 text-center py-4"
       errorDiv.textContent = "폼을 불러오는데 실패했습니다."
-      this.contentTarget.textContent = ""
-      this.contentTarget.appendChild(errorDiv)
+      this.contentElement.textContent = ""
+      this.contentElement.appendChild(errorDiv)
     }
   }
 
   close() {
-    this.modalTarget.classList.add("hidden")
+    this.modalElement.classList.add("hidden")
     document.body.style.overflow = ""
     const loadingDiv = document.createElement("div")
     loadingDiv.className = "text-center py-8 text-gray-500"
     loadingDiv.textContent = "로딩 중..."
-    this.contentTarget.textContent = ""
-    this.contentTarget.appendChild(loadingDiv)
+    this.contentElement.textContent = ""
+    this.contentElement.appendChild(loadingDiv)
   }
 
   handleSubmit(event) {
     if (event.detail.success) {
       this.close()
+      // Refresh page to apply current filters correctly
+      window.Turbo.visit(window.location.href, { action: "replace" })
     }
   }
 
