@@ -34,7 +34,8 @@ class CategoriesController < ApplicationController
         flash.now[:notice] = '카테고리가 추가되고 거래에 적용되었습니다.'
         render turbo_stream: [
           turbo_stream.replace(dom_id(@transaction), partial: 'transactions/transaction_row', locals: { transaction: @transaction }),
-          turbo_stream.update('flash', partial: 'shared/flash')
+          turbo_stream.update('flash', partial: 'shared/flash'),
+          turbo_stream.append('slideover-content', '<div data-controller="slideover-close"></div>'.html_safe)
         ]
       else
         respond_to do |format|

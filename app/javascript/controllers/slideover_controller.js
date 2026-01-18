@@ -4,10 +4,12 @@ export default class extends Controller {
   static targets = ["panel", "backdrop", "frame"]
 
   connect() {
-    // Listen for custom events to open slideover
+    // Listen for custom events to open/close slideover
     this.boundOpen = this.openFromEvent.bind(this)
+    this.boundClose = this.close.bind(this)
     this.boundTurboLoad = this.handleTurboLoad.bind(this)
     document.addEventListener("slideover:open", this.boundOpen)
+    document.addEventListener("slideover:close", this.boundClose)
 
     // Listen for turbo frame load to auto-open
     if (this.hasFrameTarget) {
@@ -17,6 +19,7 @@ export default class extends Controller {
 
   disconnect() {
     document.removeEventListener("slideover:open", this.boundOpen)
+    document.removeEventListener("slideover:close", this.boundClose)
     if (this.hasFrameTarget) {
       this.frameTarget.removeEventListener("turbo:frame-load", this.boundTurboLoad)
     }

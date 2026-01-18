@@ -40,5 +40,8 @@ application.register("month-picker", MonthPickerController)
 import NotificationsController from "./notifications_controller"
 application.register("notifications", NotificationsController)
 
+import SlideoverCloseController from "./slideover_close_controller"
+application.register("slideover-close", SlideoverCloseController)
+
 import SlideoverController from "./slideover_controller"
 application.register("slideover", SlideoverController)
