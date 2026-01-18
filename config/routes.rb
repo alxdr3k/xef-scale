@@ -40,6 +40,7 @@ Rails.application.routes.draw do
     resources :transactions do
       member do
         post :toggle_allowance
+        patch :quick_update_category
       end
       collection do
         get :export

@@ -2,8 +2,8 @@ class TransactionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :set_transaction, only: [:show, :edit, :update, :destroy, :toggle_allowance]
-  before_action :require_workspace_write_access, only: [:new, :create, :edit, :update, :destroy]
+  before_action :set_transaction, only: [:show, :edit, :update, :destroy, :toggle_allowance, :quick_update_category]
+  before_action :require_workspace_write_access, only: [:new, :create, :edit, :update, :destroy, :quick_update_category]
 
   def index
     @year = params[:year].presence&.to_i || Date.current.year
@@ -134,6 +134,24 @@ class TransactionsController < ApplicationController
     respond_to do |format|
       format.html { redirect_to workspace_transactions_path(@workspace), notice: notice }
       format.turbo_stream { flash.now[:notice] = notice }
+    end
+  end
+
+  def quick_update_category
+    category_id = params[:category_id].presence
+    old_category_id = @transaction.category_id
+
+    @transaction.update(category_id: category_id)
+    @categories = @workspace.categories.order(:name)
+
+    # 카테고리가 변경되었으면 매핑 생성
+    if category_id.present? && category_id.to_i != old_category_id
+      create_category_mapping(@transaction, @transaction.category)
+    end
+
+    respond_to do |format|
+      format.turbo_stream
+      format.json { render json: { success: true } }
     end
   end
 
