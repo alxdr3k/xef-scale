@@ -5,6 +5,7 @@ class Workspace < ApplicationRecord
   has_many :members, through: :workspace_memberships, source: :user
   has_many :workspace_invitations, dependent: :destroy
   has_many :categories, dependent: :destroy
+  has_many :category_mappings, dependent: :destroy
   has_many :transactions, dependent: :destroy
   has_many :processed_files, dependent: :destroy
   has_many :parsing_sessions, through: :processed_files

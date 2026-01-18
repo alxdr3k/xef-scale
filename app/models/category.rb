@@ -1,6 +1,7 @@
 class Category < ApplicationRecord
   belongs_to :workspace
   has_many :transactions, dependent: :nullify
+  has_many :category_mappings, dependent: :destroy
 
   validates :name, presence: true
   validates :name, uniqueness: { scope: :workspace_id }
