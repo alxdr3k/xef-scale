@@ -96,7 +96,7 @@ class ReviewsController < ApplicationController
     @transaction = @parsing_session.transactions.find(params[:transaction_id])
 
     # Only allow editing specific fields
-    permitted = [:category_id, :notes]
+    permitted = [:category_id, :notes, :description]
     # Allow source change only if currently unknown
     permitted << :financial_institution_id if @transaction.source_editable?
 

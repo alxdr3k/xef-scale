@@ -21,6 +21,10 @@
     <% end %>
   </td>
 
+  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+    <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+  </td>
+
   <td class="px-4 py-4 whitespace-nowrap">
     <% if read_only %>
       <% if transaction.category %>
@@ -57,10 +61,6 @@
     <% end %>
   </td>
 
-  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-    <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
-  </td>
-
   <td class="px-4 py-4 whitespace-nowrap text-center">
     <% if read_only %>
       <% if transaction.allowance? %>
@@ -91,7 +91,7 @@
       <%= form_with model: transaction,
           url: update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: transaction.id),
           method: :patch, data: { controller: 'auto-submit' } do |f| %>
-        <%= f.text_field :notes, placeholder: '메모...',
+        <%= f.text_field :notes, placeholder: '설명...',
             class: 'text-sm rounded border-gray-300 w-24',
             data: { action: 'blur->auto-submit#submit' } %>
       <% end %>
