@@ -10,7 +10,7 @@
   <div class="flex items-center space-x-4 mb-6">
     <%= link_to '← 이전 연도', yearly_dashboard_path(year: @year - 1),
         class: 'text-indigo-600 hover:text-indigo-800' %>
-    <span class="text-lg font-semibold text-gray-900"><%= @year %>년</span>
+    <%= render 'shared/year_picker', year: @year, base_path: yearly_dashboard_path %>
     <%= link_to '다음 연도 →', yearly_dashboard_path(year: @year + 1),
         class: 'text-indigo-600 hover:text-indigo-800' %>
   </div>

@@ -48,3 +48,6 @@ application.register("slideover", SlideoverController)
 
 import ToastController from "./toast_controller"
 application.register("toast", ToastController)
+
+import YearPickerController from "./year_picker_controller"
+application.register("year-picker", YearPickerController)
