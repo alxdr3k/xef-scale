@@ -10,6 +10,7 @@ class ApplicationController < ActionController::Base
   helper_method :current_workspace
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
+  rescue_from Pagy::OverflowError, with: :handle_pagy_overflow
 
   protected
 
@@ -60,5 +61,9 @@ class ApplicationController < ActionController::Base
   def user_not_authorized
     flash[:alert] = '이 작업을 수행할 권한이 없습니다.'
     redirect_back(fallback_location: root_path)
+  end
+
+  def handle_pagy_overflow(exception)
+    render plain: '존재하지 않는 페이지입니다.', status: :not_found
   end
 end
