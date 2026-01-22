@@ -5,13 +5,13 @@
 #
 # Build with version tag (use git tag or commit SHA):
 #   VERSION=$(git describe --tags --always)
-#   docker build -t ghcr.io/yngn/expense-tracker:${VERSION} .
+#   docker build -t ghcr.io/alxdr3k/expense-tracker:${VERSION} .
 #
 # Push to registry:
-#   docker push ghcr.io/yngn/expense-tracker:${VERSION}
+#   docker push ghcr.io/alxdr3k/expense-tracker:${VERSION}
 #
 # Run locally:
-#   docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value> -v storage:/rails/storage ghcr.io/yngn/expense-tracker:${VERSION}
+#   docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value> -v storage:/rails/storage ghcr.io/alxdr3k/expense-tracker:${VERSION}
 
 # Make sure RUBY_VERSION matches the Ruby version in .ruby-version
 ARG RUBY_VERSION=3.3.10
