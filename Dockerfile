@@ -1,11 +1,17 @@
 # syntax=docker/dockerfile:1
 # check=error=true
 
-# This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
-# docker build -t expense_tracker_rails .
-# docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name expense_tracker_rails expense_tracker_rails
-
-# For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
+# Production Dockerfile for k3s/Kubernetes deployment
+#
+# Build with version tag (use git tag or commit SHA):
+#   VERSION=$(git describe --tags --always)
+#   docker build -t ghcr.io/yngn/expense-tracker:${VERSION} .
+#
+# Push to registry:
+#   docker push ghcr.io/yngn/expense-tracker:${VERSION}
+#
+# Run locally:
+#   docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value> -v storage:/rails/storage ghcr.io/yngn/expense-tracker:${VERSION}
 
 # Make sure RUBY_VERSION matches the Ruby version in .ruby-version
 ARG RUBY_VERSION=3.3.10
