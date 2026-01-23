@@ -14,7 +14,7 @@ class Parsers::HanaCardParserTest < ActiveSupport::TestCase
 
   test "parse_transaction_row returns nil without valid date" do
     parser = Parsers::HanaCardParser.new(@processed_file)
-    row = ["invalid", "가맹점명", 10000]
+    row = [ "invalid", "가맹점명", 10000 ]
 
     result = parser.send(:parse_transaction_row, row)
     assert_nil result
@@ -22,7 +22,7 @@ class Parsers::HanaCardParserTest < ActiveSupport::TestCase
 
   test "parse_transaction_row returns nil with zero amount" do
     parser = Parsers::HanaCardParser.new(@processed_file)
-    row = ["2024.01.15", "가맹점명", 0]
+    row = [ "2024.01.15", "가맹점명", 0 ]
 
     result = parser.send(:parse_transaction_row, row)
     assert_nil result
@@ -30,7 +30,7 @@ class Parsers::HanaCardParserTest < ActiveSupport::TestCase
 
   test "parse_transaction_row returns nil with blank merchant" do
     parser = Parsers::HanaCardParser.new(@processed_file)
-    row = ["2024.01.15", "", 10000]
+    row = [ "2024.01.15", "", 10000 ]
 
     result = parser.send(:parse_transaction_row, row)
     assert_nil result
@@ -38,7 +38,7 @@ class Parsers::HanaCardParserTest < ActiveSupport::TestCase
 
   test "parse_transaction_row returns transaction hash with valid data" do
     parser = Parsers::HanaCardParser.new(@processed_file)
-    row = ["2024.01.15", "테스트가맹점", 10000]
+    row = [ "2024.01.15", "테스트가맹점", 10000 ]
 
     result = parser.send(:parse_transaction_row, row)
 
@@ -51,7 +51,7 @@ class Parsers::HanaCardParserTest < ActiveSupport::TestCase
 
   test "parse_transaction_row handles integer amount" do
     parser = Parsers::HanaCardParser.new(@processed_file)
-    row = ["2024.01.15", "가맹점", 15000]
+    row = [ "2024.01.15", "가맹점", 15000 ]
 
     result = parser.send(:parse_transaction_row, row)
     assert_equal 15000, result[:amount]
@@ -63,7 +63,7 @@ class Parsers::HanaCardParserTest < ActiveSupport::TestCase
     # Create a simple struct that responds to row method
     mock_sheet = Object.new
     def mock_sheet.row(_num)
-      ["other_text", "data"]
+      [ "other_text", "data" ]
     end
 
     result = parser.send(:find_header_row, mock_sheet)

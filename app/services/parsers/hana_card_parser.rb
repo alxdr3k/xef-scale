@@ -20,7 +20,7 @@ module Parsers
 
           # Skip card info rows
           first_cell = row[0].to_s
-          next if first_cell.include?('하나카드') || first_cell.include?('본인')
+          next if first_cell.include?("하나카드") || first_cell.include?("본인")
 
           tx = parse_transaction_row(row)
           transactions << tx if tx
@@ -36,7 +36,7 @@ module Parsers
     protected
 
     def institution_identifier
-      'hana_card'
+      "hana_card"
     end
 
     private
@@ -47,7 +47,7 @@ module Parsers
         first_cell = row[0].to_s.strip
 
         # Look for header row with "거래일자"
-        return row_num if first_cell == '거래일자'
+        return row_num if first_cell == "거래일자"
       end
       nil
     end

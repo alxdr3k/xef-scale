@@ -8,16 +8,16 @@ class AllowancesController < ApplicationController
 
     @allowance_transactions = current_user.allowance_transactions
                                           .for_month(@year, @month)
-                                          .includes(expense_transaction: [:category, :financial_institution])
-                                          .order('transactions.date DESC')
+                                          .includes(expense_transaction: [ :category, :financial_institution ])
+                                          .order("transactions.date DESC")
 
-    @total_amount = @allowance_transactions.joins(:expense_transaction).sum('transactions.amount')
+    @total_amount = @allowance_transactions.joins(:expense_transaction).sum("transactions.amount")
 
     @monthly_totals = current_user.allowance_transactions
                                   .for_user(current_user)
                                   .joins(:expense_transaction)
-                                  .where('transactions.date >= ?', Date.current.beginning_of_year)
+                                  .where("transactions.date >= ?", Date.current.beginning_of_year)
                                   .group("strftime('%Y-%m', transactions.date)")
-                                  .sum('transactions.amount')
+                                  .sum("transactions.amount")
   end
 end

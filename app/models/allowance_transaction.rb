@@ -1,5 +1,5 @@
 class AllowanceTransaction < ApplicationRecord
-  belongs_to :expense_transaction, class_name: 'Transaction'
+  belongs_to :expense_transaction, class_name: "Transaction"
   belongs_to :user
 
   validates :expense_transaction_id, uniqueness: { scope: :user_id }
@@ -14,7 +14,7 @@ class AllowanceTransaction < ApplicationRecord
   def self.total_for_month(user, year, month)
     for_user(user).for_month(year, month)
       .joins(:expense_transaction)
-      .sum('transactions.amount')
+      .sum("transactions.amount")
   end
 
   def self.mark_as_allowance!(transaction, user)

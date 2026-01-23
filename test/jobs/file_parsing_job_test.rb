@@ -8,7 +8,7 @@ class FileParsingJobTest < ActiveJob::TestCase
   end
 
   test "job is enqueued to default queue" do
-    assert_equal 'default', FileParsingJob.new.queue_name
+    assert_equal "default", FileParsingJob.new.queue_name
   end
 
   test "job finds processed file by id" do
@@ -26,29 +26,29 @@ class FileParsingJobTest < ActiveJob::TestCase
 
   test "match_category returns nil for empty merchant" do
     job = FileParsingJob.new
-    result = job.send(:match_category_without_gemini, @workspace, '')
+    result = job.send(:match_category_without_gemini, @workspace, "")
     assert_nil result
   end
 
   test "match_category finds category by keyword" do
     category = categories(:food)
-    category.update!(keyword: '마라탕')
+    category.update!(keyword: "마라탕")
 
     job = FileParsingJob.new
-    result = job.send(:match_category_without_gemini, @workspace, '마라탕집')
+    result = job.send(:match_category_without_gemini, @workspace, "마라탕집")
     assert_equal category, result
   end
 
   test "find_duplicate returns existing transaction with same data" do
     existing = @workspace.transactions.create!(
       date: Date.current,
-      merchant: 'Test Merchant',
+      merchant: "Test Merchant",
       amount: 10000
     )
 
     new_tx = @workspace.transactions.create!(
       date: Date.current,
-      merchant: 'Test Merchant',
+      merchant: "Test Merchant",
       amount: 10000
     )
 
@@ -60,7 +60,7 @@ class FileParsingJobTest < ActiveJob::TestCase
   test "find_duplicate returns nil when no duplicate exists" do
     tx = @workspace.transactions.create!(
       date: Date.current,
-      merchant: 'Unique Merchant',
+      merchant: "Unique Merchant",
       amount: 99999
     )
 
@@ -115,16 +115,16 @@ class FileParsingJobTest < ActiveJob::TestCase
 
   test "match_category finds category with matching keyword" do
     category = @workspace.categories.first
-    category.update!(keyword: '커피')
+    category.update!(keyword: "커피")
 
     job = FileParsingJob.new
-    result = job.send(:match_category_without_gemini, @workspace, '스타벅스커피')
+    result = job.send(:match_category_without_gemini, @workspace, "스타벅스커피")
     assert_equal category, result
   end
 
   test "match_category returns nil when no category matches" do
     job = FileParsingJob.new
-    result = job.send(:match_category_without_gemini, @workspace, 'random merchant without match')
+    result = job.send(:match_category_without_gemini, @workspace, "random merchant without match")
     assert_nil result
   end
 

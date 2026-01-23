@@ -8,35 +8,35 @@ class ProcessedFile < ApplicationRecord
   validates :filename, presence: true
   validates :status, inclusion: { in: STATUSES }
 
-  scope :pending, -> { where(status: 'pending') }
-  scope :completed, -> { where(status: 'completed') }
-  scope :failed, -> { where(status: 'failed') }
+  scope :pending, -> { where(status: "pending") }
+  scope :completed, -> { where(status: "completed") }
+  scope :failed, -> { where(status: "failed") }
 
   def pending?
-    status == 'pending'
+    status == "pending"
   end
 
   def processing?
-    status == 'processing'
+    status == "processing"
   end
 
   def completed?
-    status == 'completed'
+    status == "completed"
   end
 
   def failed?
-    status == 'failed'
+    status == "failed"
   end
 
   def mark_processing!
-    update!(status: 'processing')
+    update!(status: "processing")
   end
 
   def mark_completed!
-    update!(status: 'completed')
+    update!(status: "completed")
   end
 
   def mark_failed!
-    update!(status: 'failed')
+    update!(status: "failed")
   end
 end

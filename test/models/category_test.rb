@@ -33,8 +33,8 @@ class CategoryTest < ActiveSupport::TestCase
   test "keywords_array returns array of keywords" do
     category = categories(:food)
     keywords = category.keywords_array
-    assert_includes keywords, '식당'
-    assert_includes keywords, '마라탕'
+    assert_includes keywords, "식당"
+    assert_includes keywords, "마라탕"
   end
 
   test "keywords_array handles empty keyword" do
@@ -44,24 +44,24 @@ class CategoryTest < ActiveSupport::TestCase
 
   test "matches? returns true when text contains keyword" do
     category = categories(:food)
-    assert category.matches?('맛있는 마라탕집')
-    assert category.matches?('식당에서 점심')
+    assert category.matches?("맛있는 마라탕집")
+    assert category.matches?("식당에서 점심")
   end
 
   test "matches? returns false when text does not contain keyword" do
     category = categories(:food)
-    assert_not category.matches?('택시 요금')
+    assert_not category.matches?("택시 요금")
   end
 
   test "matches? is case insensitive" do
     category = categories(:transport)
-    assert category.matches?('카카오T 택시')
-    assert category.matches?('카카오t 이용')
+    assert category.matches?("카카오T 택시")
+    assert category.matches?("카카오t 이용")
   end
 
   test "matches? returns false for blank text" do
     category = categories(:food)
-    assert_not category.matches?('')
+    assert_not category.matches?("")
     assert_not category.matches?(nil)
   end
 

@@ -1,13 +1,13 @@
 class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable,
-         :omniauthable, omniauth_providers: [:google_oauth2]
+         :omniauthable, omniauth_providers: [ :google_oauth2 ]
 
-  has_many :owned_workspaces, class_name: 'Workspace', foreign_key: :owner_id, dependent: :destroy
+  has_many :owned_workspaces, class_name: "Workspace", foreign_key: :owner_id, dependent: :destroy
   has_many :workspace_memberships, dependent: :destroy
   has_many :workspaces, through: :workspace_memberships
   has_many :allowance_transactions, dependent: :destroy
-  has_many :sent_invitations, class_name: 'WorkspaceInvitation', foreign_key: :invited_by_id
+  has_many :sent_invitations, class_name: "WorkspaceInvitation", foreign_key: :invited_by_id
   has_many :notifications, dependent: :destroy
 
   validates :email, presence: true, uniqueness: true
@@ -28,12 +28,12 @@ class User < ApplicationRecord
 
   def can_write?(workspace)
     admin_of?(workspace) ||
-      workspace_memberships.exists?(workspace: workspace, role: 'member_write')
+      workspace_memberships.exists?(workspace: workspace, role: "member_write")
   end
 
   def can_read?(workspace)
     can_write?(workspace) ||
-      workspace_memberships.exists?(workspace: workspace, role: 'member_read')
+      workspace_memberships.exists?(workspace: workspace, role: "member_read")
   end
 
   def unread_notifications_count(workspace = nil)

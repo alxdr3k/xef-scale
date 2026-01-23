@@ -6,7 +6,7 @@
 class PythonExcelParser
   class ParseError < StandardError; end
 
-  PYTHON_SCRIPT = Rails.root.join('scripts', 'parse_excel.py').to_s.freeze
+  PYTHON_SCRIPT = Rails.root.join("scripts", "parse_excel.py").to_s.freeze
 
   # Parse an Excel file and return transactions
   # @param file_path [String] Path to the Excel file
@@ -33,7 +33,7 @@ class PythonExcelParser
   end
 
   def execute_python_parser
-    stdout, stderr, status = Open3.capture3('python3', PYTHON_SCRIPT, @file_path)
+    stdout, stderr, status = Open3.capture3("python3", PYTHON_SCRIPT, @file_path)
 
     unless status.success?
       Rails.logger.error "Python parser failed: #{stderr}"
@@ -50,25 +50,25 @@ class PythonExcelParser
   end
 
   def process_result(result)
-    if result['error']
-      raise ParseError, result['error']
+    if result["error"]
+      raise ParseError, result["error"]
     end
 
     # Convert date strings to Date objects
-    transactions = result['transactions'].map do |tx|
+    transactions = result["transactions"].map do |tx|
       {
-        date: Date.parse(tx['date']),
-        merchant: tx['merchant'],
-        amount: tx['amount'],
-        description: tx['description'],
-        institution_identifier: tx['institution_identifier']
+        date: Date.parse(tx["date"]),
+        merchant: tx["merchant"],
+        amount: tx["amount"],
+        description: tx["description"],
+        institution_identifier: tx["institution_identifier"]
       }
     end
 
     {
-      institution: result['institution'],
+      institution: result["institution"],
       transactions: transactions,
-      count: result['count']
+      count: result["count"]
     }
   end
 end

@@ -9,7 +9,7 @@ class ParsingSessionTest < ActiveSupport::TestCase
   test "parsing session requires valid status" do
     session = ParsingSession.new(
       processed_file: processed_files(:completed_file),
-      status: 'invalid'
+      status: "invalid"
     )
     assert_not session.valid?
     assert_includes session.errors[:status], "is not included in the list"
@@ -103,12 +103,12 @@ class ParsingSessionTest < ActiveSupport::TestCase
   end
 
   test "failed? returns true for failed status" do
-    session = ParsingSession.new(status: 'failed')
+    session = ParsingSession.new(status: "failed")
     assert session.failed?
   end
 
   test "has_duplicates? handles nil duplicate_count" do
-    session = ParsingSession.new(status: 'pending', duplicate_count: nil)
+    session = ParsingSession.new(status: "pending", duplicate_count: nil)
     assert_not session.has_duplicates?
   end
 
@@ -122,12 +122,12 @@ class ParsingSessionTest < ActiveSupport::TestCase
   end
 
   test "duration returns nil when started_at is nil" do
-    session = ParsingSession.new(status: 'pending', started_at: nil, completed_at: Time.current)
+    session = ParsingSession.new(status: "pending", started_at: nil, completed_at: Time.current)
     assert_nil session.duration
   end
 
   test "duration returns nil when completed_at is nil" do
-    session = ParsingSession.new(status: 'processing', started_at: Time.current, completed_at: nil)
+    session = ParsingSession.new(status: "processing", started_at: Time.current, completed_at: nil)
     assert_nil session.duration
   end
 end

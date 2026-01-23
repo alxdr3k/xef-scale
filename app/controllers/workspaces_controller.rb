@@ -1,8 +1,8 @@
 class WorkspacesController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_workspace, only: [:show, :edit, :update, :destroy, :settings]
-  before_action :require_workspace_access, only: [:show]
-  before_action :require_workspace_admin_access, only: [:edit, :update, :destroy, :settings]
+  before_action :set_workspace, only: [ :show, :edit, :update, :destroy, :settings ]
+  before_action :require_workspace_access, only: [ :show ]
+  before_action :require_workspace_admin_access, only: [ :edit, :update, :destroy, :settings ]
 
   def index
     @workspaces = current_user.workspaces.includes(:owner)
@@ -27,7 +27,7 @@ class WorkspacesController < ApplicationController
     @workspace = current_user.owned_workspaces.build(workspace_params)
 
     if @workspace.save
-      redirect_to @workspace, notice: '워크스페이스가 생성되었습니다.'
+      redirect_to @workspace, notice: "워크스페이스가 생성되었습니다."
     else
       render :new, status: :unprocessable_entity
     end
@@ -38,7 +38,7 @@ class WorkspacesController < ApplicationController
 
   def update
     if @workspace.update(workspace_params)
-      redirect_to @workspace, notice: '워크스페이스가 업데이트되었습니다.'
+      redirect_to @workspace, notice: "워크스페이스가 업데이트되었습니다."
     else
       render :edit, status: :unprocessable_entity
     end
@@ -46,7 +46,7 @@ class WorkspacesController < ApplicationController
 
   def destroy
     @workspace.destroy
-    redirect_to workspaces_path, notice: '워크스페이스가 삭제되었습니다.'
+    redirect_to workspaces_path, notice: "워크스페이스가 삭제되었습니다."
   end
 
   def settings

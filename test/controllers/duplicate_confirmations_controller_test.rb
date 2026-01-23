@@ -13,28 +13,28 @@ class DuplicateConfirmationsControllerTest < ActionDispatch::IntegrationTest
     sign_out @user
     patch workspace_parsing_session_duplicate_confirmation_path(
       @workspace, @parsing_session, @duplicate_confirmation
-    ), params: { decision: 'keep_original' }
+    ), params: { decision: "keep_original" }
     assert_redirected_to new_user_session_path
   end
 
   test "update resolves duplicate with keep_original" do
     patch workspace_parsing_session_duplicate_confirmation_path(
       @workspace, @parsing_session, @duplicate_confirmation
-    ), params: { decision: 'keep_original' }
+    ), params: { decision: "keep_original" }
     assert_redirected_to workspace_parsing_session_path(@workspace, @parsing_session)
   end
 
   test "update resolves duplicate with keep_new" do
     patch workspace_parsing_session_duplicate_confirmation_path(
       @workspace, @parsing_session, @duplicate_confirmation
-    ), params: { decision: 'keep_new' }
+    ), params: { decision: "keep_new" }
     assert_redirected_to workspace_parsing_session_path(@workspace, @parsing_session)
   end
 
   test "update resolves duplicate with keep_both" do
     patch workspace_parsing_session_duplicate_confirmation_path(
       @workspace, @parsing_session, @duplicate_confirmation
-    ), params: { decision: 'keep_both' }
+    ), params: { decision: "keep_both" }
     assert_redirected_to workspace_parsing_session_path(@workspace, @parsing_session)
   end
 
@@ -46,7 +46,7 @@ class DuplicateConfirmationsControllerTest < ActionDispatch::IntegrationTest
     # Member with read-only access should be redirected
     patch workspace_parsing_session_duplicate_confirmation_path(
       @workspace, @parsing_session, @duplicate_confirmation
-    ), params: { decision: 'keep_original' }
+    ), params: { decision: "keep_original" }
     # Either redirected to workspace path or parsing session is fine
     assert_response :redirect
   end
