@@ -58,3 +58,38 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy-stg:
+    needs: docker
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to STG
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: root
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            cd /root/ops && git pull
+            kubectl apply -k apps/${{ github.event.repository.name }}/overlays/stg
+            kubectl rollout status deployment/${{ github.event.repository.name }}-stg -n apps-stg --timeout=120s
+
+  deploy-prd:
+    needs: [docker, deploy-stg]
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy to PRD
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: root
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            cd /root/ops && git pull
+            kubectl apply -k apps/${{ github.event.repository.name }}/overlays/prd
+            kubectl rollout status deployment/${{ github.event.repository.name }}-prd -n apps-prd --timeout=120s

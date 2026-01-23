@@ -1,0 +1,20 @@
+name: Deploy STG
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to STG
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: root
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            cd /root/ops && git pull
+            kubectl apply -k apps/${{ github.event.repository.name }}/overlays/stg
+            kubectl rollout status deployment/${{ github.event.repository.name }}-stg -n apps-stg --timeout=120s
