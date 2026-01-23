@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/alxdr3k/expense-tracker/compare/0.1.0...0.1.1) (2026-01-23)
+
+
+### Bug Fixes
+
+* add yarn.lock for Docker build ([898276b](https://github.com/alxdr3k/expense-tracker/commit/898276b44a0c514989560c19c6de97fedce13c8e))
+
 ## 0.1.0 (2026-01-23)
 
 
