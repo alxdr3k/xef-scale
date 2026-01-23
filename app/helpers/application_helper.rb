@@ -1,8 +1,20 @@
 module ApplicationHelper
   include Pagy::Frontend
 
+  def safe_return_to(fallback_path)
+    return_to = params[:return_to]
+    return fallback_path if return_to.blank?
+
+    # Only allow relative paths starting with / but not //
+    if return_to.start_with?("/") && !return_to.start_with?("//")
+      return_to
+    else
+      fallback_path
+    end
+  end
+
   def pagy_nav(pagy, options = {})
-    return '' if pagy.pages <= 1
+    return "" if pagy.pages <= 1
 
     # Merge params option for preserving query parameters
     base_params = options[:params] || {}
@@ -31,8 +43,8 @@ module ApplicationHelper
       html << "<li>#{link_to '다음', url_for(base_params.merge(page: pagy.next)), class: 'px-3 py-2 leading-tight text-gray-500 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100'}</li>"
     end
 
-    html << '</ul>'
-    html << '</nav>'
+    html << "</ul>"
+    html << "</nav>"
     html.join.html_safe
   end
 end

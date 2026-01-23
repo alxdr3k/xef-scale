@@ -3,7 +3,7 @@ class DashboardsController < ApplicationController
   before_action :set_workspace
 
   def monthly
-    @view_type = 'monthly'
+    @view_type = "monthly"
     @year = params[:year]&.to_i || Date.current.year
     @month = params[:month]&.to_i || Date.current.month
 
@@ -40,7 +40,7 @@ class DashboardsController < ApplicationController
   end
 
   def yearly
-    @view_type = 'yearly'
+    @view_type = "yearly"
     @year = params[:year]&.to_i || Date.current.year
 
     @transactions = @workspace.transactions
@@ -79,7 +79,7 @@ class DashboardsController < ApplicationController
   def set_workspace
     @workspace = current_workspace
     unless @workspace
-      redirect_to new_workspace_path, notice: '먼저 워크스페이스를 생성해 주세요.'
+      redirect_to new_workspace_path, notice: "먼저 워크스페이스를 생성해 주세요."
     end
   end
 
@@ -89,9 +89,9 @@ class DashboardsController < ApplicationController
       category = Category.find_by(id: category_id)
       {
         id: category_id,
-        name: category&.name || '미분류',
+        name: category&.name || "미분류",
         amount: amount,
-        color: category&.color || '#9CA3AF',
+        color: category&.color || "#9CA3AF",
         percentage: total > 0 ? (amount.to_f / total * 100).round(1) : 0
       }
     end.sort_by { |c| -c[:amount] }

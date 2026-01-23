@@ -17,7 +17,7 @@ SimpleCov.start "rails" do
 end
 
 # Configure parallel test merging
-if ENV['PARALLEL_TEST_GROUPS']
+if ENV["PARALLEL_TEST_GROUPS"]
   SimpleCov.command_name "Minitest #{ENV['PARALLEL_TEST_GROUPS']}"
 end
 

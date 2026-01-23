@@ -7,9 +7,9 @@ module Parsers
       begin
         filename = processed_file.filename.downcase
 
-        if filename.end_with?('.xlsx', '.xls')
+        if filename.end_with?(".xlsx", ".xls")
           transactions = parse_excel(tempfile)
-        elsif filename.end_with?('.csv')
+        elsif filename.end_with?(".csv")
           transactions = parse_csv(tempfile)
         end
       ensure
@@ -23,7 +23,7 @@ module Parsers
     protected
 
     def institution_identifier
-      'kakao_bank'
+      "kakao_bank"
     end
 
     private
@@ -49,9 +49,9 @@ module Parsers
 
     def parse_csv(tempfile)
       transactions = []
-      require 'csv'
+      require "csv"
 
-      csv = CSV.read(tempfile.path, encoding: 'UTF-8')
+      csv = CSV.read(tempfile.path, encoding: "UTF-8")
 
       data_start_row = find_data_start_row_csv(csv)
       headers = identify_columns(csv[data_start_row - 1])
@@ -69,9 +69,9 @@ module Parsers
     def find_data_start_row(sheet)
       (1..15).each do |row_num|
         row = sheet.row(row_num)
-        content = row.compact.map(&:to_s).join(' ')
+        content = row.compact.map(&:to_s).join(" ")
 
-        if content.include?('거래일시') || content.include?('거래일') || content.include?('일시')
+        if content.include?("거래일시") || content.include?("거래일") || content.include?("일시")
           return row_num + 1
         end
       end
@@ -80,8 +80,8 @@ module Parsers
 
     def find_data_start_row_csv(csv)
       csv.each_with_index do |row, idx|
-        content = row.compact.map(&:to_s).join(' ')
-        if content.include?('거래일시') || content.include?('거래일') || content.include?('일시')
+        content = row.compact.map(&:to_s).join(" ")
+        if content.include?("거래일시") || content.include?("거래일") || content.include?("일시")
           return idx + 1
         end
       end
@@ -96,12 +96,12 @@ module Parsers
         next unless cell
 
         str = cell.to_s.downcase
-        headers[:date] = idx if str.include?('일시') || str.include?('일자') || str.include?('날짜')
-        headers[:type] = idx if str.include?('구분') || str.include?('유형')
-        headers[:merchant] = idx if str.include?('내용') || str.include?('적요') || str.include?('메모')
-        headers[:outgoing] = idx if str.include?('출금') || str.include?('지출')
-        headers[:incoming] = idx if str.include?('입금') || str.include?('수입')
-        headers[:amount] = idx if str.include?('금액') && !str.include?('입') && !str.include?('출')
+        headers[:date] = idx if str.include?("일시") || str.include?("일자") || str.include?("날짜")
+        headers[:type] = idx if str.include?("구분") || str.include?("유형")
+        headers[:merchant] = idx if str.include?("내용") || str.include?("적요") || str.include?("메모")
+        headers[:outgoing] = idx if str.include?("출금") || str.include?("지출")
+        headers[:incoming] = idx if str.include?("입금") || str.include?("수입")
+        headers[:amount] = idx if str.include?("금액") && !str.include?("입") && !str.include?("출")
       end
       headers
     end
@@ -123,16 +123,16 @@ module Parsers
       if type_col
         tx_type = row[type_col].to_s.strip
         # Skip incoming transactions (입금)
-        return nil if tx_type.include?('입금') || tx_type.include?('수입')
+        return nil if tx_type.include?("입금") || tx_type.include?("수입")
       end
 
       amount = if outgoing_col && row[outgoing_col].present?
                  parse_amount(row[outgoing_col])
-               elsif amount_col && row[amount_col].present?
+      elsif amount_col && row[amount_col].present?
                  parse_amount(row[amount_col])
-               else
+      else
                  find_amount_in_row(row)
-               end
+      end
 
       return nil if amount.zero?
 

@@ -2,8 +2,8 @@ class TransactionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :set_transaction, only: [:show, :edit, :update, :destroy, :toggle_allowance, :quick_update_category]
-  before_action :require_workspace_write_access, only: [:new, :create, :edit, :update, :destroy, :quick_update_category]
+  before_action :set_transaction, only: [ :show, :edit, :update, :destroy, :toggle_allowance, :quick_update_category ]
+  before_action :require_workspace_write_access, only: [ :new, :create, :edit, :update, :destroy, :quick_update_category ]
 
   def index
     @year = params[:year].presence&.to_i || Date.current.year
@@ -48,8 +48,8 @@ class TransactionsController < ApplicationController
     if @transaction.save
       @categories = @workspace.categories.order(:name)
       respond_to do |format|
-        format.html { redirect_to workspace_transactions_path(@workspace), notice: '거래가 추가되었습니다.' }
-        format.turbo_stream { flash[:notice] = '거래가 추가되었습니다.' }
+        format.html { redirect_to workspace_transactions_path(@workspace), notice: "거래가 추가되었습니다." }
+        format.turbo_stream { flash[:notice] = "거래가 추가되었습니다." }
       end
     else
       @categories = @workspace.categories
@@ -75,7 +75,7 @@ class TransactionsController < ApplicationController
 
       # Handle allowance toggle if present in params
       if params[:allowance].present?
-        new_allowance_status = params[:allowance] == '1'
+        new_allowance_status = params[:allowance] == "1"
         if new_allowance_status != old_allowance_status
           if new_allowance_status
             AllowanceTransaction.mark_as_allowance!(@transaction, current_user)
@@ -91,8 +91,8 @@ class TransactionsController < ApplicationController
 
       @categories = @workspace.categories.order(:name)
       respond_to do |format|
-        format.html { redirect_to params[:return_to].presence || workspace_transactions_path(@workspace), notice: '거래가 수정되었습니다.' }
-        format.turbo_stream { flash[:notice] = '거래가 수정되었습니다.' }
+        format.html { redirect_to params[:return_to].presence || workspace_transactions_path(@workspace), notice: "거래가 수정되었습니다." }
+        format.turbo_stream { flash[:notice] = "거래가 수정되었습니다." }
       end
     else
       @categories = @workspace.categories
@@ -105,18 +105,18 @@ class TransactionsController < ApplicationController
     @transaction.soft_delete!
 
     respond_to do |format|
-      format.html { redirect_to workspace_transactions_path(@workspace), notice: '거래가 삭제되었습니다.' }
-      format.turbo_stream { flash.now[:notice] = '거래가 삭제되었습니다.' }
+      format.html { redirect_to workspace_transactions_path(@workspace), notice: "거래가 삭제되었습니다." }
+      format.turbo_stream { flash.now[:notice] = "거래가 삭제되었습니다." }
     end
   end
 
   def toggle_allowance
     if @transaction.allowance?
       AllowanceTransaction.unmark_as_allowance!(@transaction, current_user)
-      notice = '용돈에서 제외되었습니다.'
+      notice = "용돈에서 제외되었습니다."
     else
       AllowanceTransaction.mark_as_allowance!(@transaction, current_user)
-      notice = '용돈으로 표시되었습니다.'
+      notice = "용돈으로 표시되었습니다."
     end
 
     # 변경된 상태 반영을 위해 reload (association 캐시 포함)
@@ -127,7 +127,7 @@ class TransactionsController < ApplicationController
     # turbo_stream 응답을 위한 변수 설정
     @categories = @workspace.categories.order(:name)
     @source = params[:source]
-    if @source == 'review'
+    if @source == "review"
       @parsing_session = @workspace.parsing_sessions.find(params[:parsing_session_id])
       @institutions = FinancialInstitution.all
       @read_only = false
@@ -163,16 +163,16 @@ class TransactionsController < ApplicationController
     if params[:year].present?
       transactions = if params[:month].present?
                        transactions.for_month(params[:year], params[:month])
-                     else
+      else
                        transactions.for_year(params[:year])
-                     end
+      end
     end
 
     respond_to do |format|
       format.csv do
         send_data generate_csv(transactions),
                   filename: "transactions_#{Date.current}.csv",
-                  type: 'text/csv; charset=utf-8'
+                  type: "text/csv; charset=utf-8"
       end
     end
   end
@@ -191,9 +191,9 @@ class TransactionsController < ApplicationController
   end
 
   def generate_csv(transactions)
-    require 'csv'
-    CSV.generate(headers: true, encoding: 'UTF-8') do |csv|
-      csv << ['날짜', '내역', '금액', '분류', '금융기관', '메모']
+    require "csv"
+    CSV.generate(headers: true, encoding: "UTF-8") do |csv|
+      csv << [ "날짜", "내역", "금액", "분류", "금융기관", "메모" ]
       transactions.order(date: :desc).each do |tx|
         csv << [
           tx.formatted_date,
@@ -217,7 +217,7 @@ class TransactionsController < ApplicationController
     )
 
     mapping.category = category
-    mapping.source = 'manual'
+    mapping.source = "manual"
     mapping.save!
   rescue ActiveRecord::RecordInvalid => e
     Rails.logger.warn "[TransactionsController] 매핑 생성 실패: #{e.message}"

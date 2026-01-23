@@ -46,7 +46,7 @@ class WorkspaceTest < ActiveSupport::TestCase
     workspace = Workspace.create!(name: "Test Workspace", owner: users(:admin))
     membership_count = workspace.workspace_memberships.count
 
-    assert_difference 'WorkspaceMembership.count', -membership_count do
+    assert_difference "WorkspaceMembership.count", -membership_count do
       workspace.destroy
     end
   end
@@ -55,20 +55,20 @@ class WorkspaceTest < ActiveSupport::TestCase
     workspace = Workspace.create!(name: "New Workspace", owner: users(:admin))
     assert workspace.members.include?(users(:admin))
     membership = workspace.workspace_memberships.find_by(user: users(:admin))
-    assert_equal 'owner', membership.role
+    assert_equal "owner", membership.role
   end
 
   test "creating workspace creates default categories" do
     workspace = Workspace.create!(name: "New Workspace", owner: users(:admin))
-    assert workspace.categories.exists?(name: '식비')
-    assert workspace.categories.exists?(name: '편의점/마트')
-    assert workspace.categories.exists?(name: '교통/자동차')
-    assert workspace.categories.exists?(name: '주거/통신')
-    assert workspace.categories.exists?(name: '쇼핑')
-    assert workspace.categories.exists?(name: '문화/여가')
-    assert workspace.categories.exists?(name: '의료/건강')
-    assert workspace.categories.exists?(name: '보험')
-    assert workspace.categories.exists?(name: '기타')
+    assert workspace.categories.exists?(name: "식비")
+    assert workspace.categories.exists?(name: "편의점/마트")
+    assert workspace.categories.exists?(name: "교통/자동차")
+    assert workspace.categories.exists?(name: "주거/통신")
+    assert workspace.categories.exists?(name: "쇼핑")
+    assert workspace.categories.exists?(name: "문화/여가")
+    assert workspace.categories.exists?(name: "의료/건강")
+    assert workspace.categories.exists?(name: "보험")
+    assert workspace.categories.exists?(name: "기타")
   end
 
   test "workspace has many invitations" do
@@ -90,7 +90,7 @@ class WorkspaceTest < ActiveSupport::TestCase
     workspace = Workspace.create!(name: "Test", owner: users(:admin))
     workspace.transactions.create!(date: Date.current, amount: 1000)
 
-    assert_difference 'Transaction.count', -1 do
+    assert_difference "Transaction.count", -1 do
       workspace.destroy
     end
   end

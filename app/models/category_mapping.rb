@@ -7,13 +7,13 @@ class CategoryMapping < ApplicationRecord
   SOURCES = %w[import gemini manual].freeze
 
   validates :merchant_pattern, presence: true
-  validates :merchant_pattern, uniqueness: { scope: :workspace_id, message: '이미 등록된 매핑입니다' }
+  validates :merchant_pattern, uniqueness: { scope: :workspace_id, message: "이미 등록된 매핑입니다" }
   validates :source, inclusion: { in: SOURCES }
 
   scope :for_workspace, ->(workspace) { where(workspace: workspace) }
-  scope :from_import, -> { where(source: 'import') }
-  scope :from_gemini, -> { where(source: 'gemini') }
-  scope :from_manual, -> { where(source: 'manual') }
+  scope :from_import, -> { where(source: "import") }
+  scope :from_gemini, -> { where(source: "gemini") }
+  scope :from_manual, -> { where(source: "manual") }
 
   # 주어진 merchant 이름에 대한 매핑 찾기
   def self.find_for_merchant(workspace, merchant)

@@ -9,43 +9,43 @@ namespace :import do
     #D3D3D3
   ].freeze
 
-  desc 'Step 0: Import 전 데이터베이스 백업'
+  desc "Step 0: Import 전 데이터베이스 백업"
   task backup: :environment do
-    puts '=' * 50
-    puts 'Step 0: 데이터베이스 백업 시작...'
-    puts '=' * 50
+    puts "=" * 50
+    puts "Step 0: 데이터베이스 백업 시작..."
+    puts "=" * 50
 
     backup_service = DatabaseBackupService.new
-    path = backup_service.backup('pre_import')
+    path = backup_service.backup("pre_import")
     puts "✓ 백업 완료: #{path}"
   end
 
-  desc 'Step 1: 카테고리 테이블 초기화 및 txt 파일에서 카테고리 생성'
+  desc "Step 1: 카테고리 테이블 초기화 및 txt 파일에서 카테고리 생성"
   task setup_categories: :environment do
-    puts '=' * 50
-    puts 'Step 1: 카테고리 설정 시작...'
-    puts '=' * 50
+    puts "=" * 50
+    puts "Step 1: 카테고리 설정 시작..."
+    puts "=" * 50
 
     workspace = Workspace.first
-    abort '워크스페이스가 없습니다. 먼저 워크스페이스를 생성해주세요.' unless workspace
+    abort "워크스페이스가 없습니다. 먼저 워크스페이스를 생성해주세요." unless workspace
 
     puts "워크스페이스: #{workspace.name}"
 
     # 기존 카테고리 삭제
-    puts '기존 카테고리 삭제 중...'
+    puts "기존 카테고리 삭제 중..."
     workspace.category_mappings.destroy_all
     workspace.categories.destroy_all
-    puts '✓ 기존 카테고리 삭제 완료'
+    puts "✓ 기존 카테고리 삭제 완료"
 
     # txt 파일에서 카테고리 추출
     categories = Set.new
-    files = ['2024.txt', '2025.txt'].map { |f| Rails.root.join(f) }
+    files = [ "2024.txt", "2025.txt" ].map { |f| Rails.root.join(f) }
 
     files.each do |file_path|
       next unless File.exist?(file_path)
 
       puts "파일 분석 중: #{File.basename(file_path)}"
-      is_2024 = file_path.to_s.include?('2024')
+      is_2024 = file_path.to_s.include?("2024")
 
       File.foreach(file_path) do |line|
         fields = line.strip.split("\t")
@@ -55,9 +55,9 @@ namespace :import do
         # 2025.txt: 월 | 날짜 | 카테고리 | 내역 | 금액 (5컬럼)
         category_name = if is_2024
                           fields[1]
-                        else
+        else
                           fields[2]
-                        end
+        end
 
         categories << category_name if category_name.present?
       end
@@ -74,23 +74,23 @@ namespace :import do
     puts "✓ #{workspace.categories.count}개 카테고리 생성 완료"
   end
 
-  desc 'Step 2: txt 파일에서 카테고리 매핑 생성'
+  desc "Step 2: txt 파일에서 카테고리 매핑 생성"
   task build_mappings: :environment do
-    puts '=' * 50
-    puts 'Step 2: 카테고리 매핑 생성 시작...'
-    puts '=' * 50
+    puts "=" * 50
+    puts "Step 2: 카테고리 매핑 생성 시작..."
+    puts "=" * 50
 
     workspace = Workspace.first
-    abort '워크스페이스가 없습니다.' unless workspace
+    abort "워크스페이스가 없습니다." unless workspace
 
     mappings_created = 0
-    files = ['2024.txt', '2025.txt'].map { |f| Rails.root.join(f) }
+    files = [ "2024.txt", "2025.txt" ].map { |f| Rails.root.join(f) }
 
     files.each do |file_path|
       next unless File.exist?(file_path)
 
       puts "파일 처리 중: #{File.basename(file_path)}"
-      is_2024 = file_path.to_s.include?('2024')
+      is_2024 = file_path.to_s.include?("2024")
 
       File.foreach(file_path) do |line|
         fields = line.strip.split("\t")
@@ -118,7 +118,7 @@ namespace :import do
           workspace: workspace,
           merchant_pattern: merchant,
           category: category,
-          source: 'import'
+          source: "import"
         )
         mappings_created += 1
       end
@@ -128,16 +128,16 @@ namespace :import do
     puts "총 매핑 수: #{workspace.category_mappings.count}"
   end
 
-  desc 'Step 3: txt 파일에서 거래 내역 Import'
+  desc "Step 3: txt 파일에서 거래 내역 Import"
   task transactions: :environment do
-    puts '=' * 50
-    puts 'Step 3: 거래 내역 Import 시작...'
-    puts '=' * 50
+    puts "=" * 50
+    puts "Step 3: 거래 내역 Import 시작..."
+    puts "=" * 50
 
     workspace = Workspace.first
     user = User.first
-    abort '워크스페이스가 없습니다.' unless workspace
-    abort '사용자가 없습니다.' unless user
+    abort "워크스페이스가 없습니다." unless workspace
+    abort "사용자가 없습니다." unless user
 
     # Gemini 서비스 초기화 (API 키가 없으면 nil)
     gemini_service = begin
@@ -148,13 +148,13 @@ namespace :import do
     end
 
     stats = { imported: 0, skipped: 0, errors: [], gemini_calls: 0 }
-    files = ['2024.txt', '2025.txt'].map { |f| Rails.root.join(f) }
+    files = [ "2024.txt", "2025.txt" ].map { |f| Rails.root.join(f) }
 
     files.each do |file_path|
       next unless File.exist?(file_path)
 
       puts "파일 처리 중: #{File.basename(file_path)}"
-      is_2024 = file_path.to_s.include?('2024')
+      is_2024 = file_path.to_s.include?("2024")
       year = is_2024 ? 2024 : 2025
 
       File.foreach(file_path).with_index do |line, line_num|
@@ -170,7 +170,7 @@ namespace :import do
             amount_str = fields[3]
 
             # 월 파싱: "9월" → 9
-            month = month_str.gsub(/[월\s]/, '').to_i
+            month = month_str.gsub(/[월\s]/, "").to_i
             date = Date.new(year, month, 1) rescue nil
           else
             # 2025.txt: 월 | 날짜 | 카테고리 | 내역 | 금액
@@ -183,7 +183,7 @@ namespace :import do
             # 날짜 파싱: "2025.01.01" → Date
             # 날짜가 비어있으면 해당 월 1일로 설정
             if date_str.present?
-              date = Date.parse(date_str.gsub('.', '-')) rescue nil
+              date = Date.parse(date_str.gsub(".", "-")) rescue nil
             else
               month = month_str.to_i
               date = Date.new(year, month, 1) rescue nil
@@ -191,7 +191,7 @@ namespace :import do
           end
 
           # 금액 파싱: "₩29,000" → 29000
-          amount = amount_str.to_s.gsub(/[₩,\s]/, '').to_i.abs
+          amount = amount_str.to_s.gsub(/[₩,\s]/, "").to_i.abs
 
           # 금액 0원 스킵
           if amount == 0
@@ -201,7 +201,7 @@ namespace :import do
 
           # 날짜 없으면 스킵
           unless date
-            stats[:errors] << { line: line_num + 1, error: '날짜 파싱 실패', content: line.strip }
+            stats[:errors] << { line: line_num + 1, error: "날짜 파싱 실패", content: line.strip }
             next
           end
 
@@ -227,7 +227,7 @@ namespace :import do
                     workspace: workspace,
                     merchant_pattern: merchant,
                     category: category,
-                    source: 'gemini'
+                    source: "gemini"
                   )
                   stats[:gemini_calls] += 1
                 end
@@ -237,7 +237,7 @@ namespace :import do
             end
 
             # 최종 폴백: 기타 카테고리
-            category ||= workspace.categories.find_by(name: '기타')
+            category ||= workspace.categories.find_by(name: "기타")
           end
 
           # 거래 생성
@@ -247,7 +247,7 @@ namespace :import do
             description: merchant,
             amount: amount,
             category: category,
-            status: 'committed',
+            status: "committed",
             committed_at: Time.current,
             committed_by: user
           )
@@ -255,7 +255,7 @@ namespace :import do
           stats[:imported] += 1
 
           # 진행 상황 출력 (100건마다)
-          print '.' if (stats[:imported] % 100).zero?
+          print "." if (stats[:imported] % 100).zero?
         rescue StandardError => e
           stats[:errors] << { line: line_num + 1, error: e.message, content: line.strip }
         end
@@ -277,22 +277,22 @@ namespace :import do
     end
   end
 
-  desc 'Step 4: Import 후 데이터베이스 백업'
+  desc "Step 4: Import 후 데이터베이스 백업"
   task post_backup: :environment do
-    puts '=' * 50
-    puts 'Step 4: Import 후 백업 시작...'
-    puts '=' * 50
+    puts "=" * 50
+    puts "Step 4: Import 후 백업 시작..."
+    puts "=" * 50
 
     backup_service = DatabaseBackupService.new
-    path = backup_service.backup('post_import')
+    path = backup_service.backup("post_import")
     puts "✓ 백업 완료: #{path}"
   end
 
-  desc '전체 Import 파이프라인 실행 (backup → setup_categories → build_mappings → transactions → post_backup)'
+  desc "전체 Import 파이프라인 실행 (backup → setup_categories → build_mappings → transactions → post_backup)"
   task all: %i[backup setup_categories build_mappings transactions post_backup] do
-    puts '=' * 50
-    puts '🎉 전체 Import 파이프라인 완료!'
-    puts '=' * 50
+    puts "=" * 50
+    puts "🎉 전체 Import 파이프라인 완료!"
+    puts "=" * 50
 
     workspace = Workspace.first
     if workspace
@@ -303,15 +303,15 @@ namespace :import do
     end
   end
 
-  desc '백업 목록 확인'
+  desc "백업 목록 확인"
   task list_backups: :environment do
     backup_service = DatabaseBackupService.new
     backups = backup_service.list_backups
 
     if backups.empty?
-      puts '백업이 없습니다.'
+      puts "백업이 없습니다."
     else
-      puts '백업 목록:'
+      puts "백업 목록:"
       backups.each do |path|
         size = File.size(path) / 1024.0
         puts "  - #{File.basename(path)} (#{size.round(1)} KB)"

@@ -16,7 +16,7 @@ class WorkspaceMembershipTest < ActiveSupport::TestCase
     membership = WorkspaceMembership.new(
       user: users(:admin),
       workspace: workspaces(:other_workspace),
-      role: 'invalid_role'
+      role: "invalid_role"
     )
     assert_not membership.valid?
     assert_includes membership.errors[:role], "is not included in the list"
@@ -27,7 +27,7 @@ class WorkspaceMembershipTest < ActiveSupport::TestCase
     membership = WorkspaceMembership.new(
       user: existing.user,
       workspace: existing.workspace,
-      role: 'member_read'
+      role: "member_read"
     )
     assert_not membership.valid?
     assert_includes membership.errors[:user_id], "has already been taken"
@@ -73,9 +73,9 @@ class WorkspaceMembershipTest < ActiveSupport::TestCase
   end
 
   test "ROLES contains expected values" do
-    assert_includes WorkspaceMembership::ROLES, 'owner'
-    assert_includes WorkspaceMembership::ROLES, 'co_owner'
-    assert_includes WorkspaceMembership::ROLES, 'member_write'
-    assert_includes WorkspaceMembership::ROLES, 'member_read'
+    assert_includes WorkspaceMembership::ROLES, "owner"
+    assert_includes WorkspaceMembership::ROLES, "co_owner"
+    assert_includes WorkspaceMembership::ROLES, "member_write"
+    assert_includes WorkspaceMembership::ROLES, "member_read"
   end
 end

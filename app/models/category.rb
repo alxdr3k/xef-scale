@@ -7,7 +7,7 @@ class Category < ApplicationRecord
   validates :name, uniqueness: { scope: :workspace_id }
 
   def keywords_array
-    (keyword || '').split(',').map(&:strip).reject(&:blank?)
+    (keyword || "").split(",").map(&:strip).reject(&:blank?)
   end
 
   def matches?(text)

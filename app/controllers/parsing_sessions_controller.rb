@@ -2,7 +2,7 @@ class ParsingSessionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :require_workspace_write_access, only: [:create]
+  before_action :require_workspace_write_access, only: [ :create ]
 
   def index
     @parsing_sessions = @workspace.parsing_sessions
@@ -28,7 +28,7 @@ class ParsingSessionsController < ApplicationController
 
   def create
     unless params[:file].present?
-      redirect_to workspace_parsing_sessions_path(@workspace), alert: '파일을 선택해 주세요.'
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: "파일을 선택해 주세요."
       return
     end
 
@@ -37,7 +37,7 @@ class ParsingSessionsController < ApplicationController
     @processed_file = @workspace.processed_files.build(
       filename: uploaded_file.original_filename,
       original_filename: uploaded_file.original_filename,
-      status: 'pending'
+      status: "pending"
     )
     @processed_file.file.attach(uploaded_file)
 
@@ -45,10 +45,10 @@ class ParsingSessionsController < ApplicationController
       # Queue background job for parsing
       FileParsingJob.perform_later(@processed_file.id)
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  notice: '파일이 업로드되었습니다. 처리 중입니다...'
+                  notice: "파일이 업로드되었습니다. 처리 중입니다..."
     else
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  alert: '파일 업로드에 실패했습니다.'
+                  alert: "파일 업로드에 실패했습니다."
     end
   end
 end
