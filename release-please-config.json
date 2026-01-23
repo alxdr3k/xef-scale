@@ -2,8 +2,7 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "include-v-in-tag": false,
-      "release-as": "0.1.0"
+      "include-v-in-tag": false
     }
   }
 }
