@@ -8,16 +8,17 @@ class DuplicateConfirmationsController < ApplicationController
     @duplicate_confirmation = @parsing_session.duplicate_confirmations.find(params[:id])
 
     @duplicate_confirmation.resolve!(params[:decision])
+    @pending_count = @parsing_session.duplicate_confirmations.pending.count
 
     respond_to do |format|
       format.html do
-        redirect_to workspace_parsing_session_path(@workspace, @parsing_session),
+        redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
                     notice: "중복 처리가 완료되었습니다."
       end
       format.turbo_stream { flash.now[:notice] = "중복 처리가 완료되었습니다." }
     end
   rescue ArgumentError => e
-    redirect_to workspace_parsing_session_path(@workspace, @parsing_session),
+    redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
                 alert: e.message
   end
 end

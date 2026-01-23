@@ -12,6 +12,13 @@ class ReviewsController < ApplicationController
     @categories = @workspace.categories.order(:name)
     @institutions = FinancialInstitution.all
     @read_only = @parsing_session.review_committed? || @parsing_session.review_rolled_back? || @parsing_session.review_discarded?
+    @duplicate_confirmations = @parsing_session.duplicate_confirmations
+                                               .pending
+                                               .includes(
+                                                 original_transaction: [ :financial_institution, :category ],
+                                                 new_transaction: [ :financial_institution, :category ]
+                                               )
+                                               .order(:created_at)
   end
 
   def commit
@@ -42,6 +49,30 @@ class ReviewsController < ApplicationController
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
                   alert: "취소에 실패했습니다."
     end
+  end
+
+  def bulk_resolve_duplicates
+    decision = params[:decision]
+    pending_confirmations = @parsing_session.duplicate_confirmations.pending
+
+    resolved_count = 0
+    pending_confirmations.find_each do |confirmation|
+      confirmation.resolve!(decision)
+      resolved_count += 1
+    end
+
+    respond_to do |format|
+      format.html do
+        redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
+                    notice: "#{resolved_count}건의 중복 거래가 처리되었습니다."
+      end
+      format.turbo_stream do
+        flash.now[:notice] = "#{resolved_count}건의 중복 거래가 처리되었습니다."
+      end
+    end
+  rescue ArgumentError => e
+    redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
+                alert: e.message
   end
 
   def bulk_update

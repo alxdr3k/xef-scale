@@ -1,16 +1,14 @@
 <%= turbo_stream.update "flash", partial: "shared/flash" %>
-<%= turbo_stream.replace dom_id(@duplicate_confirmation) do %>
-  <div class="p-6" id="<%= dom_id(@duplicate_confirmation) %>">
-    <div class="text-gray-500">
-      <span class="font-medium">처리됨:</span>
-      <% case @duplicate_confirmation.status %>
-      <% when 'keep_both' %>
-        둘 다 유지
-      <% when 'keep_original' %>
-        기존 거래 유지
-      <% when 'keep_new' %>
-        새 거래로 교체
-      <% end %>
-    </div>
-  </div>
+
+<% if @pending_count == 0 %>
+  <%# All duplicates resolved - remove the entire section %>
+  <%= turbo_stream.update "duplicate-section", "" %>
+<% else %>
+  <%# Remove this card with fade out animation %>
+  <%= turbo_stream.remove dom_id(@duplicate_confirmation) %>
+
+  <%# Update the counter in the banner %>
+  <%= turbo_stream.update "duplicate-count" do %>
+    <%= @pending_count %>
+  <% end %>
 <% end %>

@@ -49,6 +49,14 @@
     </div>
   </div>
 
+  <!-- Duplicate Section -->
+  <% unless @read_only %>
+    <%= render "reviews/duplicate_section",
+        duplicate_confirmations: @duplicate_confirmations,
+        workspace: @workspace,
+        parsing_session: @parsing_session %>
+  <% end %>
+
   <!-- Action Bar -->
   <% unless @read_only %>
     <div class="bg-white rounded-lg shadow p-4 mb-6">

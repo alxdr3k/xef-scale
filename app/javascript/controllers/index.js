@@ -28,6 +28,9 @@ application.register("dashboard-category", DashboardCategoryController)
 import DropdownController from "./dropdown_controller"
 application.register("dropdown", DropdownController)
 
+import DuplicateReviewController from "./duplicate_review_controller"
+application.register("duplicate-review", DuplicateReviewController)
+
 import EditModalController from "./edit_modal_controller"
 application.register("edit-modal", EditModalController)
 

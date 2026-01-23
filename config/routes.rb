@@ -59,6 +59,7 @@ Rails.application.routes.draw do
         post :rollback, to: "reviews#rollback"
         post :discard, to: "reviews#discard"
         post :bulk_update, to: "reviews#bulk_update"
+        post :bulk_resolve_duplicates, to: "reviews#bulk_resolve_duplicates"
         patch "transactions/:transaction_id", to: "reviews#update_transaction", as: :update_transaction
       end
     end
