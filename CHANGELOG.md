@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/alxdr3k/xef-scale/compare/0.1.1...0.2.0) (2026-01-23)
+
+
+### Features
+
+* add CD deploy workflows (stg auto, prd with approval) ([c93c952](https://github.com/alxdr3k/xef-scale/commit/c93c952bf99a46413ad2156a802c6c76b35fd948))
+* **review:** add duplicate confirmation UI to review page ([5100531](https://github.com/alxdr3k/xef-scale/commit/5100531c3c63a2c4b72b58b36593b84c415b0d59))
+
 ## [0.1.1](https://github.com/alxdr3k/expense-tracker/compare/0.1.0...0.1.1) (2026-01-23)
 
 
