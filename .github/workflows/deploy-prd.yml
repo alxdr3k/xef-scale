@@ -17,7 +17,7 @@ jobs:
 
       - name: Deploy to PRD
         run: |
-          ssh -o "ProxyCommand=./cloudflared access ssh --hostname %h" \
+          ssh -o "ProxyCommand=./cloudflared access ssh --hostname %h --id $CF_ACCESS_CLIENT_ID --secret $CF_ACCESS_CLIENT_SECRET" \
               -o StrictHostKeyChecking=no \
               root@ssh.xeflabs.com \
               'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && cd /root/ops && git pull && kubectl apply -k apps/${{ github.event.repository.name }}/overlays/prd'
