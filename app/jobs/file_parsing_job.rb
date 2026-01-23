@@ -1,4 +1,4 @@
-require 'open3'
+require "open3"
 
 class FileParsingJob < ApplicationJob
   queue_as :default
@@ -9,8 +9,8 @@ class FileParsingJob < ApplicationJob
 
     parsing_session = processed_file.create_parsing_session!(
       workspace_id: processed_file.workspace_id,
-      status: 'processing',
-      review_status: 'pending_review'
+      status: "processing",
+      review_status: "pending_review"
     )
     parsing_session.start!
 
@@ -35,7 +35,7 @@ class FileParsingJob < ApplicationJob
             parsing_session.duplicate_confirmations.create!(
               original_transaction: duplicate,
               new_transaction: transaction,
-              status: 'pending'
+              status: "pending"
             )
             stats[:duplicate] += 1
           end
@@ -72,7 +72,7 @@ class FileParsingJob < ApplicationJob
   def parse_file(processed_file)
     filename = processed_file.filename.downcase
 
-    if filename.end_with?('.xls', '.xlsx')
+    if filename.end_with?(".xls", ".xlsx")
       # Use Python parser for Excel files (more reliable)
       parse_with_python(processed_file)
     else
@@ -99,9 +99,9 @@ class FileParsingJob < ApplicationJob
     blob_filename = processed_file.file.blob.filename.to_s
     extension = File.extname(blob_filename)
     basename = File.basename(blob_filename, extension)
-    basename = 'statement' if basename.blank?
+    basename = "statement" if basename.blank?
 
-    tempfile = Tempfile.new([basename, extension])
+    tempfile = Tempfile.new([ basename, extension ])
     tempfile.binmode
     tempfile.write(processed_file.file.download)
     tempfile.rewind
@@ -119,7 +119,7 @@ class FileParsingJob < ApplicationJob
       amount: tx_data[:amount],
       category: category,
       financial_institution: institution,
-      status: 'pending_review',
+      status: "pending_review",
       parsing_session: parsing_session
     )
   end
@@ -169,7 +169,7 @@ class FileParsingJob < ApplicationJob
           workspace: workspace,
           merchant_pattern: transaction.merchant,
           category: category,
-          source: 'gemini'
+          source: "gemini"
         )
       end
     end

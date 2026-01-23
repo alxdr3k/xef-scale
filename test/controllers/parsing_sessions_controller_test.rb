@@ -19,21 +19,21 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "show displays parsing session" do
+  test "show redirects to review for completed session" do
     get workspace_parsing_session_path(@workspace, @parsing_session)
-    assert_response :success
+    assert_redirected_to review_workspace_parsing_session_path(@workspace, @parsing_session)
   end
 
   test "create requires file" do
     post workspace_parsing_sessions_path(@workspace)
     assert_redirected_to workspace_parsing_sessions_path(@workspace)
-    assert_equal '파일을 선택해 주세요.', flash[:alert]
+    assert_equal "파일을 선택해 주세요.", flash[:alert]
   end
 
   test "create with file uploads and queues job" do
-    file = fixture_file_upload('test_statement.csv', 'text/csv')
+    file = fixture_file_upload("test_statement.csv", "text/csv")
 
-    assert_difference 'ProcessedFile.count' do
+    assert_difference "ProcessedFile.count" do
       post workspace_parsing_sessions_path(@workspace), params: { file: file }
     end
     assert_redirected_to workspace_parsing_sessions_path(@workspace)
@@ -43,13 +43,13 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
   test "member with read-only access cannot upload" do
     sign_out @user
     sign_in users(:reader)
-    file = fixture_file_upload('test_statement.csv', 'text/csv')
+    file = fixture_file_upload("test_statement.csv", "text/csv")
 
     post workspace_parsing_sessions_path(@workspace), params: { file: file }
     assert_redirected_to workspace_path(@workspace)
   end
 
-  test "show displays session with duplicate confirmations" do
+  test "show redirects completed session with duplicates to review" do
     session_with_duplicates = parsing_sessions(:completed_session)
     # Create duplicate confirmation if not exists
     unless session_with_duplicates.duplicate_confirmations.any?
@@ -57,16 +57,16 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
         parsing_session: session_with_duplicates,
         original_transaction: transactions(:food_transaction),
         new_transaction: transactions(:transport_transaction),
-        status: 'pending'
+        status: "pending"
       )
     end
 
     get workspace_parsing_session_path(@workspace, session_with_duplicates)
-    assert_response :success
+    assert_redirected_to review_workspace_parsing_session_path(@workspace, session_with_duplicates)
   end
 
   test "create with empty file params fails gracefully" do
-    post workspace_parsing_sessions_path(@workspace), params: { file: '' }
+    post workspace_parsing_sessions_path(@workspace), params: { file: "" }
     assert_redirected_to workspace_parsing_sessions_path(@workspace)
   end
 end

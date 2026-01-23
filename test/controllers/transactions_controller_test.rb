@@ -40,7 +40,7 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "index searches by query" do
-    get workspace_transactions_path(@workspace, q: '마라탕')
+    get workspace_transactions_path(@workspace, q: "마라탕")
     assert_response :success
   end
 
@@ -50,11 +50,11 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create creates transaction" do
-    assert_difference 'Transaction.count' do
+    assert_difference "Transaction.count" do
       post workspace_transactions_path(@workspace), params: {
         transaction: {
           date: Date.today,
-          merchant: 'Test Merchant',
+          merchant: "Test Merchant",
           amount: 10000,
           category_id: categories(:food).id
         }
@@ -64,9 +64,9 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create fails with invalid params" do
-    assert_no_difference 'Transaction.count' do
+    assert_no_difference "Transaction.count" do
       post workspace_transactions_path(@workspace), params: {
-        transaction: { date: '', amount: '' }
+        transaction: { date: "", amount: "" }
       }
     end
     assert_response :unprocessable_entity
@@ -79,10 +79,10 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
 
   test "update updates transaction" do
     patch workspace_transaction_path(@workspace, @transaction), params: {
-      transaction: { merchant: 'Updated Merchant' }
+      transaction: { merchant: "Updated Merchant" }
     }
     assert_redirected_to workspace_transactions_path(@workspace)
-    assert_equal 'Updated Merchant', @transaction.reload.merchant
+    assert_equal "Updated Merchant", @transaction.reload.merchant
   end
 
   test "destroy soft deletes transaction" do
@@ -105,9 +105,9 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
   test "reader cannot create transaction" do
     sign_out @user
     sign_in users(:reader)
-    assert_no_difference 'Transaction.count' do
+    assert_no_difference "Transaction.count" do
       post workspace_transactions_path(@workspace), params: {
-        transaction: { date: Date.today, merchant: 'Test', amount: 1000 }
+        transaction: { date: Date.today, merchant: "Test", amount: 1000 }
       }
     end
     assert_redirected_to workspace_path(@workspace)
@@ -117,7 +117,7 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
   test "export generates csv" do
     get export_workspace_transactions_path(@workspace, format: :csv)
     assert_response :success
-    assert_equal 'text/csv; charset=utf-8', response.content_type
+    assert_equal "text/csv; charset=utf-8", response.content_type
   end
 
   test "export filters by year" do
@@ -133,7 +133,7 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
 
   test "update with invalid params renders edit" do
     patch workspace_transaction_path(@workspace, @transaction), params: {
-      transaction: { date: '', amount: '' }
+      transaction: { date: "", amount: "" }
     }
     assert_response :unprocessable_entity
   end
@@ -149,7 +149,7 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     sign_out @user
     sign_in users(:reader)
     patch workspace_transaction_path(@workspace, @transaction), params: {
-      transaction: { merchant: 'Updated' }
+      transaction: { merchant: "Updated" }
     }
     assert_redirected_to workspace_path(@workspace)
   end

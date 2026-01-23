@@ -23,7 +23,7 @@ class ProcessedFileTest < ActiveSupport::TestCase
   end
 
   test "requires filename" do
-    pf = ProcessedFile.new(workspace: workspaces(:main_workspace), status: 'pending')
+    pf = ProcessedFile.new(workspace: workspaces(:main_workspace), status: "pending")
     assert_not pf.valid?
     assert_includes pf.errors[:filename], "can't be blank"
   end
@@ -31,8 +31,8 @@ class ProcessedFileTest < ActiveSupport::TestCase
   test "requires valid status" do
     pf = ProcessedFile.new(
       workspace: workspaces(:main_workspace),
-      filename: 'test.csv',
-      status: 'invalid_status'
+      filename: "test.csv",
+      status: "invalid_status"
     )
     assert_not pf.valid?
     assert_includes pf.errors[:status], "is not included in the list"
@@ -46,8 +46,8 @@ class ProcessedFileTest < ActiveSupport::TestCase
   test "processing? returns true for processing status" do
     pf = ProcessedFile.new(
       workspace: workspaces(:main_workspace),
-      filename: 'test.csv',
-      status: 'processing'
+      filename: "test.csv",
+      status: "processing"
     )
     assert pf.processing?
   end

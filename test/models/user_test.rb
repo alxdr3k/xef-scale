@@ -7,36 +7,36 @@ class UserTest < ActiveSupport::TestCase
   end
 
   test "user requires email" do
-    user = User.new(password: 'password123')
+    user = User.new(password: "password123")
     assert_not user.valid?
     assert_includes user.errors[:email], "can't be blank"
   end
 
   test "user requires unique email" do
     existing = users(:admin)
-    user = User.new(email: existing.email, password: 'password123')
+    user = User.new(email: existing.email, password: "password123")
     assert_not user.valid?
     assert_includes user.errors[:email], "has already been taken"
   end
 
   test "from_omniauth creates new user" do
     auth = OmniAuth::AuthHash.new(
-      provider: 'google_oauth2',
-      uid: 'new_uid_12345',
+      provider: "google_oauth2",
+      uid: "new_uid_12345",
       info: {
-        email: 'newuser@example.com',
-        name: 'New User',
-        image: 'https://example.com/avatar.jpg'
+        email: "newuser@example.com",
+        name: "New User",
+        image: "https://example.com/avatar.jpg"
       }
     )
 
-    assert_difference 'User.count', 1 do
+    assert_difference "User.count", 1 do
       User.from_omniauth(auth)
     end
 
     user = User.last
-    assert_equal 'newuser@example.com', user.email
-    assert_equal 'New User', user.name
+    assert_equal "newuser@example.com", user.email
+    assert_equal "New User", user.name
   end
 
   test "from_omniauth finds existing user" do
@@ -51,7 +51,7 @@ class UserTest < ActiveSupport::TestCase
       }
     )
 
-    assert_no_difference 'User.count' do
+    assert_no_difference "User.count" do
       user = User.from_omniauth(auth)
       assert_equal existing.id, user.id
     end

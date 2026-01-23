@@ -1,0 +1,14 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "3ede79dbb97ba57bd5b5eccb42706bb8a2fe9656f0b31e27e21a76d136713ea7",
+      "note": "Intentional: role assignment is protected by Pundit authorization in controller"
+    },
+    {
+      "fingerprint": "54acfdeb2ea33b9844d7724d91bcd13d94030beebaef8a3a5709491945d005fe",
+      "note": "False positive: custom pagy_nav helper uses url_for which escapes parameters"
+    }
+  ],
+  "updated": "2026-01-23",
+  "brakeman_version": "7.1.2"
+}

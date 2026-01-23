@@ -7,9 +7,9 @@ module Parsers
       begin
         filename = processed_file.filename.downcase
 
-        if filename.end_with?('.pdf')
+        if filename.end_with?(".pdf")
           transactions = parse_pdf(tempfile)
-        elsif filename.end_with?('.xlsx', '.xls')
+        elsif filename.end_with?(".xlsx", ".xls")
           transactions = parse_excel(tempfile)
         else
           transactions = parse_text(tempfile)
@@ -25,7 +25,7 @@ module Parsers
     protected
 
     def institution_identifier
-      'shinhan_card'
+      "shinhan_card"
     end
 
     private
@@ -51,9 +51,9 @@ module Parsers
     def find_data_start_row(sheet)
       (1..20).each do |row_num|
         row = sheet.row(row_num)
-        content = row.compact.map(&:to_s).join(' ')
+        content = row.compact.map(&:to_s).join(" ")
 
-        if content.include?('이용일') || content.include?('가맹점') || content.include?('승인')
+        if content.include?("이용일") || content.include?("가맹점") || content.include?("승인")
           return row_num + 1
         end
       end
@@ -85,7 +85,7 @@ module Parsers
     end
 
     def parse_text(tempfile)
-      text = File.read(tempfile.path, encoding: 'UTF-8')
+      text = File.read(tempfile.path, encoding: "UTF-8")
       extract_transactions_from_text(text)
     end
 
@@ -99,16 +99,16 @@ module Parsers
       lines.each_with_index do |line, i|
         # Look for date pattern (YY.MM.DD or YYYY.MM.DD)
         if line.match?(/^\d{2}\.\d{2}\.\d{2}$/)
-          yy, mm, dd = line.split('.')
+          yy, mm, dd = line.split(".")
           current_date = Date.new(2000 + yy.to_i, mm.to_i, dd.to_i)
 
           # Next line might be merchant
           next_line = lines[i + 1].to_s.strip
-          next_line = next_line.sub(/^본인\d+\s*/, '')  # Remove prefix like "본인357"
+          next_line = next_line.sub(/^본인\d+\s*/, "")  # Remove prefix like "본인357"
           current_merchant = next_line if next_line.present? && !next_line.match?(/^[\d,]+$/)
 
         elsif line.match?(/^[\d,]+$/) && current_date && current_merchant
-          amount = line.gsub(',', '').to_i
+          amount = line.gsub(",", "").to_i
 
           if amount >= 100
             transactions << build_transaction(

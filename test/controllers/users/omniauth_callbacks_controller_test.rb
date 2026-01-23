@@ -6,15 +6,15 @@ class Users::OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
   setup do
     OmniAuth.config.test_mode = true
     OmniAuth.config.mock_auth[:google_oauth2] = OmniAuth::AuthHash.new({
-      provider: 'google_oauth2',
-      uid: '123456789',
+      provider: "google_oauth2",
+      uid: "123456789",
       info: {
-        email: 'test@example.com',
-        name: 'Test User'
+        email: "test@example.com",
+        name: "Test User"
       },
       credentials: {
-        token: 'mock_token',
-        refresh_token: 'mock_refresh_token',
+        token: "mock_token",
+        refresh_token: "mock_refresh_token",
         expires_at: Time.now + 1.week
       }
     })
@@ -25,7 +25,7 @@ class Users::OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "google_oauth2 callback creates user and signs in" do
-    assert_difference 'User.count' do
+    assert_difference "User.count" do
       post user_google_oauth2_omniauth_callback_path
     end
     assert_redirected_to root_path
@@ -36,7 +36,7 @@ class Users::OmniauthCallbacksControllerTest < ActionDispatch::IntegrationTest
     # Create user first
     User.from_omniauth(OmniAuth.config.mock_auth[:google_oauth2])
 
-    assert_no_difference 'User.count' do
+    assert_no_difference "User.count" do
       post user_google_oauth2_omniauth_callback_path
     end
     assert_redirected_to root_path

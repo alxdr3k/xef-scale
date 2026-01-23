@@ -30,15 +30,15 @@ class WorkspacesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create creates workspace" do
-    assert_difference 'Workspace.count' do
-      post workspaces_path, params: { workspace: { name: 'New Workspace' } }
+    assert_difference "Workspace.count" do
+      post workspaces_path, params: { workspace: { name: "New Workspace" } }
     end
     assert_redirected_to workspace_path(Workspace.last)
   end
 
   test "create fails with invalid params" do
-    assert_no_difference 'Workspace.count' do
-      post workspaces_path, params: { workspace: { name: '' } }
+    assert_no_difference "Workspace.count" do
+      post workspaces_path, params: { workspace: { name: "" } }
     end
     assert_response :unprocessable_entity
   end
@@ -49,14 +49,14 @@ class WorkspacesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "update updates workspace" do
-    patch workspace_path(@workspace), params: { workspace: { name: 'Updated Name' } }
+    patch workspace_path(@workspace), params: { workspace: { name: "Updated Name" } }
     assert_redirected_to workspace_path(@workspace)
-    assert_equal 'Updated Name', @workspace.reload.name
+    assert_equal "Updated Name", @workspace.reload.name
   end
 
   test "destroy deletes workspace" do
-    workspace = Workspace.create!(name: 'To Delete', owner: @user)
-    assert_difference 'Workspace.count', -1 do
+    workspace = Workspace.create!(name: "To Delete", owner: @user)
+    assert_difference "Workspace.count", -1 do
       delete workspace_path(workspace)
     end
     assert_redirected_to workspaces_path
@@ -89,22 +89,22 @@ class WorkspacesControllerTest < ActionDispatch::IntegrationTest
   test "update redirects non-admin" do
     sign_out @user
     sign_in users(:member)
-    patch workspace_path(@workspace), params: { workspace: { name: 'Hacked' } }
+    patch workspace_path(@workspace), params: { workspace: { name: "Hacked" } }
     assert_redirected_to workspace_path(@workspace)
-    assert_not_equal 'Hacked', @workspace.reload.name
+    assert_not_equal "Hacked", @workspace.reload.name
   end
 
   test "destroy redirects non-admin" do
     sign_out @user
     sign_in users(:member)
-    assert_no_difference 'Workspace.count' do
+    assert_no_difference "Workspace.count" do
       delete workspace_path(@workspace)
     end
     assert_redirected_to workspace_path(@workspace)
   end
 
   test "update fails with invalid params" do
-    patch workspace_path(@workspace), params: { workspace: { name: '' } }
+    patch workspace_path(@workspace), params: { workspace: { name: "" } }
     assert_response :unprocessable_entity
   end
 end

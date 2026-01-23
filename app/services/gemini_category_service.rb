@@ -1,26 +1,26 @@
 # frozen_string_literal: true
 
-require 'net/http'
-require 'json'
+require "net/http"
+require "json"
 
 class GeminiCategoryService
   # 폴백 순서대로 시도할 모델 목록
   MODELS = [
-    'gemini-3-flash-preview',
-    'gemini-2.5-flash-preview-09-2025',
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite-preview-09-2025',
-    'gemini-2.5-flash-lite'
+    "gemini-3-flash-preview",
+    "gemini-2.5-flash-preview-09-2025",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite-preview-09-2025",
+    "gemini-2.5-flash-lite"
   ].freeze
 
-  API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
+  API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
   class ApiError < StandardError; end
   class AllModelsFailedError < StandardError; end
 
   def initialize(api_key = nil)
-    @api_key = api_key || ENV.fetch('GEMINI_API_KEY', nil)
-    raise ArgumentError, 'GEMINI_API_KEY가 설정되지 않았습니다' if @api_key.blank?
+    @api_key = api_key || ENV.fetch("GEMINI_API_KEY", nil)
+    raise ArgumentError, "GEMINI_API_KEY가 설정되지 않았습니다" if @api_key.blank?
   end
 
   # 여러 merchant에 대해 한 번에 카테고리 추천 (배치 처리)
@@ -65,18 +65,18 @@ class GeminiCategoryService
   # @param available_categories [Array<Category>] 선택 가능한 카테고리 목록
   # @return [String] 추천된 카테고리 이름
   def suggest_category(merchant_name, available_categories)
-    results = suggest_categories_batch([merchant_name], available_categories)
+    results = suggest_categories_batch([ merchant_name ], available_categories)
     results[merchant_name] || fallback_category_name(available_categories)
   end
 
   private
 
   def fallback_category_name(available_categories)
-    available_categories.find { |c| c.name == '기타' }&.name || available_categories.first&.name
+    available_categories.find { |c| c.name == "기타" }&.name || available_categories.first&.name
   end
 
   def build_batch_prompt(merchants, categories)
-    category_list = categories.map(&:name).join(', ')
+    category_list = categories.map(&:name).join(", ")
     merchant_list = merchants.each_with_index.map { |m, i| "#{i + 1}. #{m}" }.join("\n")
 
     <<~PROMPT
@@ -114,9 +114,9 @@ class GeminiCategoryService
     http.open_timeout = 10
 
     request = Net::HTTP::Post.new(uri)
-    request['Content-Type'] = 'application/json'
+    request["Content-Type"] = "application/json"
     request.body = {
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: [ { parts: [ { text: prompt } ] } ],
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: max_tokens,
@@ -139,7 +139,7 @@ class GeminiCategoryService
   end
 
   def parse_batch_response(response, merchants, available_categories)
-    text = response.dig('candidates', 0, 'content', 'parts', 0, 'text')&.strip
+    text = response.dig("candidates", 0, "content", "parts", 0, "text")&.strip
     return {} if text.blank?
 
     category_names = available_categories.map(&:name)

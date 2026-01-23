@@ -2,10 +2,10 @@ class ParserRouter
   class UnknownFormatError < StandardError; end
 
   SIGNATURES = {
-    toss_bank: ['토스뱅크', 'Toss', '수신자', '거래유형'],
-    kakao_bank: ['kakao', '카카오뱅크', '거래일시', '거래구분'],
-    shinhan_card: ['신한카드', '이용일자', '승인번호'],
-    hana_card: ['하나카드', '이용일', '가맹점명', '이용대금 명세서', '거래일자']
+    toss_bank: [ "토스뱅크", "Toss", "수신자", "거래유형" ],
+    kakao_bank: [ "kakao", "카카오뱅크", "거래일시", "거래구분" ],
+    shinhan_card: [ "신한카드", "이용일자", "승인번호" ],
+    hana_card: [ "하나카드", "이용일", "가맹점명", "이용대금 명세서", "거래일자" ]
   }.freeze
 
   def self.route(processed_file)
@@ -27,18 +27,18 @@ class ParserRouter
   end
 
   def self.read_file_content(processed_file)
-    return '' unless processed_file.file.attached?
+    return "" unless processed_file.file.attached?
 
     filename = processed_file.filename.downcase
 
-    if filename.end_with?('.xlsx', '.xls')
+    if filename.end_with?(".xlsx", ".xls")
       read_excel_content(processed_file)
-    elsif filename.end_with?('.csv')
+    elsif filename.end_with?(".csv")
       read_csv_content(processed_file)
-    elsif filename.end_with?('.pdf')
+    elsif filename.end_with?(".pdf")
       read_pdf_content(processed_file)
     else
-      ''
+      ""
     end
   end
 
@@ -48,18 +48,18 @@ class ParserRouter
     # Determine extension from content_type
     content_type = processed_file.file.blob.content_type
     extension = case content_type
-                when 'application/vnd.ms-excel' then :xls
-                when 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' then :xlsx
-                else :xls
-                end
+    when "application/vnd.ms-excel" then :xls
+    when "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" then :xlsx
+    else :xls
+    end
 
     xlsx = Roo::Spreadsheet.open(tempfile.path, extension: extension)
     sheet = xlsx.sheet(0)
 
     # Read first 10 rows for identification
     content = []
-    (1..[10, sheet.last_row].min).each do |row|
-      content << sheet.row(row).compact.join(' ')
+    (1..[ 10, sheet.last_row ].min).each do |row|
+      content << sheet.row(row).compact.join(" ")
     end
 
     tempfile.close
@@ -70,7 +70,7 @@ class ParserRouter
 
   def self.read_csv_content(processed_file)
     tempfile = download_to_tempfile(processed_file)
-    content = File.read(tempfile.path, encoding: 'UTF-8')
+    content = File.read(tempfile.path, encoding: "UTF-8")
     tempfile.close
     tempfile.unlink
     content[0..2000]  # First 2000 chars
@@ -92,8 +92,8 @@ class ParserRouter
     extension = File.extname(blob_filename)
     basename = File.basename(blob_filename, extension)
     # Ensure basename is not empty
-    basename = 'statement' if basename.blank?
-    tempfile = Tempfile.new([basename, extension])
+    basename = "statement" if basename.blank?
+    tempfile = Tempfile.new([ basename, extension ])
     tempfile.binmode
     tempfile.write(processed_file.file.download)
     tempfile.rewind

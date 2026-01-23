@@ -6,6 +6,6 @@ class CreateAllowanceTransactions < ActiveRecord::Migration[8.1]
 
       t.timestamps
     end
-    add_index :allowance_transactions, [:expense_transaction_id, :user_id], unique: true
+    add_index :allowance_transactions, [ :expense_transaction_id, :user_id ], unique: true
   end
 end
