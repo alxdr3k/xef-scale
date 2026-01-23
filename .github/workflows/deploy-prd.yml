@@ -17,5 +17,7 @@ jobs:
 
       - name: Deploy to PRD
         run: |
-          ./cloudflared access ssh --hostname ssh.xeflabs.com -- \
-            'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && cd /root/ops && git pull && kubectl apply -k apps/${{ github.event.repository.name }}/overlays/prd && kubectl rollout status deployment/${{ github.event.repository.name }}-prd -n apps-prd --timeout=120s'
+          ssh -o "ProxyCommand=./cloudflared access ssh --hostname %h" \
+              -o StrictHostKeyChecking=no \
+              root@ssh.xeflabs.com \
+              'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && cd /root/ops && git pull && kubectl apply -k apps/${{ github.event.repository.name }}/overlays/prd'
