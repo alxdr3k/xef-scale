@@ -42,6 +42,6 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
   test "show displays recent transactions section" do
     get dashboard_path
     assert_response :success
-    assert_select 'h2', text: /최근 거래/
+    assert_select "h2", text: /최근 거래/
   end
 end

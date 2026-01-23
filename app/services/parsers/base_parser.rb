@@ -20,8 +20,8 @@ module Parsers
       blob_filename = processed_file.file.blob.filename.to_s
       extension = File.extname(blob_filename)
       basename = File.basename(blob_filename, extension)
-      basename = 'statement' if basename.blank?
-      tempfile = Tempfile.new([basename, extension])
+      basename = "statement" if basename.blank?
+      tempfile = Tempfile.new([ basename, extension ])
       tempfile.binmode
       tempfile.write(processed_file.file.download)
       tempfile.rewind
@@ -31,10 +31,10 @@ module Parsers
     def open_spreadsheet(tempfile)
       content_type = processed_file.file.blob.content_type
       extension = case content_type
-                  when 'application/vnd.ms-excel' then :xls
-                  when 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' then :xlsx
-                  else :xls
-                  end
+      when "application/vnd.ms-excel" then :xls
+      when "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" then :xlsx
+      else :xls
+      end
       Roo::Spreadsheet.open(tempfile.path, extension: extension)
     end
 
@@ -43,14 +43,14 @@ module Parsers
 
       # Common date formats
       formats = [
-        '%Y.%m.%d',
-        '%Y-%m-%d',
-        '%Y/%m/%d',
-        '%y.%m.%d',
-        '%y-%m-%d',
-        '%y/%m/%d',
-        '%m/%d/%Y',
-        '%d/%m/%Y'
+        "%Y.%m.%d",
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+        "%y.%m.%d",
+        "%y-%m-%d",
+        "%y/%m/%d",
+        "%m/%d/%Y",
+        "%d/%m/%Y"
       ]
 
       formats.each do |fmt|
@@ -71,7 +71,7 @@ module Parsers
       return 0 if amount_string.blank?
 
       # Remove currency symbols, commas, spaces
-      cleaned = amount_string.to_s.gsub(/[^\d.-]/, '')
+      cleaned = amount_string.to_s.gsub(/[^\d.-]/, "")
       cleaned.to_i.abs
     end
 

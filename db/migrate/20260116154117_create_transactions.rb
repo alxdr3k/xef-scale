@@ -13,8 +13,8 @@ class CreateTransactions < ActiveRecord::Migration[8.1]
 
       t.timestamps
     end
-    add_index :transactions, [:workspace_id, :date]
-    add_index :transactions, [:workspace_id, :category_id]
-    add_index :transactions, [:date, :merchant, :amount]
+    add_index :transactions, [ :workspace_id, :date ]
+    add_index :transactions, [ :workspace_id, :category_id ]
+    add_index :transactions, [ :date, :merchant, :amount ]
   end
 end

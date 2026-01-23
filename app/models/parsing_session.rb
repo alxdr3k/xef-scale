@@ -1,8 +1,8 @@
 class ParsingSession < ApplicationRecord
   belongs_to :workspace
   belongs_to :processed_file
-  belongs_to :committed_by, class_name: 'User', optional: true
-  belongs_to :rolled_back_by, class_name: 'User', optional: true
+  belongs_to :committed_by, class_name: "User", optional: true
+  belongs_to :rolled_back_by, class_name: "User", optional: true
   has_many :duplicate_confirmations, dependent: :destroy
   has_many :transactions, dependent: :nullify
   has_many :notifications, as: :notifiable, dependent: :destroy
@@ -14,34 +14,34 @@ class ParsingSession < ApplicationRecord
   validates :review_status, inclusion: { in: REVIEW_STATUSES }, allow_nil: true
 
   scope :recent, -> { order(created_at: :desc) }
-  scope :completed, -> { where(status: 'completed') }
-  scope :pending_review, -> { where(review_status: 'pending_review') }
-  scope :review_committed, -> { where(review_status: 'committed') }
+  scope :completed, -> { where(status: "completed") }
+  scope :pending_review, -> { where(review_status: "pending_review") }
+  scope :review_committed, -> { where(review_status: "committed") }
   scope :needs_review, -> { completed.pending_review }
 
   def pending?
-    status == 'pending'
+    status == "pending"
   end
 
   def processing?
-    status == 'processing'
+    status == "processing"
   end
 
   def completed?
-    status == 'completed'
+    status == "completed"
   end
 
   def failed?
-    status == 'failed'
+    status == "failed"
   end
 
   def start!
-    update!(status: 'processing', started_at: Time.current)
+    update!(status: "processing", started_at: Time.current)
   end
 
   def complete!(stats = {})
     update!(
-      status: 'completed',
+      status: "completed",
       completed_at: Time.current,
       total_count: stats[:total] || 0,
       success_count: stats[:success] || 0,
@@ -51,7 +51,7 @@ class ParsingSession < ApplicationRecord
   end
 
   def fail!
-    update!(status: 'failed', completed_at: Time.current)
+    update!(status: "failed", completed_at: Time.current)
   end
 
   def duration
@@ -64,23 +64,23 @@ class ParsingSession < ApplicationRecord
   end
 
   def pending_duplicates
-    duplicate_confirmations.where(status: 'pending')
+    duplicate_confirmations.where(status: "pending")
   end
 
   def review_pending?
-    review_status == 'pending_review'
+    review_status == "pending_review"
   end
 
   def review_committed?
-    review_status == 'committed'
+    review_status == "committed"
   end
 
   def review_rolled_back?
-    review_status == 'rolled_back'
+    review_status == "rolled_back"
   end
 
   def review_discarded?
-    review_status == 'discarded'
+    review_status == "discarded"
   end
 
   def can_commit?
@@ -103,7 +103,7 @@ class ParsingSession < ApplicationRecord
         tx.commit!(user)
       end
       update!(
-        review_status: 'committed',
+        review_status: "committed",
         committed_at: Time.current,
         committed_by: user
       )
@@ -117,7 +117,7 @@ class ParsingSession < ApplicationRecord
     ActiveRecord::Base.transaction do
       transactions.committed.where(parsing_session_id: id).find_each(&:rollback!)
       update!(
-        review_status: 'rolled_back',
+        review_status: "rolled_back",
         rolled_back_at: Time.current,
         rolled_back_by: user
       )
@@ -130,7 +130,7 @@ class ParsingSession < ApplicationRecord
 
     ActiveRecord::Base.transaction do
       transactions.pending_review.destroy_all
-      update!(review_status: 'discarded')
+      update!(review_status: "discarded")
     end
     true
   end

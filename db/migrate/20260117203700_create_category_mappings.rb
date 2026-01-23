@@ -11,6 +11,6 @@ class CreateCategoryMappings < ActiveRecord::Migration[8.1]
       t.timestamps
     end
 
-    add_index :category_mappings, [:workspace_id, :merchant_pattern], unique: true, name: 'idx_category_mappings_workspace_merchant'
+    add_index :category_mappings, [ :workspace_id, :merchant_pattern ], unique: true, name: 'idx_category_mappings_workspace_merchant'
   end
 end

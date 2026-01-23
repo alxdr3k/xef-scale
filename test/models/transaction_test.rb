@@ -52,13 +52,13 @@ class TransactionTest < ActiveSupport::TestCase
   end
 
   test "search scope filters by merchant, description, or notes" do
-    results = Transaction.search('마라탕')
+    results = Transaction.search("마라탕")
     assert_includes results, transactions(:food_transaction)
     assert_not_includes results, transactions(:transport_transaction)
   end
 
   test "search scope returns all when query is blank" do
-    results = Transaction.search('')
+    results = Transaction.search("")
     assert_equal Transaction.count, results.count
   end
 
@@ -76,17 +76,17 @@ class TransactionTest < ActiveSupport::TestCase
 
   test "formatted_date returns yyyy.mm.dd format" do
     transaction = Transaction.new(date: Date.new(2024, 1, 15))
-    assert_equal '2024.01.15', transaction.formatted_date
+    assert_equal "2024.01.15", transaction.formatted_date
   end
 
   test "formatted_amount adds comma separators" do
     transaction = Transaction.new(amount: 1234567)
-    assert_equal '1,234,567', transaction.formatted_amount
+    assert_equal "1,234,567", transaction.formatted_amount
   end
 
   test "month returns mm format" do
     transaction = Transaction.new(date: Date.new(2024, 3, 15))
-    assert_equal '03', transaction.month
+    assert_equal "03", transaction.month
   end
 
   test "allowance? returns true when allowance_transaction exists" do
@@ -128,7 +128,7 @@ class TransactionTest < ActiveSupport::TestCase
   end
 
   test "by_institution returns all when institution_id is blank" do
-    results = Transaction.by_institution('')
+    results = Transaction.by_institution("")
     assert_equal Transaction.count, results.count
   end
 
@@ -139,12 +139,12 @@ class TransactionTest < ActiveSupport::TestCase
 
   test "formatted_amount handles small numbers" do
     transaction = Transaction.new(amount: 99)
-    assert_equal '99', transaction.formatted_amount
+    assert_equal "99", transaction.formatted_amount
   end
 
   test "formatted_amount handles zero" do
     transaction = Transaction.new(amount: 0)
-    assert_equal '0', transaction.formatted_amount
+    assert_equal "0", transaction.formatted_amount
   end
 
   test "belongs to workspace" do
@@ -168,7 +168,7 @@ class TransactionTest < ActiveSupport::TestCase
       parsing_session: parsing_sessions(:completed_session),
       original_transaction: transaction,
       new_transaction: transactions(:transport_transaction),
-      status: 'pending'
+      status: "pending"
     )
     assert transaction.duplicate_confirmations_as_original.any?
   end

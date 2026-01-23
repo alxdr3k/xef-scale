@@ -49,7 +49,7 @@ class AllowanceTransactionTest < ActiveSupport::TestCase
     transaction = transactions(:transport_transaction)
     user = users(:member)
 
-    assert_difference 'AllowanceTransaction.count', 1 do
+    assert_difference "AllowanceTransaction.count", 1 do
       AllowanceTransaction.mark_as_allowance!(transaction, user)
     end
 
@@ -63,7 +63,7 @@ class AllowanceTransactionTest < ActiveSupport::TestCase
     transaction = allowance.expense_transaction
     user = allowance.user
 
-    assert_difference 'AllowanceTransaction.count', -1 do
+    assert_difference "AllowanceTransaction.count", -1 do
       AllowanceTransaction.unmark_as_allowance!(transaction, user)
     end
   end
@@ -72,7 +72,7 @@ class AllowanceTransactionTest < ActiveSupport::TestCase
     transaction = transactions(:transport_transaction)
     user = users(:member)
 
-    assert_no_difference 'AllowanceTransaction.count' do
+    assert_no_difference "AllowanceTransaction.count" do
       AllowanceTransaction.unmark_as_allowance!(transaction, user)
     end
   end

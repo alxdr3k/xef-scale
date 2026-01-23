@@ -11,7 +11,7 @@ class DuplicateConfirmationTest < ActiveSupport::TestCase
       parsing_session: parsing_sessions(:completed_session),
       original_transaction: transactions(:food_transaction),
       new_transaction: transactions(:transport_transaction),
-      status: 'invalid'
+      status: "invalid"
     )
     assert_not dc.valid?
     assert_includes dc.errors[:status], "is not included in the list"
@@ -35,7 +35,7 @@ class DuplicateConfirmationTest < ActiveSupport::TestCase
   test "keep_both! updates status to keep_both" do
     dc = duplicate_confirmations(:pending_duplicate)
     dc.keep_both!
-    assert_equal 'keep_both', dc.status
+    assert_equal "keep_both", dc.status
   end
 
   test "keep_original! soft deletes new transaction" do
@@ -44,7 +44,7 @@ class DuplicateConfirmationTest < ActiveSupport::TestCase
 
     dc.keep_original!
 
-    assert_equal 'keep_original', dc.status
+    assert_equal "keep_original", dc.status
     assert new_tx.reload.deleted
   end
 
@@ -54,14 +54,14 @@ class DuplicateConfirmationTest < ActiveSupport::TestCase
 
     dc.keep_new!
 
-    assert_equal 'keep_new', dc.status
+    assert_equal "keep_new", dc.status
     assert original_tx.reload.deleted
   end
 
   test "resolve! with keep_both calls keep_both!" do
     dc = duplicate_confirmations(:pending_duplicate)
-    dc.resolve!('keep_both')
-    assert_equal 'keep_both', dc.status
+    dc.resolve!("keep_both")
+    assert_equal "keep_both", dc.status
   end
 
   test "resolve! with keep_original calls keep_original!" do
@@ -69,10 +69,10 @@ class DuplicateConfirmationTest < ActiveSupport::TestCase
       parsing_session: parsing_sessions(:completed_session),
       original_transaction: transactions(:shopping_transaction),
       new_transaction: transactions(:other_workspace_transaction),
-      status: 'pending'
+      status: "pending"
     )
-    dc.resolve!('keep_original')
-    assert_equal 'keep_original', dc.status
+    dc.resolve!("keep_original")
+    assert_equal "keep_original", dc.status
   end
 
   test "resolve! with keep_new calls keep_new!" do
@@ -80,16 +80,16 @@ class DuplicateConfirmationTest < ActiveSupport::TestCase
       parsing_session: parsing_sessions(:completed_session),
       original_transaction: transactions(:shopping_transaction),
       new_transaction: transactions(:other_workspace_transaction),
-      status: 'pending'
+      status: "pending"
     )
-    dc.resolve!('keep_new')
-    assert_equal 'keep_new', dc.status
+    dc.resolve!("keep_new")
+    assert_equal "keep_new", dc.status
   end
 
   test "resolve! raises error for invalid decision" do
     dc = duplicate_confirmations(:pending_duplicate)
     assert_raises(ArgumentError) do
-      dc.resolve!('invalid')
+      dc.resolve!("invalid")
     end
   end
 

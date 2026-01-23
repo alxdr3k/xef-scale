@@ -4,9 +4,9 @@ class TestSessionsController < ApplicationController
   def create
     user = if params[:email].present?
              User.find_by!(email: params[:email])
-           else
+    else
              User.find(params[:user_id])
-           end
+    end
     sign_in(user)
     redirect_to root_path
   end

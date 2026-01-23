@@ -29,16 +29,16 @@ class WorkspaceMembershipsControllerTest < ActionDispatch::IntegrationTest
   test "update changes member role" do
     membership = @workspace.workspace_memberships.find_by(user: @member)
     patch workspace_membership_path(@workspace, membership), params: {
-      workspace_membership: { role: 'member_read' }
+      workspace_membership: { role: "member_read" }
     }
     assert_redirected_to settings_workspace_path(@workspace)
-    assert_equal 'member_read', membership.reload.role
+    assert_equal "member_read", membership.reload.role
   end
 
   test "update cannot change owner role" do
-    owner_membership = @workspace.workspace_memberships.find_by(role: 'owner')
+    owner_membership = @workspace.workspace_memberships.find_by(role: "owner")
     patch workspace_membership_path(@workspace, owner_membership), params: {
-      workspace_membership: { role: 'member_read' }
+      workspace_membership: { role: "member_read" }
     }
     assert_redirected_to settings_workspace_path(@workspace)
     assert_match /소유자의 역할은 변경할 수 없습니다/, flash[:alert]
@@ -46,15 +46,15 @@ class WorkspaceMembershipsControllerTest < ActionDispatch::IntegrationTest
 
   test "destroy removes member" do
     membership = @workspace.workspace_memberships.find_by(user: @member)
-    assert_difference 'WorkspaceMembership.count', -1 do
+    assert_difference "WorkspaceMembership.count", -1 do
       delete workspace_membership_path(@workspace, membership)
     end
     assert_redirected_to settings_workspace_path(@workspace)
   end
 
   test "destroy cannot remove owner" do
-    owner_membership = @workspace.workspace_memberships.find_by(role: 'owner')
-    assert_no_difference 'WorkspaceMembership.count' do
+    owner_membership = @workspace.workspace_memberships.find_by(role: "owner")
+    assert_no_difference "WorkspaceMembership.count" do
       delete workspace_membership_path(@workspace, owner_membership)
     end
     assert_redirected_to settings_workspace_path(@workspace)

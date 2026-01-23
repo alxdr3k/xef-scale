@@ -28,7 +28,7 @@ class WorkspaceInvitationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create creates invitation" do
-    assert_difference 'WorkspaceInvitation.count' do
+    assert_difference "WorkspaceInvitation.count" do
       post workspace_invitations_path(@workspace), params: {
         workspace_invitation: {
           expires_at: 7.days.from_now,
@@ -40,14 +40,14 @@ class WorkspaceInvitationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "destroy deletes invitation" do
-    assert_difference 'WorkspaceInvitation.count', -1 do
+    assert_difference "WorkspaceInvitation.count", -1 do
       delete workspace_invitation_path(@workspace, @invitation)
     end
     assert_redirected_to settings_workspace_path(@workspace)
   end
 
   test "join with invalid token redirects" do
-    get join_workspace_path(token: 'invalid_token')
+    get join_workspace_path(token: "invalid_token")
     assert_redirected_to root_path
     assert_match /유효하지 않은 초대 링크/, flash[:alert]
   end
@@ -67,11 +67,11 @@ class WorkspaceInvitationsControllerTest < ActionDispatch::IntegrationTest
 
   test "join adds user to workspace" do
     # Create new user who is not in the workspace
-    new_user = User.create!(email: 'new@example.com', password: 'password123', name: 'New User')
+    new_user = User.create!(email: "new@example.com", password: "password123", name: "New User")
     sign_out @admin
     sign_in new_user
 
-    assert_difference 'WorkspaceMembership.count' do
+    assert_difference "WorkspaceMembership.count" do
       get join_workspace_path(token: @invitation.token)
     end
     assert_redirected_to workspace_path(@workspace)
@@ -86,13 +86,13 @@ class WorkspaceInvitationsControllerTest < ActionDispatch::IntegrationTest
   test "join with maxed out invitation redirects" do
     @invitation.update!(max_uses: 1)
     # First, use the invitation
-    new_user = User.create!(email: 'first@example.com', password: 'password123', name: 'First')
+    new_user = User.create!(email: "first@example.com", password: "password123", name: "First")
     sign_out @admin
     sign_in new_user
     get join_workspace_path(token: @invitation.token)
 
     # Now try with another user
-    another_user = User.create!(email: 'second@example.com', password: 'password123', name: 'Second')
+    another_user = User.create!(email: "second@example.com", password: "password123", name: "Second")
     sign_out new_user
     sign_in another_user
     get join_workspace_path(token: @invitation.token)
@@ -100,7 +100,7 @@ class WorkspaceInvitationsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create with defaults works" do
-    assert_difference 'WorkspaceInvitation.count' do
+    assert_difference "WorkspaceInvitation.count" do
       post workspace_invitations_path(@workspace), params: {
         workspace_invitation: { max_uses: 10 }
       }
@@ -111,7 +111,7 @@ class WorkspaceInvitationsControllerTest < ActionDispatch::IntegrationTest
   test "non-admin cannot destroy invitation" do
     sign_out @admin
     sign_in @member
-    assert_no_difference 'WorkspaceInvitation.count' do
+    assert_no_difference "WorkspaceInvitation.count" do
       delete workspace_invitation_path(@workspace, @invitation)
     end
     assert_redirected_to workspace_path(@workspace)
@@ -120,7 +120,7 @@ class WorkspaceInvitationsControllerTest < ActionDispatch::IntegrationTest
   test "non-admin cannot create invitation" do
     sign_out @admin
     sign_in @member
-    assert_no_difference 'WorkspaceInvitation.count' do
+    assert_no_difference "WorkspaceInvitation.count" do
       post workspace_invitations_path(@workspace), params: {
         workspace_invitation: { max_uses: 5 }
       }

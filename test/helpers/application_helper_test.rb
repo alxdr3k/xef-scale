@@ -10,7 +10,7 @@ class ApplicationHelperTest < ActionView::TestCase
       @prev = opts[:prev]
       @next = opts[:next]
       @page = opts[:page] || 1
-      @series_data = opts[:series] || [1]
+      @series_data = opts[:series] || [ 1 ]
     end
 
     def series
@@ -21,7 +21,7 @@ class ApplicationHelperTest < ActionView::TestCase
   test "pagy_nav returns empty string when pages is 1" do
     pagy = MockPagy.new(pages: 1)
     result = pagy_nav(pagy)
-    assert_equal '', result
+    assert_equal "", result
   end
 
   # Test that Pagy::Frontend is included

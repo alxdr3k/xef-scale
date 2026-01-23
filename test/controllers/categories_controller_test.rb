@@ -32,18 +32,18 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create creates category" do
-    assert_difference 'Category.count' do
+    assert_difference "Category.count" do
       post workspace_categories_path(@workspace), params: {
-        category: { name: '새 카테고리', keyword: '키워드', color: '#FF0000' }
+        category: { name: "새 카테고리", keyword: "키워드", color: "#FF0000" }
       }
     end
     assert_redirected_to workspace_categories_path(@workspace)
   end
 
   test "create renders errors for invalid params" do
-    assert_no_difference 'Category.count' do
+    assert_no_difference "Category.count" do
       post workspace_categories_path(@workspace), params: {
-        category: { name: '' }
+        category: { name: "" }
       }
     end
     assert_response :unprocessable_entity
@@ -56,22 +56,22 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
 
   test "update updates category" do
     patch workspace_category_path(@workspace, @category), params: {
-      category: { name: '수정된 이름' }
+      category: { name: "수정된 이름" }
     }
     assert_redirected_to workspace_categories_path(@workspace)
-    assert_equal '수정된 이름', @category.reload.name
+    assert_equal "수정된 이름", @category.reload.name
   end
 
   test "update renders errors for invalid params" do
     patch workspace_category_path(@workspace, @category), params: {
-      category: { name: '' }
+      category: { name: "" }
     }
     assert_response :unprocessable_entity
   end
 
   test "destroy deletes category" do
-    category = Category.create!(name: 'To Delete', workspace: @workspace)
-    assert_difference 'Category.count', -1 do
+    category = Category.create!(name: "To Delete", workspace: @workspace)
+    assert_difference "Category.count", -1 do
       delete workspace_category_path(@workspace, category)
     end
     assert_redirected_to workspace_categories_path(@workspace)
