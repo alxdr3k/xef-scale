@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.0](https://github.com/alxdr3k/xef-scale/compare/0.2.0...0.3.0) (2026-01-24)
+
+
+### Features
+
+* add SSH key setup for deploy workflows ([47bfdfb](https://github.com/alxdr3k/xef-scale/commit/47bfdfb2e65e436cfb1459f3aa2671b0c438c934))
+* switch to Cloudflare Tunnel for deployments ([e654ecb](https://github.com/alxdr3k/xef-scale/commit/e654ecb644b00f8d653ef6bb0eead64d9362ed6f))
+
+
+### Bug Fixes
+
+* add --id and --secret flags to cloudflared ([8515f65](https://github.com/alxdr3k/xef-scale/commit/8515f6514a55a76f0fcdb426c22f7b946c3b553a))
+* use SSH ProxyCommand for cloudflared ([d0876d4](https://github.com/alxdr3k/xef-scale/commit/d0876d4661989c25664e5e731582234179ac5fc3))
+* use SSH ProxyCommand in release.yml ([3ee79ec](https://github.com/alxdr3k/xef-scale/commit/3ee79ec9cf645032680c7ef31458f13718678c55))
+
 ## [0.2.0](https://github.com/alxdr3k/xef-scale/compare/0.1.1...0.2.0) (2026-01-23)
 
 
