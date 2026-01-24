@@ -95,37 +95,6 @@ expense-tracker/
 
 This project uses Korean for transaction descriptions, merchant names, and categories. UI can be internationalized via Rails I18n.
 
-## CI/CD 워크플로우 (필수 준수)
-
-**절대 직접 빌드/배포하지 마세요.** 모든 빌드와 배포는 GitHub Actions를 통해 자동화되어 있습니다.
-
-### 금지 사항
-
-- `docker build` 직접 실행 금지
-- `docker push` 직접 실행 금지
-- ghcr.io에 이미지 직접 푸시 금지
-
-### 올바른 배포 프로세스
-
-1. 코드 변경 후 Conventional Commits 형식으로 커밋
-2. dev 브랜치에 푸시
-3. main으로 PR 생성 및 머지
-4. release-please가 자동으로 Release PR 생성
-5. Release PR 머지 → 자동으로 Docker 이미지 빌드 및 ghcr.io 푸시
-6. ops 레포의 kustomization.yaml에서 이미지 태그 업데이트
-7. kubectl apply로 배포 (또는 CD workflow)
-
-### Dockerfile 수정 시
-
-Dockerfile을 수정했다면:
-- 직접 빌드하지 말고 커밋 후 CI/CD를 통해 빌드
-- 로컬 테스트가 필요하면 `bin/dev`로 개발 서버 실행
-
-### Claude Code 관련 파일 수정 시
-
-`.claude/`, `CLAUDE.md` 등 Claude Code 관련 파일 수정 시:
-- `chore` 타입 사용 (예: `chore: update claude code commands`)
-
 ## 배포
 
 k8s 클러스터에 배포 (ops 레포의 Kustomize 사용)
