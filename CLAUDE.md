@@ -48,19 +48,12 @@ Final transaction format:
 - **금액** (amount): Integer amount
 - **지출 위치** (source): Bank/card name
 
-## Key Models
+## 참조 안내
 
-1. **User** - Devise authentication + Google OAuth
-2. **Workspace** - Multi-tenant support for shared expense tracking
-3. **WorkspaceMembership** - Roles: owner, co_owner, member_write, member_read
-4. **WorkspaceInvitation** - Invite links for workspace sharing
-5. **Category** - Expense categories (식비, 교통, etc.)
-6. **FinancialInstitution** - Bank/card definitions
-7. **Transaction** - Core expense records
-8. **AllowanceTransaction** - Private allowance tracking
-9. **ProcessedFile** - File upload tracking
-10. **ParsingSession** - Batch parsing metadata
-11. **DuplicateConfirmation** - Duplicate transaction handling
+- 모델: `app/models/`
+- DB 스키마: `db/schema.rb`
+- API 라우트: `config/routes.rb`
+- 환경변수: Doppler `xef-scale` 프로젝트 (`.env.example` 참조)
 
 ## Development Commands
 
@@ -101,3 +94,33 @@ expense-tracker/
 ## Language Note
 
 This project uses Korean for transaction descriptions, merchant names, and categories. UI can be internationalized via Rails I18n.
+
+## 배포
+
+k8s 클러스터에 배포 (ops 레포의 Kustomize 사용)
+
+| 환경 | 도메인 | Namespace |
+|------|--------|-----------|
+| stg | stg-scale.xeflabs.com | apps-stg |
+| prd | scale.xeflabs.com | apps-prd |
+
+```bash
+kubectl apply -k ~/ws/xeflabs/ops/apps/xef-scale/overlays/{stg,prd}
+```
+
+환경변수: `.env.example` 참조, Doppler `xef-scale` 프로젝트에서 관리
+
+## 라이브러리 문서 조회 (context7)
+
+다음 경우에만 context7으로 문서 확인:
+- 에러/경고 발생 시 (특히 deprecation)
+- 최신 버전 기능 사용 시
+- 불확실하거나 기억이 모호할 때
+
+### 주요 라이브러리
+- rails (8.x), turbo-rails, stimulus-rails
+- devise, omniauth, omniauth-google-oauth2
+- pundit (authorization)
+- solid_queue, solid_cache
+- roo (Excel), pdf-reader (PDF)
+- tailwindcss
