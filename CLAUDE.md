@@ -48,19 +48,12 @@ Final transaction format:
 - **금액** (amount): Integer amount
 - **지출 위치** (source): Bank/card name
 
-## Key Models
+## 참조 안내
 
-1. **User** - Devise authentication + Google OAuth
-2. **Workspace** - Multi-tenant support for shared expense tracking
-3. **WorkspaceMembership** - Roles: owner, co_owner, member_write, member_read
-4. **WorkspaceInvitation** - Invite links for workspace sharing
-5. **Category** - Expense categories (식비, 교통, etc.)
-6. **FinancialInstitution** - Bank/card definitions
-7. **Transaction** - Core expense records
-8. **AllowanceTransaction** - Private allowance tracking
-9. **ProcessedFile** - File upload tracking
-10. **ParsingSession** - Batch parsing metadata
-11. **DuplicateConfirmation** - Duplicate transaction handling
+- 모델: `app/models/`
+- DB 스키마: `db/schema.rb`
+- API 라우트: `config/routes.rb`
+- 환경변수: Doppler `xef-scale` 프로젝트 (`.env.example` 참조)
 
 ## Development Commands
 
@@ -101,3 +94,64 @@ expense-tracker/
 ## Language Note
 
 This project uses Korean for transaction descriptions, merchant names, and categories. UI can be internationalized via Rails I18n.
+
+## CI/CD 워크플로우 (필수 준수)
+
+**절대 직접 빌드/배포하지 마세요.** 모든 빌드와 배포는 GitHub Actions를 통해 자동화되어 있습니다.
+
+### 금지 사항
+
+- `docker build` 직접 실행 금지
+- `docker push` 직접 실행 금지
+- ghcr.io에 이미지 직접 푸시 금지
+
+### 올바른 배포 프로세스
+
+1. 코드 변경 후 Conventional Commits 형식으로 커밋
+2. dev 브랜치에 푸시
+3. main으로 PR 생성 및 머지
+4. release-please가 자동으로 Release PR 생성
+5. Release PR 머지 → 자동으로 Docker 이미지 빌드 및 ghcr.io 푸시
+6. ops 레포의 kustomization.yaml에서 이미지 태그 업데이트
+7. kubectl apply로 배포 (또는 CD workflow)
+
+### Dockerfile 수정 시
+
+Dockerfile을 수정했다면:
+- 직접 빌드하지 말고 커밋 후 CI/CD를 통해 빌드
+- 로컬 테스트가 필요하면 `bin/dev`로 개발 서버 실행
+
+### Claude Code 관련 파일 수정 시
+
+`.claude/`, `CLAUDE.md` 등 Claude Code 관련 파일 수정 시:
+- `chore` 타입 사용 (예: `chore: update claude code commands`)
+
+## 배포
+
+k8s 클러스터에 배포 (ops 레포의 Kustomize 사용)
+
+| 환경 | 도메인 | Namespace |
+|------|--------|-----------|
+| stg | stg-scale.xeflabs.com | apps-stg |
+| prd | scale.xeflabs.com | apps-prd |
+
+```bash
+kubectl apply -k ~/ws/xeflabs/ops/apps/xef-scale/overlays/{stg,prd}
+```
+
+환경변수: `.env.example` 참조, Doppler `xef-scale` 프로젝트에서 관리
+
+## 라이브러리 문서 조회 (context7)
+
+다음 경우에만 context7으로 문서 확인:
+- 에러/경고 발생 시 (특히 deprecation)
+- 최신 버전 기능 사용 시
+- 불확실하거나 기억이 모호할 때
+
+### 주요 라이브러리
+- rails (8.x), turbo-rails, stimulus-rails
+- devise, omniauth, omniauth-google-oauth2
+- pundit (authorization)
+- solid_queue, solid_cache
+- roo (Excel), pdf-reader (PDF)
+- tailwindcss
