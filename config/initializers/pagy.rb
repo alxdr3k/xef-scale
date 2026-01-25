@@ -1,7 +1,5 @@
 # Pagy initializer file
 # See https://ddnexus.github.io/pagy/docs/api/pagy
 
-require "pagy/extras/items"
-
-# Default items per page
-Pagy::DEFAULT[:items] = 20
+# Default items per page (renamed from :items to :limit in Pagy 9.0)
+Pagy.options[:limit] = 20
