@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.4.0](https://github.com/alxdr3k/xef-scale/compare/0.3.2...0.4.0) (2026-01-25)
+
+
+### Features
+
+* add installment fields to transactions ([08e016f](https://github.com/alxdr3k/xef-scale/commit/08e016fd02161fd47a93b211f8d7faa7e1a3ecd3))
+* add installment parsing and real-time updates ([e7767a2](https://github.com/alxdr3k/xef-scale/commit/e7767a25cb7a62f3f85eb8ab58ddfb1bb66eb06d))
+* add Turbo Streams real-time updates ([c9611be](https://github.com/alxdr3k/xef-scale/commit/c9611be6a65ae6b99eb2b024e8b98a5282a2b998))
+* **category:** add description-based category auto-mapping ([3a358cc](https://github.com/alxdr3k/xef-scale/commit/3a358ccc34cfea9cb8340c70a97e20b0a9147e14))
+* **category:** add description-based category auto-mapping ([28b3de1](https://github.com/alxdr3k/xef-scale/commit/28b3de123a8118c8071f0772183974f0caf209f8))
+* **parser:** add installment parsing for Hana Card statements ([713c747](https://github.com/alxdr3k/xef-scale/commit/713c7470f6edf96f94390ba4686be2ad17ab774e))
+* **ui:** display installment badge on transaction rows ([b9881ee](https://github.com/alxdr3k/xef-scale/commit/b9881eedfaf795cf726539df966b81e8f6b370d8))
+
+
+### Bug Fixes
+
+* add queue database config for test environment ([1f801f0](https://github.com/alxdr3k/xef-scale/commit/1f801f0808bf16013f5bd6bd6620f626fc0a6100))
+
 ## [0.3.2](https://github.com/alxdr3k/xef-scale/compare/0.3.1...0.3.2) (2026-01-25)
 
 
