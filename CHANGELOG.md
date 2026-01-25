@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.2](https://github.com/alxdr3k/xef-scale/compare/0.3.1...0.3.2) (2026-01-25)
+
+
+### Bug Fixes
+
+* db:migrate and CI improvements ([5e7f80d](https://github.com/alxdr3k/xef-scale/commit/5e7f80da791cef4506284878a2b69cc6b6673ccf))
+* use db:migrate instead of db:prepare in entrypoint ([e9ad004](https://github.com/alxdr3k/xef-scale/commit/e9ad0045bcddb619f774a9ff229c4996548da055))
+
 ## [0.3.1](https://github.com/alxdr3k/xef-scale/compare/0.3.0...0.3.1) (2026-01-25)
 
 
