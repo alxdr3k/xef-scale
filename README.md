@@ -28,6 +28,7 @@ A Rails 8 application for tracking expenses by automatically parsing financial s
 ## Requirements
 
 - Ruby 3.3.10+
+- Python 3.10+ (for Excel parsing)
 - Bun (for JavaScript/CSS bundling)
 - SQLite3
 
@@ -45,12 +46,19 @@ A Rails 8 application for tracking expenses by automatically parsing financial s
    bun install
    ```
 
-3. Setup database:
+3. Setup Python virtual environment (for Excel parsing):
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r scripts/requirements.txt
+   ```
+
+4. Setup database:
    ```bash
    rails db:create db:migrate db:seed
    ```
 
-4. Configure Google OAuth (for authentication):
+5. Configure Google OAuth (for authentication):
    - Create credentials at [Google Cloud Console](https://console.cloud.google.com/)
    - Set environment variables:
      ```bash
@@ -58,7 +66,7 @@ A Rails 8 application for tracking expenses by automatically parsing financial s
      export GOOGLE_CLIENT_SECRET="your-client-secret"
      ```
 
-5. Start the server:
+6. Start the server:
    ```bash
    bin/dev
    ```
