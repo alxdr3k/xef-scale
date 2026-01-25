@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_17_203700) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_25_084819) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -146,6 +146,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_203700) do
 
   create_table "transactions", force: :cascade do |t|
     t.integer "amount", null: false
+    t.integer "benefit_amount"
+    t.string "benefit_type"
     t.integer "category_id"
     t.datetime "committed_at"
     t.integer "committed_by_id"
@@ -154,8 +156,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_203700) do
     t.boolean "deleted", default: false
     t.string "description"
     t.integer "financial_institution_id"
+    t.integer "installment_month"
+    t.integer "installment_total"
     t.string "merchant"
     t.text "notes"
+    t.integer "original_amount"
     t.integer "parsing_session_id"
     t.string "status", default: "committed", null: false
     t.datetime "updated_at", null: false

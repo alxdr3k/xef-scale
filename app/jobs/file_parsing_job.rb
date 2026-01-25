@@ -117,6 +117,13 @@ class FileParsingJob < ApplicationJob
       merchant: tx_data[:merchant],
       description: tx_data[:description],
       amount: tx_data[:amount],
+      # 할부/혜택 관련 필드
+      installment_month: tx_data[:installment_month],
+      installment_total: tx_data[:installment_total],
+      original_amount: tx_data[:original_amount],
+      benefit_type: tx_data[:benefit_type],
+      benefit_amount: tx_data[:benefit_amount],
+      # 기존 필드
       category: category,
       financial_institution: institution,
       status: "pending_review",
@@ -185,11 +192,21 @@ class FileParsingJob < ApplicationJob
   end
 
   def find_duplicate(workspace, transaction)
-    workspace.transactions
-             .reviewable
-             .where(date: transaction.date, merchant: transaction.merchant, amount: transaction.amount)
-             .where.not(id: transaction.id)
-             .first
+    scope = workspace.transactions
+                     .reviewable
+                     .where(date: transaction.date, merchant: transaction.merchant, amount: transaction.amount)
+                     .where.not(id: transaction.id)
+
+    # 할부 거래인 경우: installment_month도 비교
+    if transaction.installment_month.present?
+      scope = scope.where(installment_month: transaction.installment_month)
+    else
+      # 일시불인 경우: installment_month가 nil인 거래와만 비교
+      # 기존 거래(nil)와도 호환되도록 nil 허용
+      scope = scope.where(installment_month: nil)
+    end
+
+    scope.first
   end
 
   def create_completion_notifications(parsing_session)

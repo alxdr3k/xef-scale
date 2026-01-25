@@ -10,6 +10,13 @@
   </td>
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
     <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+    <% if transaction.installment? %>
+      <div class="mt-1">
+        <span class="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-800">
+          <%= transaction.installment_badge %>
+        </span>
+      </div>
+    <% end %>
   </td>
   <td class="px-6 py-4 whitespace-nowrap">
     <div data-controller="category-selector"
