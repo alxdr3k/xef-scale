@@ -10,7 +10,7 @@ class ApplicationController < ActionController::Base
   helper_method :current_workspace
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
-  rescue_from Pagy::OverflowError, with: :handle_pagy_overflow
+  rescue_from Pagy::RangeError, with: :handle_pagy_overflow
 
   protected
 
