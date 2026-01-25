@@ -157,6 +157,15 @@ class TransactionsController < ApplicationController
     end
   end
 
+  def suggest_category
+    merchant = params[:merchant].to_s.strip
+    description = params[:description].to_s.strip.presence
+
+    category = CategoryMapping.find_category_for_merchant_and_description(@workspace, merchant, description)
+
+    render json: { category_id: category&.id }
+  end
+
   def export
     transactions = @workspace.transactions.active.includes(:category, :financial_institution)
 
@@ -210,10 +219,13 @@ class TransactionsController < ApplicationController
   def create_category_mapping(transaction, category)
     return if transaction.merchant.blank? || category.nil?
 
-    # 이미 매핑이 있으면 업데이트, 없으면 생성
+    # description이 있으면 description_pattern 포함 매핑 생성, 없으면 기본 매핑
+    description_pattern = extract_description_pattern(transaction.description)
+
     mapping = CategoryMapping.find_or_initialize_by(
       workspace: @workspace,
-      merchant_pattern: transaction.merchant
+      merchant_pattern: transaction.merchant,
+      description_pattern: description_pattern
     )
 
     mapping.category = category
@@ -221,5 +233,11 @@ class TransactionsController < ApplicationController
     mapping.save!
   rescue ActiveRecord::RecordInvalid => e
     Rails.logger.warn "[TransactionsController] 매핑 생성 실패: #{e.message}"
+  end
+
+  def extract_description_pattern(description)
+    return nil if description.blank?
+
+    description.strip.presence
   end
 end

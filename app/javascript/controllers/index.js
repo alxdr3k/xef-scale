@@ -16,6 +16,9 @@ application.register("bulk-select", BulkSelectController)
 import CategorySelectorController from "./category_selector_controller"
 application.register("category-selector", CategorySelectorController)
 
+import CategorySuggestController from "./category_suggest_controller"
+application.register("category-suggest", CategorySuggestController)
+
 import ChartController from "./chart_controller"
 application.register("chart", ChartController)
 

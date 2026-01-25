@@ -132,10 +132,24 @@ class ReviewsController < ApplicationController
     permitted << :financial_institution_id if @transaction.source_editable?
 
     old_category_id = @transaction.category_id
+    old_description = @transaction.description
     transaction_params = params.require(:transaction).permit(permitted)
 
     if @transaction.update(transaction_params)
-      # 카테고리가 변경되었으면 매핑 생성
+      # 설명이 변경되었고, 사용자가 직접 카테고리를 변경하지 않았으면 재매칭
+      description_changed = old_description != @transaction.description
+      category_not_manually_changed = transaction_params[:category_id].blank?
+
+      if description_changed && category_not_manually_changed
+        new_category = CategoryMapping.find_category_for_merchant_and_description(
+          @workspace,
+          @transaction.merchant,
+          @transaction.description
+        )
+        @transaction.update(category: new_category) if new_category
+      end
+
+      # 카테고리가 수동으로 변경되었으면 매핑 생성
       if transaction_params[:category_id].present? && transaction_params[:category_id].to_i != old_category_id
         create_category_mapping(@transaction, @transaction.category)
       end
@@ -177,10 +191,13 @@ class ReviewsController < ApplicationController
   def create_category_mapping(transaction, category)
     return if transaction.merchant.blank? || category.nil?
 
-    # 이미 매핑이 있으면 업데이트, 없으면 생성
+    # description이 있으면 description_pattern 포함 매핑 생성, 없으면 기본 매핑
+    description_pattern = extract_description_pattern(transaction.description)
+
     mapping = CategoryMapping.find_or_initialize_by(
       workspace: @workspace,
-      merchant_pattern: transaction.merchant
+      merchant_pattern: transaction.merchant,
+      description_pattern: description_pattern
     )
 
     mapping.category = category
@@ -188,5 +205,11 @@ class ReviewsController < ApplicationController
     mapping.save!
   rescue ActiveRecord::RecordInvalid => e
     Rails.logger.warn "[ReviewsController] 매핑 생성 실패: #{e.message}"
+  end
+
+  def extract_description_pattern(description)
+    return nil if description.blank?
+
+    description.strip.presence
   end
 end
