@@ -1,3 +1,3 @@
 <%= turbo_stream.replace "notification-badge" do %>
-  <span id="notification-badge"></span>
+  <%= render partial: 'notifications/badge', locals: { user: current_user, workspace: current_workspace } %>
 <% end %>
