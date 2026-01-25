@@ -97,22 +97,76 @@ def parse_amount(amount):
         return 0
 
 
+def find_column_indices(df, header_row_idx):
+    """헤더 row에서 컬럼명을 읽어 인덱스 맵 반환"""
+    header = df.iloc[header_row_idx]
+    indices = {}
+
+    # 컬럼명 매핑 (실제 Excel 헤더명 → 내부 키)
+    column_mappings = {
+        '거래일자': 'date',
+        '가맹점명': 'merchant',
+        '이용금액': 'original_amount',
+        '혜택구분': 'benefit_category',
+        '할부기간': 'installment_total',
+        '청구회차': 'installment_month',
+        '결제원금': 'monthly_amount',
+        '이용혜택': 'benefit_type',
+        '혜택금액': 'benefit_amount',
+    }
+
+    for col_idx, cell in enumerate(header):
+        cell_str = str(cell).strip()
+        for excel_name, key in column_mappings.items():
+            if excel_name in cell_str:
+                indices[key] = col_idx
+                break
+
+    return indices
+
+
+def get_cell_safe(row, col_idx, default=''):
+    """안전하게 셀 값 가져오기 (인덱스가 -1이거나 범위 밖이면 기본값 반환)"""
+    if col_idx is None or col_idx < 0 or col_idx >= len(row):
+        return default
+    val = row.iloc[col_idx]
+    return '' if pd.isna(val) else str(val).strip()
+
+
+def parse_int_safe(text):
+    """안전하게 정수 파싱"""
+    if not text or text == 'nan':
+        return None
+    try:
+        return int(float(text))
+    except (ValueError, TypeError):
+        return None
+
+
 def parse_hana_card(df):
     """Parse Hana Card statement"""
     transactions = []
 
     # Find header row (contains '거래일자')
-    header_row = None
+    header_row_idx = None
     for idx, row in df.iterrows():
         if '거래일자' in str(row.values):
-            header_row = idx
+            header_row_idx = idx
             break
 
-    if header_row is None:
+    if header_row_idx is None:
         return transactions
 
+    # 동적 컬럼 인덱스 찾기
+    col = find_column_indices(df, header_row_idx)
+
+    # 필수 컬럼 확인 (없으면 기본값 사용)
+    date_col = col.get('date', 0)
+    merchant_col = col.get('merchant', 1)
+    original_amount_col = col.get('original_amount', 2)
+
     # Parse from header_row + 1
-    for idx in range(header_row + 1, len(df)):
+    for idx in range(header_row_idx + 1, len(df)):
         row = df.iloc[idx]
 
         # Skip empty rows
@@ -126,7 +180,7 @@ def parse_hana_card(df):
             continue
 
         # Check date format
-        date_str = first_cell.strip()
+        date_str = get_cell_safe(row, date_col)
         if not re.match(r'^\d{4}\.\d{2}\.\d{2}$', date_str):
             continue
 
@@ -134,21 +188,40 @@ def parse_hana_card(df):
         if not date:
             continue
 
-        # Get merchant (column 1)
-        merchant = str(row.iloc[1]).strip() if len(row) > 1 and pd.notna(row.iloc[1]) else ''
+        # 가맹점명
+        merchant = get_cell_safe(row, merchant_col)
         if not merchant or merchant == 'nan':
             continue
 
-        # Get amount (column 2)
-        amount = parse_amount(row.iloc[2]) if len(row) > 2 else 0
-        if amount <= 0:
+        # 금액 정보
+        original_amount = parse_amount(get_cell_safe(row, original_amount_col))
+        if original_amount <= 0:
             continue
+
+        # 할부 정보 (컬럼이 없으면 None)
+        benefit_category = get_cell_safe(row, col.get('benefit_category'))
+        installment_total = parse_int_safe(get_cell_safe(row, col.get('installment_total')))
+        installment_month = parse_int_safe(get_cell_safe(row, col.get('installment_month')))
+        monthly_amount = parse_amount(get_cell_safe(row, col.get('monthly_amount')))
+        benefit_type = get_cell_safe(row, col.get('benefit_type'))
+        benefit_amount = parse_amount(get_cell_safe(row, col.get('benefit_amount')))
+
+        # 할부 여부 판단
+        is_installment = benefit_category == '할부' or (installment_total and installment_total > 1)
+
+        # amount 결정: 할부면 결제원금, 아니면 이용금액
+        amount = monthly_amount if is_installment and monthly_amount > 0 else original_amount
 
         transactions.append({
             'date': date,
             'merchant': merchant,
             'amount': amount,
             'description': merchant,
+            'original_amount': original_amount if is_installment else None,
+            'installment_month': installment_month if is_installment else None,
+            'installment_total': installment_total if is_installment else None,
+            'benefit_type': benefit_type if benefit_type else None,
+            'benefit_amount': benefit_amount if benefit_amount else None,
             'institution_identifier': 'hana_card'
         })
 

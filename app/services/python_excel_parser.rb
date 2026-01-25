@@ -7,6 +7,7 @@ class PythonExcelParser
   class ParseError < StandardError; end
 
   PYTHON_SCRIPT = Rails.root.join("scripts", "parse_excel.py").to_s.freeze
+  PYTHON_BIN = Rails.root.join(".venv", "bin", "python3").to_s.freeze
 
   # Parse an Excel file and return transactions
   # @param file_path [String] Path to the Excel file
@@ -33,7 +34,7 @@ class PythonExcelParser
   end
 
   def execute_python_parser
-    stdout, stderr, status = Open3.capture3("python3", PYTHON_SCRIPT, @file_path)
+    stdout, stderr, status = Open3.capture3(PYTHON_BIN, PYTHON_SCRIPT, @file_path)
 
     unless status.success?
       Rails.logger.error "Python parser failed: #{stderr}"

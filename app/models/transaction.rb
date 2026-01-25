@@ -92,4 +92,13 @@ class Transaction < ApplicationRecord
   def source_editable?
     financial_institution.nil? || financial_institution.identifier == "unknown"
   end
+
+  def installment?
+    installment_total.present? && installment_total > 1
+  end
+
+  def installment_badge
+    return nil unless installment?
+    "할부 #{installment_month}/#{installment_total}회차"
+  end
 end

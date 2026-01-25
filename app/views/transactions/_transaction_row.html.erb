@@ -8,8 +8,17 @@
       <div class="text-sm text-gray-500"><%= truncate(transaction.description, length: 30) %></div>
     <% end %>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-    <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+  <td class="px-6 py-4 whitespace-nowrap text-right">
+    <div class="flex items-center justify-end gap-2">
+      <% if transaction.installment? %>
+        <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+          <%= transaction.installment_badge %>
+        </span>
+      <% end %>
+      <span class="text-sm text-gray-900 font-medium">
+        <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+      </span>
+    </div>
   </td>
   <td class="px-6 py-4 whitespace-nowrap">
     <div data-controller="category-selector"

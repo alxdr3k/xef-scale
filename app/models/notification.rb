@@ -1,4 +1,6 @@
 class Notification < ApplicationRecord
+  include Turbo::Broadcastable
+
   belongs_to :user
   belongs_to :workspace
   belongs_to :notifiable, polymorphic: true, optional: true
@@ -40,6 +42,19 @@ class Notification < ApplicationRecord
       message: "#{parsing_session.processed_file.filename} 파일에서 #{parsing_session.success_count}건의 거래가 발견되었습니다. 검토해주세요.",
       action_url: "/workspaces/#{parsing_session.workspace_id}/parsing_sessions/#{parsing_session.id}/review",
       notifiable: parsing_session
+    )
+  end
+
+  after_commit :broadcast_badge_update, on: [ :create, :update ]
+
+  private
+
+  def broadcast_badge_update
+    broadcast_replace_to(
+      user,
+      target: "notification-badge",
+      partial: "notifications/badge",
+      locals: { user: user, workspace: workspace }
     )
   end
 end

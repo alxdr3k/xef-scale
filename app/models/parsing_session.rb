@@ -1,4 +1,7 @@
 class ParsingSession < ApplicationRecord
+  include Turbo::Broadcastable
+  include ActionView::RecordIdentifier
+
   belongs_to :workspace
   belongs_to :processed_file
   belongs_to :committed_by, class_name: "User", optional: true
@@ -141,5 +144,20 @@ class ParsingSession < ApplicationRecord
 
   def pending_transaction_count
     transactions.pending_review.count
+  end
+
+  after_commit :broadcast_row_update, if: -> {
+    saved_change_to_status? || saved_change_to_review_status?
+  }
+
+  private
+
+  def broadcast_row_update
+    broadcast_replace_to(
+      workspace,
+      target: dom_id(self),
+      partial: "parsing_sessions/parsing_session_row",
+      locals: { parsing_session: self, workspace: workspace }
+    )
   end
 end
