@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/alxdr3k/xef-scale/compare/0.3.0...0.3.1) (2026-01-25)
+
+
+### Bug Fixes
+
+* add python3 for Excel parsing ([#11](https://github.com/alxdr3k/xef-scale/issues/11)) ([5291a8d](https://github.com/alxdr3k/xef-scale/commit/5291a8de8006f5d8ecd265d1330eb17c8623e992))
+
 ## [0.3.0](https://github.com/alxdr3k/xef-scale/compare/0.2.0...0.3.0) (2026-01-24)
 
 
