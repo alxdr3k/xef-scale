@@ -1,4 +1,8 @@
-<%= form_with model: [@workspace, transaction], class: 'space-y-6', data: { turbo: false } do |f| %>
+<%= form_with model: [@workspace, transaction], class: 'space-y-6', data: {
+  turbo: false,
+  controller: "category-suggest",
+  category_suggest_url_value: suggest_category_workspace_transactions_path(@workspace)
+} do |f| %>
   <%= hidden_field_tag :return_to, params[:return_to] %>
   <% if transaction.errors.any? %>
     <div class="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -20,7 +24,8 @@
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">가맹점/내역 *</label>
       <%= f.text_field :merchant, required: true,
-          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+          data: { category_suggest_target: "merchant" } %>
     </div>
 
     <div>
@@ -33,7 +38,8 @@
       <label class="block text-sm font-medium text-gray-700 mb-1">카테고리</label>
       <%= f.collection_select :category_id, @categories, :id, :name,
           { include_blank: '선택하세요' },
-          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+          { class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-all duration-300',
+            data: { category_suggest_target: "category" } } %>
     </div>
 
     <div>
@@ -46,7 +52,8 @@
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
       <%= f.text_field :description,
-          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+          data: { category_suggest_target: "description", action: "input->category-suggest#suggest" } %>
     </div>
 
     <div>

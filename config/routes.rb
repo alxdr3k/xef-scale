@@ -44,6 +44,7 @@ Rails.application.routes.draw do
       end
       collection do
         get :export
+        get :suggest_category
       end
     end
 
