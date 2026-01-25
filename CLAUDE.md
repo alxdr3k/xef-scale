@@ -121,6 +121,11 @@ Dockerfile을 수정했다면:
 - 직접 빌드하지 말고 커밋 후 CI/CD를 통해 빌드
 - 로컬 테스트가 필요하면 `bin/dev`로 개발 서버 실행
 
+### Claude Code 관련 파일 수정 시
+
+`.claude/`, `CLAUDE.md` 등 Claude Code 관련 파일 수정 시:
+- `chore` 타입 사용 (예: `chore: update claude code commands`)
+
 ## 배포
 
 k8s 클러스터에 배포 (ops 레포의 Kustomize 사용)
