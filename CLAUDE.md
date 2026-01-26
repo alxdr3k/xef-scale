@@ -83,7 +83,7 @@ User ──< Workspace ──< Transaction
 - 모델: `app/models/`
 - DB 스키마: `db/schema.rb`
 - API 라우트: `config/routes.rb`
-- 환경변수: Doppler `xef-scale` 프로젝트 (`.env.example` 참조)
+- 환경변수: Doppler `xef-scale` 프로젝트
 
 ## Development Commands
 
@@ -169,7 +169,7 @@ k8s 클러스터에 배포 (ops 레포의 Kustomize 사용)
 kubectl apply -k ~/ws/xeflabs/ops/apps/xef-scale/overlays/{stg,prd}
 ```
 
-환경변수: `.env.example` 참조, Doppler `xef-scale` 프로젝트에서 관리
+환경변수: Doppler `xef-scale` 프로젝트에서 관리
 
 ## 라이브러리 문서 조회 (context7)
 
