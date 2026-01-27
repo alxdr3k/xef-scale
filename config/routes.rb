@@ -41,6 +41,7 @@ Rails.application.routes.draw do
       member do
         post :toggle_allowance
         patch :quick_update_category
+        patch :inline_update
       end
       collection do
         get :export

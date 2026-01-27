@@ -2,8 +2,8 @@ class TransactionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :set_transaction, only: [ :show, :edit, :update, :destroy, :toggle_allowance, :quick_update_category ]
-  before_action :require_workspace_write_access, only: [ :new, :create, :edit, :update, :destroy, :quick_update_category ]
+  before_action :set_transaction, only: [ :show, :edit, :update, :destroy, :toggle_allowance, :quick_update_category, :inline_update ]
+  before_action :require_workspace_write_access, only: [ :new, :create, :edit, :update, :destroy, :quick_update_category, :inline_update ]
 
   def index
     @year = params[:year].presence&.to_i || Date.current.year
@@ -154,6 +154,58 @@ class TransactionsController < ApplicationController
     respond_to do |format|
       format.turbo_stream
       format.json { render json: { success: true } }
+    end
+  end
+
+  def inline_update
+    field = params[:field]
+    value = params[:value]
+
+    # Validate field is allowed
+    allowed_fields = %w[date merchant description amount notes]
+    unless allowed_fields.include?(field)
+      head :unprocessable_entity
+      return
+    end
+
+    # Convert and validate value
+    case field
+    when "amount"
+      value = Integer(value, exception: false)
+      if value.nil? || value <= 0
+        head :unprocessable_entity
+        return
+      end
+    when "date"
+      begin
+        value = Date.parse(value)
+      rescue ArgumentError, TypeError
+        head :unprocessable_entity
+        return
+      end
+    end
+
+    old_category_id = @transaction.category_id
+
+    if @transaction.update(field => value)
+      # If merchant or description changed, try to auto-categorize
+      if %w[merchant description].include?(field)
+        new_category = CategoryMapping.find_category_for_merchant_and_description(
+          @workspace,
+          @transaction.merchant,
+          @transaction.description
+        )
+        if new_category && new_category.id != old_category_id
+          @transaction.update(category: new_category)
+        end
+      end
+
+      @categories = @workspace.categories.order(:name)
+      respond_to do |format|
+        format.turbo_stream
+      end
+    else
+      head :unprocessable_entity
     end
   end
 

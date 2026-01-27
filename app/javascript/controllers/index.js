@@ -34,8 +34,8 @@ application.register("dropdown", DropdownController)
 import DuplicateReviewController from "./duplicate_review_controller"
 application.register("duplicate-review", DuplicateReviewController)
 
-import EditModalController from "./edit_modal_controller"
-application.register("edit-modal", EditModalController)
+import InlineEditController from "./inline_edit_controller"
+application.register("inline-edit", InlineEditController)
 
 import HelloController from "./hello_controller"
 application.register("hello", HelloController)

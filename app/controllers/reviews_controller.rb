@@ -126,21 +126,88 @@ class ReviewsController < ApplicationController
   def update_transaction
     @transaction = @parsing_session.transactions.find(params[:transaction_id])
 
+    # Prevent editing finalized sessions
+    if @parsing_session.review_committed? || @parsing_session.review_rolled_back? || @parsing_session.review_discarded?
+      head :forbidden
+      return
+    end
+
     # Only allow editing specific fields
-    permitted = [ :category_id, :notes, :description ]
+    permitted = [ :category_id, :notes, :description, :merchant, :date, :amount ]
     # Allow source change only if currently unknown
     permitted << :financial_institution_id if @transaction.source_editable?
 
     old_category_id = @transaction.category_id
     old_description = @transaction.description
+    old_merchant = @transaction.merchant
+
+    # Handle inline editing (single field updates via JSON)
+    if params[:field].present? && params[:transaction].blank?
+      field = params[:field]
+      value = params[:value]
+
+      # Validate field is allowed
+      unless permitted.map(&:to_s).include?(field)
+        head :unprocessable_entity
+        return
+      end
+
+      # Convert and validate value
+      case field
+      when "amount"
+        value = Integer(value, exception: false)
+        if value.nil? || value <= 0
+          head :unprocessable_entity
+          return
+        end
+      when "date"
+        begin
+          value = Date.parse(value)
+        rescue ArgumentError, TypeError
+          head :unprocessable_entity
+          return
+        end
+      when "category_id"
+        if value.present? && !@workspace.categories.exists?(value)
+          head :unprocessable_entity
+          return
+        end
+      end
+
+      if @transaction.update(field => value)
+        # If merchant or description changed, try to auto-categorize
+        if %w[merchant description].include?(field)
+          new_category = CategoryMapping.find_category_for_merchant_and_description(
+            @workspace,
+            @transaction.merchant,
+            @transaction.description
+          )
+          if new_category && new_category.id != old_category_id
+            @transaction.update(category: new_category)
+          end
+        end
+
+        respond_to do |format|
+          format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), notice: "거래가 수정되었습니다." }
+          format.turbo_stream { flash.now[:notice] = "거래가 수정되었습니다." }
+        end
+        return
+      else
+        head :unprocessable_entity
+        return
+      end
+    end
+
+    # Handle form-based updates (original behavior)
     transaction_params = params.require(:transaction).permit(permitted)
 
     if @transaction.update(transaction_params)
-      # 설명이 변경되었고, 사용자가 직접 카테고리를 변경하지 않았으면 재매칭
+      # merchant 또는 description이 변경되었고, 사용자가 직접 카테고리를 변경하지 않았으면 재매칭
+      merchant_changed = old_merchant != @transaction.merchant
       description_changed = old_description != @transaction.description
       category_not_manually_changed = transaction_params[:category_id].blank?
 
-      if description_changed && category_not_manually_changed
+      if (merchant_changed || description_changed) && category_not_manually_changed
         new_category = CategoryMapping.find_category_for_merchant_and_description(
           @workspace,
           @transaction.merchant,
