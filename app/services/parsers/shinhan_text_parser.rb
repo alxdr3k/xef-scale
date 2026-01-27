@@ -3,7 +3,11 @@ module Parsers
     attr_reader :raw_text, :workspace
 
     DATE_PATTERN = /\d{2}\.\d{2}\.\d{2}/
+    # Flexible date pattern: handles OCR errors like "25. 10.13", "25.09:30"
+    FLEXIBLE_DATE_PATTERN = /^\d{2}[\.\s:]+\s*\d{2}[\.\s:]+\d{2}$/
     CARD_PATTERN = /^본인\d{2,4}$/
+    # Flexible card pattern: handles OCR errors like "본인.357", "본인 357"
+    FLEXIBLE_CARD_PATTERN = /^본인[\s.\d]{2,5}$/
     AMOUNT_PATTERN = /^[\d,]+$/
     INSTALLMENT_PATTERN = /^(\d+)\/(\d+)$/
 
@@ -80,6 +84,8 @@ module Parsers
     def extract_dates(lines)
       dates = []
       lines.each do |line|
+        # Strict pattern: only exact "YY.MM.DD" format for actual transaction dates
+        # Metadata dates (installment end dates etc.) often have OCR errors like "25. 10.13" or "25.09:30"
         if line.match?(DATE_PATTERN) && line.match?(/^\d{2}\.\d{2}\.\d{2}$/)
           dates << parse_date_with_century(line)
         end
@@ -93,7 +99,8 @@ module Parsers
       pending_merchant_parts = []
 
       # New format: "본인XXX 가맹점명" or "본인XXX" followed by "가맹점명"
-      card_inline_pattern = /^본인\s?\d{2,4}\s+(.+)$/
+      # Handles OCR errors: "본인.357", "본인 357" etc.
+      card_inline_pattern = /^본인[\s.]*\d{2,4}\s+(.+)$/
 
       lines.each_with_index do |line, idx|
         # Start merchant section after header line
@@ -116,8 +123,8 @@ module Parsers
 
         next unless in_merchant_section
 
-        # Skip dates
-        next if line.match?(/^\d{2}\.\d{2}\.\d{2}$/)
+        # Skip dates (including OCR errors like "25. 10.13", "25.09:30")
+        next if line.match?(FLEXIBLE_DATE_PATTERN)
 
         # Skip unwanted lines
         next if should_skip?(line)
@@ -136,8 +143,8 @@ module Parsers
           next
         end
 
-        # Check for card-only line: "본인357" or "본인 425"
-        if line.match?(/^본인\s?\d{2,4}$/)
+        # Check for card-only line: "본인357", "본인 425", "본인.357" etc.
+        if line.match?(/^본인[\s.]*\d{2,4}$/)
           # Flush previous pending merchant
           if pending_merchant_parts.any?
             merchant = pending_merchant_parts.join(" ")
@@ -157,7 +164,7 @@ module Parsers
         # Look ahead: if next line is a card pattern or ends section, flush
         next_line = lines[idx + 1]
         if next_line.nil? ||
-           next_line.match?(/^본인\s?\d{2,4}/) ||
+           next_line.match?(/^본인[\s.]*\d{2,4}/) ||
            next_line.include?("이용금액") ||
            next_line.include?("원금") ||
            next_line.include?("합계") ||
@@ -296,8 +303,8 @@ module Parsers
     end
 
     def clean_merchant(name)
-      name = name.sub(/^[•·]\s*/, "")  # Remove bullet points
-      name = name.sub(/^본인\d+\s*/, "")  # Remove card prefix if inline
+      name = name.sub(/^[•·.]+\s*/, "")  # Remove bullet points and leading dots
+      name = name.sub(/^본인[\s.]*\d+\s*/, "")  # Remove card prefix if inline (handles "본인.357", "본인 357")
       name.strip
     end
 
