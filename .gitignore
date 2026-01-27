@@ -84,6 +84,7 @@ shrimp_data/
 
 # Claude
 .claude/settings.local.json
+.claude/ralph-loop*.md
 
 # User uploaded files
 *.xls
