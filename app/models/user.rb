@@ -3,6 +3,8 @@ class User < ApplicationRecord
          :recoverable, :rememberable, :validatable,
          :omniauthable, omniauth_providers: [ :google_oauth2 ]
 
+  serialize :settings, coder: JSON
+
   has_many :owned_workspaces, class_name: "Workspace", foreign_key: :owner_id, dependent: :destroy
   has_many :workspace_memberships, dependent: :destroy
   has_many :workspaces, through: :workspace_memberships
@@ -41,4 +43,20 @@ class User < ApplicationRecord
     scope = scope.for_workspace(workspace) if workspace
     scope.count
   end
+
+  # 금융기관별 명세서 비밀번호 관리
+  def statement_password(institution_key)
+    settings&.dig("statement_passwords", institution_key)
+  end
+
+  def set_statement_password(institution_key, password)
+    self.settings ||= {}
+    self.settings["statement_passwords"] ||= {}
+    self.settings["statement_passwords"][institution_key] = password
+  end
+
+  # 지원하는 금융기관 목록 (비밀번호 필요한 것만)
+  INSTITUTIONS_WITH_PASSWORD = {
+    "shinhan_card" => "신한카드"
+  }.freeze
 end

@@ -78,12 +78,20 @@ class ParserRouter
 
   def self.read_pdf_content(processed_file)
     tempfile = download_to_tempfile(processed_file)
-    reader = PDF::Reader.new(tempfile.path)
-
-    content = reader.pages.first(3).map(&:text).join("\n")
-    tempfile.close
-    tempfile.unlink
-    content[0..2000]
+    begin
+      reader = PDF::Reader.new(tempfile.path)
+      content = reader.pages.first(3).map(&:text).join("\n")
+      content[0..2000]
+    rescue PDF::Reader::EncryptedPDFError
+      # Encrypted PDF - assume Shinhan Card for now
+      "신한카드 encrypted_pdf"
+    rescue PDF::Reader::MalformedPDFError
+      # Malformed or protected PDF
+      "신한카드 encrypted_pdf"
+    ensure
+      tempfile.close
+      tempfile.unlink
+    end
   end
 
   def self.download_to_tempfile(processed_file)

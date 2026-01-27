@@ -1,6 +1,12 @@
 <tr id="<%= dom_id(parsing_session) %>">
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-    <%= parsing_session.processed_file.original_filename %>
+    <% if parsing_session.text_paste? %>
+      <span class="text-gray-600">텍스트 붙여넣기</span>
+    <% elsif parsing_session.processed_file %>
+      <%= parsing_session.processed_file.original_filename %>
+    <% else %>
+      <span class="text-gray-400">파일 정보 없음</span>
+    <% end %>
   </td>
   <td class="px-6 py-4 whitespace-nowrap">
     <% case parsing_session.status %>

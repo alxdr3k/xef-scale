@@ -12,10 +12,18 @@ class Transaction < ApplicationRecord
            foreign_key: :new_transaction_id, dependent: :destroy
 
   STATUSES = %w[pending_review committed rolled_back].freeze
+  PAYMENT_TYPES = %w[lump_sum installment coupon].freeze
+
+  enum :payment_type, {
+    lump_sum: "lump_sum",
+    installment: "installment",
+    coupon: "coupon"
+  }, default: :lump_sum
 
   validates :date, presence: true
   validates :amount, presence: true, numericality: { only_integer: true }
   validates :status, inclusion: { in: STATUSES }
+  validates :payment_type, inclusion: { in: PAYMENT_TYPES }
 
   scope :active, -> { where(deleted: false, status: "committed") }
   scope :deleted, -> { where(deleted: true) }
@@ -38,8 +46,9 @@ class Transaction < ApplicationRecord
   scope :by_institution, ->(institution_id) { where(financial_institution_id: institution_id) if institution_id.present? }
   scope :search, ->(query) {
     return all if query.blank?
+    escaped = sanitize_sql_like(query)
     where("merchant LIKE ? OR description LIKE ? OR notes LIKE ?",
-          "%#{query}%", "%#{query}%", "%#{query}%")
+          "%#{escaped}%", "%#{escaped}%", "%#{escaped}%")
   }
   scope :excluding_allowance, -> {
     where.not(id: AllowanceTransaction.select(:expense_transaction_id))
@@ -100,5 +109,20 @@ class Transaction < ApplicationRecord
   def installment_badge
     return nil unless installment?
     "할부 #{installment_month}/#{installment_total}회차"
+  end
+
+  def payment_type_badge
+    case payment_type
+    when "installment"
+      if installment_total.present? && installment_month.present?
+        "할부 #{installment_month}/#{installment_total}회차"
+      else
+        "할부"
+      end
+    when "coupon"
+      "소비쿠폰"
+    else
+      nil # 일시불은 표시 안함 (기본값이므로)
+    end
   end
 end

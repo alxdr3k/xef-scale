@@ -5,7 +5,15 @@
   <div class="flex justify-between items-start mb-6">
     <div>
       <h1 class="text-2xl font-bold text-gray-900">거래 검토</h1>
-      <p class="text-gray-600"><%= @parsing_session.processed_file.filename %></p>
+      <p class="text-gray-600">
+        <% if @parsing_session.text_paste? %>
+          텍스트 붙여넣기
+        <% elsif @parsing_session.processed_file %>
+          <%= @parsing_session.processed_file.filename %>
+        <% else %>
+          파일 정보 없음
+        <% end %>
+      </p>
     </div>
 
     <div class="flex items-center space-x-2">

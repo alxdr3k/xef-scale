@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_26_143931) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -119,10 +119,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.datetime "created_at", null: false
     t.integer "duplicate_count"
     t.integer "error_count"
-    t.integer "processed_file_id", null: false
+    t.integer "processed_file_id"
     t.string "review_status", default: "pending_review"
     t.datetime "rolled_back_at"
     t.integer "rolled_back_by_id"
+    t.string "source_type", default: "file_upload"
     t.datetime "started_at"
     t.string "status"
     t.integer "success_count"
@@ -141,7 +142,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.string "original_filename"
     t.string "status"
     t.datetime "updated_at", null: false
+    t.integer "uploaded_by_id"
     t.integer "workspace_id", null: false
+    t.index ["uploaded_by_id"], name: "index_processed_files_on_uploaded_by_id"
     t.index ["workspace_id"], name: "index_processed_files_on_workspace_id"
   end
 
@@ -163,6 +166,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.text "notes"
     t.integer "original_amount"
     t.integer "parsing_session_id"
+    t.string "payment_type", default: "lump_sum", null: false
     t.string "status", default: "committed", null: false
     t.datetime "updated_at", null: false
     t.integer "workspace_id", null: false
@@ -187,6 +191,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
+    t.text "settings"
     t.string "uid"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -241,6 +246,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
   add_foreign_key "parsing_sessions", "users", column: "committed_by_id"
   add_foreign_key "parsing_sessions", "users", column: "rolled_back_by_id"
   add_foreign_key "parsing_sessions", "workspaces"
+  add_foreign_key "processed_files", "users", column: "uploaded_by_id"
   add_foreign_key "processed_files", "workspaces"
   add_foreign_key "transactions", "categories"
   add_foreign_key "transactions", "financial_institutions"

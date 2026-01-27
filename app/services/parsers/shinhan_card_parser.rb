@@ -75,13 +75,10 @@ module Parsers
     end
 
     def parse_pdf(tempfile)
-      transactions = []
-      reader = PDF::Reader.new(tempfile.path)
-
-      text = reader.pages.map(&:text).join("\n")
-      transactions = extract_transactions_from_text(text)
-
-      transactions
+      # PDF parsing is not supported for Shinhan Card
+      # Users should use text paste feature instead
+      Rails.logger.warn "Shinhan Card PDF parsing is not supported: #{processed_file.filename}"
+      []
     end
 
     def parse_text(tempfile)

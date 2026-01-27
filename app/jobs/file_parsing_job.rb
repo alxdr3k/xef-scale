@@ -170,14 +170,18 @@ class FileParsingJob < ApplicationJob
       transaction.update!(category: category)
       categorized_count += 1
 
-      # 매핑 저장 (같은 merchant가 여러 번 나와도 한 번만 저장)
-      unless CategoryMapping.exists?(workspace: workspace, merchant_pattern: transaction.merchant)
-        CategoryMapping.create!(
+      # 매핑 저장 - find_or_create_by로 Race Condition 방지
+      begin
+        CategoryMapping.find_or_create_by!(
           workspace: workspace,
           merchant_pattern: transaction.merchant,
-          category: category,
-          source: "gemini"
-        )
+          description_pattern: nil
+        ) do |mapping|
+          mapping.category = category
+          mapping.source = "gemini"
+        end
+      rescue ActiveRecord::RecordNotUnique
+        # Another thread created the mapping, which is fine
       end
     end
 

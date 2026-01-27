@@ -53,6 +53,9 @@ Rails.application.routes.draw do
 
     # File uploads and parsing
     resources :parsing_sessions, only: [ :index, :show, :create ] do
+      collection do
+        post :create_from_text
+      end
       resources :duplicate_confirmations, only: [ :update ]
       member do
         get :review, to: "reviews#show"
@@ -79,6 +82,9 @@ Rails.application.routes.draw do
     get "category_transactions/:category_id", action: :category_transactions, as: :category_transactions
   end
   get "dashboard", to: "dashboards#monthly", as: :dashboard
+
+  # User Settings
+  resource :user_settings, only: [ :show, :update ], path: "settings"
 
   # Notifications
   resources :notifications, only: [ :index ] do

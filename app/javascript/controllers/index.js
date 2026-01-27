@@ -52,6 +52,9 @@ application.register("slideover-close", SlideoverCloseController)
 import SlideoverController from "./slideover_controller"
 application.register("slideover", SlideoverController)
 
+import TabsController from "./tabs_controller"
+application.register("tabs", TabsController)
+
 import ToastController from "./toast_controller"
 application.register("toast", ToastController)
 

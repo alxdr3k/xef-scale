@@ -5,7 +5,7 @@ class Notification < ApplicationRecord
   belongs_to :workspace
   belongs_to :notifiable, polymorphic: true, optional: true
 
-  TYPES = %w[parsing_complete commit_complete rollback_complete].freeze
+  TYPES = %w[parsing_complete commit_complete rollback_complete ocr_complete].freeze
 
   validates :notification_type, inclusion: { in: TYPES }
   validates :title, presence: true
