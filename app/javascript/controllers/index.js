@@ -7,6 +7,9 @@ import { application } from "./application"
 import AutoFilterController from "./auto_filter_controller"
 application.register("auto-filter", AutoFilterController)
 
+import AutoRefreshController from "./auto_refresh_controller"
+application.register("auto-refresh", AutoRefreshController)
+
 import AutoSubmitController from "./auto_submit_controller"
 application.register("auto-submit", AutoSubmitController)
 
@@ -30,6 +33,12 @@ application.register("dashboard-category", DashboardCategoryController)
 
 import DropdownController from "./dropdown_controller"
 application.register("dropdown", DropdownController)
+
+import FileTypeDetectorController from "./file_type_detector_controller"
+application.register("file-type-detector", FileTypeDetectorController)
+
+import DuplicateModalController from "./duplicate_modal_controller"
+application.register("duplicate-modal", DuplicateModalController)
 
 import DuplicateReviewController from "./duplicate_review_controller"
 application.register("duplicate-review", DuplicateReviewController)

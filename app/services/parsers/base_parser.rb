@@ -75,7 +75,7 @@ module Parsers
       cleaned.to_i.abs
     end
 
-    def build_transaction(date:, merchant:, amount:, description: nil, installment_month: nil, installment_total: nil)
+    def build_transaction(date:, merchant:, amount:, description: nil, installment_month: nil, installment_total: nil, payment_type: nil)
       {
         date: date,
         merchant: merchant.to_s.strip,
@@ -83,7 +83,8 @@ module Parsers
         amount: amount,
         institution_identifier: institution_identifier,
         installment_month: installment_month,
-        installment_total: installment_total
+        installment_total: installment_total,
+        payment_type: payment_type
       }
     end
   end
