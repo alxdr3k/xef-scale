@@ -3,8 +3,11 @@ require "open3"
 class FileParsingJob < ApplicationJob
   queue_as :default
 
-  def perform(processed_file_id)
+  IMAGE_EXTENSIONS = %w[.jpg .jpeg .png .webp .heic].freeze
+
+  def perform(processed_file_id, institution_identifier: nil)
     processed_file = ProcessedFile.find(processed_file_id)
+    @institution_identifier = institution_identifier
     processed_file.mark_processing!
 
     parsing_session = processed_file.create_parsing_session!(
@@ -71,8 +74,12 @@ class FileParsingJob < ApplicationJob
 
   def parse_file(processed_file)
     filename = processed_file.filename.downcase
+    ext = File.extname(filename)
 
-    if filename.end_with?(".xls", ".xlsx")
+    if image_file?(ext) && @institution_identifier.present?
+      parser = ParserRouter.route_by_identifier(@institution_identifier, processed_file)
+      parser.parse
+    elsif filename.end_with?(".xls", ".xlsx")
       # Use Python parser for Excel files (more reliable)
       parse_with_python(processed_file)
     else
@@ -80,6 +87,10 @@ class FileParsingJob < ApplicationJob
       parser = ParserRouter.route(processed_file)
       parser.parse
     end
+  end
+
+  def image_file?(ext)
+    IMAGE_EXTENSIONS.include?(ext)
   end
 
   def parse_with_python(processed_file)
@@ -120,6 +131,7 @@ class FileParsingJob < ApplicationJob
       # 할부/혜택 관련 필드
       installment_month: tx_data[:installment_month],
       installment_total: tx_data[:installment_total],
+      payment_type: tx_data[:payment_type] || "lump_sum",
       original_amount: tx_data[:original_amount],
       benefit_type: tx_data[:benefit_type],
       benefit_amount: tx_data[:benefit_amount],
