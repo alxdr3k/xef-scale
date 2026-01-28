@@ -5,8 +5,23 @@ class ParserRouter
     toss_bank: [ "토스뱅크", "Toss", "수신자", "거래유형" ],
     kakao_bank: [ "kakao", "카카오뱅크", "거래일시", "거래구분" ],
     shinhan_card: [ "신한카드", "이용일자", "승인번호" ],
-    hana_card: [ "하나카드", "이용일", "가맹점명", "이용대금 명세서", "거래일자" ]
+    hana_card: [ "하나카드", "이용일", "가맹점명", "이용대금 명세서", "거래일자" ],
+    samsung_card: [ "삼성카드", "일시불", "할부", "이용구분", "입금후잔액" ]
   }.freeze
+
+  PARSERS = {
+    "shinhan_card" => Parsers::ShinhanCardParser,
+    "hana_card" => Parsers::HanaCardParser,
+    "toss_bank" => Parsers::TossBankParser,
+    "kakao_bank" => Parsers::KakaoBankParser,
+    "samsung_card" => Parsers::SamsungCardParser
+  }.freeze
+
+  def self.route_by_identifier(identifier, processed_file)
+    klass = PARSERS[identifier]
+    raise UnknownFormatError, "지원하지 않는 금융기관입니다: #{identifier}" unless klass
+    klass.new(processed_file)
+  end
 
   def self.route(processed_file)
     content = read_file_content(processed_file)
@@ -21,6 +36,8 @@ class ParserRouter
       Parsers::ShinhanCardParser.new(processed_file)
     when :hana_card
       Parsers::HanaCardParser.new(processed_file)
+    when :samsung_card
+      Parsers::SamsungCardParser.new(processed_file)
     else
       raise UnknownFormatError, "지원하지 않는 명세서 형식입니다."
     end
