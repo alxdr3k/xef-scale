@@ -1,4 +1,4 @@
-<div class="max-w-4xl mx-auto">
+<div class="max-w-4xl mx-auto" data-controller="bulk-select" data-action="click@document->bulk-select#closeMore">
   <h1 class="text-2xl font-bold text-gray-900 mb-2">내 용돈</h1>
   <p class="text-gray-600 mb-6">다른 사람에게 보이지 않는 개인 지출 내역입니다.</p>
 
@@ -30,6 +30,12 @@
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
         <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-16">
+            <button type="button" data-action="click->bulk-select#toggleSelectAll"
+                    class="text-xs text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap">
+              <span data-bulk-select-target="selectAllLabel">전체 선택</span>
+            </button>
+          </th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내역</th>
           <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">금액</th>
@@ -40,7 +46,14 @@
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
         <% @allowance_transactions.each do |at| %>
-          <tr id="<%= dom_id(at.expense_transaction) %>">
+          <tr id="<%= dom_id(at.expense_transaction) %>"
+              data-bulk-select-target="row"
+              data-transaction-id="<%= at.expense_transaction.id %>"
+              data-action="click->bulk-select#toggleRow"
+              class="transition-colors duration-150 cursor-pointer">
+            <td class="pl-3 pr-1 py-4 w-8">
+              <div class="w-1.5 h-8 rounded-full transition-colors duration-150 bg-transparent mx-auto"></div>
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
               <%= at.expense_transaction.formatted_date %>
             </td>
@@ -73,13 +86,52 @@
 
         <% if @allowance_transactions.empty? %>
           <tr>
-            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+            <td colspan="7" class="px-6 py-12 text-center text-gray-500">
               이번 달 용돈 내역이 없습니다.
             </td>
           </tr>
         <% end %>
       </tbody>
     </table>
+  </div>
+
+  <%# 숨겨진 일괄 처리 폼 %>
+  <%= form_with url: bulk_update_allowances_path, method: :post, data: { turbo: false, bulk_form: true } do %>
+    <input type="hidden" name="transaction_ids" data-bulk-select-target="ids" value="">
+    <input type="hidden" name="bulk_action" value="">
+    <input type="hidden" name="year" value="<%= @year %>">
+    <input type="hidden" name="month" value="<%= @month %>">
+  <% end %>
+
+  <%# 플로팅 액션 바 (선택 시에만 표시) %>
+  <div data-bulk-select-target="floatingBar"
+       class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+              bg-gray-900 text-white rounded-full shadow-2xl
+              px-5 py-3 flex items-center gap-3
+              transition-all duration-200 ease-out
+              translate-y-20 opacity-0 pointer-events-none">
+
+    <%# 선택 카운트 %>
+    <span class="text-sm font-medium whitespace-nowrap">
+      <span data-bulk-select-target="floatingCount">0</span>개 선택됨
+    </span>
+
+    <div class="w-px h-5 bg-gray-600"></div>
+
+    <%# 선택 해제 %>
+    <button type="button" data-action="click->bulk-select#deselectAll"
+            class="p-1.5 hover:bg-gray-700 rounded-full transition-colors" title="선택 해제">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+
+    <%# 용돈 해제 %>
+    <button type="button" data-action="click->bulk-select#unmarkAllowance"
+            class="px-4 py-1.5 bg-red-500 hover:bg-red-600 rounded-full
+                   text-sm font-medium transition-colors">
+      용돈 해제
+    </button>
   </div>
 
   <!-- Monthly Chart -->
