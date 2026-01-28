@@ -3,7 +3,8 @@ class TransactionsController < ApplicationController
   before_action :set_workspace
   before_action :require_workspace_access
   before_action :set_transaction, only: [ :show, :edit, :update, :destroy, :toggle_allowance, :quick_update_category, :inline_update ]
-  before_action :require_workspace_write_access, only: [ :new, :create, :edit, :update, :destroy, :quick_update_category, :inline_update ]
+  before_action :set_transaction_including_deleted, only: [ :restore ]
+  before_action :require_workspace_write_access, only: [ :new, :create, :edit, :update, :destroy, :quick_update_category, :inline_update, :bulk_update, :restore ]
 
   def index
     @year = params[:year].presence&.to_i || Date.current.year
@@ -23,7 +24,7 @@ class TransactionsController < ApplicationController
     @pagy, @transactions = pagy(transactions, items: 50)
 
     # Stats
-    @total_amount = transactions.sum(:amount)
+    @total_amount = transactions.excluding_coupon.sum(:amount)
     @categories = @workspace.categories.order(:name)
     @institutions = FinancialInstitution.order(:name)
 
@@ -158,6 +159,21 @@ class TransactionsController < ApplicationController
   end
 
   def inline_update
+    # Handle form-based updates (e.g., payment_type selector)
+    if params[:transaction].present?
+      permitted = %i[date merchant description amount notes payment_type]
+      if @transaction.update(params.require(:transaction).permit(permitted))
+        @categories = @workspace.categories.order(:name)
+        respond_to do |format|
+          format.turbo_stream
+        end
+      else
+        head :unprocessable_entity
+      end
+      return
+    end
+
+    # Handle inline-edit JSON updates (field/value params)
     field = params[:field]
     value = params[:value]
 
@@ -203,10 +219,61 @@ class TransactionsController < ApplicationController
       @categories = @workspace.categories.order(:name)
       respond_to do |format|
         format.turbo_stream
+        format.json { render json: { success: true, value: @transaction.send(field) } }
       end
     else
       head :unprocessable_entity
     end
+  end
+
+  def bulk_update
+    transaction_ids = params[:transaction_ids].to_s.split(",").map(&:to_i).reject(&:zero?)
+
+    if transaction_ids.empty?
+      redirect_to workspace_transactions_path(@workspace), alert: "선택된 항목이 없습니다."
+      return
+    end
+
+    action = params[:bulk_action]
+    transactions = @workspace.transactions.active.where(id: transaction_ids)
+
+    case action
+    when "delete"
+      count = transactions.count
+      transactions.find_each(&:soft_delete!)
+      notice = "#{count}건의 거래가 삭제되었습니다."
+    when "mark_allowance"
+      count = 0
+      transactions.find_each do |tx|
+        unless tx.allowance?
+          AllowanceTransaction.mark_as_allowance!(tx, current_user)
+          count += 1
+        end
+      end
+      notice = "#{count}건의 거래가 용돈으로 표시되었습니다."
+    when "unmark_allowance"
+      count = 0
+      transactions.find_each do |tx|
+        if tx.allowance?
+          AllowanceTransaction.unmark_as_allowance!(tx, current_user)
+          count += 1
+        end
+      end
+      notice = "#{count}건의 거래가 용돈에서 해제되었습니다."
+    when "change_category"
+      category = @workspace.categories.find_by(id: params[:category_id])
+      count = 0
+      transactions.find_each do |tx|
+        tx.update!(category_id: category&.id)
+        create_category_mapping(tx, category) if category
+        count += 1
+      end
+      notice = "#{count}건의 거래 카테고리가 변경되었습니다."
+    else
+      notice = "알 수 없는 작업입니다."
+    end
+
+    redirect_to workspace_transactions_path(@workspace), notice: notice
   end
 
   def suggest_category
@@ -238,16 +305,74 @@ class TransactionsController < ApplicationController
     end
   end
 
+  def duplicates
+    transactions = @workspace.transactions.active.includes(:category, :financial_institution)
+                            .with_duplicates
+                            .order(date: :desc, amount: :desc, created_at: :desc)
+
+    duplicate_groups = transactions.group_by { |t| [t.date, t.amount] }
+                                   .values
+                                   .select { |group| group.size >= 2 }
+
+    pairs = []
+    duplicate_groups.each do |group|
+      group.combination(2).each do |left, right|
+        pairs << {
+          left: serialize_transaction(left),
+          right: serialize_transaction(right)
+        }
+      end
+    end
+
+    categories = @workspace.categories.order(:name).map { |c| { id: c.id, name: c.name, color: c.color } }
+
+    render json: {
+      pairs: pairs,
+      total: pairs.size,
+      categories: categories
+    }
+  end
+
+  def restore
+    @transaction.restore!
+
+    respond_to do |format|
+      format.json { render json: { success: true } }
+    end
+  end
+
   private
 
   def set_transaction
     @transaction = @workspace.transactions.find(params[:id])
   end
 
+  def set_transaction_including_deleted
+    @transaction = @workspace.transactions.unscoped.where(workspace: @workspace).find(params[:id])
+  end
+
+  def serialize_transaction(transaction)
+    {
+      id: transaction.id,
+      date: transaction.formatted_date,
+      merchant: transaction.merchant,
+      amount: transaction.amount,
+      formatted_amount: transaction.formatted_amount,
+      category: transaction.category&.name,
+      category_id: transaction.category_id,
+      institution: transaction.financial_institution&.name,
+      description: transaction.description,
+      notes: transaction.notes,
+      delete_url: workspace_transaction_path(@workspace, transaction),
+      restore_url: restore_workspace_transaction_path(@workspace, transaction),
+      category_url: quick_update_category_workspace_transaction_path(@workspace, transaction)
+    }
+  end
+
   def transaction_params
     params.require(:transaction).permit(
       :date, :merchant, :description, :amount, :notes,
-      :category_id, :financial_institution_id
+      :category_id, :financial_institution_id, :payment_type
     )
   end
 

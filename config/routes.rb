@@ -42,10 +42,13 @@ Rails.application.routes.draw do
         post :toggle_allowance
         patch :quick_update_category
         patch :inline_update
+        patch :restore
       end
       collection do
         get :export
         get :suggest_category
+        post :bulk_update
+        get :duplicates
       end
     end
 
@@ -55,7 +58,7 @@ Rails.application.routes.draw do
     # File uploads and parsing
     resources :parsing_sessions, only: [ :index, :show, :create ] do
       collection do
-        post :create_from_text
+        post :bulk_discard
       end
       resources :duplicate_confirmations, only: [ :update ]
       member do
@@ -74,7 +77,11 @@ Rails.application.routes.draw do
   get "join/:token", to: "workspace_invitations#join", as: :join_workspace
 
   # Allowance tracking
-  resources :allowances, only: [ :index ]
+  resources :allowances, only: [ :index ] do
+    collection do
+      post :bulk_update
+    end
+  end
 
   # Dashboard
   resource :dashboard, only: [] do

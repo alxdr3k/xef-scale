@@ -1,11 +1,18 @@
-<tr id="<%= dom_id(transaction) %>">
+<tr id="<%= dom_id(transaction) %>"
+    data-bulk-select-target="row"
+    data-transaction-id="<%= transaction.id %>"
+    data-action="click->bulk-select#toggleRow"
+    class="transition-colors duration-150 cursor-pointer">
+  <td class="pl-3 pr-1 py-4 w-8">
+    <div class="w-1.5 h-8 rounded-full transition-colors duration-150 bg-transparent mx-auto"></div>
+  </td>
   <td data-controller="inline-edit"
       data-inline-edit-url-value="<%= inline_update_workspace_transaction_path(@workspace, transaction) %>"
       data-inline-edit-field-value="date"
       data-inline-edit-original-value="<%= transaction.date.to_s %>"
       class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
     <span data-inline-edit-target="display"
-          data-action="click->inline-edit#edit"
+          data-action="click->inline-edit#edit:stop"
           class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded">
       <%= transaction.formatted_date %>
     </span>
@@ -27,7 +34,7 @@
          data-inline-edit-field-value="merchant"
          data-inline-edit-original-value="<%= transaction.merchant %>">
       <span data-inline-edit-target="display"
-            data-action="click->inline-edit#edit"
+            data-action="click->inline-edit#edit:stop"
             class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm font-medium text-gray-900">
         <%= transaction.merchant %>
       </span>
@@ -49,7 +56,7 @@
            data-inline-edit-field-value="description"
            data-inline-edit-original-value="<%= transaction.description %>">
         <span data-inline-edit-target="display"
-              data-action="click->inline-edit#edit"
+              data-action="click->inline-edit#edit:stop"
               class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-500">
           <%= truncate(transaction.description, length: 30) %>
         </span>
@@ -68,19 +75,27 @@
     <% end %>
   </td>
   <td class="px-6 py-4 whitespace-nowrap text-right">
-    <div data-controller="inline-edit"
-         data-inline-edit-url-value="<%= inline_update_workspace_transaction_path(@workspace, transaction) %>"
-         data-inline-edit-field-value="amount"
-         data-inline-edit-original-value="<%= transaction.amount %>">
-      <div class="flex items-center justify-end gap-2">
-        <% if transaction.installment? %>
-          <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-violet-100 text-violet-700 border border-violet-200">
-            <%= transaction.installment_badge %>
-          </span>
-        <% end %>
+    <div class="flex items-center justify-end gap-2">
+      <!-- Payment Type Selector -->
+      <%= form_with model: transaction,
+          url: inline_update_workspace_transaction_path(@workspace, transaction),
+          method: :patch, data: { controller: 'auto-submit', turbo_preserve_scroll: true }, class: 'inline-flex' do |f| %>
+        <%= f.select :payment_type,
+            [['일시불', 'lump_sum'], ['할부', 'installment'], ['소비쿠폰', 'coupon']],
+            {},
+            class: 'text-xs rounded border-gray-300 py-0.5 pr-6',
+            data: { action: 'change->auto-submit#submit' } %>
+      <% end %>
+
+      <!-- Amount Editor -->
+      <div data-controller="inline-edit"
+           data-inline-edit-url-value="<%= inline_update_workspace_transaction_path(@workspace, transaction) %>"
+           data-inline-edit-field-value="amount"
+           data-inline-edit-original-value="<%= transaction.amount %>">
         <span data-inline-edit-target="display"
-              data-action="click->inline-edit#edit"
-              class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-900 font-medium">
+              data-action="click->inline-edit#edit:stop"
+              class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-900 font-medium <%= 'border-b border-dashed border-gray-400' if transaction.coupon? %>"
+              <%= 'title="합계에 포함되지 않습니다"'.html_safe if transaction.coupon? %>>
           <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
         </span>
         <div data-inline-edit-target="editor" class="hidden flex items-center gap-1">
@@ -179,7 +194,7 @@
       data-inline-edit-original-value="<%= transaction.notes || '' %>"
       class="px-6 py-4">
     <span data-inline-edit-target="display"
-          data-action="click->inline-edit#edit"
+          data-action="click->inline-edit#edit:stop"
           class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-500">
       <%= truncate(transaction.notes, length: 20).presence || '메모 추가...' %>
     </span>
