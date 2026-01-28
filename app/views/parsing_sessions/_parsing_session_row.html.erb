@@ -1,4 +1,15 @@
-<tr id="<%= dom_id(parsing_session) %>">
+<tr id="<%= dom_id(parsing_session) %>"
+    <% if parsing_session.can_discard? %>
+      data-bulk-select-target="row"
+      data-transaction-id="<%= parsing_session.id %>"
+      data-action="click->bulk-select#toggleRow"
+    <% end %>
+    class="transition-colors duration-150 <%= 'cursor-pointer' if parsing_session.can_discard? %>">
+  <td class="pl-3 pr-1 py-4 w-8">
+    <% if parsing_session.can_discard? %>
+      <div class="w-1.5 h-8 rounded-full transition-colors duration-150 bg-transparent mx-auto"></div>
+    <% end %>
+  </td>
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
     <% if parsing_session.text_paste? %>
       <span class="text-gray-600">텍스트 붙여넣기</span>

@@ -34,10 +34,21 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     file = fixture_file_upload("test_statement.csv", "text/csv")
 
     assert_difference "ProcessedFile.count" do
-      post workspace_parsing_sessions_path(@workspace), params: { file: file }
+      post workspace_parsing_sessions_path(@workspace), params: { files: [ file ] }
     end
     assert_redirected_to workspace_parsing_sessions_path(@workspace)
     assert_match /파일이 업로드되었습니다/, flash[:notice]
+  end
+
+  test "create with multiple files uploads all and queues jobs" do
+    file1 = fixture_file_upload("test_statement.csv", "text/csv")
+    file2 = fixture_file_upload("test_statement.csv", "text/csv")
+
+    assert_difference "ProcessedFile.count", 2 do
+      post workspace_parsing_sessions_path(@workspace), params: { files: [ file1, file2 ] }
+    end
+    assert_redirected_to workspace_parsing_sessions_path(@workspace)
+    assert_match /2개 파일이 업로드되었습니다/, flash[:notice]
   end
 
   test "member with read-only access cannot upload" do
@@ -45,7 +56,7 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     sign_in users(:reader)
     file = fixture_file_upload("test_statement.csv", "text/csv")
 
-    post workspace_parsing_sessions_path(@workspace), params: { file: file }
+    post workspace_parsing_sessions_path(@workspace), params: { files: [ file ] }
     assert_redirected_to workspace_path(@workspace)
   end
 
@@ -66,7 +77,7 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create with empty file params fails gracefully" do
-    post workspace_parsing_sessions_path(@workspace), params: { file: "" }
+    post workspace_parsing_sessions_path(@workspace), params: { files: [ "" ] }
     assert_redirected_to workspace_parsing_sessions_path(@workspace)
   end
 end

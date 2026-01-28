@@ -1,93 +1,95 @@
-<div class="max-w-4xl mx-auto">
+<div class="max-w-4xl mx-auto" data-controller="bulk-select" data-action="click@document->bulk-select#closeMore">
   <h1 class="text-2xl font-bold text-gray-900 mb-2">파일 업로드</h1>
-  <p class="text-gray-600 mb-6">은행/카드 명세서를 업로드하거나 텍스트를 붙여넣어 거래 내역을 자동으로 등록하세요.</p>
+  <p class="text-gray-600 mb-6">은행/카드 명세서를 업로드하여 거래 내역을 자동으로 등록하세요.</p>
 
   <!-- Upload Form -->
-  <div class="bg-white rounded-lg shadow p-6 mb-8" data-controller="tabs">
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
     <h2 class="text-lg font-semibold text-gray-900 mb-4">새 거래 추가</h2>
 
-    <!-- Tabs -->
-    <div class="border-b border-gray-200 mb-6">
-      <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-        <button type="button" data-tabs-target="tab" data-action="click->tabs#switch"
-                class="border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-          파일 업로드
+    <%= form_with url: workspace_parsing_sessions_path(@workspace), method: :post, multipart: true, local: true, class: 'space-y-4', data: { controller: "file-type-detector" } do |f| %>
+      <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center overflow-hidden transition-colors relative"
+           data-file-type-detector-target="dropZone"
+           data-action="dragover->file-type-detector#dragover dragleave->file-type-detector#dragleave drop->file-type-detector#drop">
+        <input type="file" name="files[]" id="files" multiple
+               accept=".xlsx,.xls,.csv,.pdf,.jpg,.jpeg,.png,.webp,.heic"
+               class="hidden"
+               data-file-type-detector-target="fileInput"
+               data-action="change->file-type-detector#detect">
+
+        <!-- File count badge -->
+        <span data-file-type-detector-target="fileCount"
+              class="hidden absolute top-3 right-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+        </span>
+
+        <!-- Clear button -->
+        <button type="button"
+                data-action="click->file-type-detector#clearFiles"
+                class="hidden absolute top-3 left-3 text-gray-400 hover:text-gray-600"
+                data-file-type-detector-target="clearButton">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
-        <button type="button" data-tabs-target="tab" data-action="click->tabs#switch"
-                class="border-transparent text-gray-500 hover:text-gray-700 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-          텍스트 붙여넣기
-        </button>
-      </nav>
-    </div>
 
-    <!-- Tab Panel 1: File Upload -->
-    <div data-tabs-target="panel" class="hidden">
-      <%= form_with url: workspace_parsing_sessions_path(@workspace), method: :post, multipart: true, local: true, class: 'space-y-4' do |f| %>
-        <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center overflow-hidden">
-          <input type="file" name="file" id="file"
-                 accept=".xlsx,.xls,.csv,.pdf"
-                 class="hidden"
-                 onchange="const name = this.files[0]?.name || '파일을 선택하세요'; document.getElementById('file-name').textContent = decodeURIComponent(name); document.getElementById('file-name').title = decodeURIComponent(name);">
-          <label for="file" class="cursor-pointer block">
-            <div class="text-4xl mb-4">📄</div>
-            <div id="file-name" class="text-gray-600 mb-2 truncate max-w-full px-4">파일을 선택하세요</div>
-            <div class="text-sm text-gray-400">Excel(.xlsx, .xls), CSV, PDF 파일 지원</div>
-          </label>
-        </div>
+        <label for="files" class="cursor-pointer block">
+          <div class="text-4xl mb-4">📄</div>
+          <div id="file-name" data-file-type-detector-target="fileName" class="text-gray-600 mb-2 truncate max-w-full px-4">파일을 선택하거나 여기에 놓으세요</div>
+          <div class="text-sm text-gray-400">Excel(.xlsx, .xls), CSV, PDF, 이미지(.jpg, .png, .webp, .heic) 파일 지원</div>
+          <div class="text-sm text-gray-400 mt-1">여러 파일을 한번에 선택하거나 드래그할 수 있습니다</div>
+          <div class="text-sm text-gray-400 mt-1">Ctrl+V로 클립보드 이미지 붙여넣기 가능</div>
+        </label>
+      </div>
 
-        <div class="text-sm text-gray-500">
-          <strong>지원 금융기관:</strong> 신한카드, 하나카드, 토스뱅크, 카카오뱅크
-        </div>
+      <!-- Institution selector (shown only for image files) -->
+      <div data-file-type-detector-target="institutionSelector" class="hidden">
+        <label for="institution_identifier" class="block text-sm font-medium text-gray-700 mb-2">
+          금융기관 선택
+        </label>
+        <select name="institution_identifier" id="institution_identifier"
+                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+          <option value="shinhan_card">신한카드</option>
+          <option value="samsung_card">삼성카드</option>
+          <option value="hana_card">하나카드</option>
+          <option value="toss_bank">토스뱅크</option>
+          <option value="kakao_bank">카카오뱅크</option>
+        </select>
+        <p class="mt-1 text-xs text-gray-500">이미지 파일은 금융기관을 직접 선택해야 합니다.</p>
+      </div>
 
-        <div class="flex justify-end">
-          <%= submit_tag '업로드', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
-        </div>
-      <% end %>
-    </div>
+      <div class="text-sm text-gray-500">
+        <strong>지원 금융기관:</strong> 신한카드, 삼성카드, 하나카드, 토스뱅크, 카카오뱅크
+      </div>
 
-    <!-- Tab Panel 2: Text Paste -->
-    <div data-tabs-target="panel" class="hidden">
-      <%= form_with url: create_from_text_workspace_parsing_sessions_path(@workspace), method: :post, local: true, class: 'space-y-4' do |f| %>
-        <div>
-          <label for="financial_institution" class="block text-sm font-medium text-gray-700 mb-2">
-            금융기관 선택
-          </label>
-          <select name="financial_institution" id="financial_institution"
-                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="shinhan_card">신한카드</option>
-          </select>
-          <p class="mt-1 text-xs text-gray-500">현재 신한카드만 지원됩니다.</p>
-        </div>
-
-        <div>
-          <label for="raw_text" class="block text-sm font-medium text-gray-700 mb-2">
-            거래 내역 텍스트
-          </label>
-          <textarea name="raw_text" id="raw_text" rows="12"
-                    placeholder="신한카드 명세서에서 거래 내역 부분을 복사하여 붙여넣으세요.&#10;&#10;예시:&#10;25.08.06&#10;본인357&#10;스타벅스 강남점&#10;5,500&#10;25.08.07&#10;본인357&#10;이마트&#10;23,400"
-                    class="block w-full min-h-[300px] font-mono text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
-          <p class="mt-2 text-sm text-gray-500">
-            <strong>도움말:</strong> 신한카드 앱/웹에서 명세서를 열어 날짜, 가맹점, 금액이 포함된 부분을 복사하세요.
-            날짜 형식(YY.MM.DD)과 금액이 자동으로 인식됩니다.
-          </p>
-        </div>
-
-        <div class="flex justify-end">
-          <%= submit_tag '파싱하기', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
-        </div>
-      <% end %>
-    </div>
+      <div class="flex justify-end">
+        <%= submit_tag '업로드', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
+      </div>
+    <% end %>
   </div>
 
   <!-- Upload History -->
   <div class="bg-white rounded-lg shadow overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
       <h2 class="text-lg font-semibold text-gray-900">업로드 기록</h2>
+      <% if @pending_files.any? %>
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <svg class="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <%= @pending_files.size %>개 처리 중
+        </span>
+      <% end %>
     </div>
 
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
         <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-16">
+            <button type="button" data-action="click->bulk-select#toggleSelectAll"
+                    class="text-xs text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap">
+              <span data-bulk-select-target="selectAllLabel">전체 선택</span>
+            </button>
+          </th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">파일명</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">결과</th>
@@ -96,19 +98,78 @@
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
+        <%# 아직 parsing_session이 생성되지 않은 pending/processing 파일들 %>
+        <% @pending_files.each do |processed_file| %>
+          <tr class="bg-blue-50">
+            <td class="pl-3 pr-1 py-4 w-8"></td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <%= processed_file.original_filename %>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="inline-flex items-center px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                <svg class="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <%= processed_file.status == 'pending' ? '대기중' : '처리중' %>
+              </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              <%= time_ago_in_words(processed_file.created_at) %> 전
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"></td>
+          </tr>
+        <% end %>
+
+        <%# 기존 parsing_sessions %>
         <% @parsing_sessions.each do |parsing_session| %>
           <%= render partial: 'parsing_session_row', locals: { parsing_session: parsing_session, workspace: @workspace } %>
         <% end %>
 
-        <% if @parsing_sessions.empty? %>
+        <% if @parsing_sessions.empty? && @pending_files.empty? %>
           <tr>
-            <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
               업로드 기록이 없습니다.
             </td>
           </tr>
         <% end %>
       </tbody>
     </table>
+  </div>
+
+  <%# 숨겨진 일괄 처리 폼 %>
+  <%= form_with url: bulk_discard_workspace_parsing_sessions_path(@workspace),
+      method: :post, data: { turbo: false, bulk_form: true } do %>
+    <input type="hidden" name="session_ids" data-bulk-select-target="ids" value="">
+  <% end %>
+
+  <%# 플로팅 액션 바 %>
+  <div data-bulk-select-target="floatingBar"
+       class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+              bg-gray-900 text-white rounded-full shadow-2xl
+              px-5 py-3 flex items-center gap-3
+              transition-all duration-200 ease-out
+              translate-y-20 opacity-0 pointer-events-none">
+
+    <span class="text-sm font-medium whitespace-nowrap">
+      <span data-bulk-select-target="floatingCount">0</span>개 선택됨
+    </span>
+
+    <div class="w-px h-5 bg-gray-600"></div>
+
+    <button type="button" data-action="click->bulk-select#deselectAll"
+            class="p-1.5 hover:bg-gray-700 rounded-full transition-colors" title="선택 해제">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+
+    <button type="button" data-action="click->bulk-select#discardSelected"
+            class="px-4 py-1.5 bg-red-500 hover:bg-red-600 rounded-full
+                   text-sm font-medium transition-colors">
+      취소
+    </button>
   </div>
 
   <% if @pagy.pages > 1 %>
