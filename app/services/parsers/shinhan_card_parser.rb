@@ -1,18 +1,29 @@
 module Parsers
   class ShinhanCardParser < BaseParser
+    IMAGE_EXTENSIONS = %w[.jpg .jpeg .png .webp .heic].freeze
+
+    MIME_TYPES = {
+      ".jpg" => "image/jpeg",
+      ".jpeg" => "image/jpeg",
+      ".png" => "image/png",
+      ".webp" => "image/webp",
+      ".heic" => "image/heic"
+    }.freeze
+
     def parse
       tempfile = download_file
       transactions = []
 
       begin
         filename = processed_file.filename.downcase
+        ext = File.extname(filename)
 
-        if filename.end_with?(".pdf")
+        if IMAGE_EXTENSIONS.include?(ext)
+          transactions = parse_image(tempfile, ext)
+        elsif filename.end_with?(".pdf")
           transactions = parse_pdf(tempfile)
         elsif filename.end_with?(".xlsx", ".xls")
           transactions = parse_excel(tempfile)
-        else
-          transactions = parse_text(tempfile)
         end
       ensure
         tempfile.close
@@ -29,6 +40,26 @@ module Parsers
     end
 
     private
+
+    def parse_image(tempfile, ext)
+      mime_type = MIME_TYPES[ext] || "image/jpeg"
+      service = GeminiVisionParserService.new
+      raw_transactions = service.parse_image(tempfile, mime_type: mime_type)
+
+      raw_transactions.map do |tx|
+        date = parse_date(tx[:date])
+        next unless date
+
+        build_transaction(
+          date: date,
+          merchant: tx[:merchant],
+          amount: tx[:amount],
+          payment_type: tx[:payment_type],
+          installment_month: tx[:installment_month],
+          installment_total: tx[:installment_total]
+        )
+      end.compact
+    end
 
     def parse_excel(tempfile)
       transactions = []
@@ -75,52 +106,8 @@ module Parsers
     end
 
     def parse_pdf(tempfile)
-      # PDF parsing is not supported for Shinhan Card
-      # Users should use text paste feature instead
       Rails.logger.warn "Shinhan Card PDF parsing is not supported: #{processed_file.filename}"
       []
-    end
-
-    def parse_text(tempfile)
-      text = File.read(tempfile.path, encoding: "UTF-8")
-      extract_transactions_from_text(text)
-    end
-
-    def extract_transactions_from_text(text)
-      transactions = []
-      lines = text.split("\n").map(&:strip)
-
-      current_date = nil
-      current_merchant = nil
-
-      lines.each_with_index do |line, i|
-        # Look for date pattern (YY.MM.DD or YYYY.MM.DD)
-        if line.match?(/^\d{2}\.\d{2}\.\d{2}$/)
-          yy, mm, dd = line.split(".")
-          current_date = Date.new(2000 + yy.to_i, mm.to_i, dd.to_i)
-
-          # Next line might be merchant
-          next_line = lines[i + 1].to_s.strip
-          next_line = next_line.sub(/^본인\d+\s*/, "")  # Remove prefix like "본인357"
-          current_merchant = next_line if next_line.present? && !next_line.match?(/^[\d,]+$/)
-
-        elsif line.match?(/^[\d,]+$/) && current_date && current_merchant
-          amount = line.gsub(",", "").to_i
-
-          if amount >= 100
-            transactions << build_transaction(
-              date: current_date,
-              merchant: current_merchant,
-              amount: amount
-            )
-          end
-
-          current_date = nil
-          current_merchant = nil
-        end
-      end
-
-      transactions
     end
   end
 end
