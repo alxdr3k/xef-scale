@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto" data-controller="bulk-select">
+<div class="max-w-7xl mx-auto" data-controller="bulk-select" data-action="click@document->bulk-select#closeMore">
   <%= link_to '← 업로드 목록', workspace_parsing_sessions_path(@workspace),
       class: 'text-indigo-600 hover:text-indigo-800 mb-4 inline-block' %>
 
@@ -42,7 +42,7 @@
     <div class="bg-white rounded-lg shadow p-4">
       <div class="text-sm text-gray-500">총 금액</div>
       <div class="text-2xl font-bold text-indigo-600">
-        <%= number_to_currency(@transactions.sum(&:amount), unit: '₩', precision: 0) %>
+        <%= number_to_currency(@transactions.excluding_coupon.sum(&:amount), unit: '₩', precision: 0) %>
       </div>
     </div>
     <div class="bg-white rounded-lg shadow p-4">
@@ -65,64 +65,24 @@
         parsing_session: @parsing_session %>
   <% end %>
 
-  <!-- Action Bar -->
+  <!-- Session Action Bar (세션 전체 액션만) -->
   <% unless @read_only %>
     <div class="bg-white rounded-lg shadow p-4 mb-6">
-      <div class="flex flex-wrap justify-between items-center gap-4">
-        <div class="flex items-center space-x-4" data-bulk-select-target="actions" style="display: none;">
-          <span class="text-sm text-gray-600">
-            <span data-bulk-select-target="count">0</span>개 선택됨
-          </span>
-
-          <%= form_with url: bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
-              method: :post, class: 'flex flex-wrap items-center gap-2', data: { turbo: false } do %>
-            <input type="hidden" name="transaction_ids" data-bulk-select-target="ids" value="">
-
-            <button type="submit" name="bulk_action" value="delete"
-                    class="px-3 py-1 text-sm border border-red-300 text-red-700 rounded hover:bg-red-50"
-                    data-confirm="선택한 거래를 삭제하시겠습니까?">
-              삭제
+      <div class="flex justify-end items-center gap-3">
+        <% if @parsing_session.review_pending? %>
+          <%= form_with url: discard_workspace_parsing_session_path(@workspace, @parsing_session),
+              method: :post, class: 'inline-block', data: { turbo_confirm: '모든 거래를 취소하고 업로드를 폐기하시겠습니까? 이 작업은 되돌릴 수 없습니다.' } do %>
+            <button type="submit" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+              전체 취소
             </button>
-            <button type="submit" name="bulk_action" value="mark_allowance"
-                    class="px-3 py-1 text-sm border border-yellow-300 text-yellow-700 rounded hover:bg-yellow-50">
-              용돈 표시
-            </button>
-            <button type="submit" name="bulk_action" value="unmark_allowance"
-                    class="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50">
-              용돈 해제
-            </button>
-
-            <div class="flex items-center space-x-2">
-              <select name="category_id" class="text-sm rounded border-gray-300">
-                <option value="">카테고리 선택</option>
-                <% @categories.each do |cat| %>
-                  <option value="<%= cat.id %>"><%= cat.name %></option>
-                <% end %>
-              </select>
-              <button type="submit" name="bulk_action" value="change_category"
-                      class="px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                카테고리 변경
-              </button>
-            </div>
           <% end %>
-        </div>
-
-        <div class="flex items-center space-x-3 ml-auto">
-          <% if @parsing_session.review_pending? %>
-            <%= form_with url: discard_workspace_parsing_session_path(@workspace, @parsing_session),
-                method: :post, class: 'inline-block', data: { turbo_confirm: '모든 거래를 취소하고 업로드를 폐기하시겠습니까? 이 작업은 되돌릴 수 없습니다.' } do %>
-              <button type="submit" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
-                취소하기
-              </button>
-            <% end %>
-            <%= form_with url: commit_workspace_parsing_session_path(@workspace, @parsing_session),
-                method: :post, class: 'inline-block', data: { turbo_confirm: "#{@transactions.count}건의 거래를 거래 내역에 반영하시겠습니까?" } do %>
-              <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                거래 내역 반영
-              </button>
-            <% end %>
+          <%= form_with url: commit_workspace_parsing_session_path(@workspace, @parsing_session),
+              method: :post, class: 'inline-block', data: { turbo_confirm: "#{@transactions.count}건의 거래를 거래 내역에 반영하시겠습니까?" } do %>
+            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              거래 내역 반영
+            </button>
           <% end %>
-        </div>
+        <% end %>
       </div>
     </div>
   <% end %>
@@ -151,10 +111,11 @@
         <thead class="bg-gray-50">
           <tr>
             <% unless @read_only %>
-              <th class="px-4 py-3 w-10">
-                <input type="checkbox" data-action="change->bulk-select#toggleAll"
-                       data-bulk-select-target="selectAll"
-                       class="rounded border-gray-300 text-indigo-600">
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-16">
+                <button type="button" data-action="click->bulk-select#toggleSelectAll"
+                        class="text-xs text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap">
+                  <span data-bulk-select-target="selectAllLabel">전체 선택</span>
+                </button>
               </th>
             <% end %>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">날짜</th>
@@ -182,6 +143,87 @@
   <% if @pagy.pages > 1 %>
     <div class="mt-6">
       <%== pagy_nav(@pagy) %>
+    </div>
+  <% end %>
+
+  <%# 플로팅 액션 바 (선택 시에만 표시) %>
+  <% unless @read_only %>
+    <%# 숨겨진 일괄 처리 폼 %>
+    <%= form_with url: bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+        method: :post, data: { turbo: false, bulk_form: true } do %>
+      <input type="hidden" name="transaction_ids" data-bulk-select-target="ids" value="">
+      <input type="hidden" name="bulk_action" value="">
+      <input type="hidden" name="category_id" value="">
+    <% end %>
+
+    <div data-bulk-select-target="floatingBar"
+         class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+                bg-gray-900 text-white rounded-full shadow-2xl
+                px-5 py-3 flex items-center gap-3
+                transition-all duration-200 ease-out
+                translate-y-20 opacity-0 pointer-events-none">
+
+      <%# 선택 카운트 %>
+      <span class="text-sm font-medium whitespace-nowrap">
+        <span data-bulk-select-target="floatingCount">0</span>개 선택됨
+      </span>
+
+      <div class="w-px h-5 bg-gray-600"></div>
+
+      <%# 선택 해제 %>
+      <button type="button" data-action="click->bulk-select#deselectAll"
+              class="p-1.5 hover:bg-gray-700 rounded-full transition-colors" title="선택 해제">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <%# 삭제 %>
+      <button type="button" data-action="click->bulk-select#deleteSelected"
+              class="px-4 py-1.5 bg-red-500 hover:bg-red-600 rounded-full
+                     text-sm font-medium transition-colors">
+        삭제
+      </button>
+
+      <%# 더보기 메뉴 %>
+      <div class="relative">
+        <button type="button" data-action="click->bulk-select#toggleMore"
+                class="p-1.5 hover:bg-gray-700 rounded-full transition-colors" title="더보기">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+          </svg>
+        </button>
+
+        <div data-bulk-select-target="moreMenu"
+             class="hidden absolute bottom-full mb-2 right-0
+                    bg-white rounded-lg shadow-xl border border-gray-200
+                    py-1 min-w-[180px] text-gray-700">
+          <button type="button" data-action="click->bulk-select#markAllowance"
+                  class="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 transition-colors">
+            용돈 표시
+          </button>
+          <button type="button" data-action="click->bulk-select#unmarkAllowance"
+                  class="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 transition-colors">
+            용돈 해제
+          </button>
+          <div class="border-t border-gray-200 my-1"></div>
+          <div class="px-4 py-2">
+            <label class="block text-xs text-gray-500 mb-1">카테고리 변경</label>
+            <div class="flex gap-1">
+              <select name="category_id" class="text-sm rounded border-gray-300 flex-1 min-w-0">
+                <option value="">선택...</option>
+                <% @categories.each do |cat| %>
+                  <option value="<%= cat.id %>"><%= cat.name %></option>
+                <% end %>
+              </select>
+              <button type="button" data-action="click->bulk-select#changeCategory"
+                      class="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 shrink-0">
+                적용
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   <% end %>
 </div>

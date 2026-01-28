@@ -8,8 +8,8 @@
         <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">기존 거래</div>
         <% original = confirmation.original_transaction %>
         <div class="space-y-2">
-          <div class="font-medium text-gray-900 text-lg truncate" title="<%= original.description %>">
-            <%= original.description %>
+          <div class="font-medium text-gray-900 text-lg truncate" title="<%= original.merchant %>">
+            <%= original.merchant %>
           </div>
           <div class="flex items-center gap-2 text-sm text-gray-600">
             <span><%= original.date&.strftime('%Y.%m.%d') %></span>
@@ -36,8 +36,8 @@
         <div class="text-xs font-medium text-amber-600 uppercase tracking-wide mb-3">새 거래</div>
         <% new_tx = confirmation.new_transaction %>
         <div class="space-y-2">
-          <div class="font-medium text-gray-900 text-lg truncate" title="<%= new_tx.description %>">
-            <%= new_tx.description %>
+          <div class="font-medium text-gray-900 text-lg truncate" title="<%= new_tx.merchant %>">
+            <%= new_tx.merchant %>
           </div>
           <div class="flex items-center gap-2 text-sm text-gray-600">
             <span><%= new_tx.date&.strftime('%Y.%m.%d') %></span>

@@ -1,12 +1,18 @@
-<tr id="<%= dom_id(transaction) %>" class="<%= 'bg-red-50 opacity-60' if transaction.deleted? %>">
+<tr id="<%= dom_id(transaction) %>"
+    data-bulk-select-target="row"
+    data-transaction-id="<%= transaction.id %>"
+    data-deleted="<%= transaction.deleted? %>"
+    <% unless read_only || transaction.deleted? %>
+      data-action="click->bulk-select#toggleRow"
+    <% end %>
+    class="<%= 'bg-red-50 opacity-60' if transaction.deleted? %>
+           transition-colors duration-150
+           <%= 'cursor-pointer' unless read_only || transaction.deleted? %>">
+
+  <%# 선택 인디케이터 %>
   <% unless read_only %>
-    <td class="px-4 py-4">
-      <% unless transaction.deleted? %>
-        <input type="checkbox" value="<%= transaction.id %>"
-               data-action="change->bulk-select#toggle"
-               data-bulk-select-target="checkbox"
-               class="rounded border-gray-300 text-indigo-600">
-      <% end %>
+    <td class="pl-3 pr-1 py-4 w-8">
+      <div class="w-1.5 h-8 rounded-full transition-colors duration-150 bg-transparent mx-auto"></div>
     </td>
   <% end %>
 
@@ -19,7 +25,7 @@
            data-inline-edit-field-value="date"
            data-inline-edit-original-value="<%= transaction.date.to_s %>">
         <span data-inline-edit-target="display"
-              data-action="click->inline-edit#edit"
+              data-action="click->inline-edit#edit:stop"
               class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded">
           <%= transaction.formatted_date %>
         </span>
@@ -50,7 +56,7 @@
            data-inline-edit-field-value="merchant"
            data-inline-edit-original-value="<%= transaction.merchant %>">
         <span data-inline-edit-target="display"
-              data-action="click->inline-edit#edit"
+              data-action="click->inline-edit#edit:stop"
               class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm font-medium text-gray-900">
           <%= transaction.merchant %>
         </span>
@@ -72,7 +78,7 @@
              data-inline-edit-field-value="description"
              data-inline-edit-original-value="<%= transaction.description %>">
           <span data-inline-edit-target="display"
-                data-action="click->inline-edit#edit"
+                data-action="click->inline-edit#edit:stop"
                 class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-500">
             <%= truncate(transaction.description, length: 40) %>
           </span>
@@ -100,24 +106,42 @@
             <%= transaction.installment_badge %>
           </span>
         <% end %>
-        <span class="text-sm text-gray-900 font-medium">
-          <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
-        </span>
+        <% if transaction.coupon? %>
+          <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+            소비쿠폰
+          </span>
+          <span class="text-sm text-gray-900 font-medium border-b border-dashed border-gray-400 cursor-help"
+                title="합계에 포함되지 않습니다">
+            <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+          </span>
+        <% else %>
+          <span class="text-sm text-gray-900 font-medium">
+            <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+          </span>
+        <% end %>
       </div>
     <% else %>
-      <div data-controller="inline-edit"
-           data-inline-edit-url-value="<%= update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: transaction.id) %>"
-           data-inline-edit-field-value="amount"
-           data-inline-edit-original-value="<%= transaction.amount %>">
-        <div class="flex items-center justify-end gap-2">
-          <% if transaction.installment? %>
-            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-violet-100 text-violet-700 border border-violet-200">
-              <%= transaction.installment_badge %>
-            </span>
-          <% end %>
+      <div class="flex items-center justify-end gap-2">
+        <!-- Payment Type Selector -->
+        <%= form_with model: transaction,
+            url: update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: transaction.id),
+            method: :patch, data: { controller: 'auto-submit', turbo_preserve_scroll: true }, class: 'inline-flex' do |f| %>
+          <%= f.select :payment_type,
+              [['일시불', 'lump_sum'], ['할부', 'installment'], ['소비쿠폰', 'coupon']],
+              {},
+              class: 'text-xs rounded border-gray-300 py-0.5 pr-6',
+              data: { action: 'change->auto-submit#submit' } %>
+        <% end %>
+
+        <!-- Amount Editor -->
+        <div data-controller="inline-edit"
+             data-inline-edit-url-value="<%= update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: transaction.id) %>"
+             data-inline-edit-field-value="amount"
+             data-inline-edit-original-value="<%= transaction.amount %>">
           <span data-inline-edit-target="display"
-                data-action="click->inline-edit#edit"
-                class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-900 font-medium">
+                data-action="click->inline-edit#edit:stop"
+                class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-900 font-medium <%= 'border-b border-dashed border-gray-400' if transaction.coupon? %>"
+                <%= 'title="합계에 포함되지 않습니다"'.html_safe if transaction.coupon? %>>
             <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
           </span>
           <div data-inline-edit-target="editor" class="hidden flex items-center gap-1">
@@ -204,7 +228,7 @@
            data-inline-edit-field-value="notes"
            data-inline-edit-original-value="<%= transaction.notes || '' %>">
         <span data-inline-edit-target="display"
-              data-action="click->inline-edit#edit"
+              data-action="click->inline-edit#edit:stop"
               class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-500">
           <%= truncate(transaction.notes, length: 20).presence || '메모 추가...' %>
         </span>

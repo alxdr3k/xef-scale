@@ -133,7 +133,7 @@ class ReviewsController < ApplicationController
     end
 
     # Only allow editing specific fields
-    permitted = [ :category_id, :notes, :description, :merchant, :date, :amount ]
+    permitted = [ :category_id, :notes, :description, :merchant, :date, :amount, :payment_type ]
     # Allow source change only if currently unknown
     permitted << :financial_institution_id if @transaction.source_editable?
 
