@@ -46,3 +46,19 @@
     100% { background-color: transparent; }
   }
 }
+
+@layer components {
+  /* 일괄 선택 - 행 호버/선택 상태 */
+  tr[data-bulk-select-target="row"]:hover {
+    background-color: rgb(249 250 251); /* bg-gray-50 */
+  }
+  tr.selected {
+    background-color: rgb(238 242 255); /* bg-indigo-50 */
+  }
+  tr.selected > td:first-child div {
+    background-color: rgb(99 102 241); /* bg-indigo-500 */
+  }
+  tr.selected:hover {
+    background-color: rgb(199 210 254); /* bg-indigo-200 */
+  }
+}
