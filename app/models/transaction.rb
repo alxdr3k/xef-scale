@@ -53,6 +53,22 @@ class Transaction < ApplicationRecord
   scope :excluding_allowance, -> {
     where.not(id: AllowanceTransaction.select(:expense_transaction_id))
   }
+  scope :excluding_coupon, -> { where.not(payment_type: "coupon") }
+  scope :coupons_only, -> { where(payment_type: "coupon") }
+  scope :with_duplicates, -> {
+    join_condition = "INNER JOIN transactions t2 ON
+      t1.id < t2.id AND
+      t1.workspace_id = t2.workspace_id AND
+      t1.date = t2.date AND
+      t1.amount = t2.amount AND
+      t1.status = 'committed' AND t2.status = 'committed' AND
+      t1.deleted = false AND t2.deleted = false"
+
+    sub1 = unscoped.select("t1.id").from("transactions t1").joins(join_condition)
+    sub2 = unscoped.select("t2.id").from("transactions t1").joins(join_condition)
+
+    where("transactions.id IN (#{sub1.to_sql}) OR transactions.id IN (#{sub2.to_sql})")
+  }
 
   def soft_delete!
     update!(deleted: true)
