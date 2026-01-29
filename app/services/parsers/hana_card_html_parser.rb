@@ -1,12 +1,16 @@
+require "ferrum"
+
 module Parsers
   class HanaCardHtmlParser < BaseParser
     class DecryptionError < StandardError; end
     class PasswordMissingError < StandardError; end
     class BrowserError < StandardError; end
 
-    # Ferrum 대기 시간 설정
     DECRYPT_WAIT_SECONDS = 3
     BROWSER_TIMEOUT = 30
+
+    SKIP_MERCHANTS = %w[소계 합계 카드소계].freeze
+    SKIP_MERCHANTS_SPACED = ["합 계", "이 용 금 액"].freeze
 
     def parse
       password = fetch_password
@@ -20,15 +24,31 @@ module Parsers
         page.go_to("file://#{tempfile.path}")
 
         decrypt_content(page, password)
-        decrypted_html = extract_decrypted_html(page)
 
-        if decrypted_html.blank?
-          Rails.logger.error("[HanaCardHtmlParser] 복호화된 콘텐츠가 비어 있습니다: #{processed_file.filename}")
+        raw_data = extract_transactions_via_js(page)
+        if raw_data.nil?
+          Rails.logger.error("[HanaCardHtmlParser] JS 추출 실패: #{processed_file.filename}")
           return transactions
         end
 
-        dump_html_for_debug(decrypted_html)
-        transactions = parse_transactions(decrypted_html)
+        period = raw_data["period"]
+        unless period
+          Rails.logger.warn("[HanaCardHtmlParser] 이용기간을 찾을 수 없습니다")
+          return transactions
+        end
+
+        period_info = build_period_info(period)
+        payment_date = period_info[:end_date]
+
+        rows = raw_data["rows"] || []
+        Rails.logger.info("[HanaCardHtmlParser] JS에서 #{rows.length}개 행 추출")
+
+        rows.each do |row|
+          tx = process_row(row, period_info, payment_date)
+          transactions << tx if tx
+        end
+
+        Rails.logger.info("[HanaCardHtmlParser] 파싱 완료: #{transactions.length}건 추출")
       rescue Ferrum::Error => e
         Rails.logger.error("[HanaCardHtmlParser] Chrome 실행 오류: #{e.message}")
         raise BrowserError, "Headless Chrome 실행에 실패했습니다: #{e.message}"
@@ -75,154 +95,196 @@ module Parsers
     end
 
     def decrypt_content(page, password)
-      # #password input에 비밀번호 입력
       page.at_css("#password")&.focus
       page.evaluate("document.getElementById('password').value = '#{escape_js(password)}'")
-
-      # UserFunc() 실행하여 복호화
       page.evaluate("UserFunc()")
 
-      # 복호화 완료 대기
       sleep(DECRYPT_WAIT_SECONDS)
 
-      # 복호화 성공 여부 확인: #uni_cont_body에 콘텐츠가 있는지 체크
-      content_present = page.evaluate(<<~JS)
+      title_changed = page.evaluate(<<~JS)
         (function() {
-          var el = document.getElementById('uni_cont_body');
-          return el && el.innerHTML.trim().length > 0;
+          return document.title.indexOf('하나카드 이용대금명세서') !== -1;
         })()
       JS
 
-      unless content_present
+      unless title_changed
         raise DecryptionError, "보안메일 복호화에 실패했습니다. 비밀번호를 확인해주세요."
       end
     end
 
-    def extract_decrypted_html(page)
-      page.evaluate(<<~JS)
+    # Extract structured transaction data directly from Chrome DOM via JavaScript.
+    # Returns a hash with "period" and "rows" keys, or nil on failure.
+    def extract_transactions_via_js(page)
+      result = page.evaluate(<<~JS)
         (function() {
-          var el = document.getElementById('uni_cont_body');
-          return el ? el.innerHTML : '';
+          var result = { period: null, rows: [] };
+
+          // Use textContent (not innerText) to include CSS-hidden elements
+          var bodyText = document.body.textContent || '';
+          var periodMatch = bodyText.match(/(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\s*~\\s*(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})/);
+          if (periodMatch) {
+            result.period = {
+              start_year: parseInt(periodMatch[1]),
+              start_month: parseInt(periodMatch[2]),
+              start_day: parseInt(periodMatch[3]),
+              end_year: parseInt(periodMatch[4]),
+              end_month: parseInt(periodMatch[5]),
+              end_day: parseInt(periodMatch[6])
+            };
+          }
+
+          // Find the innermost transaction table by picking the table with
+          // the most 11-cell rows that also contains "이용일자" header
+          var allTables = document.querySelectorAll('table');
+          var txTable = null;
+          var maxElevenCellRows = 0;
+
+          for (var t = 0; t < allTables.length; t++) {
+            var tbl = allTables[t];
+            var trs = tbl.rows;
+            var hasHeader = false;
+            var elevenCount = 0;
+
+            for (var r = 0; r < trs.length; r++) {
+              var cells = trs[r].cells;
+              if (!hasHeader) {
+                for (var c = 0; c < cells.length; c++) {
+                  if (cells[c].textContent.trim() === '이용일자') {
+                    hasHeader = true;
+                    break;
+                  }
+                }
+              }
+              if (cells.length === 11) elevenCount++;
+            }
+
+            if (hasHeader && elevenCount > maxElevenCellRows) {
+              maxElevenCellRows = elevenCount;
+              txTable = tbl;
+            }
+          }
+
+          if (!txTable) return result;
+
+          // Iterate direct rows, skip until header, then extract 11-cell rows
+          var trs = txTable.rows;
+          var headerFound = false;
+
+          for (var r = 0; r < trs.length; r++) {
+            var cells = trs[r].cells;
+
+            if (!headerFound) {
+              for (var c = 0; c < cells.length; c++) {
+                if (cells[c].textContent.trim() === '이용일자') {
+                  headerFound = true;
+                  break;
+                }
+              }
+              continue;
+            }
+
+            // Transaction rows have exactly 11 cells
+            if (cells.length !== 11) continue;
+
+            var cellTexts = [];
+            for (var c = 0; c < cells.length; c++) {
+              cellTexts.push(cells[c].textContent.trim());
+            }
+
+            result.rows.push({
+              date: cellTexts[0],
+              merchant: cellTexts[1],
+              usage_amount: cellTexts[2],
+              installment_total: cellTexts[3],
+              installment_month: cellTexts[4],
+              payment_amount: cellTexts[5],
+              fee: cellTexts[6],
+              benefit_type: cellTexts[7],
+              benefit_amount: cellTexts[8]
+            });
+          }
+
+          return result;
         })()
       JS
+
+      result
+    rescue => e
+      Rails.logger.error("[HanaCardHtmlParser] JS 평가 오류: #{e.message}")
+      nil
     end
 
-    def dump_html_for_debug(html)
-      Rails.logger.info("[HanaCardHtmlParser] 복호화된 HTML 길이: #{html.length} bytes")
+    def build_period_info(period)
+      {
+        start_year: period["start_year"],
+        start_month: period["start_month"],
+        end_year: period["end_year"],
+        end_month: period["end_month"],
+        end_date: Date.new(period["end_year"], period["end_month"], period["end_day"])
+      }
     end
 
-    def parse_transactions(html)
-      doc = Nokogiri::HTML::DocumentFragment.parse(html)
-      transactions = []
+    def process_row(row, period_info, payment_date)
+      date_text = row["date"].to_s.strip
+      merchant = row["merchant"].to_s.strip
 
-      # 전략: 거래 데이터가 포함된 테이블을 찾는다
-      # 하나카드 명세서는 일반적으로 "거래일자", "가맹점명", "이용금액" 등의 헤더를 가진
-      # 테이블에 거래 내역이 포함된다
-      tables = doc.css("table")
+      # MM/DD format validation
+      return nil unless date_text.match?(%r{\A\d{1,2}/\d{1,2}\z})
 
-      if tables.empty?
-        Rails.logger.warn("[HanaCardHtmlParser] 복호화된 HTML에서 테이블을 찾을 수 없습니다")
-        return transactions
-      end
+      # Skip summary rows
+      return nil if skip_merchant?(merchant)
 
-      target_table = find_transaction_table(tables)
-      unless target_table
-        Rails.logger.warn("[HanaCardHtmlParser] 거래 내역 테이블을 식별할 수 없습니다. 첫 번째 테이블을 시도합니다.")
-        target_table = tables.first
-      end
+      # Resolve full date from MM/DD
+      month, day = date_text.split("/").map(&:to_i)
+      year = resolve_year(month, period_info)
+      date = Date.new(year, month, day)
 
-      header_map = detect_header_columns(target_table)
-      rows = target_table.css("tr")
+      # Installment info
+      installment_total = parse_installment_field(row["installment_total"])
+      installment_month = parse_installment_field(row["installment_month"])
 
-      rows.each do |row|
-        cells = row.css("td")
-        next if cells.empty?
-        next if cells.length < 3 # 최소 날짜, 가맹점, 금액
-
-        tx = parse_table_row(cells, header_map)
-        transactions << tx if tx
-      end
-
-      Rails.logger.info("[HanaCardHtmlParser] 파싱 완료: #{transactions.length}건 추출")
-      transactions
-    end
-
-    def find_transaction_table(tables)
-      keywords = %w[거래일 이용일 가맹점 이용금액 결제금액 청구금액]
-
-      tables.find do |table|
-        header_text = table.css("th, thead td, tr:first-child td").text
-        keywords.count { |kw| header_text.include?(kw) } >= 2
-      end
-    end
-
-    def detect_header_columns(table)
-      # 기본 컬럼 매핑 (하나카드 Excel 명세서 구조 기반 추정)
-      header_map = { date: 0, merchant: 1, amount: 2, installment_total: nil, installment_month: nil }
-
-      header_row = table.at_css("thead tr, tr:first-child")
-      return header_map unless header_row
-
-      cells = header_row.css("th, td")
-      cells.each_with_index do |cell, idx|
-        text = cell.text.strip
-        case text
-        when /거래일|이용일/
-          header_map[:date] = idx
-        when /가맹점|이용처|상호/
-          header_map[:merchant] = idx
-        when /이용금액|결제금액|청구금액|금액/
-          header_map[:amount] = idx
-        when /할부기간|할부/
-          header_map[:installment_total] = idx
-        when /청구회차|회차/
-          header_map[:installment_month] = idx
-        end
-      end
-
-      header_map
-    end
-
-    def parse_table_row(cells, header_map)
-      date_text = cell_text(cells, header_map[:date])
-      return nil if date_text.blank?
-
-      date = parse_date(date_text)
-      return nil unless date
-
-      merchant = cell_text(cells, header_map[:merchant])
-      return nil if merchant.blank?
-
-      amount_text = cell_text(cells, header_map[:amount])
+      # Amount: prefer payment_amount (cells[5]), fall back to usage_amount (cells[2])
+      payment_amount_text = row["payment_amount"].to_s.strip
+      usage_amount_text = row["usage_amount"].to_s.strip
+      amount_text = payment_amount_text.present? ? payment_amount_text : usage_amount_text
       amount = parse_amount(amount_text)
       return nil if amount.zero?
 
-      installment_total = nil
-      installment_month = nil
-
-      if !header_map[:installment_total].nil? && header_map[:installment_total] < cells.length
-        raw_total = cell_text(cells, header_map[:installment_total])
-        installment_total = raw_total.to_i if raw_total.present? && raw_total != "-"
-      end
-
-      if !header_map[:installment_month].nil? && header_map[:installment_month] < cells.length
-        raw_month = cell_text(cells, header_map[:installment_month])
-        installment_month = raw_month.to_i if raw_month.present? && raw_month != "-"
-      end
+      # For installment month 2+, use payment_date instead of transaction date
+      is_installment = installment_total && installment_total > 1
+      use_payment_date = is_installment && installment_month && installment_month > 1 && payment_date
+      final_date = use_payment_date ? payment_date : date
 
       build_transaction(
-        date: date,
+        date: final_date,
         merchant: merchant,
         amount: amount,
         description: merchant,
         installment_month: installment_month,
         installment_total: installment_total
       )
+    rescue Date::Error => e
+      Rails.logger.warn("[HanaCardHtmlParser] 날짜 파싱 실패: #{date_text} - #{e.message}")
+      nil
     end
 
-    def cell_text(cells, index)
-      return "" if index.nil? || index >= cells.length
-      cells[index].text.strip
+    def skip_merchant?(merchant)
+      SKIP_MERCHANTS.any? { |term| merchant.include?(term) } ||
+        SKIP_MERCHANTS_SPACED.any? { |term| merchant.include?(term) }
+    end
+
+    def parse_installment_field(value)
+      text = value.to_s.strip
+      return nil unless text.present? && text.match?(/\d+/)
+      text.to_i
+    end
+
+    def resolve_year(month, period_info)
+      if month >= period_info[:start_month]
+        period_info[:start_year]
+      else
+        period_info[:end_year]
+      end
     end
 
     def escape_js(str)
