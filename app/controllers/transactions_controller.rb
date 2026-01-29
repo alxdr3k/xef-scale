@@ -363,6 +363,7 @@ class TransactionsController < ApplicationController
       institution: transaction.financial_institution&.name,
       description: transaction.description,
       notes: transaction.notes,
+      created_at: transaction.created_at.strftime("%m/%d %H:%M"),
       delete_url: workspace_transaction_path(@workspace, transaction),
       restore_url: restore_workspace_transaction_path(@workspace, transaction),
       category_url: quick_update_category_workspace_transaction_path(@workspace, transaction)

@@ -1,4 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
+import DragCopyManager from "../utils/drag_copy_manager"
+import { jsonPatchHeaders } from "../utils/csrf"
 
 export default class extends Controller {
   static targets = ["modal", "content", "loading", "empty", "summary", "counter", "progress", "undoBtn", "footer"]
@@ -6,11 +8,42 @@ export default class extends Controller {
 
   connect() {
     this.pairs = []
+    this.categories = []
     this.currentIndex = 0
     this.deletedIds = new Set()
     this.lastAction = null
     this.stats = { deleted: 0, kept: 0, skipped: 0 }
     this.editingField = null
+    this.initDragManager()
+  }
+
+  initDragManager() {
+    this.dragManager = new DragCopyManager({
+      compatibility: {
+        text: ["text"],    // Text fields can drop on any text field
+        select: ["select"] // Select fields require same fieldKey check
+      },
+      requireSameFieldKey: ["select"], // Category can only drop on category
+      classes: {
+        dragging: "opacity-50",
+        dropTarget: ["ring-2", "ring-indigo-400", "bg-indigo-50"]
+      },
+      onDrop: async (sourceData, targetData) => {
+        const targetTx = targetData.context.tx
+
+        if (targetData.fieldType === "select") {
+          await this.applyDroppedCategory(targetTx, sourceData.value, sourceData.categoryName)
+        } else {
+          await this.applyDroppedText(targetTx, targetData.fieldKey, sourceData.value)
+        }
+      }
+    })
+  }
+
+  disconnect() {
+    if (this.dragManager) {
+      this.dragManager.destroy()
+    }
   }
 
   open() {
@@ -39,6 +72,7 @@ export default class extends Controller {
 
       const data = await response.json()
       this.pairs = data.pairs || []
+      this.categories = data.categories || []
 
       if (this.pairs.length === 0) {
         this.showEmpty()
@@ -86,73 +120,98 @@ export default class extends Controller {
     const progress = ((this.currentIndex + 1) / this.pairs.length) * 100
     this.progressTarget.style.width = `${progress}%`
 
+    // Clean up old drag elements before re-rendering
+    if (this.dragManager) {
+      this.dragManager.destroy()
+      this.initDragManager()
+    }
+
     this.contentTarget.innerHTML = ""
 
-    // Header row with IDs
-    const headerRow = document.createElement("div")
-    headerRow.className = "grid grid-cols-[1fr_auto_1fr] gap-2 mb-3 items-center"
-
-    const leftHeader = document.createElement("div")
-    leftHeader.className = "text-right"
-    leftHeader.innerHTML = `<span class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">ID: ${pair.left.id}</span>`
-
-    const centerHeader = document.createElement("div")
-    centerHeader.className = "text-center"
-
-    const rightHeader = document.createElement("div")
-    rightHeader.className = "text-left"
-    rightHeader.innerHTML = `<span class="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">ID: ${pair.right.id}</span>`
-
-    headerRow.appendChild(leftHeader)
-    headerRow.appendChild(centerHeader)
-    headerRow.appendChild(rightHeader)
-    this.contentTarget.appendChild(headerRow)
-
-    // Fields comparison
+    // Fields definition
     const fields = [
       { label: "날짜", key: "date", editable: false },
-      { label: "가맹점", key: "merchant", editable: true },
-      { label: "설명", key: "description", editable: true },
+      { label: "가맹점", key: "merchant", editable: true, type: "text" },
+      { label: "설명", key: "description", editable: true, type: "text" },
       { label: "금액", key: "amount", editable: false, format: "currency" },
-      { label: "카테고리", key: "category", editable: false },
+      { label: "카테고리", key: "category", editable: true, type: "select" },
       { label: "금융기관", key: "institution", editable: false },
-      { label: "메모", key: "notes", editable: true }
+      { label: "메모", key: "notes", editable: true, type: "text" }
     ]
 
-    const fieldsContainer = document.createElement("div")
-    fieldsContainer.className = "space-y-1"
+    // 3-column layout: left card | labels | right card
+    const container = document.createElement("div")
+    container.className = "grid grid-cols-[1fr_80px_1fr] gap-3"
 
+    // Left card
+    const leftCard = document.createElement("div")
+    leftCard.className = "bg-blue-50 border-2 border-blue-300 rounded-lg p-4"
+
+    const leftHeader = document.createElement("div")
+    leftHeader.className = "text-center mb-3 pb-2 border-b border-blue-200"
+    leftHeader.innerHTML = `<span class="text-xs font-medium text-blue-700">등록: ${pair.left.created_at}</span>`
+    leftCard.appendChild(leftHeader)
+
+    const leftFields = document.createElement("div")
+    leftFields.className = "space-y-2"
+
+    // Center labels
+    const centerLabels = document.createElement("div")
+    centerLabels.className = "flex flex-col pt-12"
+
+    const centerSpacer = document.createElement("div")
+    centerSpacer.className = "h-[22px]" // Match header height
+    centerLabels.appendChild(centerSpacer)
+
+    const labelsContainer = document.createElement("div")
+    labelsContainer.className = "space-y-2"
+
+    // Right card
+    const rightCard = document.createElement("div")
+    rightCard.className = "bg-violet-50 border-2 border-violet-300 rounded-lg p-4"
+
+    const rightHeader = document.createElement("div")
+    rightHeader.className = "text-center mb-3 pb-2 border-b border-violet-200"
+    rightHeader.innerHTML = `<span class="text-xs font-medium text-violet-700">등록: ${pair.right.created_at}</span>`
+    rightCard.appendChild(rightHeader)
+
+    const rightFields = document.createElement("div")
+    rightFields.className = "space-y-2"
+
+    // Build fields
     fields.forEach(field => {
       const leftVal = pair.left[field.key]
       const rightVal = pair.right[field.key]
       const isDifferent = leftVal !== rightVal
 
-      const row = document.createElement("div")
-      row.className = `grid grid-cols-[1fr_80px_1fr] gap-2 items-center py-2 px-3 rounded ${isDifferent ? "bg-amber-50" : ""}`
-      row.dataset.fieldKey = field.key
-
       // Left value
-      const leftCell = document.createElement("div")
-      leftCell.className = "text-right"
-      leftCell.appendChild(this.createValueCell(pair.left, field, "left", isDifferent))
+      const leftRow = document.createElement("div")
+      leftRow.className = `text-right py-1.5 px-2 rounded ${isDifferent ? "bg-amber-100 ring-1 ring-amber-300" : ""}`
+      leftRow.appendChild(this.createValueCell(pair.left, field, "left", isDifferent))
+      leftFields.appendChild(leftRow)
 
       // Center label
-      const centerCell = document.createElement("div")
-      centerCell.className = `text-center text-sm text-gray-500 ${isDifferent ? "font-semibold text-amber-700" : ""}`
-      centerCell.textContent = field.label
+      const labelRow = document.createElement("div")
+      labelRow.className = `text-center text-sm py-1.5 ${isDifferent ? "font-semibold text-amber-700" : "text-gray-500"}`
+      labelRow.textContent = field.label
+      labelsContainer.appendChild(labelRow)
 
       // Right value
-      const rightCell = document.createElement("div")
-      rightCell.className = "text-left"
-      rightCell.appendChild(this.createValueCell(pair.right, field, "right", isDifferent))
-
-      row.appendChild(leftCell)
-      row.appendChild(centerCell)
-      row.appendChild(rightCell)
-      fieldsContainer.appendChild(row)
+      const rightRow = document.createElement("div")
+      rightRow.className = `text-left py-1.5 px-2 rounded ${isDifferent ? "bg-amber-100 ring-1 ring-amber-300" : ""}`
+      rightRow.appendChild(this.createValueCell(pair.right, field, "right", isDifferent))
+      rightFields.appendChild(rightRow)
     })
 
-    this.contentTarget.appendChild(fieldsContainer)
+    leftCard.appendChild(leftFields)
+    centerLabels.appendChild(labelsContainer)
+    rightCard.appendChild(rightFields)
+
+    container.appendChild(leftCard)
+    container.appendChild(centerLabels)
+    container.appendChild(rightCard)
+
+    this.contentTarget.appendChild(container)
   }
 
   createValueCell(tx, field, side, isDifferent) {
@@ -166,68 +225,13 @@ export default class extends Controller {
       : (tx[field.key] || "-")
 
     if (field.editable) {
-      // Edit icon (left side only shows on left, right side only shows on right)
-      if (side === "right") {
-        const editIcon = document.createElement("span")
-        editIcon.className = "text-gray-400 hover:text-gray-600 cursor-pointer"
-        editIcon.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`
-        editIcon.addEventListener("click", () => this.startEdit(container, tx, field, side))
-        container.appendChild(editIcon)
+      if (field.type === "select") {
+        // Category select
+        this.createSelectCell(container, tx, field, side, isDifferent, displayValue)
+      } else {
+        // Text input
+        this.createTextCell(container, tx, field, side, isDifferent, displayValue)
       }
-
-      // Display value (clickable)
-      const valueSpan = document.createElement("span")
-      valueSpan.className = `text-sm text-gray-900 cursor-pointer hover:bg-gray-100 px-1 rounded ${isDifferent ? "font-semibold" : ""}`
-      valueSpan.textContent = displayValue
-      valueSpan.dataset.display = "true"
-      valueSpan.addEventListener("click", () => this.startEdit(container, tx, field, side))
-      container.appendChild(valueSpan)
-
-      if (side === "left") {
-        const editIcon = document.createElement("span")
-        editIcon.className = "text-gray-400 hover:text-gray-600 cursor-pointer"
-        editIcon.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`
-        editIcon.addEventListener("click", () => this.startEdit(container, tx, field, side))
-        container.appendChild(editIcon)
-      }
-
-      // Editor (hidden initially)
-      const editorDiv = document.createElement("div")
-      editorDiv.className = "hidden flex items-center gap-1"
-      editorDiv.dataset.editor = "true"
-
-      const input = document.createElement("input")
-      input.type = "text"
-      input.value = tx[field.key] || ""
-      input.className = "text-sm border-gray-300 rounded px-1 py-0.5 w-28 focus:ring-1 focus:ring-indigo-500"
-      input.dataset.input = "true"
-
-      const saveBtn = document.createElement("button")
-      saveBtn.className = "text-green-600 hover:text-green-800"
-      saveBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
-      saveBtn.addEventListener("click", () => this.saveEdit(container, tx, field, side))
-
-      const cancelBtn = document.createElement("button")
-      cancelBtn.className = "text-gray-400 hover:text-gray-600"
-      cancelBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`
-      cancelBtn.addEventListener("click", () => this.cancelEdit(container))
-
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault()
-          e.stopPropagation()
-          this.saveEdit(container, tx, field, side)
-        } else if (e.key === "Escape") {
-          e.preventDefault()
-          e.stopPropagation()
-          this.cancelEdit(container)
-        }
-      })
-
-      editorDiv.appendChild(input)
-      editorDiv.appendChild(saveBtn)
-      editorDiv.appendChild(cancelBtn)
-      container.appendChild(editorDiv)
     } else {
       const valueSpan = document.createElement("span")
       valueSpan.className = `text-sm text-gray-900 ${isDifferent ? "font-semibold" : ""}`
@@ -238,22 +242,164 @@ export default class extends Controller {
     return container
   }
 
+  createTextCell(container, tx, field, side, isDifferent, displayValue) {
+    // Display value (clickable with hover underline, draggable)
+    const valueSpan = document.createElement("span")
+    valueSpan.className = `text-sm text-gray-900 cursor-pointer border-b border-transparent hover:border-gray-400 hover:border-dashed transition-colors ${isDifferent ? "font-semibold" : ""}`
+    valueSpan.textContent = displayValue
+    valueSpan.dataset.display = "true"
+
+    valueSpan.addEventListener("click", () => this.startEdit(container, tx, field, side))
+
+    // Use DragCopyManager for drag and drop
+    this.dragManager.makeDraggableDropTarget(valueSpan, {
+      fieldKey: field.key,
+      fieldType: "text",
+      side: side,
+      value: tx[field.key] || "",
+      context: { tx }
+    })
+
+    container.appendChild(valueSpan)
+
+    // Editor (hidden initially)
+    const editorDiv = document.createElement("div")
+    editorDiv.className = "hidden flex items-center gap-1"
+    editorDiv.dataset.editor = "true"
+
+    const input = document.createElement("input")
+    input.type = "text"
+    input.value = tx[field.key] || ""
+    input.className = "text-sm border-gray-300 rounded px-1 py-0.5 w-28 focus:ring-1 focus:ring-indigo-500"
+    input.dataset.input = "true"
+
+    const saveBtn = document.createElement("button")
+    saveBtn.className = "text-green-600 hover:text-green-800"
+    saveBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
+    saveBtn.addEventListener("click", () => this.saveEdit(container, tx, field, side))
+
+    const cancelBtn = document.createElement("button")
+    cancelBtn.className = "text-gray-400 hover:text-gray-600"
+    cancelBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`
+    cancelBtn.addEventListener("click", () => this.cancelEdit(container))
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault()
+        e.stopPropagation()
+        this.saveEdit(container, tx, field, side)
+      } else if (e.key === "Escape") {
+        e.preventDefault()
+        e.stopPropagation()
+        this.cancelEdit(container)
+      }
+    })
+
+    editorDiv.appendChild(input)
+    editorDiv.appendChild(saveBtn)
+    editorDiv.appendChild(cancelBtn)
+    container.appendChild(editorDiv)
+  }
+
+  createSelectCell(container, tx, field, side, isDifferent, displayValue) {
+    // Display value (clickable with hover underline, draggable)
+    const valueSpan = document.createElement("span")
+    valueSpan.className = `text-sm text-gray-900 cursor-pointer border-b border-transparent hover:border-gray-400 hover:border-dashed transition-colors ${isDifferent ? "font-semibold" : ""}`
+    valueSpan.textContent = displayValue
+    valueSpan.dataset.display = "true"
+
+    valueSpan.addEventListener("click", () => this.startSelectEdit(container, tx, field, side))
+
+    // Use DragCopyManager for drag and drop
+    this.dragManager.makeDraggableDropTarget(valueSpan, {
+      fieldKey: field.key,
+      fieldType: "select",
+      side: side,
+      value: tx.category_id || "",
+      categoryName: tx[field.key] || "",
+      context: { tx }
+    })
+
+    container.appendChild(valueSpan)
+
+    // Editor (hidden initially)
+    const editorDiv = document.createElement("div")
+    editorDiv.className = "hidden flex items-center gap-1"
+    editorDiv.dataset.editor = "true"
+
+    const select = document.createElement("select")
+    select.className = "text-sm border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500"
+    select.dataset.input = "true"
+
+    // Add empty option
+    const emptyOption = document.createElement("option")
+    emptyOption.value = ""
+    emptyOption.textContent = "미분류"
+    select.appendChild(emptyOption)
+
+    // Add category options
+    this.categories.forEach(cat => {
+      const option = document.createElement("option")
+      option.value = cat.id
+      option.textContent = cat.name
+      if (tx.category_id === cat.id) {
+        option.selected = true
+      }
+      select.appendChild(option)
+    })
+
+    select.addEventListener("change", () => this.saveCategoryEdit(container, tx, select.value, side))
+
+    select.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        e.stopPropagation()
+        this.cancelEdit(container)
+      }
+    })
+
+    const cancelBtn = document.createElement("button")
+    cancelBtn.className = "text-gray-400 hover:text-gray-600"
+    cancelBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`
+    cancelBtn.addEventListener("click", () => this.cancelEdit(container))
+
+    editorDiv.appendChild(select)
+    editorDiv.appendChild(cancelBtn)
+    container.appendChild(editorDiv)
+  }
+
   startEdit(fieldDiv, tx, field, side) {
     // Close any other open editors
     this.closeAllEditors()
 
     const display = fieldDiv.querySelector('[data-display="true"]')
-    const editIcon = fieldDiv.querySelector('.text-gray-400')
     const editor = fieldDiv.querySelector('[data-editor="true"]')
     const input = fieldDiv.querySelector('[data-input="true"]')
 
     if (display) display.classList.add("hidden")
-    if (editIcon) editIcon.classList.add("hidden")
     if (editor) editor.classList.remove("hidden")
     if (input) {
       input.value = tx[field.key] || ""
       input.focus()
       input.select()
+    }
+
+    this.editingField = { fieldDiv, tx, field, side }
+  }
+
+  startSelectEdit(fieldDiv, tx, field, side) {
+    // Close any other open editors
+    this.closeAllEditors()
+
+    const display = fieldDiv.querySelector('[data-display="true"]')
+    const editor = fieldDiv.querySelector('[data-editor="true"]')
+    const select = fieldDiv.querySelector('select')
+
+    if (display) display.classList.add("hidden")
+    if (editor) editor.classList.remove("hidden")
+    if (select) {
+      select.value = tx.category_id || ""
+      select.focus()
     }
 
     this.editingField = { fieldDiv, tx, field, side }
@@ -266,19 +412,14 @@ export default class extends Controller {
     this.contentTarget.querySelectorAll('[data-display="true"]').forEach(display => {
       display.classList.remove("hidden")
     })
-    this.contentTarget.querySelectorAll('.text-gray-400.hidden').forEach(icon => {
-      icon.classList.remove("hidden")
-    })
     this.editingField = null
   }
 
   cancelEdit(fieldDiv) {
     const display = fieldDiv.querySelector('[data-display="true"]')
-    const editIcon = fieldDiv.querySelector('.text-gray-400')
     const editor = fieldDiv.querySelector('[data-editor="true"]')
 
     if (display) display.classList.remove("hidden")
-    if (editIcon) editIcon.classList.remove("hidden")
     if (editor) editor.classList.add("hidden")
 
     this.editingField = null
@@ -302,11 +443,7 @@ export default class extends Controller {
 
       const response = await fetch(url, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
-        },
+        headers: jsonPatchHeaders(),
         body: JSON.stringify({ field: field.key, value: newValue })
       })
 
@@ -315,6 +452,7 @@ export default class extends Controller {
       // Update local data
       tx[field.key] = newValue
       this.hasEdited = true
+      this.editingField = null
 
       // Re-render the pair to update highlights
       this.renderPair()
@@ -322,6 +460,44 @@ export default class extends Controller {
     } catch (error) {
       console.error("Error saving edit:", error)
       input.disabled = false
+      fieldDiv.classList.add("bg-red-100")
+      setTimeout(() => fieldDiv.classList.remove("bg-red-100"), 1000)
+    }
+  }
+
+  async saveCategoryEdit(fieldDiv, tx, categoryId, side) {
+    const select = fieldDiv.querySelector('select')
+    const oldCategoryId = tx.category_id
+
+    if (categoryId === String(oldCategoryId) || (categoryId === "" && oldCategoryId === null)) {
+      this.cancelEdit(fieldDiv)
+      return
+    }
+
+    select.disabled = true
+
+    try {
+      const response = await fetch(tx.category_url, {
+        method: "PATCH",
+        headers: jsonPatchHeaders(),
+        body: JSON.stringify({ category_id: categoryId || null })
+      })
+
+      if (!response.ok) throw new Error("Update failed")
+
+      // Update local data
+      tx.category_id = categoryId ? parseInt(categoryId) : null
+      const selectedCategory = this.categories.find(c => c.id === tx.category_id)
+      tx.category = selectedCategory ? selectedCategory.name : null
+      this.hasEdited = true
+      this.editingField = null
+
+      // Re-render the pair to update highlights
+      this.renderPair()
+
+    } catch (error) {
+      console.error("Error saving category:", error)
+      select.disabled = false
       fieldDiv.classList.add("bg-red-100")
       setTimeout(() => fieldDiv.classList.remove("bg-red-100"), 1000)
     }
@@ -359,10 +535,7 @@ export default class extends Controller {
     try {
       const response = await fetch(tx.delete_url, {
         method: "DELETE",
-        headers: {
-          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content,
-          "Accept": "application/json"
-        }
+        headers: jsonPatchHeaders()
       })
 
       if (response.ok) {
@@ -383,10 +556,7 @@ export default class extends Controller {
       try {
         const response = await fetch(restoreUrl, {
           method: "PATCH",
-          headers: {
-            "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content,
-            "Accept": "application/json"
-          }
+          headers: jsonPatchHeaders()
         })
 
         if (response.ok) {
@@ -552,6 +722,54 @@ export default class extends Controller {
     } else if (event.key === "Escape") {
       event.preventDefault()
       this.close()
+    }
+  }
+
+  // Drop handlers (called by DragCopyManager)
+  async applyDroppedText(tx, fieldKey, value) {
+    const url = tx.delete_url.replace(/\/?$/, "/inline_update")
+
+    try {
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: jsonPatchHeaders(),
+        body: JSON.stringify({ field: fieldKey, value: value || "" })
+      })
+
+      if (!response.ok) throw new Error("Update failed")
+
+      // Update local data
+      tx[fieldKey] = value
+      this.hasEdited = true
+
+      // Re-render the pair to reflect changes
+      this.renderPair()
+
+    } catch (error) {
+      console.error("Error applying dropped text:", error)
+    }
+  }
+
+  async applyDroppedCategory(tx, categoryId, categoryName) {
+    try {
+      const response = await fetch(tx.category_url, {
+        method: "PATCH",
+        headers: jsonPatchHeaders(),
+        body: JSON.stringify({ category_id: categoryId || null })
+      })
+
+      if (!response.ok) throw new Error("Update failed")
+
+      // Update local data
+      tx.category_id = categoryId ? parseInt(categoryId) : null
+      tx.category = categoryName || null
+      this.hasEdited = true
+
+      // Re-render the pair to reflect changes
+      this.renderPair()
+
+    } catch (error) {
+      console.error("Error applying dropped category:", error)
     }
   }
 }
