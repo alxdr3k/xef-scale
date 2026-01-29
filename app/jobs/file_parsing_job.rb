@@ -210,15 +210,13 @@ class FileParsingJob < ApplicationJob
   def find_duplicate(workspace, transaction)
     scope = workspace.transactions
                      .reviewable
-                     .where(date: transaction.date, merchant: transaction.merchant, amount: transaction.amount)
+                     .where(date: transaction.date, amount: transaction.amount)
                      .where.not(id: transaction.id)
 
     # 할부 거래인 경우: installment_month도 비교
     if transaction.installment_month.present?
       scope = scope.where(installment_month: transaction.installment_month)
     else
-      # 일시불인 경우: installment_month가 nil인 거래와만 비교
-      # 기존 거래(nil)와도 호환되도록 nil 허용
       scope = scope.where(installment_month: nil)
     end
 

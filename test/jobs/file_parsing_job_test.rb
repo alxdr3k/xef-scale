@@ -69,6 +69,42 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_nil result
   end
 
+  test "find_duplicate detects duplicate with different merchant but same date and amount" do
+    existing = @workspace.transactions.create!(
+      date: Date.current,
+      merchant: "스타벅스",
+      amount: 5500
+    )
+
+    new_tx = @workspace.transactions.create!(
+      date: Date.current,
+      merchant: "STARBUCKS",
+      amount: 5500
+    )
+
+    job = FileParsingJob.new
+    result = job.send(:find_duplicate, @workspace, new_tx)
+    assert_equal existing, result
+  end
+
+  test "find_duplicate returns nil when date matches but amount differs" do
+    @workspace.transactions.create!(
+      date: Date.current,
+      merchant: "Test Merchant",
+      amount: 10000
+    )
+
+    new_tx = @workspace.transactions.create!(
+      date: Date.current,
+      merchant: "Test Merchant",
+      amount: 20000
+    )
+
+    job = FileParsingJob.new
+    result = job.send(:find_duplicate, @workspace, new_tx)
+    assert_nil result
+  end
+
   test "create_transaction creates new transaction" do
     job = FileParsingJob.new
     tx_data = {
