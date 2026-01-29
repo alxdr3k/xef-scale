@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_26_143931) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_29_140547) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -176,6 +176,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_26_143931) do
     t.index ["parsing_session_id"], name: "index_transactions_on_parsing_session_id"
     t.index ["status"], name: "index_transactions_on_status"
     t.index ["workspace_id", "category_id"], name: "index_transactions_on_workspace_id_and_category_id"
+    t.index ["workspace_id", "date", "amount"], name: "index_transactions_on_workspace_date_amount"
     t.index ["workspace_id", "date"], name: "index_transactions_on_workspace_id_and_date"
     t.index ["workspace_id", "status"], name: "index_transactions_on_workspace_id_and_status"
     t.index ["workspace_id"], name: "index_transactions_on_workspace_id"
