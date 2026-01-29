@@ -22,7 +22,7 @@ WORKDIR /rails
 
 # Install base packages (including python3 for Excel parsing, qpdf for PDF decryption)
 RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y curl libjemalloc2 libvips sqlite3 python3 python3-pip qpdf && \
+    apt-get install --no-install-recommends -y curl libjemalloc2 libvips sqlite3 python3 python3-pip qpdf chromium fonts-noto-cjk && \
     pip3 install --break-system-packages pandas openpyxl xlrd && \
     ln -s /usr/lib/$(uname -m)-linux-gnu/libjemalloc.so.2 /usr/local/lib/libjemalloc.so && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives

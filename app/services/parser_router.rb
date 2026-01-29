@@ -2,6 +2,7 @@ class ParserRouter
   class UnknownFormatError < StandardError; end
 
   SIGNATURES = {
+    hana_card_html: [ "USSM_M_DATA", "UniSafeMail", "uni_cont_body" ],
     toss_bank: [ "토스뱅크", "Toss", "수신자", "거래유형" ],
     kakao_bank: [ "kakao", "카카오뱅크", "거래일시", "거래구분" ],
     shinhan_card: [ "신한카드", "이용일자", "승인번호" ],
@@ -12,6 +13,7 @@ class ParserRouter
   PARSERS = {
     "shinhan_card" => Parsers::ShinhanCardParser,
     "hana_card" => Parsers::HanaCardParser,
+    "hana_card_html" => Parsers::HanaCardHtmlParser,
     "toss_bank" => Parsers::TossBankParser,
     "kakao_bank" => Parsers::KakaoBankParser,
     "samsung_card" => Parsers::SamsungCardParser
@@ -28,6 +30,8 @@ class ParserRouter
     institution = identify_institution(content)
 
     case institution
+    when :hana_card_html
+      Parsers::HanaCardHtmlParser.new(processed_file)
     when :toss_bank
       Parsers::TossBankParser.new(processed_file)
     when :kakao_bank
@@ -54,6 +58,8 @@ class ParserRouter
       read_csv_content(processed_file)
     elsif filename.end_with?(".pdf")
       read_pdf_content(processed_file)
+    elsif filename.end_with?(".html", ".htm")
+      read_html_content(processed_file)
     else
       ""
     end
@@ -105,6 +111,17 @@ class ParserRouter
     rescue PDF::Reader::MalformedPDFError
       # Malformed or protected PDF
       "신한카드 encrypted_pdf"
+    ensure
+      tempfile.close
+      tempfile.unlink
+    end
+  end
+
+  def self.read_html_content(processed_file)
+    tempfile = download_to_tempfile(processed_file)
+    begin
+      content = File.read(tempfile.path, encoding: "UTF-8")
+      content[0..5000]  # First 5000 chars for signature detection
     ensure
       tempfile.close
       tempfile.unlink

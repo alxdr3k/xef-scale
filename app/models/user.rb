@@ -57,6 +57,7 @@ class User < ApplicationRecord
 
   # 지원하는 금융기관 목록 (비밀번호 필요한 것만)
   INSTITUTIONS_WITH_PASSWORD = {
-    "shinhan_card" => "신한카드"
+    "shinhan_card" => "신한카드",
+    "hana_card" => "하나카드"
   }.freeze
 end

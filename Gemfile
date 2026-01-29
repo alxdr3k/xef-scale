@@ -61,6 +61,7 @@ gem "pagy", "~> 6.0"
 gem "roo"                    # Excel/CSV parsing
 gem "roo-xls"                # Old .xls format support
 gem "pdf-reader"             # PDF text extraction
+gem "ferrum"                 # Headless Chrome for encrypted HTML parsing
 
 # Code coverage
 gem "simplecov", require: false, group: :test
