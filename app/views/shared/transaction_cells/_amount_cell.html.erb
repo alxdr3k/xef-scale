@@ -20,7 +20,7 @@
         <%= f.select :payment_type,
             [['일시불', 'lump_sum'], ['할부', 'installment'], ['소비쿠폰', 'coupon']],
             {},
-            class: 'text-xs rounded-full border-gray-200 py-0.5 pl-2 pr-6 appearance-none bg-gray-100 text-gray-600 font-medium',
+            class: "text-[11px] rounded border-0 bg-transparent py-0 pl-0 pr-4 cursor-pointer transition-colors focus:ring-1 focus:ring-indigo-500 font-medium #{transaction.installment? ? 'text-violet-600' : transaction.coupon? ? 'text-amber-600' : 'text-gray-400 hover:text-gray-600'}",
             data: { action: 'change->auto-submit#submit' } %>
       <% end %>
 
@@ -48,12 +48,12 @@
     <%# Read-only: badges for installment/coupon, plain amount %>
     <div class="flex items-center justify-end gap-2">
       <% if transaction.installment? %>
-        <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+        <span class="text-[11px] font-medium text-violet-600">
           <%= transaction.installment_badge %>
         </span>
       <% end %>
       <% if transaction.coupon? %>
-        <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+        <span class="text-[11px] font-medium text-amber-600">
           소비쿠폰
         </span>
         <span class="relative group text-sm text-gray-900 font-medium tabular-nums inline-block w-28 text-right cursor-help">
