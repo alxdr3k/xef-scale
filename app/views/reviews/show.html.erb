@@ -1,4 +1,4 @@
-<div class="max-w-7xl mx-auto" data-controller="bulk-select" data-action="click@document->bulk-select#closeMore">
+<div class="max-w-7xl mx-auto" data-controller="bulk-select note-panel" data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick">
   <%= link_to '← 업로드 목록', workspace_parsing_sessions_path(@workspace),
       class: 'text-indigo-600 hover:text-indigo-800 mb-4 inline-block' %>
 
@@ -121,13 +121,10 @@
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">날짜</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">내역</th>
             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">금액</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">카테고리</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-36">카테고리</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">금융기관</th>
             <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">용돈</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">설명</th>
-            <% unless @read_only %>
-              <th class="px-4 py-3 w-16"></th>
-            <% end %>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200" id="transactions-review-list">
@@ -226,4 +223,6 @@
       </div>
     </div>
   <% end %>
+
+  <%= render 'shared/note_panel' %>
 </div>

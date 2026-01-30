@@ -3,51 +3,40 @@
     data-transaction-id="<%= transaction.id %>"
     data-action="click->bulk-select#toggleRow"
     class="transition-colors duration-150 cursor-pointer">
-  <td class="pl-3 pr-1 py-4 w-8">
+  <td class="pl-4 pr-2 py-2 h-14 w-8">
     <div class="w-1.5 h-8 rounded-full transition-colors duration-150 bg-transparent mx-auto"></div>
   </td>
   <td data-controller="inline-edit"
       data-inline-edit-url-value="<%= inline_update_workspace_transaction_path(@workspace, transaction) %>"
       data-inline-edit-field-value="date"
       data-inline-edit-original-value="<%= transaction.date.to_s %>"
-      class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+      class="px-4 py-2 h-14 whitespace-nowrap text-sm text-gray-900">
     <span data-inline-edit-target="display"
           data-action="click->inline-edit#edit:stop"
           class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded">
       <%= transaction.formatted_date %>
     </span>
-    <div data-inline-edit-target="editor" class="hidden flex items-center gap-1">
+    <div data-inline-edit-target="editor" class="hidden">
       <input data-inline-edit-target="input" type="date" value="<%= transaction.date.to_s %>"
              data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
-             class="text-sm border-gray-300 rounded px-1 py-0.5 w-full focus:ring-1 focus:ring-indigo-500">
-      <button data-action="click->inline-edit#save" class="text-green-600 hover:text-green-800 shrink-0">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-      </button>
-      <button data-action="click->inline-edit#cancel" class="text-gray-400 hover:text-gray-600 shrink-0">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-      </button>
+             class="text-sm border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500">
     </div>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap">
+  <td class="px-4 py-2 h-14">
     <div data-controller="inline-edit"
          data-inline-edit-url-value="<%= inline_update_workspace_transaction_path(@workspace, transaction) %>"
          data-inline-edit-field-value="merchant"
          data-inline-edit-original-value="<%= transaction.merchant %>">
       <span data-inline-edit-target="display"
-            data-action="click->inline-edit#edit:stop"
-            class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm font-medium text-gray-900">
+            data-controller="truncate-tooltip"
+            data-action="click->inline-edit#edit:stop mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
+            class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm font-medium text-gray-900 inline-block truncate max-w-full align-middle">
         <%= transaction.merchant %>
       </span>
-      <div data-inline-edit-target="editor" class="hidden flex items-center gap-1">
+      <div data-inline-edit-target="editor" class="hidden">
         <input data-inline-edit-target="input" type="text" value="<%= transaction.merchant %>"
                data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
-               class="text-sm border-gray-300 rounded px-1 py-0.5 w-full focus:ring-1 focus:ring-indigo-500">
-        <button data-action="click->inline-edit#save" class="text-green-600 hover:text-green-800 shrink-0">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-        </button>
-        <button data-action="click->inline-edit#cancel" class="text-gray-400 hover:text-gray-600 shrink-0">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
+               class="text-sm border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500">
       </div>
     </div>
     <% if transaction.description.present? && transaction.description != transaction.merchant %>
@@ -56,26 +45,29 @@
            data-inline-edit-field-value="description"
            data-inline-edit-original-value="<%= transaction.description %>">
         <span data-inline-edit-target="display"
-              data-action="click->inline-edit#edit:stop"
-              class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-500">
-          <%= truncate(transaction.description, length: 30) %>
+              data-controller="truncate-tooltip"
+              data-action="click->inline-edit#edit:stop mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
+              class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-500 inline-block truncate max-w-full align-middle">
+          <%= transaction.description %>
         </span>
-        <div data-inline-edit-target="editor" class="hidden flex items-center gap-1">
+        <div data-inline-edit-target="editor" class="hidden">
           <input data-inline-edit-target="input" type="text" value="<%= transaction.description %>"
                  data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
-                 class="text-sm border-gray-300 rounded px-1 py-0.5 w-full focus:ring-1 focus:ring-indigo-500">
-          <button data-action="click->inline-edit#save" class="text-green-600 hover:text-green-800 shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-          </button>
-          <button data-action="click->inline-edit#cancel" class="text-gray-400 hover:text-gray-600 shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
+                 class="text-sm border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500">
         </div>
       </div>
     <% end %>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-right">
+  <td class="px-4 py-2 h-14 whitespace-nowrap text-right">
     <div class="flex items-center justify-end gap-2">
+      <% if transaction.amount.to_i < 0 %>
+        <span class="px-1 py-0.5 text-[10px] leading-none rounded bg-red-100 text-red-700">취소</span>
+      <% elsif transaction.benefit_type == "할인" && transaction.benefit_amount.to_i > 0 %>
+        <span class="relative group px-1 py-0.5 text-[10px] leading-none rounded bg-emerald-100 text-emerald-700 cursor-default">할인
+          <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-gray-800 text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">이용금액 <%= number_to_currency(transaction.amount + transaction.benefit_amount, unit: '₩', precision: 0) %> − 할인 <%= number_to_currency(transaction.benefit_amount, unit: '₩', precision: 0) %></span>
+        </span>
+      <% end %>
+
       <!-- Payment Type Selector -->
       <%= form_with model: transaction,
           url: inline_update_workspace_transaction_path(@workspace, transaction),
@@ -83,7 +75,7 @@
         <%= f.select :payment_type,
             [['일시불', 'lump_sum'], ['할부', 'installment'], ['소비쿠폰', 'coupon']],
             {},
-            class: 'text-xs rounded border-gray-300 py-0.5 pr-6',
+            class: 'text-xs rounded border-gray-300 py-0.5 pr-6 w-20',
             data: { action: 'change->auto-submit#submit' } %>
       <% end %>
 
@@ -94,25 +86,21 @@
            data-inline-edit-original-value="<%= transaction.amount %>">
         <span data-inline-edit-target="display"
               data-action="click->inline-edit#edit:stop"
-              class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-900 font-medium <%= 'border-b border-dashed border-gray-400' if transaction.coupon? %>"
-              <%= 'title="합계에 포함되지 않습니다"'.html_safe if transaction.coupon? %>>
-          <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+              class="relative group cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-900 font-medium tabular-nums inline-block w-28 text-right">
+          <span class="<%= 'border-b border-dashed border-gray-400' if transaction.coupon? %>"><%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %></span>
+          <% if transaction.coupon? %>
+            <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-gray-800 text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">합계에 포함되지 않습니다</span>
+          <% end %>
         </span>
-        <div data-inline-edit-target="editor" class="hidden flex items-center gap-1">
+        <div data-inline-edit-target="editor" class="hidden">
           <input data-inline-edit-target="input" type="number" min="1" value="<%= transaction.amount %>"
                  data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
                  class="text-sm border-gray-300 rounded px-1 py-0.5 w-24 focus:ring-1 focus:ring-indigo-500">
-          <button data-action="click->inline-edit#save" class="text-green-600 hover:text-green-800 shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-          </button>
-          <button data-action="click->inline-edit#cancel" class="text-gray-400 hover:text-gray-600 shrink-0">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
         </div>
       </div>
     </div>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap">
+  <td class="px-4 py-2 h-14 whitespace-nowrap">
     <div data-controller="category-selector"
          data-category-selector-transaction-id-value="<%= transaction.id %>"
          data-category-selector-workspace-id-value="<%= @workspace.id %>"
@@ -123,10 +111,10 @@
               data-category-selector-target="badge"
               class="cursor-pointer hover:ring-2 hover:ring-indigo-200 rounded-full transition-all">
         <% if transaction.category %>
-          <span class="px-2 py-1 text-xs rounded-full inline-flex items-center gap-1"
+          <span class="px-2 py-1 text-xs rounded-full inline-flex items-center gap-1 max-w-28"
                 style="background-color: <%= transaction.category.color %>20; color: <%= transaction.category.color %>">
-            <%= transaction.category.name %>
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span class="truncate"><%= transaction.category.name %></span>
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </span>
@@ -148,7 +136,7 @@
             <button type="button"
                     data-action="click->category-selector#selectCategory"
                     data-category-id="<%= cat.id %>"
-                    class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between <%= transaction.category_id == cat.id ? 'bg-indigo-50' : '' %>">
+                    class="w-full text-left px-3 py-2 h-14 text-sm hover:bg-gray-50 flex items-center justify-between <%= transaction.category_id == cat.id ? 'bg-indigo-50' : '' %>">
               <span class="flex items-center gap-2">
                 <span class="w-3 h-3 rounded-full" style="background-color: <%= cat.color %>"></span>
                 <%= cat.name %>
@@ -166,7 +154,7 @@
             <button type="button"
                     data-action="click->category-selector#selectCategory"
                     data-category-id=""
-                    class="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-gray-50">
+                    class="w-full text-left px-3 py-2 h-14 text-sm text-gray-500 hover:bg-gray-50">
               미분류로 설정
             </button>
           <% end %>
@@ -175,47 +163,37 @@
         <hr class="my-1">
         <button type="button"
                 data-action="click->category-selector#openSlideover"
-                class="w-full text-left px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50">
+                class="w-full text-left px-3 py-2 h-14 text-sm text-indigo-600 hover:bg-indigo-50">
           + 새 카테고리 만들기
         </button>
         <a href="<%= workspace_categories_path(@workspace) %>"
-           class="block px-3 py-2 text-sm text-gray-500 hover:bg-gray-50">
+           class="block px-3 py-2 h-14 text-sm text-gray-500 hover:bg-gray-50">
           카테고리 관리
         </a>
       </div>
     </div>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-    <%= transaction.financial_institution&.name || '-' %>
-  </td>
-  <td data-controller="inline-edit"
-      data-inline-edit-url-value="<%= inline_update_workspace_transaction_path(@workspace, transaction) %>"
-      data-inline-edit-field-value="notes"
-      data-inline-edit-original-value="<%= transaction.notes || '' %>"
-      class="px-6 py-4">
-    <span data-inline-edit-target="display"
-          data-action="click->inline-edit#edit:stop"
-          class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-500">
-      <%= truncate(transaction.notes, length: 20).presence || '메모 추가...' %>
+  <td class="px-4 py-2 h-14 whitespace-nowrap text-sm text-gray-500">
+    <span data-controller="truncate-tooltip"
+          data-action="mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
+          class="inline-block truncate max-w-full align-middle">
+      <%= transaction.financial_institution&.name || '-' %>
     </span>
-    <div data-inline-edit-target="editor" class="hidden flex items-center gap-1">
-      <input data-inline-edit-target="input" type="text" value="<%= transaction.notes %>"
-             data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
-             placeholder="메모..."
-             class="text-sm border-gray-300 rounded px-1 py-0.5 w-full focus:ring-1 focus:ring-indigo-500">
-      <button data-action="click->inline-edit#save" class="text-green-600 hover:text-green-800 shrink-0">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-      </button>
-      <button data-action="click->inline-edit#cancel" class="text-gray-400 hover:text-gray-600 shrink-0">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-      </button>
-    </div>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-    <%= button_to '삭제', workspace_transaction_path(@workspace, transaction),
-        method: :delete,
-        data: { turbo_confirm: '정말 삭제하시겠습니까?' },
-        class: 'text-red-600 hover:text-red-900',
-        form: { class: 'inline' } %>
+  <td class="px-4 py-2 h-14">
+    <span data-action="click->note-panel#open:stop"
+          data-note-panel-url-param="<%= inline_update_workspace_transaction_path(@workspace, transaction) %>"
+          data-note-panel-original-param="<%= transaction.notes || '' %>"
+          data-note-panel-merchant-param="<%= transaction.merchant %>"
+          data-note-panel-date-param="<%= transaction.formatted_date %>"
+          data-note-panel-amount-param="<%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>"
+          data-note-panel-row-id-param="<%= dom_id(transaction) %>"
+          data-note-panel-trigger
+          data-controller="truncate-tooltip"
+          data-action="click->note-panel#open:stop mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
+          class="cursor-pointer hover:bg-blue-50 hover:text-blue-700 px-1 -mx-1 rounded text-sm inline-block truncate max-w-full align-middle
+                 <%= transaction.notes.present? ? 'text-gray-700' : 'text-gray-400 italic' %>">
+      <%= transaction.notes.presence || '메모 추가...' %>
+    </span>
   </td>
 </tr>

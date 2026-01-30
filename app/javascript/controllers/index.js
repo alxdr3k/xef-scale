@@ -52,6 +52,9 @@ application.register("hello", HelloController)
 import MonthPickerController from "./month_picker_controller"
 application.register("month-picker", MonthPickerController)
 
+import NotePanelController from "./note_panel_controller"
+application.register("note-panel", NotePanelController)
+
 import NotificationsController from "./notifications_controller"
 application.register("notifications", NotificationsController)
 
@@ -66,6 +69,9 @@ application.register("tabs", TabsController)
 
 import ToastController from "./toast_controller"
 application.register("toast", ToastController)
+
+import TruncateTooltipController from "./truncate_tooltip_controller"
+application.register("truncate-tooltip", TruncateTooltipController)
 
 import YearPickerController from "./year_picker_controller"
 application.register("year-picker", YearPickerController)

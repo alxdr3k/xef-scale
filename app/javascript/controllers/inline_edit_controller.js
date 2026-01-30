@@ -13,11 +13,20 @@ export default class extends Controller {
       }
     })
 
-    this.displayTarget.classList.add("hidden")
+    this.displayTarget.style.display = "none"
     this.editorTarget.classList.remove("hidden")
     this.inputTarget.focus()
     this.inputTarget.select()
     this._editing = true
+
+    // text/number input만 auto-size (date는 제외)
+    const type = this.inputTarget.type
+    if (type === "text" || type === "number") {
+      const val = this.inputTarget.value
+      const len = [...val].reduce((acc, c) => acc + (c.charCodeAt(0) > 127 ? 2 : 1), 0)
+      this.inputTarget.size = Math.max(len + 1, 4)
+      this.inputTarget.style.maxWidth = '100%'
+    }
   }
 
   get isEditing() {
@@ -78,7 +87,7 @@ export default class extends Controller {
     this.inputTarget.value = this.originalValue
     this.inputTarget.disabled = false
     this.editorTarget.classList.add("hidden")
-    this.displayTarget.classList.remove("hidden")
+    this.displayTarget.style.display = ""
   }
 
   handleKeydown(event) {
