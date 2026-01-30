@@ -62,11 +62,19 @@ class FileParsingJob < ApplicationJob
       # Create notifications for workspace members
       create_completion_notifications(parsing_session)
 
-    rescue StandardError => e
+    rescue => e
       Rails.logger.error "Parsing failed: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
       parsing_session.fail!
       processed_file.mark_failed!
+    ensure
+      # Ensure status transitions even for non-StandardError exceptions (LoadError, SyntaxError, etc.)
+      if parsing_session&.processing?
+        parsing_session.fail! rescue nil
+      end
+      if processed_file&.reload&.processing?
+        processed_file.mark_failed! rescue nil
+      end
     end
   end
 
