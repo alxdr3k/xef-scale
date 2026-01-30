@@ -26,6 +26,12 @@ class ParserRouter
   end
 
   def self.route(processed_file)
+    # HTML 파일은 확장자로 직접 라우팅 (시그니처가 파일 후반부에 위치할 수 있음)
+    filename = processed_file.filename.downcase
+    if filename.end_with?(".html", ".htm")
+      return Parsers::HanaCardHtmlParser.new(processed_file)
+    end
+
     content = read_file_content(processed_file)
     institution = identify_institution(content)
 
