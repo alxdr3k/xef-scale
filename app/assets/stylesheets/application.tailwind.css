@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+}
+
 @layer utilities {
   .category-flash {
     animation: categoryFlash 0.8s cubic-bezier(0.4, 0, 0.2, 1);
