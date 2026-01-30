@@ -67,7 +67,7 @@
   </div>
 
   <!-- Upload History -->
-  <div class="bg-white rounded-lg shadow overflow-hidden">
+  <div class="bg-white rounded-lg shadow overflow-x-auto">
     <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
       <h2 class="text-lg font-semibold text-gray-900">업로드 기록</h2>
       <% if @pending_files.any? %>
@@ -81,31 +81,31 @@
       <% end %>
     </div>
 
-    <table class="min-w-full divide-y divide-gray-200">
+    <table class="w-full table-fixed divide-y divide-gray-200">
       <thead class="bg-gray-50">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-16">
+          <th class="pl-4 pr-2 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
             <button type="button" data-action="click->bulk-select#toggleSelectAll"
                     class="text-xs text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap">
               <span data-bulk-select-target="selectAllLabel">전체 선택</span>
             </button>
           </th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">파일명</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">결과</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">업로드 시간</th>
-          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">파일명</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">상태</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-44">결과</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">업로드 시간</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24"></th>
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
         <%# 아직 parsing_session이 생성되지 않은 pending/processing 파일들 %>
         <% @pending_files.each do |processed_file| %>
           <tr class="bg-blue-50">
-            <td class="pl-3 pr-1 py-4 w-8"></td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            <td class="pl-4 pr-2 py-4 w-8"></td>
+            <td class="px-4 py-4 text-sm text-gray-900 truncate">
               <%= processed_file.original_filename %>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap">
+            <td class="px-4 py-4 whitespace-nowrap">
               <span class="inline-flex items-center px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
                 <svg class="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -114,11 +114,11 @@
                 <%= processed_file.status == 'pending' ? '대기중' : '처리중' %>
               </span>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
               <%= time_ago_in_words(processed_file.created_at) %> 전
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"></td>
+            <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium"></td>
           </tr>
         <% end %>
 

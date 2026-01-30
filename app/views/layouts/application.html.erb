@@ -8,6 +8,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <meta name="turbo-cache-control" content="no-cache">
 
     <%= yield :head %>
 
@@ -28,7 +29,7 @@
       <%= render 'layouts/navbar' %>
     <% end %>
 
-    <main class="<%= user_signed_in? ? 'pt-4 px-4 pb-8' : '' %>">
+    <main class="<%= user_signed_in? ? 'pt-4 px-4 pb-24' : '' %>">
       <%= yield %>
     </main>
 

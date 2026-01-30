@@ -5,12 +5,12 @@
       data-action="click->bulk-select#toggleRow"
     <% end %>
     class="transition-colors duration-150 <%= 'cursor-pointer' if parsing_session.can_discard? %>">
-  <td class="pl-3 pr-1 py-4 w-8">
+  <td class="pl-4 pr-2 py-4 w-8">
     <% if parsing_session.can_discard? %>
       <div class="w-1.5 h-8 rounded-full transition-colors duration-150 bg-transparent mx-auto"></div>
     <% end %>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+  <td class="px-4 py-4 text-sm text-gray-900 truncate">
     <% if parsing_session.text_paste? %>
       <span class="text-gray-600">텍스트 붙여넣기</span>
     <% elsif parsing_session.processed_file %>
@@ -19,7 +19,7 @@
       <span class="text-gray-400">파일 정보 없음</span>
     <% end %>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap">
+  <td class="px-4 py-4 whitespace-nowrap">
     <% case parsing_session.status %>
     <% when 'pending' %>
       <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">대기중</span>
@@ -49,7 +49,7 @@
       <% end %>
     <% end %>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
     <% if parsing_session.completed? %>
       성공 <%= parsing_session.success_count %>건
       <% if parsing_session.duplicate_count.to_i > 0 %>
@@ -60,10 +60,10 @@
       <% end %>
     <% end %>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
     <%= time_ago_in_words(parsing_session.created_at) %> 전
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+  <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
     <% if parsing_session.completed? %>
       <% if parsing_session.review_pending? %>
         <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),

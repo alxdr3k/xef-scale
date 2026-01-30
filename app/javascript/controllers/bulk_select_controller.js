@@ -177,13 +177,17 @@ export default class extends Controller {
 
     // 플로팅 바 표시/숨김
     if (this.hasFloatingBarTarget) {
-      if (count > 0) {
+      const visible = count > 0
+      if (visible) {
         this.floatingBarTarget.classList.remove("translate-y-20", "opacity-0", "pointer-events-none")
         this.floatingBarTarget.classList.add("translate-y-0", "opacity-100")
       } else {
         this.floatingBarTarget.classList.add("translate-y-20", "opacity-0", "pointer-events-none")
         this.floatingBarTarget.classList.remove("translate-y-0", "opacity-100")
       }
+
+      // 플로팅 바가 하단 레코드를 가리지 않도록 패딩 조절
+      this.element.classList.toggle("pb-20", visible)
     }
 
     // 카운트 업데이트
