@@ -38,7 +38,12 @@ module Parsers
         end
 
         period_info = build_period_info(period)
-        payment_date = period_info[:end_date]
+        payment_date = if raw_data["payment_date"]
+                         pd = raw_data["payment_date"]
+                         Date.new(pd["year"], pd["month"], pd["day"])
+                       else
+                         period_info[:end_date]
+                       end
 
         rows = raw_data["rows"] || []
         Rails.logger.info("[HanaCardHtmlParser] JS에서 #{rows.length}개 행 추출")
@@ -117,7 +122,7 @@ module Parsers
     def extract_transactions_via_js(page)
       result = page.evaluate(<<~JS)
         (function() {
-          var result = { period: null, rows: [] };
+          var result = { period: null, payment_date: null, rows: [] };
 
           // Use textContent (not innerText) to include CSS-hidden elements
           var bodyText = document.body.textContent || '';
@@ -130,6 +135,16 @@ module Parsers
               end_year: parseInt(periodMatch[4]),
               end_month: parseInt(periodMatch[5]),
               end_day: parseInt(periodMatch[6])
+            };
+          }
+
+          // Extract 원결제일 (e.g. "2026년 01월 23일")
+          var payDateMatch = bodyText.match(/원결제일\\s*(\\d{4})\\s*년\\s*(\\d{1,2})\\s*월\\s*(\\d{1,2})\\s*일/);
+          if (payDateMatch) {
+            result.payment_date = {
+              year: parseInt(payDateMatch[1]),
+              month: parseInt(payDateMatch[2]),
+              day: parseInt(payDateMatch[3])
             };
           }
 
@@ -243,15 +258,35 @@ module Parsers
       installment_total = parse_installment_field(row["installment_total"])
       installment_month = parse_installment_field(row["installment_month"])
 
-      # Amount: prefer payment_amount (cells[5]), fall back to usage_amount (cells[2])
+      # Benefit info (이용혜택: 무이자, 할인, 온누리사용 등)
+      benefit_type = row["benefit_type"].to_s.strip.presence
+      benefit_amount_text = row["benefit_amount"].to_s.strip
+      benefit_amount = benefit_amount_text.present? ? parse_amount(benefit_amount_text) : nil
+
+      # Amount logic:
+      # - 이용혜택이 있으면 → 결제금액(payment_amount) 사용 (할인 적용된 실제 결제액)
+      # - 이용혜택이 없으면 → 이용금액(usage_amount) 사용 (취소 건 음수 보존)
       payment_amount_text = row["payment_amount"].to_s.strip
       usage_amount_text = row["usage_amount"].to_s.strip
-      amount_text = payment_amount_text.present? ? payment_amount_text : usage_amount_text
-      amount = parse_amount(amount_text)
+
+      if benefit_type.present? && payment_amount_text.present?
+        amount = parse_amount(payment_amount_text)
+      else
+        amount = parse_signed_amount(usage_amount_text)
+      end
       return nil if amount.zero?
 
-      # For installment month 2+, use payment_date instead of transaction date
+      # Determine payment_type from installment and benefit info
       is_installment = installment_total && installment_total > 1
+      payment_type = if benefit_type == "온누리사용"
+                       "coupon"
+                     elsif is_installment
+                       "installment"
+                     else
+                       "lump_sum"
+                     end
+
+      # For installment month 2+, use payment_date instead of transaction date
       use_payment_date = is_installment && installment_month && installment_month > 1 && payment_date
       final_date = use_payment_date ? payment_date : date
 
@@ -261,7 +296,10 @@ module Parsers
         amount: amount,
         description: merchant,
         installment_month: installment_month,
-        installment_total: installment_total
+        installment_total: installment_total,
+        payment_type: payment_type,
+        benefit_type: benefit_type,
+        benefit_amount: benefit_amount
       )
     rescue Date::Error => e
       Rails.logger.warn("[HanaCardHtmlParser] 날짜 파싱 실패: #{date_text} - #{e.message}")
@@ -271,6 +309,12 @@ module Parsers
     def skip_merchant?(merchant)
       SKIP_MERCHANTS.any? { |term| merchant.include?(term) } ||
         SKIP_MERCHANTS_SPACED.any? { |term| merchant.include?(term) }
+    end
+
+    def parse_signed_amount(amount_string)
+      return 0 if amount_string.blank?
+      cleaned = amount_string.to_s.gsub(/[^\d.-]/, "")
+      cleaned.to_i
     end
 
     def parse_installment_field(value)
