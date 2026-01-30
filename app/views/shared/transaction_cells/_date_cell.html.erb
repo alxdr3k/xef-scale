@@ -1,0 +1,25 @@
+<%# Locals: transaction (required), editable (default: false), update_url (required if editable) %>
+<% editable = local_assigns.fetch(:editable, false) %>
+<% update_url = local_assigns.fetch(:update_url, nil) %>
+
+<td class="px-4 py-2 h-14 whitespace-nowrap text-sm text-gray-900">
+  <% if editable && update_url %>
+    <div data-controller="inline-edit"
+         data-inline-edit-url-value="<%= update_url %>"
+         data-inline-edit-field-value="date"
+         data-inline-edit-original-value="<%= transaction.date.to_s %>">
+      <span data-inline-edit-target="display"
+            data-action="click->inline-edit#edit:stop"
+            class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded">
+        <%= transaction.formatted_date %>
+      </span>
+      <div data-inline-edit-target="editor" class="hidden">
+        <input data-inline-edit-target="input" type="date" value="<%= transaction.date.to_s %>"
+               data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
+               class="text-sm border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500">
+      </div>
+    </div>
+  <% else %>
+    <%= transaction.formatted_date %>
+  <% end %>
+</td>

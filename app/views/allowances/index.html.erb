@@ -36,47 +36,30 @@
               <span data-bulk-select-target="selectAllLabel">전체 선택</span>
             </button>
           </th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내역</th>
-          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">금액</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">카테고리</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">금융기관</th>
-          <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내역</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">금액</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">카테고리</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">금융기관</th>
+          <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
         <% @allowance_transactions.each do |at| %>
-          <tr id="<%= dom_id(at.expense_transaction) %>"
+          <% transaction = at.expense_transaction %>
+          <tr id="<%= dom_id(transaction) %>"
               data-bulk-select-target="row"
-              data-transaction-id="<%= at.expense_transaction.id %>"
+              data-transaction-id="<%= transaction.id %>"
               data-action="click->bulk-select#toggleRow"
               class="transition-colors duration-150 cursor-pointer">
-            <td class="pl-3 pr-1 py-4 w-8">
-              <div class="w-1.5 h-8 rounded-full transition-colors duration-150 bg-transparent mx-auto"></div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              <%= at.expense_transaction.formatted_date %>
-            </td>
-            <td class="px-6 py-4">
-              <div class="text-sm font-medium text-gray-900"><%= at.merchant %></div>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-              <%= number_to_currency(at.amount, unit: '₩', precision: 0) %>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <% if at.category %>
-                <span class="px-2 py-1 text-xs rounded-full" style="background-color: <%= at.category.color %>20; color: <%= at.category.color %>">
-                  <%= at.category.name %>
-                </span>
-              <% else %>
-                <span class="text-gray-400 text-sm">미분류</span>
-              <% end %>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-              <%= at.expense_transaction.financial_institution&.name || '알 수 없음' %>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-center">
-              <%= button_to '해제', toggle_allowance_workspace_transaction_path(@workspace, at.expense_transaction, source: 'allowance'),
+            <%= render 'shared/transaction_cells/selection_indicator' %>
+            <%= render 'shared/transaction_cells/date_cell', transaction: transaction %>
+            <%= render 'shared/transaction_cells/merchant_cell', transaction: transaction %>
+            <%= render 'shared/transaction_cells/amount_cell', transaction: transaction %>
+            <%= render 'shared/transaction_cells/category_cell', transaction: transaction %>
+            <%= render 'shared/transaction_cells/institution_cell', transaction: transaction %>
+            <td class="px-4 py-2 h-14 whitespace-nowrap text-center">
+              <%= button_to '해제', toggle_allowance_workspace_transaction_path(@workspace, transaction, source: 'allowance'),
                   method: :post,
                   data: { turbo_confirm: '용돈에서 해제하시겠습니까?' },
                   class: 'text-red-600 hover:text-red-800 text-sm font-medium' %>

@@ -12,6 +12,7 @@ class AllowancesController < ApplicationController
                                           .order("transactions.date DESC")
 
     @total_amount = @allowance_transactions.joins(:expense_transaction).sum("transactions.amount")
+    @categories = @workspace.categories.order(:name)
 
     @monthly_totals = current_user.allowance_transactions
                                   .for_user(current_user)

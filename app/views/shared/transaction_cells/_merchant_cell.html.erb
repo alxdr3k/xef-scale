@@ -1,0 +1,51 @@
+<%# Locals: transaction (required), editable (default: false), update_url (required if editable) %>
+<% editable = local_assigns.fetch(:editable, false) %>
+<% update_url = local_assigns.fetch(:update_url, nil) %>
+
+<td class="px-4 py-2 h-14">
+  <% if editable && update_url %>
+    <div data-controller="inline-edit"
+         data-inline-edit-url-value="<%= update_url %>"
+         data-inline-edit-field-value="merchant"
+         data-inline-edit-original-value="<%= transaction.merchant %>">
+      <span data-inline-edit-target="display"
+            data-controller="truncate-tooltip"
+            data-action="click->inline-edit#edit:stop mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
+            class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm font-medium text-gray-900 inline-block truncate max-w-full align-middle">
+        <%= transaction.merchant %>
+      </span>
+      <div data-inline-edit-target="editor" class="hidden">
+        <input data-inline-edit-target="input" type="text" value="<%= transaction.merchant %>"
+               data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
+               class="text-sm border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500">
+      </div>
+    </div>
+    <% if transaction.description.present? && transaction.description != transaction.merchant %>
+      <div data-controller="inline-edit"
+           data-inline-edit-url-value="<%= update_url %>"
+           data-inline-edit-field-value="description"
+           data-inline-edit-original-value="<%= transaction.description %>">
+        <span data-inline-edit-target="display"
+              data-controller="truncate-tooltip"
+              data-action="click->inline-edit#edit:stop mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
+              class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-500 inline-block truncate max-w-full align-middle">
+          <%= transaction.description %>
+        </span>
+        <div data-inline-edit-target="editor" class="hidden">
+          <input data-inline-edit-target="input" type="text" value="<%= transaction.description %>"
+                 data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
+                 class="text-sm border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500">
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div data-controller="truncate-tooltip"
+         data-action="mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
+         class="text-sm font-medium text-gray-900 truncate"><%= transaction.merchant %></div>
+    <% if transaction.description.present? && transaction.description != transaction.merchant %>
+      <div data-controller="truncate-tooltip"
+           data-action="mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
+           class="text-sm text-gray-500 truncate"><%= transaction.description %></div>
+    <% end %>
+  <% end %>
+</td>
