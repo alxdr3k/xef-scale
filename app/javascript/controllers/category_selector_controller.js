@@ -76,10 +76,34 @@ export default class extends Controller {
 
   open() {
     this.dropdownTarget.classList.remove("hidden")
+    this.adjustDropdownPosition()
+  }
+
+  adjustDropdownPosition() {
+    const dropdown = this.dropdownTarget
+    const rect = dropdown.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+
+    if (rect.bottom > viewportHeight) {
+      dropdown.style.top = "auto"
+      dropdown.style.bottom = "100%"
+      dropdown.style.marginTop = ""
+      dropdown.style.marginBottom = "4px"
+    } else {
+      dropdown.style.top = ""
+      dropdown.style.bottom = ""
+      dropdown.style.marginTop = ""
+      dropdown.style.marginBottom = ""
+    }
   }
 
   close() {
-    this.dropdownTarget.classList.add("hidden")
+    const dropdown = this.dropdownTarget
+    dropdown.classList.add("hidden")
+    dropdown.style.top = ""
+    dropdown.style.bottom = ""
+    dropdown.style.marginTop = ""
+    dropdown.style.marginBottom = ""
   }
 
   closeOnClickOutside(event) {
