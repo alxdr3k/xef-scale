@@ -11,7 +11,7 @@
     <% unless read_only || transaction.deleted? %>
       data-action="click->bulk-select#toggleRow"
     <% end %>
-    class="<%= 'bg-red-50 opacity-60' if transaction.deleted? %>
+    class="group/row <%= 'bg-red-50 opacity-60' if transaction.deleted? %>
            transition-colors duration-150
            <%= 'cursor-pointer' unless read_only || transaction.deleted? %>">
 
@@ -50,6 +50,6 @@
     <% end %>
   </td>
 
-  <%= render 'shared/transaction_cells/notes_cell', transaction: transaction, editable: editable, update_url: update_url %>
+  <%= render 'shared/transaction_cells/comment_badge_cell', transaction: transaction %>
 
 </tr>
