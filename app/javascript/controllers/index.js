@@ -22,6 +22,15 @@ application.register("category-selector", CategorySelectorController)
 import CategorySuggestController from "./category_suggest_controller"
 application.register("category-suggest", CategorySuggestController)
 
+import CommentController from "./comment_controller"
+application.register("comment", CommentController)
+
+import CommentFormController from "./comment_form_controller"
+application.register("comment-form", CommentFormController)
+
+import CommentPanelController from "./comment_panel_controller"
+application.register("comment-panel", CommentPanelController)
+
 import ChartController from "./chart_controller"
 application.register("chart", ChartController)
 
@@ -46,6 +55,9 @@ application.register("duplicate-review", DuplicateReviewController)
 import InlineEditController from "./inline_edit_controller"
 application.register("inline-edit", InlineEditController)
 
+import InstallmentPopoverController from "./installment_popover_controller"
+application.register("installment-popover", InstallmentPopoverController)
+
 import HelloController from "./hello_controller"
 application.register("hello", HelloController)
 
@@ -57,6 +69,9 @@ application.register("note-panel", NotePanelController)
 
 import NotificationsController from "./notifications_controller"
 application.register("notifications", NotificationsController)
+
+import SourcePopoverController from "./source_popover_controller"
+application.register("source-popover", SourcePopoverController)
 
 import SlideoverCloseController from "./slideover_close_controller"
 application.register("slideover-close", SlideoverCloseController)

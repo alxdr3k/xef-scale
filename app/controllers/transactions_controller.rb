@@ -10,7 +10,7 @@ class TransactionsController < ApplicationController
     @year = params[:year].presence&.to_i || Date.current.year
     @month = params[:month].presence&.to_i
 
-    transactions = @workspace.transactions.active.excluding_allowance.includes(:category, :financial_institution)
+    transactions = @workspace.transactions.active.excluding_allowance.includes(:category, :financial_institution, parsing_session: :processed_file)
 
     # Filters
     transactions = transactions.for_year(@year) if @year && @month.nil?
@@ -161,7 +161,7 @@ class TransactionsController < ApplicationController
   def inline_update
     # Handle form-based updates (e.g., payment_type selector)
     if params[:transaction].present?
-      permitted = %i[date merchant description amount notes payment_type installment_month installment_total]
+      permitted = %i[date merchant amount notes payment_type installment_month installment_total]
       if @transaction.update(params.require(:transaction).permit(permitted))
         @categories = @workspace.categories.order(:name)
         respond_to do |format|
@@ -178,7 +178,7 @@ class TransactionsController < ApplicationController
     value = params[:value]
 
     # Validate field is allowed
-    allowed_fields = %w[date merchant description amount notes]
+    allowed_fields = %w[date merchant amount notes]
     unless allowed_fields.include?(field)
       head :unprocessable_entity
       return
@@ -204,8 +204,8 @@ class TransactionsController < ApplicationController
     old_category_id = @transaction.category_id
 
     if @transaction.update(field => value)
-      # If merchant or description changed, try to auto-categorize
-      if %w[merchant description].include?(field)
+      # If merchant changed, try to auto-categorize
+      if field == "merchant"
         new_category = CategoryMapping.find_category_for_merchant_and_description(
           @workspace,
           @transaction.merchant,
@@ -286,7 +286,7 @@ class TransactionsController < ApplicationController
   end
 
   def export
-    transactions = @workspace.transactions.active.includes(:category, :financial_institution)
+    transactions = @workspace.transactions.active.includes(:category, :financial_institution, parsing_session: :processed_file)
 
     if params[:year].present?
       transactions = if params[:month].present?
@@ -306,7 +306,7 @@ class TransactionsController < ApplicationController
   end
 
   def duplicates
-    transactions = @workspace.transactions.active.includes(:category, :financial_institution)
+    transactions = @workspace.transactions.active.includes(:category, :financial_institution, parsing_session: :processed_file)
                             .with_duplicates
                             .order(date: :desc, amount: :desc, created_at: :desc)
 
@@ -361,7 +361,6 @@ class TransactionsController < ApplicationController
       category: transaction.category&.name,
       category_id: transaction.category_id,
       institution: transaction.financial_institution&.name,
-      description: transaction.description,
       notes: transaction.notes,
       created_at: transaction.created_at.strftime("%m/%d %H:%M"),
       delete_url: workspace_transaction_path(@workspace, transaction),
@@ -372,7 +371,7 @@ class TransactionsController < ApplicationController
 
   def transaction_params
     params.require(:transaction).permit(
-      :date, :merchant, :description, :amount, :notes,
+      :date, :merchant, :amount, :notes,
       :category_id, :financial_institution_id, :payment_type,
       :installment_month, :installment_total
     )
