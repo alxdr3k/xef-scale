@@ -6,6 +6,7 @@ class Transaction < ApplicationRecord
   belongs_to :committed_by, class_name: "User", optional: true
 
   has_one :allowance_transaction, foreign_key: :expense_transaction_id, dependent: :destroy
+  has_many :comments, dependent: :destroy, inverse_of: :commentable_transaction
   has_many :duplicate_confirmations_as_original, class_name: "DuplicateConfirmation",
            foreign_key: :original_transaction_id, dependent: :destroy
   has_many :duplicate_confirmations_as_new, class_name: "DuplicateConfirmation",
@@ -24,6 +25,8 @@ class Transaction < ApplicationRecord
   validates :amount, presence: true, numericality: { only_integer: true }
   validates :status, inclusion: { in: STATUSES }
   validates :payment_type, inclusion: { in: PAYMENT_TYPES }
+
+  before_save :clear_installment_fields, if: -> { payment_type_changed? && payment_type != "installment" }
 
   scope :active, -> { where(deleted: false, status: "committed") }
   scope :deleted, -> { where(deleted: true) }
@@ -47,8 +50,8 @@ class Transaction < ApplicationRecord
   scope :search, ->(query) {
     return all if query.blank?
     escaped = sanitize_sql_like(query)
-    where("merchant LIKE ? OR description LIKE ? OR notes LIKE ?",
-          "%#{escaped}%", "%#{escaped}%", "%#{escaped}%")
+    where("merchant LIKE ? OR notes LIKE ?",
+          "%#{escaped}%", "%#{escaped}%")
   }
   scope :excluding_allowance, -> {
     where.not(id: AllowanceTransaction.select(:expense_transaction_id))
@@ -140,5 +143,12 @@ class Transaction < ApplicationRecord
     else
       nil # 일시불은 표시 안함 (기본값이므로)
     end
+  end
+
+  private
+
+  def clear_installment_fields
+    self.installment_month = nil
+    self.installment_total = nil
   end
 end

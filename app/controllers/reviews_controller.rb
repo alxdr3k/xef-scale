@@ -15,7 +15,7 @@ class ReviewsController < ApplicationController
     @duplicate_confirmations = @parsing_session.duplicate_confirmations
                                                .pending
                                                .includes(
-                                                 original_transaction: [ :financial_institution, :category ],
+                                                 original_transaction: [ :financial_institution, :category, :parsing_session ],
                                                  new_transaction: [ :financial_institution, :category ]
                                                )
                                                .order(:created_at)
@@ -133,12 +133,11 @@ class ReviewsController < ApplicationController
     end
 
     # Only allow editing specific fields
-    permitted = [ :category_id, :notes, :description, :merchant, :date, :amount, :payment_type ]
+    permitted = [ :category_id, :notes, :merchant, :date, :amount, :payment_type, :installment_month, :installment_total ]
     # Allow source change only if currently unknown
     permitted << :financial_institution_id if @transaction.source_editable?
 
     old_category_id = @transaction.category_id
-    old_description = @transaction.description
     old_merchant = @transaction.merchant
 
     # Handle inline editing (single field updates via JSON)
@@ -175,8 +174,8 @@ class ReviewsController < ApplicationController
       end
 
       if @transaction.update(field => value)
-        # If merchant or description changed, try to auto-categorize
-        if %w[merchant description].include?(field)
+        # If merchant changed, try to auto-categorize
+        if field == "merchant"
           new_category = CategoryMapping.find_category_for_merchant_and_description(
             @workspace,
             @transaction.merchant,
@@ -202,12 +201,11 @@ class ReviewsController < ApplicationController
     transaction_params = params.require(:transaction).permit(permitted)
 
     if @transaction.update(transaction_params)
-      # merchant 또는 description이 변경되었고, 사용자가 직접 카테고리를 변경하지 않았으면 재매칭
+      # merchant가 변경되었고, 사용자가 직접 카테고리를 변경하지 않았으면 재매칭
       merchant_changed = old_merchant != @transaction.merchant
-      description_changed = old_description != @transaction.description
       category_not_manually_changed = transaction_params[:category_id].blank?
 
-      if (merchant_changed || description_changed) && category_not_manually_changed
+      if merchant_changed && category_not_manually_changed
         new_category = CategoryMapping.find_category_for_merchant_and_description(
           @workspace,
           @transaction.merchant,
