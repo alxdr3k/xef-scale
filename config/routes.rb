@@ -50,6 +50,7 @@ Rails.application.routes.draw do
         post :bulk_update
         get :duplicates
       end
+      resources :comments, only: [ :index, :create, :update, :destroy ]
     end
 
     # Categories within workspace

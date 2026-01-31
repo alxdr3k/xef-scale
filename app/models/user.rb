@@ -10,6 +10,7 @@ class User < ApplicationRecord
   has_many :workspaces, through: :workspace_memberships
   has_many :allowance_transactions, dependent: :destroy
   has_many :sent_invitations, class_name: "WorkspaceInvitation", foreign_key: :invited_by_id
+  has_many :comments, dependent: :destroy
   has_many :notifications, dependent: :destroy
 
   validates :email, presence: true, uniqueness: true
@@ -44,20 +45,25 @@ class User < ApplicationRecord
     scope.count
   end
 
-  # 금융기관별 명세서 비밀번호 관리
-  def statement_password(institution_key)
-    settings&.dig("statement_passwords", institution_key)
+  # 통합 명세서 비밀번호 (생년월일 6자리)
+  # 기존 per-institution 비밀번호가 있으면 fallback으로 사용
+  def statement_password
+    settings&.dig("statement_password") ||
+      settings&.dig("statement_passwords")&.values&.first
   end
 
-  def set_statement_password(institution_key, password)
+  def set_statement_password(password)
     self.settings ||= {}
-    self.settings["statement_passwords"] ||= {}
-    self.settings["statement_passwords"][institution_key] = password
+    self.settings["statement_password"] = password
   end
 
-  # 지원하는 금융기관 목록 (비밀번호 필요한 것만)
-  INSTITUTIONS_WITH_PASSWORD = {
-    "shinhan_card" => "신한카드",
-    "hana_card" => "하나카드"
-  }.freeze
+  # 제외할 거래처 목록
+  def excluded_merchants
+    settings&.dig("excluded_merchants") || []
+  end
+
+  def set_excluded_merchants(text)
+    self.settings ||= {}
+    self.settings["excluded_merchants"] = text.to_s.split("\n").map(&:strip).reject(&:blank?)
+  end
 end
