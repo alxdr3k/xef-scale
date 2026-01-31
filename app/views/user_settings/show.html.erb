@@ -25,6 +25,27 @@
         </p>
       </div>
 
+      <!-- 카드사 출금 제외 -->
+      <div class="flex items-start">
+        <div class="flex items-center h-5">
+          <input type="hidden" name="user[exclude_card_withdrawals]" value="0">
+          <input type="checkbox"
+                 name="user[exclude_card_withdrawals]"
+                 value="1"
+                 <%= 'checked' if current_user.exclude_card_withdrawals? %>
+                 class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+        </div>
+        <div class="ml-3">
+          <label class="text-sm font-medium text-gray-700">
+            은행 내역에서 카드사 출금 제외
+          </label>
+          <p class="text-xs text-gray-400">
+            은행 통장 내역(새마을금고, 토스뱅크, 카카오뱅크) 파싱 시 카드 대금 자동이체 건을 제외합니다.
+            카드 명세서를 별도로 업로드하는 경우 이중 집계를 방지할 수 있습니다.
+          </p>
+        </div>
+      </div>
+
       <!-- 제외 거래처 -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">

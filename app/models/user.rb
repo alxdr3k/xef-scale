@@ -57,6 +57,16 @@ class User < ApplicationRecord
     self.settings["statement_password"] = password
   end
 
+  # 카드사 출금 제외 (은행 통장 파싱 시)
+  def exclude_card_withdrawals?
+    settings&.dig("exclude_card_withdrawals") == true
+  end
+
+  def set_exclude_card_withdrawals(value)
+    self.settings ||= {}
+    self.settings["exclude_card_withdrawals"] = ActiveModel::Type::Boolean.new.cast(value)
+  end
+
   # 제외할 거래처 목록
   def excluded_merchants
     settings&.dig("excluded_merchants") || []
