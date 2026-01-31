@@ -2,7 +2,8 @@ class ParsingSessionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :require_workspace_write_access, only: [ :create, :bulk_discard ]
+  before_action :require_workspace_write_access, only: [ :create, :bulk_discard, :inline_update ]
+  before_action :set_parsing_session, only: [ :inline_update ]
 
   def index
     @parsing_sessions = @workspace.parsing_sessions
@@ -73,6 +74,24 @@ class ParsingSessionsController < ApplicationController
     end
   end
 
+  def inline_update
+    field = params[:field]
+    value = params[:value]
+
+    unless field == "notes"
+      head :unprocessable_entity
+      return
+    end
+
+    if @parsing_session.update(notes: value)
+      respond_to do |format|
+        format.turbo_stream
+      end
+    else
+      head :unprocessable_entity
+    end
+  end
+
   def bulk_discard
     session_ids = params[:session_ids].to_s.split(",").map(&:to_i).reject(&:zero?)
 
@@ -93,5 +112,11 @@ class ParsingSessionsController < ApplicationController
 
     redirect_to workspace_parsing_sessions_path(@workspace),
                 notice: "#{count}건의 업로드가 취소되었습니다."
+  end
+
+  private
+
+  def set_parsing_session
+    @parsing_session = @workspace.parsing_sessions.find(params[:id])
   end
 end

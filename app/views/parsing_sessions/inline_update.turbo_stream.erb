@@ -1,0 +1,3 @@
+<%= turbo_stream.replace dom_id(@parsing_session) do %>
+  <%= render 'parsing_session_row', parsing_session: @parsing_session, workspace: @workspace %>
+<% end %>

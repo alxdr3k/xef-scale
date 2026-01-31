@@ -63,6 +63,7 @@ Rails.application.routes.draw do
       end
       resources :duplicate_confirmations, only: [ :update ]
       member do
+        patch :inline_update
         get :review, to: "reviews#show"
         post :commit, to: "reviews#commit"
         post :rollback, to: "reviews#rollback"
