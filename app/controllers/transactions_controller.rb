@@ -161,7 +161,7 @@ class TransactionsController < ApplicationController
   def inline_update
     # Handle form-based updates (e.g., payment_type selector)
     if params[:transaction].present?
-      permitted = %i[date merchant description amount notes payment_type]
+      permitted = %i[date merchant description amount notes payment_type installment_month installment_total]
       if @transaction.update(params.require(:transaction).permit(permitted))
         @categories = @workspace.categories.order(:name)
         respond_to do |format|
@@ -373,7 +373,8 @@ class TransactionsController < ApplicationController
   def transaction_params
     params.require(:transaction).permit(
       :date, :merchant, :description, :amount, :notes,
-      :category_id, :financial_institution_id, :payment_type
+      :category_id, :financial_institution_id, :payment_type,
+      :installment_month, :installment_total
     )
   end
 
