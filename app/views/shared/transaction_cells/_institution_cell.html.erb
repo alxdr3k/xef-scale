@@ -27,7 +27,7 @@
           <div class="text-xs text-gray-400 mb-1">원본 파일</div>
           <a href="<%= review_workspace_parsing_session_path(transaction.workspace, ps) %>"
              class="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline truncate block"
-             data-turbo-frame="_top">
+             data-action="click->source-popover#navigate:stop">
             <%= ps.processed_file&.original_filename || ps.processed_file&.filename || (ps.text_paste? ? '텍스트 붙여넣기' : '파일 업로드') %>
           </a>
           <div class="text-xs text-gray-400 mt-1.5">

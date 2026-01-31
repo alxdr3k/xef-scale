@@ -25,6 +25,14 @@ export default class extends Controller {
     this.popoverTarget.classList.add("hidden")
   }
 
+  navigate(event) {
+    // 링크 클릭 시 Turbo 네비게이션 허용 (이벤트 전파만 중단)
+    const url = event.currentTarget.href
+    this.close()
+    Turbo.visit(url)
+    event.preventDefault()
+  }
+
   _position() {
     const trigger = this.element
     const popover = this.popoverTarget
