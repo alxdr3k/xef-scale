@@ -1,0 +1,3 @@
+<%= turbo_stream.replace "transaction_#{@transaction.id}_comment_badge" do %>
+  <%= render "comments/badge_wrapper", transaction: @transaction.reload %>
+<% end %>

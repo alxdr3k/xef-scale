@@ -1,0 +1,50 @@
+<%# Locals: comment (required), current_user_id (optional) %>
+<% uid = local_assigns.fetch(:current_user_id, nil) || (defined?(current_user) && current_user&.id) %>
+<% colors = %w[bg-indigo-400 bg-emerald-400 bg-amber-400 bg-rose-400 bg-cyan-400 bg-purple-400] %>
+<% dot_color = colors[comment.user_id % colors.length] %>
+
+<div id="<%= dom_id(comment) %>"
+     data-controller="comment"
+     class="group/comment py-2.5">
+  <div class="flex items-start gap-2">
+    <span class="w-2 h-2 rounded-full mt-1.5 shrink-0 <%= dot_color %>"></span>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-medium text-gray-900"><%= comment.user.name || comment.user.email.split('@').first %></span>
+        <span class="text-[11px] text-gray-400">
+          <%= comment.created_at.strftime('%m/%d %H:%M') %>
+          <% if comment.edited_at.present? %>
+            <span class="text-gray-300">(수정됨)</span>
+          <% end %>
+        </span>
+        <% if uid && comment.user_id == uid %>
+          <div class="ml-auto flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
+            <button data-action="click->comment#edit:stop"
+                    class="text-[11px] text-gray-400 hover:text-gray-600">수정</button>
+            <button data-action="click->comment#delete:stop"
+                    data-comment-url-value="<%= workspace_transaction_comment_path(comment.commentable_transaction.workspace, comment.commentable_transaction, comment) %>"
+                    data-turbo-confirm="댓글을 삭제하시겠습니까?"
+                    class="text-[11px] text-gray-400 hover:text-red-500">삭제</button>
+          </div>
+        <% end %>
+      </div>
+
+      <%# Display mode %>
+      <div data-comment-target="display" class="text-sm text-gray-700 mt-0.5 whitespace-pre-wrap break-words"><%= comment.body %></div>
+
+      <%# Edit mode %>
+      <div data-comment-target="editor" class="hidden mt-1">
+        <form data-action="submit->comment#update:prevent"
+              data-comment-url-value="<%= workspace_transaction_comment_path(comment.commentable_transaction.workspace, comment.commentable_transaction, comment) %>">
+          <textarea data-comment-target="editInput"
+                    class="w-full text-sm border border-gray-300 rounded-md px-2 py-1.5 resize-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent"
+                    rows="2"><%= comment.body %></textarea>
+          <div class="flex gap-1.5 mt-1">
+            <button type="submit" class="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-2.5 py-1 rounded">저장</button>
+            <button type="button" data-action="click->comment#cancelEdit:stop" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1">취소</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

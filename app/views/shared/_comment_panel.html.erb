@@ -1,0 +1,69 @@
+<%# Comment panel - note-panel과 동일한 고정 패널 패턴 %>
+<div id="comment-panel"
+     data-comment-panel-target="panel"
+     class="hidden fixed bg-white rounded-xl shadow-2xl border border-gray-200/60 z-40
+            transition-all duration-200 flex flex-col"
+     style="max-height: 480px;"
+     data-action="keydown->comment-panel#handleKeydown">
+
+  <div class="p-4 shrink-0">
+    <%# Header %>
+    <div class="flex items-start justify-between mb-3">
+      <div class="flex-1 min-w-0">
+        <h3 class="text-sm font-semibold text-gray-900 mb-0.5">댓글</h3>
+        <p class="text-xs text-gray-500 truncate" data-comment-panel-target="context"></p>
+      </div>
+      <button data-action="click->comment-panel#close"
+              class="p-1.5 -mr-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <%# Comments list (scrollable) %>
+  <div data-comment-panel-target="commentsList"
+       class="flex-1 overflow-y-auto px-4 min-h-0">
+    <div data-comment-panel-target="commentsContainer">
+      <%# Comments will be loaded here via fetch %>
+    </div>
+    <div data-comment-panel-target="emptyState" class="hidden py-8 text-center">
+      <svg class="w-8 h-8 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+      </svg>
+      <p class="text-xs text-gray-400">아직 댓글이 없습니다</p>
+    </div>
+  </div>
+
+  <%# Input area %>
+  <div class="px-4 py-3 border-t border-gray-100 shrink-0" data-controller="comment-form">
+    <form data-action="submit->comment-form#submit:prevent"
+          data-comment-form-target="form">
+      <div class="flex gap-2 items-end">
+        <textarea data-comment-form-target="input"
+                  data-action="input->comment-form#autoResize keydown->comment-form#handleKeydown"
+                  placeholder="댓글을 입력하세요..."
+                  rows="1"
+                  class="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2
+                         resize-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent
+                         max-h-32 leading-relaxed"></textarea>
+        <button type="submit"
+                data-comment-form-target="submitButton"
+                class="hidden shrink-0 p-2 text-white bg-indigo-600 hover:bg-indigo-700
+                       rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+          </svg>
+        </button>
+      </div>
+    </form>
+    <div class="text-[11px] text-gray-400 mt-1.5">
+      <kbd class="px-1 py-0.5 bg-gray-100 rounded border border-gray-200 text-[10px]">Enter</kbd> 전송
+      <span class="mx-0.5">·</span>
+      <kbd class="px-1 py-0.5 bg-gray-100 rounded border border-gray-200 text-[10px]">ESC</kbd> 닫기
+    </div>
+  </div>
+</div>
