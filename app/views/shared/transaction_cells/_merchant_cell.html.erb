@@ -4,48 +4,63 @@
 
 <td class="px-4 py-2 h-14">
   <% if editable && update_url %>
-    <div data-controller="inline-edit"
-         data-inline-edit-url-value="<%= update_url %>"
-         data-inline-edit-field-value="merchant"
-         data-inline-edit-original-value="<%= transaction.merchant %>">
-      <span data-inline-edit-target="display"
-            data-controller="truncate-tooltip"
-            data-action="click->inline-edit#edit:stop mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
-            class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm font-medium text-gray-900 inline-block truncate max-w-full align-middle">
-        <%= transaction.merchant %>
-      </span>
-      <div data-inline-edit-target="editor" class="hidden">
-        <input data-inline-edit-target="input" type="text" value="<%= transaction.merchant %>"
-               data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
-               class="text-sm border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500">
-      </div>
-    </div>
-    <% if transaction.description.present? && transaction.description != transaction.merchant %>
+    <div class="whitespace-nowrap overflow-hidden text-ellipsis">
       <div data-controller="inline-edit"
            data-inline-edit-url-value="<%= update_url %>"
-           data-inline-edit-field-value="description"
-           data-inline-edit-original-value="<%= transaction.description %>">
+           data-inline-edit-field-value="merchant"
+           data-inline-edit-original-value="<%= transaction.merchant %>"
+           class="inline">
         <span data-inline-edit-target="display"
               data-controller="truncate-tooltip"
               data-action="click->inline-edit#edit:stop mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
-              class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-500 inline-block truncate max-w-full align-middle">
-          <%= transaction.description %>
+              class="cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm font-medium text-gray-900 align-middle">
+          <%= transaction.merchant %>
         </span>
         <div data-inline-edit-target="editor" class="hidden">
-          <input data-inline-edit-target="input" type="text" value="<%= transaction.description %>"
+          <input data-inline-edit-target="input" type="text" value="<%= transaction.merchant %>"
                  data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
                  class="text-sm border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500">
         </div>
       </div>
-    <% end %>
+      <% if transaction.notes.present? %>
+        <span data-action="click->note-panel#open:stop"
+              data-note-panel-url-param="<%= update_url %>"
+              data-note-panel-original-param="<%= transaction.notes || '' %>"
+              data-note-panel-merchant-param="<%= transaction.merchant %>"
+              data-note-panel-date-param="<%= transaction.formatted_date %>"
+              data-note-panel-amount-param="<%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>"
+              data-note-panel-row-id-param="<%= dom_id(transaction) %>"
+              data-note-panel-trigger
+              class="cursor-pointer bg-amber-50 text-amber-700 hover:bg-amber-100 text-xs px-1.5 py-0.5 rounded ml-1.5 align-middle inline-block max-w-[8rem] truncate">
+          <%= transaction.notes %>
+        </span>
+      <% else %>
+        <span data-action="click->note-panel#open:stop"
+              data-note-panel-url-param="<%= update_url %>"
+              data-note-panel-original-param=""
+              data-note-panel-merchant-param="<%= transaction.merchant %>"
+              data-note-panel-date-param="<%= transaction.formatted_date %>"
+              data-note-panel-amount-param="<%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>"
+              data-note-panel-row-id-param="<%= dom_id(transaction) %>"
+              data-note-panel-trigger
+              class="cursor-pointer text-gray-300 hover:text-blue-500 opacity-0 group-hover/row:opacity-100 transition-opacity ml-1.5 align-middle inline-block">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
+            <path d="m5.433 13.917 1.262-3.155A4 4 0 0 1 7.58 9.42l6.92-6.918a2.121 2.121 0 0 1 3 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 0 1-.65-.65Z" />
+            <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0 0 10 3H4.75A2.75 2.75 0 0 0 2 5.75v9.5A2.75 2.75 0 0 0 4.75 18h9.5A2.75 2.75 0 0 0 17 15.25V10a.75.75 0 0 0-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5Z" />
+          </svg>
+        </span>
+      <% end %>
+    </div>
   <% else %>
-    <div data-controller="truncate-tooltip"
-         data-action="mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
-         class="text-sm font-medium text-gray-900 truncate"><%= transaction.merchant %></div>
-    <% if transaction.description.present? && transaction.description != transaction.merchant %>
-      <div data-controller="truncate-tooltip"
+    <div class="whitespace-nowrap overflow-hidden text-ellipsis">
+      <span data-controller="truncate-tooltip"
            data-action="mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
-           class="text-sm text-gray-500 truncate"><%= transaction.description %></div>
-    <% end %>
+           class="text-sm font-medium text-gray-900 align-middle"><%= transaction.merchant %></span>
+      <% if transaction.notes.present? %>
+        <span class="bg-amber-50 text-amber-700 text-xs px-1.5 py-0.5 rounded ml-1.5 align-middle inline-block max-w-[8rem] truncate">
+          <%= transaction.notes %>
+        </span>
+      <% end %>
+    </div>
   <% end %>
 </td>

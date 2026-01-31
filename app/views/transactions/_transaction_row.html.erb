@@ -4,7 +4,7 @@
     data-bulk-select-target="row"
     data-transaction-id="<%= transaction.id %>"
     data-action="click->bulk-select#toggleRow"
-    class="transition-colors duration-150 cursor-pointer">
+    class="group/row transition-colors duration-150 cursor-pointer">
 
   <%= render 'shared/transaction_cells/selection_indicator' %>
 
@@ -13,5 +13,5 @@
   <%= render 'shared/transaction_cells/amount_cell', transaction: transaction, editable: true, update_url: update_url %>
   <%= render 'shared/transaction_cells/category_cell', transaction: transaction, editable: true, show_management_links: true, workspace: @workspace %>
   <%= render 'shared/transaction_cells/institution_cell', transaction: transaction %>
-  <%= render 'shared/transaction_cells/notes_cell', transaction: transaction, editable: true, update_url: update_url %>
+  <%= render 'shared/transaction_cells/comment_badge_cell', transaction: transaction %>
 </tr>
