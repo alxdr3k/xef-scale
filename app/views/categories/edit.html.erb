@@ -29,10 +29,7 @@
         <p class="mt-1 text-sm text-gray-500">거래 내역에서 이 키워드가 포함되면 자동으로 분류됩니다.</p>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">색상</label>
-        <%= f.color_field :color, class: 'block rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
-      </div>
+      <%= render 'shared/color_picker', form: f %>
 
       <div class="flex justify-end gap-3">
         <%= link_to '취소', workspace_categories_path(@workspace), class: 'px-4 py-2 text-gray-700 hover:text-gray-900' %>

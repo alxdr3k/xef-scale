@@ -1,0 +1,45 @@
+<%# Locals: form (required), color_value (optional, default: '#6366F1') %>
+<% color_value = local_assigns.fetch(:color_value, nil) || form.object.color.presence || '#6366F1' %>
+<% presets = %w[
+  #EF4444 #F97316 #F59E0B #EAB308
+  #22C55E #14B8A6 #06B6D4 #3B82F6
+  #6366F1 #8B5CF6 #A855F7 #EC4899
+] %>
+
+<div data-controller="color-picker">
+  <%= form.hidden_field :color, value: color_value, data: { color_picker_target: "hidden" } %>
+
+  <label class="block text-sm font-medium text-gray-700 mb-2">색상</label>
+  <div class="flex flex-wrap gap-2 items-center">
+    <% presets.each do |hex| %>
+      <button type="button"
+              data-color-picker-target="swatch"
+              data-color="<%= hex %>"
+              data-action="click->color-picker#selectPreset"
+              class="w-7 h-7 rounded-full cursor-pointer transition-all flex items-center justify-center shrink-0"
+              style="background-color: <%= hex %>"
+              title="<%= hex %>">
+        <svg data-check class="w-3.5 h-3.5 text-white hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </button>
+    <% end %>
+
+    <%# Custom color button %>
+    <button type="button"
+            data-color-picker-target="customButton"
+            data-action="click->color-picker#openCustom"
+            class="w-7 h-7 rounded-full cursor-pointer transition-all flex items-center justify-center shrink-0 bg-white border-2 border-dashed border-gray-300 hover:border-gray-400"
+            title="직접 선택">
+      <svg data-custom-icon class="w-3.5 h-3.5" style="color: #6b7280" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243l-1.59-1.59" />
+      </svg>
+    </button>
+    <input type="color"
+           data-color-picker-target="customInput"
+           data-action="input->color-picker#customChanged"
+           class="sr-only"
+           value="<%= color_value %>"
+           tabindex="-1">
+  </div>
+</div>

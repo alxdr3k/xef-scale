@@ -16,6 +16,9 @@ application.register("auto-submit", AutoSubmitController)
 import BulkSelectController from "./bulk_select_controller"
 application.register("bulk-select", BulkSelectController)
 
+import CategoryBroadcastController from "./category_broadcast_controller"
+application.register("category-broadcast", CategoryBroadcastController)
+
 import CategorySelectorController from "./category_selector_controller"
 application.register("category-selector", CategorySelectorController)
 
@@ -30,6 +33,9 @@ application.register("comment-form", CommentFormController)
 
 import CommentPanelController from "./comment_panel_controller"
 application.register("comment-panel", CommentPanelController)
+
+import ColorPickerController from "./color_picker_controller"
+application.register("color-picker", ColorPickerController)
 
 import ChartController from "./chart_controller"
 application.register("chart", ChartController)
