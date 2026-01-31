@@ -25,23 +25,54 @@
     </div>
   </div>
 
+  <%# 숨겨진 일괄 처리 폼 %>
+  <%= form_with url: bulk_update_allowances_path, method: :post, data: { turbo: false, bulk_form: true } do %>
+    <input type="hidden" name="transaction_ids" data-bulk-select-target="ids" value="">
+    <input type="hidden" name="bulk_action" value="">
+    <input type="hidden" name="year" value="<%= @year %>">
+    <input type="hidden" name="month" value="<%= @month %>">
+  <% end %>
+
+  <!-- Selection Toolbar -->
+  <div data-bulk-select-target="toolbar"
+       class="bg-white rounded-t-lg shadow-sm border-b border-gray-200 px-4 py-2 flex items-center gap-2 min-h-[44px]">
+    <input type="checkbox"
+           data-bulk-select-target="toolbarCheckbox"
+           data-action="change->bulk-select#toggleSelectAll"
+           class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+
+    <div data-bulk-select-target="toolbarDefault" class="flex items-center gap-1 text-sm text-gray-500">
+      <span>전체 선택</span>
+    </div>
+
+    <div data-bulk-select-target="toolbarSelected" class="hidden flex items-center gap-1">
+      <span class="text-sm font-medium text-indigo-700 mr-2">
+        <span data-bulk-select-target="toolbarCount">0</span>개 선택됨
+      </span>
+
+      <div class="w-px h-5 bg-gray-300"></div>
+
+      <button type="button" data-action="click->bulk-select#unmarkAllowance"
+              class="tooltip p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors" aria-label="용돈 해제">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
+        </svg>
+      </button>
+
+      <span class="text-xs text-gray-400">용돈 해제</span>
+    </div>
+  </div>
+
   <!-- Transactions -->
-  <div class="bg-white rounded-lg shadow overflow-hidden">
+  <div class="bg-white rounded-b-lg shadow overflow-hidden">
     <table class="min-w-full divide-y divide-gray-200">
       <thead class="bg-gray-50">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-16">
-            <button type="button" data-action="click->bulk-select#toggleSelectAll"
-                    class="text-xs text-indigo-600 hover:text-indigo-800 font-medium whitespace-nowrap cursor-pointer">
-              <span data-bulk-select-target="selectAllLabel">전체 선택</span>
-            </button>
-          </th>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내역</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">금액</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">카테고리</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">금융기관</th>
-          <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">작업</th>
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
@@ -52,69 +83,23 @@
               data-transaction-id="<%= transaction.id %>"
               data-action="click->bulk-select#toggleRow"
               class="transition-colors duration-150 cursor-pointer">
-            <%= render 'shared/transaction_cells/selection_indicator' %>
             <%= render 'shared/transaction_cells/date_cell', transaction: transaction %>
             <%= render 'shared/transaction_cells/merchant_cell', transaction: transaction %>
             <%= render 'shared/transaction_cells/amount_cell', transaction: transaction %>
             <%= render 'shared/transaction_cells/category_cell', transaction: transaction %>
             <%= render 'shared/transaction_cells/institution_cell', transaction: transaction %>
-            <td class="px-4 py-2 h-14 whitespace-nowrap text-center">
-              <%= button_to '해제', toggle_allowance_workspace_transaction_path(@workspace, transaction, source: 'allowance'),
-                  method: :post,
-                  data: { turbo_confirm: '용돈에서 해제하시겠습니까?' },
-                  class: 'text-red-600 hover:text-red-800 text-sm font-medium' %>
-            </td>
           </tr>
         <% end %>
 
         <% if @allowance_transactions.empty? %>
           <tr>
-            <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+            <td colspan="5" class="px-6 py-12 text-center text-gray-500">
               이번 달 용돈 내역이 없습니다.
             </td>
           </tr>
         <% end %>
       </tbody>
     </table>
-  </div>
-
-  <%# 숨겨진 일괄 처리 폼 %>
-  <%= form_with url: bulk_update_allowances_path, method: :post, data: { turbo: false, bulk_form: true } do %>
-    <input type="hidden" name="transaction_ids" data-bulk-select-target="ids" value="">
-    <input type="hidden" name="bulk_action" value="">
-    <input type="hidden" name="year" value="<%= @year %>">
-    <input type="hidden" name="month" value="<%= @month %>">
-  <% end %>
-
-  <%# 플로팅 액션 바 (선택 시에만 표시) %>
-  <div data-bulk-select-target="floatingBar"
-       class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
-              bg-gray-900 text-white rounded-full shadow-2xl
-              px-5 py-3 flex items-center gap-3
-              transition-all duration-200 ease-out
-              translate-y-20 opacity-0 pointer-events-none">
-
-    <%# 선택 카운트 %>
-    <span class="text-sm font-medium whitespace-nowrap">
-      <span data-bulk-select-target="floatingCount">0</span>개 선택됨
-    </span>
-
-    <div class="w-px h-5 bg-gray-600"></div>
-
-    <%# 선택 해제 %>
-    <button type="button" data-action="click->bulk-select#deselectAll"
-            class="p-1.5 hover:bg-gray-700 rounded-full transition-colors" title="선택 해제">
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    </button>
-
-    <%# 용돈 해제 %>
-    <button type="button" data-action="click->bulk-select#unmarkAllowance"
-            class="px-4 py-1.5 bg-red-500 hover:bg-red-600 rounded-full
-                   text-sm font-medium transition-colors">
-      용돈 해제
-    </button>
   </div>
 
   <!-- Monthly Chart -->

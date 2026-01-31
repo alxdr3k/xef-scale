@@ -9,7 +9,9 @@ const INTERACTIVE_SELECTOR = [
 export default class extends Controller {
   static targets = [
     "row", "floatingBar", "floatingCount", "ids",
-    "selectAllLabel", "moreMenu"
+    "selectAllLabel", "moreMenu",
+    "toolbar", "toolbarDefault", "toolbarSelected",
+    "toolbarCount", "toolbarCheckbox"
   ]
 
   connect() {
@@ -139,8 +141,10 @@ export default class extends Controller {
   }
 
   changeCategory(event) {
-    const select = event.currentTarget.closest('[data-bulk-select-target="moreMenu"]')
-                        ?.querySelector('select[name="category_id"]')
+    // 버튼의 부모(flex container) 내 select 찾기
+    const container = event.currentTarget.closest('.flex')
+    const select = container?.querySelector('select[name="category_id"]')
+      || this.element.querySelector('select[name="category_id"]')
     if (!select || !select.value) return
     this.submitBulkAction("change_category", { category_id: select.value })
     this.closeMore()
@@ -174,8 +178,42 @@ export default class extends Controller {
 
   updateUI() {
     const count = this.selectedIds.size
+    const selectableRows = this.selectableRows
+    const allSelected = selectableRows.length > 0 &&
+      selectableRows.every(r => this.selectedIds.has(r.dataset.transactionId))
 
-    // 플로팅 바 표시/숨김
+    // 툴바 모드: 선택 상태에 따라 default/selected 전환
+    if (this.hasToolbarDefaultTarget && this.hasToolbarSelectedTarget) {
+      if (count > 0) {
+        this.toolbarDefaultTarget.classList.add("hidden")
+        this.toolbarSelectedTarget.classList.remove("hidden")
+      } else {
+        this.toolbarDefaultTarget.classList.remove("hidden")
+        this.toolbarSelectedTarget.classList.add("hidden")
+      }
+    }
+
+    // 툴바 카운트
+    if (this.hasToolbarCountTarget) {
+      this.toolbarCountTarget.textContent = count
+    }
+
+    // 툴바 체크박스 상태
+    if (this.hasToolbarCheckboxTarget) {
+      const cb = this.toolbarCheckboxTarget
+      if (count === 0) {
+        cb.checked = false
+        cb.indeterminate = false
+      } else if (allSelected) {
+        cb.checked = true
+        cb.indeterminate = false
+      } else {
+        cb.checked = false
+        cb.indeterminate = true
+      }
+    }
+
+    // 플로팅 바 표시/숨김 (하위 호환)
     if (this.hasFloatingBarTarget) {
       const visible = count > 0
       if (visible) {
@@ -185,12 +223,10 @@ export default class extends Controller {
         this.floatingBarTarget.classList.add("translate-y-20", "opacity-0", "pointer-events-none")
         this.floatingBarTarget.classList.remove("translate-y-0", "opacity-100")
       }
-
-      // 플로팅 바가 하단 레코드를 가리지 않도록 패딩 조절
       this.element.classList.toggle("pb-20", visible)
     }
 
-    // 카운트 업데이트
+    // 카운트 업데이트 (하위 호환)
     if (this.hasFloatingCountTarget) {
       this.floatingCountTarget.textContent = count
     }
@@ -200,11 +236,8 @@ export default class extends Controller {
       this.idsTarget.value = Array.from(this.selectedIds).join(",")
     }
 
-    // 전체 선택 라벨 업데이트
+    // 전체 선택 라벨 업데이트 (하위 호환)
     if (this.hasSelectAllLabelTarget) {
-      const selectableRows = this.selectableRows
-      const allSelected = selectableRows.length > 0 &&
-        selectableRows.every(r => this.selectedIds.has(r.dataset.transactionId))
       this.selectAllLabelTarget.textContent = allSelected ? "전체 해제" : "전체 선택"
     }
   }

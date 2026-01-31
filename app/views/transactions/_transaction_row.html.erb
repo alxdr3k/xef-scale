@@ -6,8 +6,6 @@
     data-action="click->bulk-select#toggleRow"
     class="group/row transition-colors duration-150 cursor-pointer">
 
-  <%= render 'shared/transaction_cells/selection_indicator' %>
-
   <%= render 'shared/transaction_cells/date_cell', transaction: transaction, editable: true, update_url: update_url %>
   <%= render 'shared/transaction_cells/merchant_cell', transaction: transaction, editable: true, update_url: update_url %>
   <%= render 'shared/transaction_cells/amount_cell', transaction: transaction, editable: true, update_url: update_url %>

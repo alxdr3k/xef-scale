@@ -65,6 +65,31 @@
 }
 
 @layer components {
+  /* 즉시 표시 툴팁 */
+  .tooltip {
+    position: relative;
+  }
+  .tooltip::after {
+    content: attr(aria-label);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: rgb(17 24 39); /* gray-900 */
+    color: white;
+    font-size: 12px;
+    line-height: 1;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .tooltip:hover::after {
+    opacity: 1;
+  }
+
   /* 일괄 선택 - 행 호버/선택 상태 */
   tr[data-bulk-select-target="row"]:hover {
     background-color: rgb(249 250 251); /* bg-gray-50 */
@@ -72,10 +97,7 @@
   tr.selected {
     background-color: rgb(238 242 255); /* bg-indigo-50 */
   }
-  tr.selected > td:first-child div {
-    background-color: rgb(99 102 241); /* bg-indigo-500 */
-  }
   tr.selected:hover {
-    background-color: rgb(199 210 254); /* bg-indigo-200 */
+    background-color: rgb(224 231 255); /* bg-indigo-100 */
   }
 }
