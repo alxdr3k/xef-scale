@@ -1,3 +1,7 @@
 <%= turbo_stream.replace "notification-badge" do %>
   <%= render partial: 'notifications/badge', locals: { user: current_user, workspace: current_workspace } %>
 <% end %>
+
+<%= turbo_stream.replace "notification-list" do %>
+  <%= render partial: 'notifications/list', locals: { notifications: @notifications, pagy: @pagy } %>
+<% end %>
