@@ -17,15 +17,7 @@
     </div>
 
     <div class="flex items-center space-x-2">
-      <% if @parsing_session.review_pending? %>
-        <span class="px-3 py-1 text-sm rounded-full bg-yellow-100 text-yellow-800">검토 대기</span>
-      <% elsif @parsing_session.review_committed? %>
-        <span class="px-3 py-1 text-sm rounded-full bg-green-100 text-green-800">확정됨</span>
-      <% elsif @parsing_session.review_rolled_back? %>
-        <span class="px-3 py-1 text-sm rounded-full bg-red-100 text-red-800">롤백됨</span>
-      <% elsif @parsing_session.review_discarded? %>
-        <span class="px-3 py-1 text-sm rounded-full bg-gray-100 text-gray-800">취소됨</span>
-      <% end %>
+      <%= render 'shared/status_badge', status: @parsing_session.review_status, type: :review %>
     </div>
   </div>
 

@@ -1,0 +1,7 @@
+<%# Locals: institution (required), highlighted (default: false) %>
+<% highlighted = local_assigns.fetch(:highlighted, false) %>
+<% if institution %>
+  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= highlighted ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700' %>">
+    <%= institution.name %>
+  </span>
+<% end %>

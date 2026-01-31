@@ -82,9 +82,7 @@
   <% else %>
     <%# Read-only category badge %>
     <% if transaction.category %>
-      <span class="px-2 py-1 text-xs rounded-full" style="background-color: <%= transaction.category.color %>20; color: <%= transaction.category.color %>">
-        <%= transaction.category.name %>
-      </span>
+      <%= render 'shared/category_badge', category: transaction.category %>
     <% else %>
       <span class="text-gray-400 text-sm">미분류</span>
     <% end %>

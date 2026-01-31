@@ -1,0 +1,34 @@
+<%# Locals: status (required), type (default: :review) %>
+<%# type: :review | :processing %>
+<% type = local_assigns.fetch(:type, :review) %>
+<%
+  badge_config = case type.to_sym
+  when :review
+    case status.to_s
+    when 'pending_review' then { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '검토 대기' }
+    when 'committed'      then { bg: 'bg-green-100',  text: 'text-green-800',  label: '확정됨' }
+    when 'rolled_back'    then { bg: 'bg-red-100',    text: 'text-red-800',    label: '롤백됨' }
+    when 'discarded'      then { bg: 'bg-gray-100',   text: 'text-gray-800',   label: '취소됨' }
+    end
+  when :processing
+    case status.to_s
+    when 'pending'    then { bg: 'bg-gray-100',  text: 'text-gray-800',  label: '대기중' }
+    when 'processing' then { bg: 'bg-blue-100',  text: 'text-blue-800',  label: '처리중', spinner: true }
+    when 'completed'  then { bg: 'bg-green-100', text: 'text-green-800', label: '완료' }
+    when 'failed'     then { bg: 'bg-red-100',   text: 'text-red-800',   label: '실패' }
+    end
+  end
+%>
+<% if badge_config %>
+  <% if badge_config[:spinner] %>
+    <span class="inline-flex items-center px-2 py-1 text-xs rounded-full <%= badge_config[:bg] %> <%= badge_config[:text] %>">
+      <svg class="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <%= badge_config[:label] %>
+    </span>
+  <% else %>
+    <span class="px-2 py-1 text-xs rounded-full <%= badge_config[:bg] %> <%= badge_config[:text] %>"><%= badge_config[:label] %></span>
+  <% end %>
+<% end %>

@@ -14,13 +14,10 @@
           <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">기존 거래</span>
           <% if original.parsing_session %>
             <% orig_session = original.parsing_session %>
-            <% if orig_session.review_pending? %>
-              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-700">
-                #<%= orig_session.id %> 검토 대기
-              </span>
-            <% elsif orig_session.review_committed? %>
-              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">
-                #<%= orig_session.id %> 확정
+            <% if orig_session.review_pending? || orig_session.review_committed? %>
+              <span class="inline-flex items-center gap-0.5 text-[10px]">
+                #<%= orig_session.id %>
+                <%= render 'shared/status_badge', status: orig_session.review_status, type: :review %>
               </span>
             <% end %>
           <% end %>
@@ -35,16 +32,8 @@
             <span class="font-semibold text-gray-900"><%= number_to_currency(original.amount, unit: '₩', precision: 0) %></span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2">
-            <% if original.financial_institution %>
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= institution_diff ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700' %>">
-                <%= original.financial_institution.name %>
-              </span>
-            <% end %>
-            <% if original.category %>
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= category_diff ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700' %>">
-                <%= original.category.name %>
-              </span>
-            <% end %>
+            <%= render 'shared/institution_badge', institution: original.financial_institution, highlighted: institution_diff %>
+            <%= render 'shared/category_badge', category: original.category, highlighted: category_diff %>
           </div>
         </div>
       </div>
@@ -62,16 +51,8 @@
             <span class="font-semibold text-gray-900"><%= number_to_currency(new_tx.amount, unit: '₩', precision: 0) %></span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2">
-            <% if new_tx.financial_institution %>
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= institution_diff ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700' %>">
-                <%= new_tx.financial_institution.name %>
-              </span>
-            <% end %>
-            <% if new_tx.category %>
-              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= category_diff ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700' %>">
-                <%= new_tx.category.name %>
-              </span>
-            <% end %>
+            <%= render 'shared/institution_badge', institution: new_tx.financial_institution, highlighted: institution_diff %>
+            <%= render 'shared/category_badge', category: new_tx.category, highlighted: category_diff %>
           </div>
         </div>
       </div>

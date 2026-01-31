@@ -75,12 +75,7 @@
               <%= transaction.merchant %>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              <% if transaction.category %>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                      style="background-color: <%= transaction.category.color %>20; color: <%= transaction.category.color %>">
-                  <%= transaction.category.name %>
-                </span>
-              <% end %>
+              <%= render 'shared/category_badge', category: transaction.category %>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
               <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>

@@ -1,0 +1,14 @@
+<%# Locals: category (required), highlighted (default: false) %>
+<% highlighted = local_assigns.fetch(:highlighted, false) %>
+<% if category %>
+  <% if highlighted %>
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+      <%= category.name %>
+    </span>
+  <% else %>
+    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+          style="background-color: <%= category.color %>20; color: <%= category.color %>">
+      <%= category.name %>
+    </span>
+  <% end %>
+<% end %>
