@@ -5,7 +5,7 @@ class Notification < ApplicationRecord
   belongs_to :workspace
   belongs_to :notifiable, polymorphic: true, optional: true
 
-  TYPES = %w[parsing_complete commit_complete rollback_complete ocr_complete].freeze
+  TYPES = %w[parsing_complete parsing_failed commit_complete rollback_complete ocr_complete].freeze
 
   validates :notification_type, inclusion: { in: TYPES }
   validates :title, presence: true
@@ -39,8 +39,19 @@ class Notification < ApplicationRecord
       workspace: parsing_session.workspace,
       notification_type: "parsing_complete",
       title: "파일 파싱 완료",
-      message: "#{parsing_session.processed_file.filename} 파일에서 #{parsing_session.success_count}건의 거래가 발견되었습니다. 검토해주세요.",
+      message: "#{parsing_session.processed_file&.filename || '텍스트 붙여넣기'}에서 #{parsing_session.success_count}건의 거래가 발견되었습니다. 검토해주세요.",
       action_url: "/workspaces/#{parsing_session.workspace_id}/parsing_sessions/#{parsing_session.id}/review",
+      notifiable: parsing_session
+    )
+  end
+
+  def self.create_parsing_failed!(parsing_session, user)
+    create!(
+      user: user,
+      workspace: parsing_session.workspace,
+      notification_type: "parsing_failed",
+      title: "파일 파싱 실패",
+      message: "#{parsing_session.processed_file&.filename || '텍스트 붙여넣기'}를 파싱할 수 없습니다. 지원하지 않는 형식이거나 거래 내역이 없습니다.",
       notifiable: parsing_session
     )
   end
