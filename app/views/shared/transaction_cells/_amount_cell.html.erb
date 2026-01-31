@@ -26,10 +26,11 @@
             turbo_preserve_scroll: true
           }, class: 'inline-flex relative' do |f| %>
         <% installment_label = transaction.installment? ? "할부 #{transaction.installment_month}/#{transaction.installment_total}" : '할부' %>
+        <% lump_sum_classes = transaction.lump_sum? ? 'opacity-0 group-hover/row:opacity-100' : '' %>
         <%= f.select :payment_type,
             [['일시불', 'lump_sum'], [installment_label, 'installment'], ['소비쿠폰', 'coupon']],
             {},
-            class: "text-[11px] rounded border-0 bg-transparent py-0 pl-0 pr-4 cursor-pointer transition-colors focus:ring-1 focus:ring-indigo-500 font-medium #{transaction.installment? ? 'text-violet-600' : transaction.coupon? ? 'text-amber-600' : 'text-gray-400 hover:text-gray-600'}",
+            class: "text-[11px] rounded border-0 bg-transparent py-0 pl-0 pr-4 cursor-pointer transition-all focus:ring-1 focus:ring-indigo-500 focus:opacity-100 font-medium #{transaction.installment? ? 'text-violet-600' : transaction.coupon? ? 'text-amber-600' : 'text-gray-400 hover:text-gray-600'} #{lump_sum_classes}",
             data: { action: 'change->installment-popover#handleChange', installment_popover_target: 'select' } %>
 
         <!-- Installment Popover (hidden by default) -->
