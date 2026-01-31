@@ -4,6 +4,8 @@ class FileParsingJob < ApplicationJob
   queue_as :default
 
   IMAGE_EXTENSIONS = %w[.jpg .jpeg .png .webp .heic].freeze
+  BANK_IDENTIFIERS = %w[toss_bank kakao_bank mg_bank].freeze
+  CARD_COMPANY_PATTERNS = %w[신한카드 하나카드 삼성카드 현대카드 국민카드 롯데카드 우리카드 BC카드 NH카드].freeze
 
   def perform(processed_file_id, institution_identifier: nil)
     processed_file = ProcessedFile.find(processed_file_id)
@@ -20,10 +22,20 @@ class FileParsingJob < ApplicationJob
     begin
       result = parse_file(processed_file)
 
+      user = processed_file.uploaded_by
+
       # 제외 거래처 필터링
-      excluded = processed_file.uploaded_by&.excluded_merchants || []
+      excluded = user&.excluded_merchants || []
       if excluded.any?
         result = result.reject { |tx| excluded.any? { |pattern| tx[:merchant]&.include?(pattern) } }
+      end
+
+      # 카드사 출금 제외 (은행 내역만 대상)
+      if user&.exclude_card_withdrawals? && result.any? { |tx| BANK_IDENTIFIERS.include?(tx[:institution_identifier]) }
+        result = result.reject do |tx|
+          BANK_IDENTIFIERS.include?(tx[:institution_identifier]) &&
+            CARD_COMPANY_PATTERNS.any? { |pattern| tx[:merchant]&.include?(pattern) }
+        end
       end
 
       workspace = processed_file.workspace
@@ -63,11 +75,17 @@ class FileParsingJob < ApplicationJob
         stats[:gemini] = gemini_count
       end
 
-      parsing_session.complete!(stats)
-      processed_file.mark_completed!
+      if stats[:total].zero?
+        parsing_session.fail!
+        processed_file.mark_failed!
+        create_failure_notifications(parsing_session)
+      else
+        parsing_session.complete!(stats)
+        processed_file.mark_completed!
 
-      # Create notifications for workspace members
-      create_completion_notifications(parsing_session)
+        # Create notifications for workspace members
+        create_completion_notifications(parsing_session)
+      end
 
     rescue => e
       Rails.logger.error "Parsing failed: #{e.message}"
@@ -225,7 +243,7 @@ class FileParsingJob < ApplicationJob
 
   def find_duplicate(workspace, transaction)
     scope = workspace.transactions
-                     .reviewable
+                     .active
                      .where(date: transaction.date, amount: transaction.amount)
                      .where.not(id: transaction.id)
 
@@ -237,6 +255,20 @@ class FileParsingJob < ApplicationJob
     end
 
     scope.first
+  end
+
+  def create_failure_notifications(parsing_session)
+    workspace = parsing_session.workspace
+
+    if workspace.owner
+      Notification.create_parsing_failed!(parsing_session, workspace.owner)
+    end
+
+    workspace.workspace_memberships.where(role: %w[co_owner member_write]).find_each do |membership|
+      next if membership.user_id == workspace.owner_id
+
+      Notification.create_parsing_failed!(parsing_session, membership.user)
+    end
   end
 
   def create_completion_notifications(parsing_session)
