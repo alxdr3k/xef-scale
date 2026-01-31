@@ -49,11 +49,11 @@ export default class extends Controller {
       const panelW = 320 // w-80
       const gap = 8
 
-      // 수평: 테이블 오른쪽 끝 + gap
-      let left = tableRect.right + gap
-      // 화면 밖으로 나가면 테이블 왼쪽에 표시
-      if (left + panelW > window.innerWidth - 8) {
-        left = tableRect.left - panelW - gap
+      // 수평: 테이블 왼쪽 바로 옆
+      let left = tableRect.left - panelW - gap
+      // 화면 밖으로 나가면 테이블 오른쪽에 표시
+      if (left < 8) {
+        left = tableRect.right + gap
       }
       panel.style.left = `${Math.max(8, left)}px`
 
