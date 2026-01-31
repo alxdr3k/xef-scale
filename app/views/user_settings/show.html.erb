@@ -1,37 +1,45 @@
 <div class="max-w-2xl mx-auto">
   <h1 class="text-2xl font-bold text-gray-900 mb-6">계정 설정</h1>
 
-  <!-- Statement Passwords -->
+  <!-- Statement Settings -->
   <div class="bg-white shadow rounded-lg p-6 mb-8">
-    <h2 class="text-lg font-semibold text-gray-900 mb-2">명세서 비밀번호</h2>
-    <p class="text-sm text-gray-500 mb-4">
-      암호화된 PDF 명세서를 파싱하기 위한 비밀번호입니다.
-    </p>
+    <h2 class="text-lg font-semibold text-gray-900 mb-2">명세서 설정</h2>
 
-    <%= form_with url: user_settings_path, method: :patch, class: 'space-y-4' do |f| %>
-      <% User::INSTITUTIONS_WITH_PASSWORD.each do |key, name| %>
-        <% has_password = current_user.statement_password(key).present? %>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            <%= name %>
-            <% if has_password %>
-              <span class="ml-2 text-xs text-green-600">✓ 저장됨</span>
-            <% end %>
-          </label>
-          <input type="password"
-                 name="user[statement_passwords][<%= key %>]"
-                 placeholder="<%= has_password ? '변경하려면 새 비밀번호 입력' : '비밀번호 입력' %>"
-                 autocomplete="off"
-                 class="w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-          <p class="mt-1 text-xs text-gray-400">
-            <% if key == "shinhan_card" %>
-              일반적으로 생년월일 6자리 (YYMMDD)
-            <% end %>
-          </p>
-        </div>
-      <% end %>
+    <%= form_with url: user_settings_path, method: :patch, class: 'space-y-6' do |f| %>
+      <!-- 통합 비밀번호 -->
+      <div>
+        <% has_password = current_user.statement_password.present? %>
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          금융권 명세서 비밀번호
+          <% if has_password %>
+            <span class="ml-2 text-xs text-green-600 font-normal">저장됨</span>
+          <% end %>
+        </label>
+        <input type="password"
+               name="user[statement_password]"
+               placeholder="<%= has_password ? '변경하려면 새 비밀번호 입력' : '생년월일 6자리 (YYMMDD)' %>"
+               autocomplete="off"
+               class="w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <p class="mt-1 text-xs text-gray-400">
+          신한카드, 하나카드, 토스뱅크 등 암호화된 명세서의 비밀번호 (일반적으로 생년월일 6자리)
+        </p>
+      </div>
 
-      <div class="pt-4">
+      <!-- 제외 거래처 -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+          제외할 거래처
+        </label>
+        <textarea name="user[excluded_merchants]"
+                  rows="4"
+                  placeholder="제외할 거래처를 줄바꿈으로 구분하여 입력&#10;예: 본인이체&#10;토스뱅크이자"
+                  class="w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"><%= current_user.excluded_merchants.join("\n") %></textarea>
+        <p class="mt-1 text-xs text-gray-400">
+          파싱 시 제외할 거래처명을 줄바꿈으로 구분하여 입력하세요. 거래처명에 입력한 텍스트가 포함되면 제외됩니다.
+        </p>
+      </div>
+
+      <div class="pt-2">
         <%= f.submit '저장', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
       </div>
     <% end %>

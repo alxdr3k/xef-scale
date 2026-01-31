@@ -7,7 +7,10 @@ class UserSettingsController < ApplicationController
   end
 
   def update
-    if update_statement_passwords
+    update_statement_password
+    update_excluded_merchants
+
+    if current_user.save
       redirect_to user_settings_path, notice: "설정이 저장되었습니다."
     else
       redirect_to user_settings_path, alert: "설정 저장에 실패했습니다."
@@ -16,15 +19,13 @@ class UserSettingsController < ApplicationController
 
   private
 
-  def update_statement_passwords
-    password_params = params.dig(:user, :statement_passwords) || {}
+  def update_statement_password
+    password = params.dig(:user, :statement_password)
+    current_user.set_statement_password(password) if password.present?
+  end
 
-    User::INSTITUTIONS_WITH_PASSWORD.each_key do |key|
-      password = password_params[key]
-      # 값이 있을 때만 업데이트 (빈 칸은 기존 값 유지)
-      current_user.set_statement_password(key, password) if password.present?
-    end
-
-    current_user.save
+  def update_excluded_merchants
+    text = params.dig(:user, :excluded_merchants)
+    current_user.set_excluded_merchants(text) unless text.nil?
   end
 end
