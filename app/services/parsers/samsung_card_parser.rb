@@ -116,7 +116,7 @@ module Parsers
       return 0 if value.blank?
 
       if value.is_a?(Numeric)
-        value.to_i.abs
+        value.to_i
       else
         parse_amount(value)
       end

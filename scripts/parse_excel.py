@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Excel Parser for Korean Financial Statements
-Supports: Hana Card, Shinhan Card, Toss Bank, Kakao Bank
+Supports: Hana Card, Shinhan Card, Toss Bank, Kakao Bank, Samsung Card
 """
 
 import sys
@@ -28,10 +28,11 @@ except ImportError:
 
 # Institution signatures for identification
 SIGNATURES = {
-    'hana_card': ['하나카드', '이용일', '가맹점명', '이용대금 명세서', '거래일자'],
+    'hana_card': ['하나카드', '가맹점명', '이용대금 명세서', '거래일자'],
     'shinhan_card': ['신한카드', '이용일자', '승인번호'],
     'toss_bank': ['토스뱅크', 'Toss', '수신자', '거래유형'],
     'kakao_bank': ['kakao', '카카오뱅크', '거래일시', '거래구분'],
+    'samsung_card': ['삼성카드', '입금후잔액', '이용구분'],
 }
 
 
@@ -66,6 +67,7 @@ def parse_date(date_str):
         '%Y/%m/%d',
         '%y.%m.%d',
         '%y-%m-%d',
+        '%Y%m%d',
     ]
 
     for fmt in formats:
@@ -82,17 +84,17 @@ def parse_date(date_str):
 
 
 def parse_amount(amount):
-    """Parse amount, handling various formats"""
+    """Parse amount, handling various formats (preserves sign for cancellations)"""
     if pd.isna(amount):
         return 0
 
     if isinstance(amount, (int, float)):
-        return abs(int(amount))
+        return int(amount)
 
     # Remove currency symbols, commas, spaces
     cleaned = re.sub(r'[^\d.-]', '', str(amount))
     try:
-        return abs(int(float(cleaned)))
+        return int(float(cleaned))
     except ValueError:
         return 0
 
@@ -195,7 +197,7 @@ def parse_hana_card(df):
 
         # 금액 정보
         original_amount = parse_amount(get_cell_safe(row, original_amount_col))
-        if original_amount <= 0:
+        if original_amount == 0:
             continue
 
         # 할부 정보 (컬럼이 없으면 None)
@@ -210,7 +212,7 @@ def parse_hana_card(df):
         is_installment = benefit_category == '할부' or (installment_total and installment_total > 1)
 
         # amount 결정: 할부면 결제원금, 아니면 이용금액
-        amount = monthly_amount if is_installment and monthly_amount > 0 else original_amount
+        amount = monthly_amount if is_installment and monthly_amount != 0 else original_amount
 
         transactions.append({
             'date': date,
@@ -259,7 +261,7 @@ def parse_shinhan_card(df):
             continue
 
         amount = parse_amount(row.iloc[2]) if len(row) > 2 else 0
-        if amount <= 0:
+        if amount == 0:
             continue
 
         transactions.append({
@@ -303,7 +305,7 @@ def parse_toss_bank(df):
             continue
 
         amount = parse_amount(row.iloc[2]) if len(row) > 2 else 0
-        if amount <= 0:
+        if amount == 0:
             continue
 
         transactions.append({
@@ -347,7 +349,7 @@ def parse_kakao_bank(df):
             continue
 
         amount = parse_amount(row.iloc[2]) if len(row) > 2 else 0
-        if amount <= 0:
+        if amount == 0:
             continue
 
         transactions.append({
@@ -357,6 +359,128 @@ def parse_kakao_bank(df):
             'description': merchant,
             'institution_identifier': 'kakao_bank'
         })
+
+    return transactions
+
+
+def parse_samsung_card(df, file_path):
+    """Parse Samsung Card statement (supports multiple sheets: 일시불, 할부)"""
+    transactions = []
+
+    # Read all sheets
+    try:
+        all_sheets = pd.read_excel(file_path, sheet_name=None, header=None, engine='openpyxl')
+    except Exception:
+        all_sheets = {'Sheet1': df}
+
+    for sheet_name, sheet_df in all_sheets.items():
+        # Find header row containing '이용일' and '가맹점'
+        header_row_idx = None
+        for idx, row in sheet_df.iterrows():
+            row_str = ' '.join(str(v) for v in row.values if pd.notna(v))
+            if '이용일' in row_str and '가맹점' in row_str:
+                header_row_idx = idx
+                break
+
+        if header_row_idx is None:
+            continue
+
+        # Build column map from header
+        header = sheet_df.iloc[header_row_idx]
+        col_map = {}
+        for col_idx, cell in enumerate(header):
+            cell_str = str(cell).strip()
+            if cell_str == '이용일':
+                col_map['date'] = col_idx
+            elif cell_str == '가맹점':
+                col_map['merchant'] = col_idx
+            elif cell_str == '이용금액':
+                col_map['original_amount'] = col_idx
+            elif cell_str == '원금':
+                col_map['principal'] = col_idx
+            elif cell_str == '개월':
+                col_map['installment_total'] = col_idx
+            elif cell_str == '회차':
+                col_map['installment_month'] = col_idx
+            elif cell_str == '이용혜택':
+                col_map['benefit_type'] = col_idx
+            elif cell_str == '혜택금액':
+                col_map['benefit_amount'] = col_idx
+
+        date_col = col_map.get('date', 0)
+        merchant_col = col_map.get('merchant', 2)
+        principal_col = col_map.get('principal')
+
+        is_installment = '할부' in str(sheet_name)
+        payment_type = 'installment' if is_installment else 'lump_sum'
+
+        for idx in range(header_row_idx + 1, len(sheet_df)):
+            row = sheet_df.iloc[idx]
+
+            # Date
+            date_val = row.iloc[date_col] if date_col < len(row) else None
+            if pd.isna(date_val) or str(date_val).strip() == '':
+                continue
+
+            date = parse_date(str(date_val).strip())
+            if not date:
+                continue
+
+            # Merchant
+            merchant = get_cell_safe(row, merchant_col)
+            if not merchant or merchant == 'nan' or '합계' in merchant:
+                continue
+
+            # Amount: use 원금 (principal) column - it's the numeric monthly charge
+            amount = 0
+            if principal_col is not None and principal_col < len(row) and pd.notna(row.iloc[principal_col]):
+                try:
+                    amount = int(float(row.iloc[principal_col]))
+                except (ValueError, TypeError):
+                    amount = 0
+
+            if amount == 0:
+                # Fallback to 이용금액
+                original_col = col_map.get('original_amount')
+                if original_col is not None:
+                    amount = parse_amount(get_cell_safe(row, original_col))
+
+            # Skip zero amounts only
+            if amount == 0:
+                continue
+
+            tx = {
+                'date': date,
+                'merchant': merchant,
+                'amount': amount,
+                'description': merchant,
+                'payment_type': payment_type,
+                'institution_identifier': 'samsung_card'
+            }
+
+            # Original amount for installments
+            if is_installment:
+                orig = col_map.get('original_amount')
+                if orig is not None:
+                    orig_amount = parse_amount(get_cell_safe(row, orig))
+                    if orig_amount != 0:
+                        tx['original_amount'] = orig_amount
+                inst_total = parse_int_safe(get_cell_safe(row, col_map.get('installment_total')))
+                inst_month = parse_int_safe(get_cell_safe(row, col_map.get('installment_month')))
+                if inst_total:
+                    tx['installment_total'] = inst_total
+                if inst_month:
+                    tx['installment_month'] = inst_month
+
+            # Benefit info
+            benefit_type = get_cell_safe(row, col_map.get('benefit_type'))
+            benefit_amount_val = parse_amount(get_cell_safe(row, col_map.get('benefit_amount')))
+            if benefit_type and benefit_type.strip() and benefit_type.strip() != ' ':
+                tx['benefit_type'] = benefit_type.strip()
+            if benefit_amount_val:
+                tx['benefit_amount'] = benefit_amount_val
+
+            transactions.append(tx)
 
     return transactions
 
@@ -433,6 +557,7 @@ def main():
         'shinhan_card': parse_shinhan_card,
         'toss_bank': parse_toss_bank,
         'kakao_bank': parse_kakao_bank,
+        'samsung_card': lambda d: parse_samsung_card(d, file_path),
     }
 
     parser = parsers.get(institution)

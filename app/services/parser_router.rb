@@ -6,8 +6,8 @@ class ParserRouter
     toss_bank: [ "토스뱅크", "Toss", "수신자", "거래유형" ],
     kakao_bank: [ "kakao", "카카오뱅크", "거래일시", "거래구분" ],
     shinhan_card: [ "신한카드", "이용일자", "승인번호" ],
-    hana_card: [ "하나카드", "이용일", "가맹점명", "이용대금 명세서", "거래일자" ],
-    samsung_card: [ "삼성카드", "일시불", "할부", "이용구분", "입금후잔액" ]
+    hana_card: [ "하나카드", "가맹점명", "이용대금 명세서", "거래일자" ],
+    samsung_card: [ "삼성카드", "입금후잔액", "이용구분" ]
   }.freeze
 
   PARSERS = {

@@ -57,13 +57,23 @@ class PythonExcelParser
 
     # Convert date strings to Date objects
     transactions = result["transactions"].map do |tx|
-      {
+      parsed = {
         date: Date.parse(tx["date"]),
         merchant: tx["merchant"],
         amount: tx["amount"],
         description: tx["description"],
         institution_identifier: tx["institution_identifier"]
       }
+
+      # Optional fields (installment, benefit, payment type)
+      parsed[:payment_type] = tx["payment_type"] if tx["payment_type"]
+      parsed[:original_amount] = tx["original_amount"] if tx["original_amount"]
+      parsed[:installment_month] = tx["installment_month"] if tx["installment_month"]
+      parsed[:installment_total] = tx["installment_total"] if tx["installment_total"]
+      parsed[:benefit_type] = tx["benefit_type"] if tx["benefit_type"]
+      parsed[:benefit_amount] = tx["benefit_amount"] if tx["benefit_amount"]
+
+      parsed
     end
 
     {
