@@ -10,7 +10,21 @@
     <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
       <!-- Original Transaction (Left) -->
       <div class="p-4">
-        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">기존 거래</div>
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">기존 거래</span>
+          <% if original.parsing_session %>
+            <% orig_session = original.parsing_session %>
+            <% if orig_session.review_pending? %>
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-700">
+                #<%= orig_session.id %> 검토 대기
+              </span>
+            <% elsif orig_session.review_committed? %>
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">
+                #<%= orig_session.id %> 확정
+              </span>
+            <% end %>
+          <% end %>
+        </div>
         <div class="space-y-2">
           <div class="font-medium text-lg truncate <%= merchant_diff ? 'text-amber-700 bg-amber-100 px-1 -mx-1 rounded' : 'text-gray-900' %>" title="<%= original.merchant %>">
             <%= original.merchant %>

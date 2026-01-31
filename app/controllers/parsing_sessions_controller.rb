@@ -6,7 +6,7 @@ class ParsingSessionsController < ApplicationController
 
   def index
     @parsing_sessions = @workspace.parsing_sessions
-                                  .includes(:processed_file)
+                                  .includes(:processed_file, :duplicate_confirmations)
                                   .order(created_at: :desc)
 
     @pagy, @parsing_sessions = pagy(@parsing_sessions, items: 20)
