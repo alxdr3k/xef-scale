@@ -19,6 +19,13 @@ class FileParsingJob < ApplicationJob
 
     begin
       result = parse_file(processed_file)
+
+      # 제외 거래처 필터링
+      excluded = processed_file.uploaded_by&.excluded_merchants || []
+      if excluded.any?
+        result = result.reject { |tx| excluded.any? { |pattern| tx[:merchant]&.include?(pattern) } }
+      end
+
       workspace = processed_file.workspace
 
       # Create transactions (1차: CategoryMapping + keyword 매칭만 사용)
@@ -106,7 +113,8 @@ class FileParsingJob < ApplicationJob
     tempfile = download_to_tempfile(processed_file)
 
     begin
-      result = PythonExcelParser.parse(tempfile.path)
+      password = processed_file.uploaded_by&.statement_password
+      result = PythonExcelParser.parse(tempfile.path, password: password)
       result[:transactions]
     ensure
       tempfile.close

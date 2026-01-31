@@ -15,26 +15,34 @@ class GeminiVisionParserService
   class AllModelsFailedError < StandardError; end
 
   RESPONSE_SCHEMA = {
-    type: "ARRAY",
-    items: {
-      type: "OBJECT",
-      properties: {
-        date: { type: "STRING", description: "거래 날짜 (YYYY.MM.DD 형식)" },
-        merchant: { type: "STRING", description: "가맹점명" },
-        amount: { type: "INTEGER", description: "이번달 내실 금액 (원금)" },
-        payment_type: { type: "STRING", enum: %w[lump_sum installment coupon], description: "일시불/할부/소비쿠폰" },
-        installment_month: { type: "INTEGER", description: "할부 현재 회차 (할부인 경우만)" },
-        installment_total: { type: "INTEGER", description: "할부 총 기간 (할부인 경우만)" }
-      },
-      required: %w[date merchant amount payment_type]
-    }
+    type: "OBJECT",
+    properties: {
+      payment_date: { type: "STRING", description: "결제일 (YYYY.MM.DD 형식, 명세서 첫 페이지의 '결제일' 항목)" },
+      transactions: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: {
+            date: { type: "STRING", description: "거래 날짜 (YYYY.MM.DD 형식)" },
+            merchant: { type: "STRING", description: "가맹점명" },
+            amount: { type: "INTEGER", description: "이번달 내실 금액 (원금)" },
+            payment_type: { type: "STRING", enum: %w[lump_sum installment coupon], description: "일시불/할부/소비쿠폰" },
+            installment_month: { type: "INTEGER", description: "할부 현재 회차 (할부인 경우만)" },
+            installment_total: { type: "INTEGER", description: "할부 총 기간 (할부인 경우만)" }
+          },
+          required: %w[date merchant amount payment_type]
+        }
+      }
+    },
+    required: %w[transactions]
   }.freeze
 
   PROMPT = <<~PROMPT
     이 이미지는 신한카드 이용대금 명세서입니다.
-    명세서에서 각 거래 내역을 추출해주세요.
+    명세서에서 결제일과 각 거래 내역을 추출해주세요.
 
     추출 규칙:
+    0. payment_date: 명세서 첫 페이지에서 '결제일' 항목을 찾아 YYYY.MM.DD 형식으로 변환 (예: 26.01.14 → 2026.01.14)
     1. date: 이용일자를 YYYY.MM.DD 형식으로 변환 (예: 25.08.06 → 2025.08.06)
     2. merchant: 가맹점명 (이용가맹점 열)
     3. amount:
@@ -55,7 +63,7 @@ class GeminiVisionParserService
 
   # @param tempfile [Tempfile] 이미지 파일
   # @param mime_type [String] 이미지 MIME 타입
-  # @return [Array<Hash>] 파싱된 거래 내역 배열
+  # @return [Hash] { payment_date: String or nil, transactions: Array<Hash> }
   def parse_image(tempfile, mime_type:)
     image_data = Base64.strict_encode64(File.binread(tempfile.path))
 
@@ -63,11 +71,11 @@ class GeminiVisionParserService
       begin
         Rails.logger.info "[GeminiVisionParser] Trying model: #{model}"
         response = call_gemini_api(model, image_data, mime_type)
-        transactions = parse_response(response)
+        result = parse_response(response)
 
-        if transactions.present?
-          Rails.logger.info "[GeminiVisionParser] Success with #{model}: #{transactions.size} transactions"
-          return transactions
+        if result[:transactions].present?
+          Rails.logger.info "[GeminiVisionParser] Success with #{model}: #{result[:transactions].size} transactions"
+          return result
         end
       rescue ApiError => e
         Rails.logger.warn "[GeminiVisionParser] #{model} failed: #{e.message}"

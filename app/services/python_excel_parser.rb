@@ -11,13 +11,15 @@ class PythonExcelParser
 
   # Parse an Excel file and return transactions
   # @param file_path [String] Path to the Excel file
+  # @param password [String, nil] Password for encrypted files
   # @return [Hash] Parsed result with :institution, :transactions, :count
-  def self.parse(file_path)
-    new(file_path).parse
+  def self.parse(file_path, password: nil)
+    new(file_path, password: password).parse
   end
 
-  def initialize(file_path)
+  def initialize(file_path, password: nil)
     @file_path = file_path
+    @password = password
   end
 
   def parse
@@ -34,7 +36,10 @@ class PythonExcelParser
   end
 
   def execute_python_parser
-    stdout, stderr, status = Open3.capture3(PYTHON_BIN, PYTHON_SCRIPT, @file_path)
+    cmd = [ PYTHON_BIN, PYTHON_SCRIPT, @file_path ]
+    cmd.push("--password", @password) if @password.present?
+
+    stdout, stderr, status = Open3.capture3(*cmd)
 
     unless status.success?
       Rails.logger.error "Python parser failed: #{stderr}"
