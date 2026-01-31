@@ -50,7 +50,7 @@ class Transaction < ApplicationRecord
   scope :search, ->(query) {
     return all if query.blank?
     escaped = sanitize_sql_like(query)
-    where("merchant LIKE ? OR notes LIKE ?",
+    where("transactions.merchant LIKE ? OR transactions.notes LIKE ?",
           "%#{escaped}%", "%#{escaped}%")
   }
   scope :excluding_allowance, -> {
