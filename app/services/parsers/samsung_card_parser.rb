@@ -17,10 +17,11 @@ module Parsers
 
       begin
         xlsx = open_spreadsheet(tempfile)
+        payment_date = extract_payment_date_from_filename
 
         xlsx.sheets.each do |sheet_name|
           sheet = xlsx.sheet(sheet_name)
-          sheet_transactions = parse_sheet(sheet, sheet_name)
+          sheet_transactions = parse_sheet(sheet, sheet_name, payment_date)
           transactions.concat(sheet_transactions)
         end
       ensure
@@ -39,7 +40,16 @@ module Parsers
 
     private
 
-    def parse_sheet(sheet, sheet_name)
+    def extract_payment_date_from_filename
+      filename = processed_file.filename.to_s
+      if filename =~ /(\d{4})(\d{2})(\d{2})/
+        Date.new($1.to_i, $2.to_i, $3.to_i)
+      end
+    rescue ArgumentError
+      nil
+    end
+
+    def parse_sheet(sheet, sheet_name, payment_date)
       transactions = []
       payment_type = determine_payment_type(sheet_name)
 
@@ -47,7 +57,7 @@ module Parsers
         row = sheet.row(row_num)
         next if row.compact.empty?
 
-        tx = parse_row(row, payment_type)
+        tx = parse_row(row, payment_type, payment_date)
         transactions << tx if tx
       end
 
@@ -63,7 +73,7 @@ module Parsers
       end
     end
 
-    def parse_row(row, payment_type)
+    def parse_row(row, payment_type, payment_date = nil)
       date_str = row[DATE_COL].to_s.strip
       return nil if date_str.blank?
       return nil if date_str.include?("합계")
@@ -87,8 +97,12 @@ module Parsers
         installment_month = row[ROUND_COL].to_i if row[ROUND_COL].present?
       end
 
+      # 할부 2회차 이후는 결제일(파일명) 사용, 1회차와 일시불은 원래 이용일 사용
+      use_payment_date = payment_type == "installment" && installment_month && installment_month > 1 && payment_date
+      final_date = use_payment_date ? payment_date : date
+
       build_transaction(
-        date: date,
+        date: final_date,
         merchant: merchant,
         amount: amount,
         payment_type: payment_type,

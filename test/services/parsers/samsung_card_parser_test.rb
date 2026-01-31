@@ -30,6 +30,21 @@ class Parsers::SamsungCardParserTest < ActiveSupport::TestCase
     assert_nil result
   end
 
+  test "extract_payment_date_from_filename extracts date from filename" do
+    parser = Parsers::SamsungCardParser.new(@processed_file)
+    result = parser.send(:extract_payment_date_from_filename)
+
+    assert_equal Date.new(2025, 6, 26), result
+  end
+
+  test "extract_payment_date_from_filename returns nil for invalid filename" do
+    @processed_file.update!(filename: "invalid_file.xlsx")
+    parser = Parsers::SamsungCardParser.new(@processed_file)
+    result = parser.send(:extract_payment_date_from_filename)
+
+    assert_nil result
+  end
+
   test "parse_row extracts one-time payment data" do
     parser = Parsers::SamsungCardParser.new(@processed_file)
     # 컬럼: 이용일, 이용구분, 가맹점, 이용금액, 총할부금액, 이용혜택, 혜택금액, 개월, 회차, 원금, 이자/수수료, 포인트명, 적립금액, 입금후잔액
@@ -46,19 +61,50 @@ class Parsers::SamsungCardParserTest < ActiveSupport::TestCase
     assert_nil result[:installment_total]
   end
 
-  test "parse_row extracts installment payment data" do
+  test "parse_row extracts installment payment data with installment_month 1" do
     parser = Parsers::SamsungCardParser.new(@processed_file)
-    row = [ "20250927", "본 인 985", "말레이시아 에어라인스 BSP", "1,835,800", "", "이자면제", "-14,935", "5", "3", 367100.0, 0.0, "", 0.0, 734200.0 ]
+    # First installment should use original purchase date
+    row = [ "20250927", "본 인 985", "말레이시아 에어라인스 BSP", "1,835,800", "", "이자면제", "-14,935", "5", "1", 367100.0, 0.0, "", 0.0, 734200.0 ]
+    payment_date = Date.new(2025, 6, 26)
 
-    result = parser.send(:parse_row, row, "installment")
+    result = parser.send(:parse_row, row, "installment", payment_date)
 
     assert_not_nil result
-    assert_equal Date.new(2025, 9, 27), result[:date]
+    assert_equal Date.new(2025, 9, 27), result[:date], "First installment should use original purchase date"
+    assert_equal "말레이시아 에어라인스 BSP", result[:merchant]
+    assert_equal 367100, result[:amount]
+    assert_equal "installment", result[:payment_type]
+    assert_equal 1, result[:installment_month]
+    assert_equal 5, result[:installment_total]
+  end
+
+  test "parse_row uses payment_date for installment_month > 1" do
+    parser = Parsers::SamsungCardParser.new(@processed_file)
+    # Second+ installment should use payment date from filename
+    row = [ "20250927", "본 인 985", "말레이시아 에어라인스 BSP", "1,835,800", "", "이자면제", "-14,935", "5", "3", 367100.0, 0.0, "", 0.0, 734200.0 ]
+    payment_date = Date.new(2025, 6, 26)
+
+    result = parser.send(:parse_row, row, "installment", payment_date)
+
+    assert_not_nil result
+    assert_equal Date.new(2025, 6, 26), result[:date], "Second+ installment should use payment date from filename"
     assert_equal "말레이시아 에어라인스 BSP", result[:merchant]
     assert_equal 367100, result[:amount]
     assert_equal "installment", result[:payment_type]
     assert_equal 3, result[:installment_month]
     assert_equal 5, result[:installment_total]
+  end
+
+  test "parse_row uses original date when payment_date is nil" do
+    parser = Parsers::SamsungCardParser.new(@processed_file)
+    # Should fall back to original date if payment_date not available
+    row = [ "20250927", "본 인 985", "말레이시아 에어라인스 BSP", "1,835,800", "", "이자면제", "-14,935", "5", "3", 367100.0, 0.0, "", 0.0, 734200.0 ]
+
+    result = parser.send(:parse_row, row, "installment", nil)
+
+    assert_not_nil result
+    assert_equal Date.new(2025, 9, 27), result[:date], "Should use original date when payment_date is nil"
+    assert_equal 3, result[:installment_month]
   end
 
   test "parse_row returns nil for summary rows" do
