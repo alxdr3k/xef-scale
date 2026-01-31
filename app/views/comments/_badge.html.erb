@@ -7,7 +7,7 @@
         data-comment-panel-amount-param="<%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>"
         data-comment-panel-row-id-param="<%= dom_id(transaction) %>"
         data-comment-panel-trigger
-        class="inline-flex items-center gap-0.5
+        class="inline-flex items-center gap-0.5 cursor-pointer
                <%= transaction.comments_count.to_i > 0 ? 'text-gray-500' : 'text-gray-400 opacity-0 group-hover:opacity-100' %>
                hover:text-gray-700 transition-all"
         title="댓글">

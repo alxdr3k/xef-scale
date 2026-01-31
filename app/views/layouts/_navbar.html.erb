@@ -27,7 +27,7 @@
         <div class="relative mr-4" data-controller="notifications">
           <button type="button"
                   data-action="click->notifications#toggle"
-                  class="relative p-2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                  class="relative p-2 text-gray-500 hover:text-gray-700 focus:outline-none cursor-pointer">
             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -58,7 +58,7 @@
           <div class="mr-4">
             <%= form_with url: workspaces_path, method: :get, local: true, class: 'inline' do %>
               <select name="workspace_id" onchange="this.form.submit()"
-                      class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                      class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md cursor-pointer">
                 <% current_user.workspaces.each do |ws| %>
                   <option value="<%= ws.id %>" <%= 'selected' if ws == current_workspace %>>
                     <%= ws.name %>
@@ -71,7 +71,7 @@
 
         <div class="ml-3 relative" data-controller="dropdown">
           <button type="button" data-action="click->dropdown#toggle"
-                  class="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  class="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer">
             <span class="sr-only">Open user menu</span>
             <% if current_user.avatar_url.present? %>
               <img class="h-8 w-8 rounded-full" src="<%= current_user.avatar_url %>" alt="">

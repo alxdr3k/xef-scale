@@ -20,11 +20,11 @@
         <% if uid && comment.user_id == uid %>
           <div class="ml-auto flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
             <button data-action="click->comment#edit:stop"
-                    class="text-[11px] text-gray-400 hover:text-gray-600">수정</button>
+                    class="text-[11px] text-gray-400 hover:text-gray-600 cursor-pointer">수정</button>
             <button data-action="click->comment#delete:stop"
                     data-comment-url-value="<%= workspace_transaction_comment_path(comment.commentable_transaction.workspace, comment.commentable_transaction, comment) %>"
                     data-turbo-confirm="댓글을 삭제하시겠습니까?"
-                    class="text-[11px] text-gray-400 hover:text-red-500">삭제</button>
+                    class="text-[11px] text-gray-400 hover:text-red-500 cursor-pointer">삭제</button>
           </div>
         <% end %>
       </div>
