@@ -53,6 +53,17 @@
   }
 }
 
+@layer base {
+  /* date input 캘린더 아이콘 여백 축소 */
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    margin-left: 0;
+    padding-left: 0;
+  }
+}
+
 @layer components {
   /* 일괄 선택 - 행 호버/선택 상태 */
   tr[data-bulk-select-target="row"]:hover {
