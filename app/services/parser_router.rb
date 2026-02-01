@@ -3,6 +3,7 @@ class ParserRouter
 
   SIGNATURES = {
     hana_card_html: [ "USSM_M_DATA", "UniSafeMail", "uni_cont_body" ],
+    mg_bank: [ "출금가능금액", "거래내용/메모", "온라인자립예탁금" ],
     toss_bank: [ "토스뱅크", "Toss", "수신자", "거래유형" ],
     kakao_bank: [ "kakao", "카카오뱅크", "거래일시", "거래구분" ],
     shinhan_card: [ "신한카드", "이용일자", "승인번호" ],
@@ -16,7 +17,8 @@ class ParserRouter
     "hana_card_html" => Parsers::HanaCardHtmlParser,
     "toss_bank" => Parsers::TossBankParser,
     "kakao_bank" => Parsers::KakaoBankParser,
-    "samsung_card" => Parsers::SamsungCardParser
+    "samsung_card" => Parsers::SamsungCardParser,
+    "mg_bank" => Parsers::MgBankParser
   }.freeze
 
   def self.route_by_identifier(identifier, processed_file)
@@ -48,6 +50,8 @@ class ParserRouter
       Parsers::HanaCardParser.new(processed_file)
     when :samsung_card
       Parsers::SamsungCardParser.new(processed_file)
+    when :mg_bank
+      Parsers::MgBankParser.new(processed_file)
     else
       raise UnknownFormatError, "지원하지 않는 명세서 형식입니다."
     end

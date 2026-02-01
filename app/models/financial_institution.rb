@@ -18,7 +18,8 @@ class FinancialInstitution < ApplicationRecord
     { name: "토스페이", identifier: "toss_pay", institution_type: "pay" },
     { name: "카카오뱅크", identifier: "kakao_bank", institution_type: "bank" },
     { name: "카카오페이", identifier: "kakao_pay", institution_type: "pay" },
-    { name: "삼성카드", identifier: "samsung_card", institution_type: "card" }
+    { name: "삼성카드", identifier: "samsung_card", institution_type: "card" },
+    { name: "새마을금고", identifier: "mg_bank", institution_type: "bank" }
   ].freeze
 
   def self.seed_default!
