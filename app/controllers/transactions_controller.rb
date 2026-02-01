@@ -403,7 +403,9 @@ class TransactionsController < ApplicationController
     mapping = CategoryMapping.find_or_initialize_by(
       workspace: @workspace,
       merchant_pattern: transaction.merchant,
-      description_pattern: description_pattern
+      description_pattern: description_pattern,
+      match_type: "exact",
+      amount: nil
     )
 
     mapping.category = category
