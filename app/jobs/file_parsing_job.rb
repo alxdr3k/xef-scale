@@ -154,7 +154,7 @@ class FileParsingJob < ApplicationJob
   end
 
   def create_transaction_without_gemini(workspace, tx_data, parsing_session)
-    category = match_category_without_gemini(workspace, tx_data[:merchant])
+    category = match_category_without_gemini(workspace, tx_data[:merchant], amount: tx_data[:amount])
     institution = FinancialInstitution.find_by(identifier: tx_data[:institution_identifier])
 
     workspace.transactions.create!(
@@ -177,11 +177,11 @@ class FileParsingJob < ApplicationJob
     )
   end
 
-  def match_category_without_gemini(workspace, merchant)
+  def match_category_without_gemini(workspace, merchant, amount: nil)
     return nil if merchant.blank?
 
     # 1순위: CategoryMapping 테이블에서 찾기
-    mapping = CategoryMapping.find_for_merchant(workspace, merchant)
+    mapping = CategoryMapping.find_for_merchant(workspace, merchant, amount: amount)
     return mapping.category if mapping
 
     # 2순위: Category keyword 매칭
@@ -221,7 +221,9 @@ class FileParsingJob < ApplicationJob
         CategoryMapping.find_or_create_by!(
           workspace: workspace,
           merchant_pattern: transaction.merchant,
-          description_pattern: nil
+          description_pattern: nil,
+          match_type: "exact",
+          amount: nil
         ) do |mapping|
           mapping.category = category
           mapping.source = "gemini"
