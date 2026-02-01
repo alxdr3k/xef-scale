@@ -1,0 +1,39 @@
+<tr id="<%= dom_id(mapping) %>">
+  <td class="px-6 py-4 text-sm text-gray-900"><%= mapping.merchant_pattern %></td>
+  <td class="px-6 py-4 text-sm text-gray-500"><%= mapping.match_type_label %></td>
+  <td class="px-6 py-4 text-sm text-gray-500">
+    <% if mapping.amount.present? %>
+      <%= number_with_delimiter(mapping.amount) %>원
+    <% else %>
+      <span class="text-gray-400">모든 금액</span>
+    <% end %>
+  </td>
+  <td class="px-6 py-4 text-sm">
+    <% if mapping.category %>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: <%= mapping.category.color %>"></span>
+        <%= mapping.category.name %>
+      </span>
+    <% end %>
+  </td>
+  <td class="px-6 py-4 text-sm">
+    <% case mapping.source %>
+    <% when "manual" %>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">수동</span>
+    <% when "import" %>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">학습</span>
+    <% when "gemini" %>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">AI</span>
+    <% end %>
+  </td>
+  <td class="px-6 py-4 text-right text-sm">
+    <%= link_to '수정',
+          edit_workspace_category_mapping_path(@workspace, mapping),
+          class: 'text-indigo-600 hover:text-indigo-900 mr-3',
+          data: { action: "click->slideover#open", turbo_frame: "slideover-content" } %>
+    <%= link_to '삭제',
+          workspace_category_mapping_path(@workspace, mapping),
+          data: { turbo_method: :delete, turbo_confirm: '이 분류 규칙을 삭제하시겠습니까?' },
+          class: 'text-red-600 hover:text-red-900' %>
+  </td>
+</tr>

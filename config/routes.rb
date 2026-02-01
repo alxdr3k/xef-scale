@@ -56,6 +56,9 @@ Rails.application.routes.draw do
     # Categories within workspace
     resources :categories, except: [ :show ]
 
+    # Category mappings (분류 규칙)
+    resources :category_mappings, except: [ :show ]
+
     # File uploads and parsing
     resources :parsing_sessions, only: [ :index, :show, :create ] do
       collection do
