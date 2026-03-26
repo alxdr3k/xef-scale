@@ -10,6 +10,7 @@ class Workspace < ApplicationRecord
   has_many :processed_files, dependent: :destroy
   has_many :parsing_sessions, dependent: :destroy
   has_many :api_keys, dependent: :destroy
+  has_one :budget, dependent: :destroy
 
   validates :name, presence: true
 

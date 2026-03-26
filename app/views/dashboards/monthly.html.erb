@@ -33,6 +33,19 @@
       <span><%= @transactions.count %>건 거래</span>
       <span>일 평균 <%= number_to_currency(@total_spending / [Date.current.day, 1].max, unit: '₩', precision: 0) %></span>
     </div>
+
+    <% if @budget_progress %>
+      <div class="mt-4">
+        <div class="flex justify-between text-xs text-indigo-200 mb-1">
+          <span>예산 대비 <%= @budget_progress[:percentage] %>%</span>
+          <span><%= number_to_currency(@budget_progress[:budget], unit: '₩', precision: 0) %></span>
+        </div>
+        <div class="w-full bg-indigo-800 rounded-full h-2">
+          <div class="h-2 rounded-full transition-all duration-500 <%= @budget_progress[:percentage] >= 100 ? 'bg-red-400' : @budget_progress[:percentage] >= 80 ? 'bg-yellow-400' : 'bg-white' %>"
+               style="width: <%= [@budget_progress[:percentage], 100].min %>%"></div>
+        </div>
+      </div>
+    <% end %>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
