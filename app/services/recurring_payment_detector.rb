@@ -10,7 +10,7 @@ class RecurringPaymentDetector
     results = @workspace.transactions
                         .active
                         .excluding_coupon
-                        .where.not(merchant: [nil, ""])
+                        .where.not(merchant: [ nil, "" ])
                         .select(
                           :merchant,
                           Arel.sql("COUNT(*) as tx_count"),
