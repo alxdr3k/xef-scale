@@ -1,6 +1,20 @@
-<div class="max-w-4xl mx-auto" data-controller="bulk-select note-panel" data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick">
+<div class="max-w-4xl mx-auto" data-controller="bulk-select note-panel onboarding" data-onboarding-page-value="upload" data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick">
   <h1 class="text-2xl font-bold text-gray-900 mb-2">파일 업로드</h1>
   <p class="text-gray-600 mb-6">은행/카드 명세서를 업로드하여 거래 내역을 자동으로 등록하세요.</p>
+
+  <!-- Onboarding Overlay -->
+  <div data-onboarding-target="overlay" class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+    <div class="flex justify-between items-start">
+      <div>
+        <p class="text-sm font-medium text-indigo-900">처음이신가요?</p>
+        <p class="text-sm text-indigo-700 mt-1">은행/카드 앱에서 명세서를 다운로드한 후, 아래 영역에 파일을 끌어다 놓으면 자동으로 업로드됩니다.</p>
+        <p class="text-xs text-indigo-500 mt-1">Excel, CSV, PDF 파일을 지원합니다. 여러 파일을 한 번에 올릴 수 있어요.</p>
+      </div>
+      <button data-action="click->onboarding#dismiss" class="text-indigo-400 hover:text-indigo-600 ml-4 flex-shrink-0">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+  </div>
 
   <!-- Upload Form -->
   <div class="bg-white rounded-lg shadow p-6 mb-8">
