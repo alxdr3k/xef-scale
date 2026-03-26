@@ -1,16 +1,16 @@
-# Test API keys
+# Test API keys — digest computed with a fixed test key
 
 active_key:
   workspace: main_workspace
   name: Test API Key
-  key_digest: <%= OpenSSL::HMAC.hexdigest("SHA256", Rails.application.secret_key_base, "xef_test_key_active_123456789012") %>
+  key_digest: test_active_key_digest_placeholder
   key_prefix: xef_test
-  last_used_at: nil
-  revoked_at: nil
+  last_used_at:
+  revoked_at:
 
 revoked_key:
   workspace: main_workspace
   name: Revoked Key
-  key_digest: <%= OpenSSL::HMAC.hexdigest("SHA256", Rails.application.secret_key_base, "xef_test_key_revoked_12345678901") %>
+  key_digest: test_revoked_key_digest_placeholder
   key_prefix: xef_test
   revoked_at: <%= 1.day.ago %>

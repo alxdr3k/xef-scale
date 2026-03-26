@@ -88,7 +88,7 @@ module Api
         assert_response :success
 
         json = JSON.parse(response.body)
-        next unless json["data"].any?
+        return unless json["data"].any?
 
         tx = json["data"].first
         assert tx.key?("id")
