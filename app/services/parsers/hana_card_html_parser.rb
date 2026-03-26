@@ -10,7 +10,7 @@ module Parsers
     BROWSER_TIMEOUT = 30
 
     SKIP_MERCHANTS = %w[소계 합계 카드소계].freeze
-    SKIP_MERCHANTS_SPACED = ["합 계", "이 용 금 액"].freeze
+    SKIP_MERCHANTS_SPACED = [ "합 계", "이 용 금 액" ].freeze
 
     def parse
       password = fetch_password
@@ -39,11 +39,11 @@ module Parsers
 
         period_info = build_period_info(period)
         payment_date = if raw_data["payment_date"]
-                         pd = raw_data["payment_date"]
-                         Date.new(pd["year"], pd["month"], pd["day"])
-                       else
-                         period_info[:end_date]
-                       end
+          pd = raw_data["payment_date"]
+          Date.new(pd["year"], pd["month"], pd["day"])
+        else
+          period_info[:end_date]
+        end
 
         rows = raw_data["rows"] || []
         Rails.logger.info("[HanaCardHtmlParser] JS에서 #{rows.length}개 행 추출")
@@ -279,12 +279,12 @@ module Parsers
       # Determine payment_type from installment and benefit info
       is_installment = installment_total && installment_total > 1
       payment_type = if benefit_type == "온누리사용"
-                       "coupon"
-                     elsif is_installment
-                       "installment"
-                     else
-                       "lump_sum"
-                     end
+        "coupon"
+      elsif is_installment
+        "installment"
+      else
+        "lump_sum"
+      end
 
       # For installment month 2+, use payment_date instead of transaction date
       use_payment_date = is_installment && installment_month && installment_month > 1 && payment_date

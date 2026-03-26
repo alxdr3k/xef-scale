@@ -310,7 +310,7 @@ class TransactionsController < ApplicationController
                             .with_duplicates
                             .order(date: :desc, amount: :desc, created_at: :desc)
 
-    duplicate_groups = transactions.group_by { |t| [t.date, t.amount] }
+    duplicate_groups = transactions.group_by { |t| [ t.date, t.amount ] }
                                    .values
                                    .select { |group| group.size >= 2 }
 
