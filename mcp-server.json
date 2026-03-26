@@ -1,0 +1,63 @@
+{
+  "name": "xef-scale",
+  "description": "Korean household expense tracker - financial data OS. Query transaction data, monthly/yearly summaries, and category breakdowns.",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "list_transactions",
+      "description": "List expense transactions with optional filters (year, month, category, institution, search query). Returns paginated results.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "year": { "type": "integer", "description": "Filter by year (e.g. 2026)" },
+          "month": { "type": "integer", "description": "Filter by month (1-12)" },
+          "category_id": { "type": "integer", "description": "Filter by category ID" },
+          "institution_id": { "type": "integer", "description": "Filter by financial institution ID" },
+          "q": { "type": "string", "description": "Search by merchant name or notes" },
+          "page": { "type": "integer", "description": "Page number (default: 1)" },
+          "per_page": { "type": "integer", "description": "Items per page (default: 50, max: 100)" }
+        }
+      },
+      "endpoint": "GET /api/v1/transactions"
+    },
+    {
+      "name": "get_transaction",
+      "description": "Get a single transaction by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "description": "Transaction ID" }
+        },
+        "required": ["id"]
+      },
+      "endpoint": "GET /api/v1/transactions/:id"
+    },
+    {
+      "name": "monthly_summary",
+      "description": "Get monthly spending summary with category breakdown. Shows total spending, transaction count, daily average, and per-category totals.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "year": { "type": "integer", "description": "Year (default: current year)" },
+          "month": { "type": "integer", "description": "Month 1-12 (default: current month)" }
+        }
+      },
+      "endpoint": "GET /api/v1/summaries/monthly"
+    },
+    {
+      "name": "yearly_summary",
+      "description": "Get yearly spending summary with monthly breakdown. Shows annual total, monthly average, and per-month totals.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "year": { "type": "integer", "description": "Year (default: current year)" }
+        }
+      },
+      "endpoint": "GET /api/v1/summaries/yearly"
+    }
+  ],
+  "authentication": {
+    "type": "bearer",
+    "description": "API key from xef-scale Settings > API Keys. Pass as Authorization: Bearer <api_key>"
+  }
+}

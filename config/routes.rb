@@ -99,6 +99,17 @@ Rails.application.routes.draw do
   # User Settings
   resource :user_settings, only: [ :show, :update ], path: "settings"
 
+  # API v1
+  namespace :api do
+    namespace :v1 do
+      resources :transactions, only: [ :index, :show ]
+      resource :summaries, only: [] do
+        get :monthly
+        get :yearly
+      end
+    end
+  end
+
   # Notifications
   resources :notifications, only: [ :index ] do
     member do
