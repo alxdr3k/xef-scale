@@ -29,9 +29,13 @@
       <%= render 'layouts/navbar' %>
     <% end %>
 
-    <main class="<%= user_signed_in? ? 'pt-4 px-4 pb-24' : '' %>">
+    <main class="<%= user_signed_in? ? 'pt-4 px-4 pb-20 sm:pb-6' : '' %>">
       <%= yield %>
     </main>
+
+    <% if user_signed_in? %>
+      <%= render 'layouts/mobile_bottom_nav' %>
+    <% end %>
 
     <!-- Toast Notifications Container -->
     <div id="flash" class="fixed top-6 right-6 z-50 space-y-3 max-w-sm w-full pointer-events-none">
