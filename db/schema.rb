@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_01_055337) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_26_100001) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -39,6 +39,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_01_055337) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
+  create_table "api_keys", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "key_digest", null: false
+    t.string "key_prefix", limit: 8, null: false
+    t.datetime "last_used_at"
+    t.string "name", null: false
+    t.datetime "revoked_at"
+    t.datetime "updated_at", null: false
+    t.integer "workspace_id", null: false
+    t.index ["key_digest"], name: "index_api_keys_on_key_digest", unique: true
+    t.index ["workspace_id", "revoked_at"], name: "index_api_keys_on_workspace_id_and_revoked_at"
+    t.index ["workspace_id"], name: "index_api_keys_on_workspace_id"
+  end
+
   create_table "allowance_transactions", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "expense_transaction_id", null: false
@@ -47,6 +61,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_01_055337) do
     t.index ["expense_transaction_id", "user_id"], name: "idx_on_expense_transaction_id_user_id_d9ae587c5a", unique: true
     t.index ["expense_transaction_id"], name: "index_allowance_transactions_on_expense_transaction_id"
     t.index ["user_id"], name: "index_allowance_transactions_on_user_id"
+  end
+
+  create_table "budgets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "monthly_amount", null: false
+    t.datetime "updated_at", null: false
+    t.integer "workspace_id", null: false
+    t.index ["workspace_id"], name: "index_budgets_on_workspace_id", unique: true
   end
 
   create_table "categories", force: :cascade do |t|
@@ -246,6 +268,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_01_055337) do
     t.index ["owner_id"], name: "index_workspaces_on_owner_id"
   end
 
+  add_foreign_key "api_keys", "workspaces"
+  add_foreign_key "budgets", "workspaces"
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "allowance_transactions", "transactions", column: "expense_transaction_id"

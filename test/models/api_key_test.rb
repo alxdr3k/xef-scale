@@ -80,13 +80,13 @@ class ApiKeyTest < ActiveSupport::TestCase
   end
 
   test "key_digest must be unique" do
-    ApiKey.generate(workspace: @workspace, name: "First")
+    first_key = ApiKey.generate(workspace: @workspace, name: "First")
     # Creating with same digest should fail
     assert_raises(ActiveRecord::RecordInvalid) do
       ApiKey.create!(
         workspace: @workspace,
         name: "Duplicate",
-        key_digest: ApiKey.first.key_digest,
+        key_digest: first_key.key_digest,
         key_prefix: "xef_dup"
       )
     end

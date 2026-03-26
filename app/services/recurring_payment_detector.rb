@@ -41,7 +41,7 @@ class RecurringPaymentDetector
 
     results.map do |row|
       avg = row.avg_amount.round
-      variance = [row.max_amount - avg, avg - row.min_amount].max
+      variance = [ row.max_amount - avg, avg - row.min_amount ].max
       consistent = avg > 0 && variance <= (avg * 0.2)
 
       {

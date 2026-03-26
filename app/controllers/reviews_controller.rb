@@ -263,10 +263,10 @@ class ReviewsController < ApplicationController
     progress = budget.progress_for_month(year, month)
 
     alert_type = if progress[:percentage] >= 100
-                   "budget_exceeded"
-                 elsif progress[:percentage] >= 80
-                   "budget_warning"
-                 end
+      "budget_exceeded"
+    elsif progress[:percentage] >= 80
+      "budget_warning"
+    end
     return unless alert_type
 
     @workspace.members.find_each do |member|

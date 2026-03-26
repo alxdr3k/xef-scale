@@ -9,10 +9,7 @@ module Api
         token = request.headers["Authorization"]&.delete_prefix("Bearer ")
         @api_key = ApiKey.authenticate(token)
 
-        unless @api_key
-          render json: { error: "Invalid or missing API key" }, status: :unauthorized
-          return
-        end
+        render(json: { error: "Invalid or missing API key" }, status: :unauthorized) unless @api_key
       end
 
       def current_workspace
