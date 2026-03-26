@@ -13,8 +13,8 @@ module Api
         transactions = transactions.includes(:category, :financial_institution)
                                    .order(date: :desc)
 
-        page = (params[:page] || 1).to_i
-        per_page = [(params[:per_page] || 50).to_i, 100].min
+        page = [(params[:page] || 1).to_i, 1].max
+        per_page = [[(params[:per_page] || 50).to_i, 1].max, 100].min
         offset = (page - 1) * per_page
 
         total = transactions.count
