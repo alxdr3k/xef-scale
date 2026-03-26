@@ -6,7 +6,7 @@
   <div class="bg-white rounded-lg shadow p-6 mb-8">
     <h2 class="text-lg font-semibold text-gray-900 mb-4">새 거래 추가</h2>
 
-    <%= form_with url: workspace_parsing_sessions_path(@workspace), method: :post, multipart: true, local: true, class: 'space-y-4', data: { controller: "file-type-detector" } do |f| %>
+    <%= form_with url: workspace_parsing_sessions_path(@workspace), method: :post, multipart: true, local: true, class: 'space-y-4', data: { controller: "file-type-detector", file_type_detector_target: "form" } do |f| %>
       <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center overflow-hidden transition-colors relative"
            data-file-type-detector-target="dropZone"
            data-action="dragover->file-type-detector#dragover dragleave->file-type-detector#dragleave drop->file-type-detector#drop">

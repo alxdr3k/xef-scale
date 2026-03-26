@@ -4,7 +4,7 @@ const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".heic"]
 const IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic"]
 
 export default class extends Controller {
-  static targets = ["fileInput", "fileName", "institutionSelector", "dropZone", "fileCount", "clearButton"]
+  static targets = ["fileInput", "fileName", "institutionSelector", "dropZone", "fileCount", "clearButton", "form"]
 
   connect() {
     this.handlePaste = this.paste.bind(this)
@@ -155,6 +155,15 @@ export default class extends Controller {
       this.institutionSelectorTarget.classList.remove("hidden")
     } else {
       this.institutionSelectorTarget.classList.add("hidden")
+      this.autoSubmit()
     }
+  }
+
+  autoSubmit() {
+    if (!this.hasFormTarget) return
+    const files = this.fileInputTarget.files
+    if (!files || files.length === 0) return
+
+    this.formTarget.requestSubmit()
   }
 }
