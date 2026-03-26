@@ -92,6 +92,7 @@ Rails.application.routes.draw do
   resource :dashboard, only: [] do
     get :monthly, action: :monthly
     get :yearly, action: :yearly
+    get :recurring, action: :recurring
     get "category_transactions/:category_id", action: :category_transactions, as: :category_transactions
   end
   get "dashboard", to: "dashboards#monthly", as: :dashboard

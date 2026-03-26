@@ -76,6 +76,12 @@ class DashboardsController < ApplicationController
     render :yearly
   end
 
+  def recurring
+    @view_type = "recurring"
+    detector = RecurringPaymentDetector.new(@workspace)
+    @recurring_patterns = detector.detect
+  end
+
   private
 
   def set_workspace
