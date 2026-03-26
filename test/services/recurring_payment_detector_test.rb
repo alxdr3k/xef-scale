@@ -17,12 +17,12 @@ class RecurringPaymentDetectorTest < ActiveSupport::TestCase
       )
     end
 
-    # Create another recurring merchant with variable amounts
-    3.times do |i|
+    # Create another recurring merchant with variable amounts (>20% variance)
+    [ 35000, 55000, 75000 ].each_with_index do |amt, i|
       Transaction.create!(
         workspace: @workspace,
         merchant: "KT 통신비",
-        amount: 50000 + (i * 5000),
+        amount: amt,
         date: Date.current - i.months,
         description: "KT 요금",
         status: "committed",
