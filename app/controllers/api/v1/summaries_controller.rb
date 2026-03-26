@@ -5,6 +5,10 @@ module Api
         year = (params[:year] || Date.current.year).to_i
         month = (params[:month] || Date.current.month).to_i
 
+        unless (1..12).cover?(month) && year > 0
+          return render json: { error: "Invalid year or month" }, status: :bad_request
+        end
+
         transactions = current_workspace.transactions.active
                                         .for_month(year, month)
                                         .excluding_coupon
@@ -33,6 +37,10 @@ module Api
 
       def yearly
         year = (params[:year] || Date.current.year).to_i
+
+        unless year > 0
+          return render json: { error: "Invalid year" }, status: :bad_request
+        end
 
         transactions = current_workspace.transactions.active
                                         .for_year(year)

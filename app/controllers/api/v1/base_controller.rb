@@ -11,6 +11,7 @@ module Api
 
         unless @api_key
           render json: { error: "Invalid or missing API key" }, status: :unauthorized
+          return
         end
       end
 
