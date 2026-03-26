@@ -1,0 +1,5 @@
+# Test budgets
+
+main_budget:
+  workspace: main_workspace
+  monthly_amount: 500000
