@@ -16,6 +16,8 @@ class DashboardsController < ApplicationController
     @total_spending = @transactions.excluding_coupon.sum(:amount)
     @category_breakdown = build_category_breakdown(@transactions.excluding_coupon, @total_spending)
     @recent_transactions = @transactions.limit(10)
+    @budget = @workspace.budget
+    @budget_progress = @budget&.progress_for_month(@year, @month)
 
     render :monthly
   end
@@ -72,6 +74,12 @@ class DashboardsController < ApplicationController
     end
 
     render :yearly
+  end
+
+  def recurring
+    @view_type = "recurring"
+    detector = RecurringPaymentDetector.new(@workspace)
+    @recurring_patterns = detector.detect
   end
 
   private

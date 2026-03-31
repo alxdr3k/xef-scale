@@ -14,6 +14,15 @@ class ApplicationController < ActionController::Base
 
   protected
 
+  def after_sign_in_path_for(resource)
+    token = session.delete(:invitation_token)
+    if token.present?
+      join_workspace_path(token: token)
+    else
+      super
+    end
+  end
+
   def configure_permitted_parameters
     devise_parameter_sanitizer.permit(:sign_up, keys: [ :name ])
     devise_parameter_sanitizer.permit(:account_update, keys: [ :name, :avatar_url ])

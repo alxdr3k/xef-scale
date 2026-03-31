@@ -281,8 +281,8 @@ class FileParsingJob < ApplicationJob
       Notification.create_parsing_complete!(parsing_session, workspace.owner)
     end
 
-    # Notify workspace members with write access
-    workspace.workspace_memberships.where(role: %w[co_owner member_write]).find_each do |membership|
+    # Notify all workspace members
+    workspace.workspace_memberships.where(role: %w[co_owner member_write member_read]).find_each do |membership|
       next if membership.user_id == workspace.owner_id
 
       Notification.create_parsing_complete!(parsing_session, membership.user)

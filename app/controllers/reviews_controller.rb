@@ -23,6 +23,7 @@ class ReviewsController < ApplicationController
 
   def commit
     if @parsing_session.commit_all!(current_user)
+      check_budget_alerts
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
                   notice: "#{@parsing_session.transactions.committed.count}건의 거래가 확정되었습니다."
     else
@@ -250,6 +251,31 @@ class ReviewsController < ApplicationController
   def require_workspace_write_access
     unless current_user.can_write?(@workspace)
       redirect_to root_path, alert: "수정 권한이 없습니다."
+    end
+  end
+
+  def check_budget_alerts
+    budget = @workspace.budget
+    return unless budget
+
+    year = Date.current.year
+    month = Date.current.month
+    progress = budget.progress_for_month(year, month)
+
+    alert_type = if progress[:percentage] >= 100
+      "budget_exceeded"
+    elsif progress[:percentage] >= 80
+      "budget_warning"
+    end
+    return unless alert_type
+
+    @workspace.members.find_each do |member|
+      already_alerted = Notification.where(
+        workspace: @workspace, user: member, notification_type: alert_type
+      ).where("created_at >= ?", Date.current.beginning_of_month).exists?
+
+      next if already_alerted
+      Notification.create_budget_alert!(@workspace, member, alert_type, progress)
     end
   end
 

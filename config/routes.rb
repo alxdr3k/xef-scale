@@ -92,12 +92,24 @@ Rails.application.routes.draw do
   resource :dashboard, only: [] do
     get :monthly, action: :monthly
     get :yearly, action: :yearly
+    get :recurring, action: :recurring
     get "category_transactions/:category_id", action: :category_transactions, as: :category_transactions
   end
   get "dashboard", to: "dashboards#monthly", as: :dashboard
 
   # User Settings
   resource :user_settings, only: [ :show, :update ], path: "settings"
+
+  # API v1
+  namespace :api do
+    namespace :v1 do
+      resources :transactions, only: [ :index, :show, :create ]
+      resource :summaries, only: [] do
+        get :monthly
+        get :yearly
+      end
+    end
+  end
 
   # Notifications
   resources :notifications, only: [ :index ] do
