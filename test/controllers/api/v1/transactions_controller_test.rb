@@ -137,6 +137,97 @@ module Api
         get api_v1_transaction_path(other_tx), headers: @auth_header
         assert_response :not_found
       end
+
+      # === CREATE (POST) ===
+
+      test "create requires write scope" do
+        post api_v1_transactions_path, headers: @auth_header, params: {
+          transaction: { date: "2026-03-31", merchant: "테스트", amount: 10000 }
+        }
+        assert_response :forbidden
+
+        json = JSON.parse(response.body)
+        assert_match(/write/, json["error"])
+      end
+
+      test "create succeeds with write scope" do
+        write_key = ApiKey.generate(workspace: @workspace, name: "Write Key", scopes: "read,write")
+        write_header = { "Authorization" => "Bearer #{write_key.raw_key}" }
+
+        assert_difference("Transaction.count", 1) do
+          post api_v1_transactions_path, headers: write_header, params: {
+            transaction: { date: "2026-03-31", merchant: "스타벅스 강남점", amount: 5500 }
+          }
+        end
+
+        assert_response :created
+        json = JSON.parse(response.body)
+        assert_equal "스타벅스 강남점", json["data"]["merchant"]
+        assert_equal 5500, json["data"]["amount"]
+        assert_equal "2026-03-31", json["data"]["date"]
+      end
+
+      test "create returns validation errors" do
+        write_key = ApiKey.generate(workspace: @workspace, name: "Write Key", scopes: "read,write")
+        write_header = { "Authorization" => "Bearer #{write_key.raw_key}" }
+
+        post api_v1_transactions_path, headers: write_header, params: {
+          transaction: { merchant: "테스트" }
+        }
+        assert_response :unprocessable_entity
+
+        json = JSON.parse(response.body)
+        assert json["error"].present?
+      end
+
+      test "create sets status to committed" do
+        write_key = ApiKey.generate(workspace: @workspace, name: "Write Key", scopes: "read,write")
+        write_header = { "Authorization" => "Bearer #{write_key.raw_key}" }
+
+        post api_v1_transactions_path, headers: write_header, params: {
+          transaction: { date: "2026-03-31", merchant: "편의점", amount: 3000 }
+        }
+        assert_response :created
+
+        tx = Transaction.last
+        assert_equal "committed", tx.status
+        assert_not_nil tx.committed_at
+      end
+
+      test "create with optional fields" do
+        write_key = ApiKey.generate(workspace: @workspace, name: "Write Key", scopes: "read,write")
+        write_header = { "Authorization" => "Bearer #{write_key.raw_key}" }
+        category = categories(:food)
+
+        post api_v1_transactions_path, headers: write_header, params: {
+          transaction: {
+            date: "2026-03-31",
+            merchant: "맥도날드",
+            amount: 8900,
+            notes: "점심",
+            category_id: category.id,
+            payment_type: "lump_sum"
+          }
+        }
+        assert_response :created
+
+        json = JSON.parse(response.body)
+        assert_equal "점심", json["data"]["notes"]
+        assert_equal category.id, json["data"]["category_id"]
+      end
+
+      test "create scoped to api key workspace" do
+        write_key = ApiKey.generate(workspace: @workspace, name: "Write Key", scopes: "read,write")
+        write_header = { "Authorization" => "Bearer #{write_key.raw_key}" }
+
+        post api_v1_transactions_path, headers: write_header, params: {
+          transaction: { date: "2026-03-31", merchant: "테스트", amount: 1000 }
+        }
+        assert_response :created
+
+        tx = Transaction.last
+        assert_equal @workspace.id, tx.workspace_id
+      end
     end
   end
 end

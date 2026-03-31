@@ -1,6 +1,20 @@
 module Api
   module V1
     class TransactionsController < BaseController
+      before_action -> { require_scope!(:write) }, only: [ :create ]
+
+      def create
+        transaction = current_workspace.transactions.build(create_params)
+        transaction.status = "committed"
+        transaction.committed_at = Time.current
+
+        if transaction.save
+          render json: { data: serialize_transaction(transaction) }, status: :created
+        else
+          render json: { error: transaction.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        end
+      end
+
       def index
         transactions = current_workspace.transactions.active
 
@@ -39,6 +53,14 @@ module Api
       end
 
       private
+
+      def create_params
+        params.require(:transaction).permit(
+          :date, :merchant, :amount, :notes,
+          :category_id, :financial_institution_id,
+          :payment_type, :installment_month, :installment_total
+        )
+      end
 
       def serialize_transaction(t)
         {

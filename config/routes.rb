@@ -103,7 +103,7 @@ Rails.application.routes.draw do
   # API v1
   namespace :api do
     namespace :v1 do
-      resources :transactions, only: [ :index, :show ]
+      resources :transactions, only: [ :index, :show, :create ]
       resource :summaries, only: [] do
         get :monthly
         get :yearly

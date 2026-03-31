@@ -15,6 +15,11 @@ module Api
       def current_workspace
         @api_key.workspace
       end
+
+      def require_scope!(scope)
+        return if @api_key.has_scope?(scope)
+        render json: { error: "API key missing required scope: #{scope}" }, status: :forbidden
+      end
     end
   end
 end
