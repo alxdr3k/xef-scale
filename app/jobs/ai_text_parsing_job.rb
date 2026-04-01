@@ -77,7 +77,8 @@ class AiTextParsingJob < ApplicationJob
 
   def find_institution(name)
     return nil if name.blank?
-    FinancialInstitution.find_by("name LIKE ?", "%#{name}%")
+    sanitized = ActiveRecord::Base.sanitize_sql_like(name)
+    FinancialInstitution.find_by("name LIKE ?", "%#{sanitized}%")
   end
 
   def match_category(workspace, merchant)

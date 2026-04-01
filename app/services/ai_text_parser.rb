@@ -20,7 +20,7 @@ class AiTextParser
   class ApiError < StandardError; end
   class ParseError < StandardError; end
 
-  def initialize(api_key = nil)
+  def initialize(api_key: nil)
     @api_key = api_key || ENV.fetch("GEMINI_API_KEY", nil)
     raise ArgumentError, "GEMINI_API_KEY가 설정되지 않았습니다" if @api_key.blank?
   end
@@ -120,7 +120,7 @@ class AiTextParser
   }.freeze
 
   def call_gemini_api(model, prompt)
-    uri = URI("#{API_BASE_URL}/#{model}:generateContent?key=#{@api_key}")
+    uri = URI("#{API_BASE_URL}/#{model}:generateContent")
 
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
@@ -129,6 +129,7 @@ class AiTextParser
 
     request = Net::HTTP::Post.new(uri)
     request["Content-Type"] = "application/json"
+    request["x-goog-api-key"] = @api_key
     request.body = {
       contents: [ { parts: [ { text: prompt } ] } ],
       generationConfig: {

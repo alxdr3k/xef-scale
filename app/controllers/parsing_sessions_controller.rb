@@ -2,7 +2,7 @@ class ParsingSessionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :require_workspace_write_access, only: [ :create, :bulk_discard, :inline_update ]
+  before_action :require_workspace_write_access, only: [ :create, :text_parse, :bulk_discard, :inline_update ]
   before_action :set_parsing_session, only: [ :inline_update ]
 
   def index
@@ -39,6 +39,11 @@ class ParsingSessionsController < ApplicationController
 
     if text.blank?
       redirect_to workspace_parsing_sessions_path(@workspace), alert: "텍스트를 입력해 주세요."
+      return
+    end
+
+    if text.length > 10_000
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: "텍스트는 10,000자 이내로 입력해 주세요."
       return
     end
 
