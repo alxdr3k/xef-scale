@@ -62,6 +62,7 @@ Rails.application.routes.draw do
     # File uploads and parsing
     resources :parsing_sessions, only: [ :index, :show, :create ] do
       collection do
+        post :text_parse
         post :bulk_discard
       end
       resources :duplicate_confirmations, only: [ :update ]

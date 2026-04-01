@@ -2,7 +2,7 @@ class ParsingSessionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :require_workspace_write_access, only: [ :create, :bulk_discard, :inline_update ]
+  before_action :require_workspace_write_access, only: [ :create, :text_parse, :bulk_discard, :inline_update ]
   before_action :set_parsing_session, only: [ :inline_update ]
 
   def index
@@ -32,6 +32,32 @@ class ParsingSessionsController < ApplicationController
     @duplicate_confirmations = @parsing_session.duplicate_confirmations
                                                .includes(:original_transaction, :new_transaction)
                                                .order(:created_at)
+  end
+
+  def text_parse
+    text = params[:text].to_s.strip
+
+    if text.blank?
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: "텍스트를 입력해 주세요."
+      return
+    end
+
+    if text.length > 10_000
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: "텍스트는 10,000자 이내로 입력해 주세요."
+      return
+    end
+
+    parsing_session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "pending",
+      review_status: "pending_review",
+      notes: text
+    )
+
+    AiTextParsingJob.perform_later(parsing_session.id)
+
+    redirect_to workspace_parsing_sessions_path(@workspace),
+                notice: "AI 파싱이 시작되었습니다. 잠시 후 결과를 확인하세요."
   end
 
   def create

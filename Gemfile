@@ -63,6 +63,8 @@ gem "roo-xls"                # Old .xls format support
 gem "pdf-reader"             # PDF text extraction
 gem "ferrum"                 # Headless Chrome for encrypted HTML parsing
 
+# AI parsing uses Gemini Flash via direct HTTP (Net::HTTP)
+
 # Code coverage
 gem "simplecov", require: false, group: :test
 
