@@ -436,7 +436,7 @@ class AiParsingBenchmark
         id: sample[:id],
         label: sample[:label],
         model: response[:model_used],
-        fields: SCORED_FIELDS.to_h { |f| [f, { expected: sample[:expected][f], actual: nil, pass: false }] },
+        fields: SCORED_FIELDS.to_h { |f| [ f, { expected: sample[:expected][f], actual: nil, pass: false } ] },
         parsed: false
       }
     end
@@ -445,7 +445,7 @@ class AiParsingBenchmark
       expected = sample[:expected][field]
       actual = tx[field]
       pass = field_match?(field, expected, actual)
-      [field, { expected: expected, actual: actual, pass: pass }]
+      [ field, { expected: expected, actual: actual, pass: pass } ]
     end
 
     {
