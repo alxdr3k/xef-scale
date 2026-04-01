@@ -27,6 +27,8 @@ jobs:
     needs: release-please
     if: ${{ !needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
+    outputs:
+      rc_tag: ${{ steps.rc-version.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,7 +61,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # STG 배포
+  # STG 배포 (ops 레포 image tag 업데이트 → kubectl apply)
   deploy-stg:
     needs: docker-rc
     runs-on: ubuntu-latest
@@ -77,16 +79,24 @@ jobs:
           echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: Deploy to STG
+      - name: Update image tag and deploy to STG
         env:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          RC_TAG: ${{ needs.docker-rc.outputs.rc_tag }}
         run: |
           ssh -o "ProxyCommand=./cloudflared access ssh --hostname %h --id $CF_ACCESS_CLIENT_ID --secret $CF_ACCESS_CLIENT_SECRET" \
               -o StrictHostKeyChecking=no \
               -o UserKnownHostsFile=/dev/null \
               root@ssh.xeflabs.com \
-              'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && cd /root/ops && git pull && kubectl apply -k apps/${{ github.event.repository.name }}/overlays/stg'
+              "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && \
+               cd /root/ops && git pull && \
+               cd apps/${{ github.event.repository.name }}/overlays/stg && \
+               sed -i 's|newTag:.*|newTag: \"${RC_TAG}\"|' kustomization.yaml && \
+               git add kustomization.yaml && \
+               git diff --cached --quiet || git commit -m 'chore(xef-scale): update stg image to ${RC_TAG}' && \
+               git push && \
+               kubectl apply -k ."
 
   # Release 이미지 태그 추가 (빌드 없음)
   docker-release:
@@ -107,7 +117,7 @@ jobs:
             ghcr.io/${{ github.repository }}:latest \
             --tag ghcr.io/${{ github.repository }}:${{ needs.release-please.outputs.tag_name }}
 
-  # PRD 배포
+  # PRD 배포 (ops 레포 image tag 업데이트 → kubectl apply)
   deploy-prd:
     needs: [release-please, docker-release]
     if: ${{ needs.release-please.outputs.release_created }}
@@ -127,13 +137,21 @@ jobs:
           echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: Deploy to PRD
+      - name: Update image tag and deploy to PRD
         env:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
         run: |
           ssh -o "ProxyCommand=./cloudflared access ssh --hostname %h --id $CF_ACCESS_CLIENT_ID --secret $CF_ACCESS_CLIENT_SECRET" \
               -o StrictHostKeyChecking=no \
               -o UserKnownHostsFile=/dev/null \
               root@ssh.xeflabs.com \
-              'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && cd /root/ops && git pull && kubectl apply -k apps/${{ github.event.repository.name }}/overlays/prd'
+              "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && \
+               cd /root/ops && git pull && \
+               cd apps/${{ github.event.repository.name }}/overlays/prd && \
+               sed -i 's|newTag:.*|newTag: \"${RELEASE_TAG}\"|' kustomization.yaml && \
+               git add kustomization.yaml && \
+               git diff --cached --quiet || git commit -m 'chore(xef-scale): update prd image to ${RELEASE_TAG}' && \
+               git push && \
+               kubectl apply -k ."

@@ -33,7 +33,7 @@ class WorkspacesControllerTest < ActionDispatch::IntegrationTest
     assert_difference "Workspace.count" do
       post workspaces_path, params: { workspace: { name: "New Workspace" } }
     end
-    assert_redirected_to workspace_path(Workspace.last)
+    assert_redirected_to dashboard_path
   end
 
   test "create fails with invalid params" do
