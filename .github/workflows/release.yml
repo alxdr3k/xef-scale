@@ -94,8 +94,11 @@ jobs:
                cd apps/${{ github.event.repository.name }}/overlays/stg && \
                sed -i 's|newTag:.*|newTag: \"${RC_TAG}\"|' kustomization.yaml && \
                git add kustomization.yaml && \
-               git diff --cached --quiet || git commit -m 'chore(xef-scale): update stg image to ${RC_TAG}' && \
-               git push && \
+               if ! git diff --cached --quiet; then \
+                 git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' \
+                   commit -m 'chore(xef-scale): update stg image to ${RC_TAG}' && \
+                 git push; \
+               fi && \
                kubectl apply -k ."
 
   # Release 이미지 태그 추가 (빌드 없음)
@@ -152,6 +155,9 @@ jobs:
                cd apps/${{ github.event.repository.name }}/overlays/prd && \
                sed -i 's|newTag:.*|newTag: \"${RELEASE_TAG}\"|' kustomization.yaml && \
                git add kustomization.yaml && \
-               git diff --cached --quiet || git commit -m 'chore(xef-scale): update prd image to ${RELEASE_TAG}' && \
-               git push && \
+               if ! git diff --cached --quiet; then \
+                 git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' \
+                   commit -m 'chore(xef-scale): update prd image to ${RELEASE_TAG}' && \
+                 git push; \
+               fi && \
                kubectl apply -k ."
