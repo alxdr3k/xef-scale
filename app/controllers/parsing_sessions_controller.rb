@@ -34,6 +34,27 @@ class ParsingSessionsController < ApplicationController
                                                .order(:created_at)
   end
 
+  def text_parse
+    text = params[:text].to_s.strip
+
+    if text.blank?
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: "텍스트를 입력해 주세요."
+      return
+    end
+
+    parsing_session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "pending",
+      review_status: "pending_review",
+      notes: text
+    )
+
+    AiTextParsingJob.perform_later(parsing_session.id)
+
+    redirect_to workspace_parsing_sessions_path(@workspace),
+                notice: "AI 파싱이 시작되었습니다. 잠시 후 결과를 확인하세요."
+  end
+
   def create
     uploaded_files = Array(params[:files]).reject(&:blank?)
 
