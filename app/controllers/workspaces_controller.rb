@@ -27,7 +27,7 @@ class WorkspacesController < ApplicationController
     @workspace = current_user.owned_workspaces.build(workspace_params)
 
     if @workspace.save
-      redirect_to @workspace, notice: "워크스페이스가 생성되었습니다."
+      redirect_to dashboard_path, notice: "워크스페이스가 생성되었습니다."
     else
       render :new, status: :unprocessable_entity
     end

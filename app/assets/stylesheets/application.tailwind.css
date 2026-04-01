@@ -4,6 +4,11 @@
   html {
     scrollbar-gutter: stable;
   }
+
+  /* iOS Safari safe area for fixed bottom nav */
+  .mobile-bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 @layer utilities {
