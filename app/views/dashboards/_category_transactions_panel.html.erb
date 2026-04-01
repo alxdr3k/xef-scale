@@ -9,7 +9,7 @@
           data: { turbo_frame: '_top' },
           class: 'text-indigo-600 hover:text-indigo-800 text-sm' %>
       <button data-action="click->dashboard-category#clearSelection"
-              class="text-gray-400 hover:text-gray-600 text-lg"
+              class="text-gray-400 hover:text-gray-600 text-lg cursor-pointer"
               title="선택 해제">
         &times;
       </button>
@@ -21,6 +21,7 @@
       <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
         <div>
           <div class="font-medium text-gray-900"><%= tx.merchant %></div>
+          <%= render 'shared/notes_badge', notes: tx.notes, max_width: '12rem' %>
           <div class="text-sm text-gray-500">
             <%= tx.formatted_date %>
           </div>

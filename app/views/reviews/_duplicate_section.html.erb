@@ -24,17 +24,17 @@
                 class: "flex items-center gap-2",
                 data: { turbo_frame: "duplicate-section" } do |f| %>
               <button type="submit" name="decision" value="keep_original"
-                      class="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                      class="px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
                       data-turbo-confirm="모든 중복 거래를 건너뛰시겠습니까? 새 거래가 제외됩니다.">
                 전체 건너뛰기
               </button>
               <button type="submit" name="decision" value="keep_both"
-                      class="px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors"
+                      class="px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
                       data-turbo-confirm="모든 중복 거래를 둘 다 유지하시겠습니까?">
                 전체 유지
               </button>
               <button type="submit" name="decision" value="keep_new"
-                      class="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      class="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
                       data-turbo-confirm="모든 기존 거래를 새 거래로 교체하시겠습니까?">
                 전체 교체
               </button>
@@ -42,7 +42,7 @@
 
             <!-- Collapse Toggle -->
             <button type="button"
-                    class="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors ml-2"
+                    class="p-1.5 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors ml-2 cursor-pointer"
                     data-action="click->duplicate-review#toggleCollapse"
                     data-duplicate-review-target="toggleButton"
                     title="접기/펼치기">

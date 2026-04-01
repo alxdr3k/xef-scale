@@ -1,0 +1,69 @@
+<%# Locals: notifications (required), pagy (optional) %>
+<div id="notification-list">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">알림</h1>
+    <% if notifications.any?(&:unread?) %>
+      <%= link_to '모두 읽음으로 표시', mark_all_read_notifications_path,
+          method: :post, class: 'text-sm text-indigo-600 hover:text-indigo-800',
+          data: { turbo_method: :post } %>
+    <% end %>
+  </div>
+
+  <% if notifications.any? %>
+    <div class="bg-white rounded-lg shadow divide-y divide-gray-200">
+      <% notifications.each do |notification| %>
+        <div class="p-4 <%= notification.unread? ? 'bg-blue-50' : '' %> hover:bg-gray-50">
+          <div class="flex items-start justify-between">
+            <div class="flex items-start space-x-3">
+              <div class="flex-shrink-0">
+                <% case notification.notification_type %>
+                <% when 'parsing_complete' %>
+                  <span class="text-2xl">📄</span>
+                <% when 'commit_complete' %>
+                  <span class="text-2xl">✅</span>
+                <% when 'rollback_complete' %>
+                  <span class="text-2xl">↩️</span>
+                <% else %>
+                  <span class="text-2xl">🔔</span>
+                <% end %>
+              </div>
+              <div class="flex-1 min-w-0">
+                <% if notification.action_url.present? %>
+                  <%= link_to notification.action_url, class: 'block' do %>
+                    <p class="text-sm font-medium text-gray-900"><%= notification.title %></p>
+                    <p class="text-sm text-gray-500 mt-1"><%= notification.message %></p>
+                  <% end %>
+                <% else %>
+                  <p class="text-sm font-medium text-gray-900"><%= notification.title %></p>
+                  <p class="text-sm text-gray-500 mt-1"><%= notification.message %></p>
+                <% end %>
+                <p class="text-xs text-gray-400 mt-2"><%= time_ago_in_words(notification.created_at) %> 전</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-2">
+              <% if notification.unread? %>
+                <span class="h-2 w-2 bg-blue-500 rounded-full"></span>
+                <%= link_to mark_read_notification_path(notification), method: :post,
+                    class: 'text-xs text-gray-500 hover:text-gray-700',
+                    data: { turbo_method: :post } do %>
+                  읽음
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <% if local_assigns[:pagy] && pagy.pages > 1 %>
+      <div class="mt-6">
+        <%== pagy_nav(pagy) %>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="bg-white rounded-lg shadow p-12 text-center">
+      <span class="text-4xl mb-4 block">🔔</span>
+      <p class="text-gray-500">알림이 없습니다.</p>
+    </div>
+  <% end %>
+</div>

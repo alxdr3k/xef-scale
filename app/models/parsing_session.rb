@@ -3,7 +3,7 @@ class ParsingSession < ApplicationRecord
   include ActionView::RecordIdentifier
 
   belongs_to :workspace
-  belongs_to :processed_file
+  belongs_to :processed_file, optional: true
   belongs_to :committed_by, class_name: "User", optional: true
   belongs_to :rolled_back_by, class_name: "User", optional: true
   has_many :duplicate_confirmations, dependent: :destroy
@@ -12,9 +12,19 @@ class ParsingSession < ApplicationRecord
 
   STATUSES = %w[pending processing completed failed].freeze
   REVIEW_STATUSES = %w[pending_review committed rolled_back discarded].freeze
+  SOURCE_TYPES = %w[file_upload text_paste].freeze
 
   validates :status, inclusion: { in: STATUSES }
   validates :review_status, inclusion: { in: REVIEW_STATUSES }, allow_nil: true
+  validates :source_type, inclusion: { in: SOURCE_TYPES }
+
+  def text_paste?
+    source_type == "text_paste"
+  end
+
+  def file_upload?
+    source_type == "file_upload"
+  end
 
   scope :recent, -> { order(created_at: :desc) }
   scope :completed, -> { where(status: "completed") }

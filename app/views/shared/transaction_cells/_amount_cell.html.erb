@@ -1,0 +1,99 @@
+<%# Locals: transaction (required), editable (default: false), update_url (required if editable) %>
+<% editable = local_assigns.fetch(:editable, false) %>
+<% update_url = local_assigns.fetch(:update_url, nil) %>
+
+<td class="px-4 py-2 h-14 whitespace-nowrap text-right">
+  <% if editable && update_url %>
+    <div class="flex items-center justify-end gap-2">
+      <% if transaction.amount.to_i < 0 %>
+        <span class="px-1 py-0.5 text-[10px] leading-none rounded bg-red-100 text-red-700">취소</span>
+      <% elsif transaction.benefit_type == "할인" && transaction.benefit_amount.to_i > 0 %>
+        <span class="relative group px-1 py-0.5 text-[10px] leading-none rounded bg-emerald-100 text-emerald-700 cursor-default">할인
+          <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-gray-800 text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">이용금액 <%= number_to_currency(transaction.amount + transaction.benefit_amount, unit: '₩', precision: 0) %> − 할인 <%= number_to_currency(transaction.benefit_amount, unit: '₩', precision: 0) %></span>
+        </span>
+      <% end %>
+
+      <!-- Payment Type Selector with Installment Popover -->
+      <%= form_with model: transaction,
+          url: update_url,
+          method: :patch,
+          data: {
+            controller: 'installment-popover',
+            installment_popover_url_value: update_url,
+            installment_popover_payment_type_value: transaction.payment_type,
+            installment_popover_installment_month_value: transaction.installment_month || 1,
+            installment_popover_installment_total_value: transaction.installment_total || 2,
+            turbo_preserve_scroll: true
+          }, class: 'inline-flex relative' do |f| %>
+        <% installment_label = transaction.installment? ? "할부 #{transaction.installment_month}/#{transaction.installment_total}" : '할부' %>
+        <% lump_sum_classes = transaction.lump_sum? ? 'opacity-0 group-hover/row:opacity-100' : '' %>
+        <%= f.select :payment_type,
+            [['일시불', 'lump_sum'], [installment_label, 'installment'], ['소비쿠폰', 'coupon']],
+            {},
+            class: "text-[11px] rounded border-0 bg-transparent py-0 pl-0 pr-4 cursor-pointer transition-all focus:ring-1 focus:ring-indigo-500 focus:opacity-100 font-medium #{transaction.installment? ? 'text-violet-600' : transaction.coupon? ? 'text-amber-600' : 'text-gray-400 hover:text-gray-600'} #{lump_sum_classes}",
+            data: { action: 'change->installment-popover#handleChange', installment_popover_target: 'select' } %>
+
+        <!-- Installment Popover (hidden by default) -->
+        <div data-installment-popover-target="popover"
+             class="hidden absolute top-full left-0 mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex items-center gap-1.5">
+          <input data-installment-popover-target="monthInput" type="number" min="1" max="99"
+                 value="<%= transaction.installment_month || 1 %>"
+                 data-action="keydown->installment-popover#handleKeydown"
+                 class="w-10 text-center text-xs border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500">
+          <span class="text-xs text-gray-500">/</span>
+          <input data-installment-popover-target="totalInput" type="number" min="2" max="99"
+                 value="<%= transaction.installment_total || 2 %>"
+                 data-action="keydown->installment-popover#handleKeydown"
+                 class="w-10 text-center text-xs border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500">
+          <span class="text-xs text-gray-500">회차</span>
+          <button type="button" data-action="click->installment-popover#cancel"
+                  class="text-[10px] text-gray-400 hover:text-gray-600 px-1">취소</button>
+          <button type="button" data-action="click->installment-popover#confirm"
+                  class="text-[10px] text-white bg-indigo-500 hover:bg-indigo-600 rounded px-1.5 py-0.5">확인</button>
+        </div>
+      <% end %>
+
+      <!-- Amount Editor -->
+      <div data-controller="inline-edit"
+           data-inline-edit-url-value="<%= update_url %>"
+           data-inline-edit-field-value="amount"
+           data-inline-edit-original-value="<%= transaction.amount %>">
+        <span data-inline-edit-target="display"
+              data-action="click->inline-edit#edit:stop"
+              class="relative group cursor-pointer hover:bg-gray-50 px-1 -mx-1 rounded text-sm text-gray-900 font-medium tabular-nums inline-block w-28 text-right">
+          <span class="<%= 'border-b border-dashed border-gray-400' if transaction.coupon? %>"><%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %></span>
+          <% if transaction.coupon? %>
+            <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-gray-800 text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">합계에 포함되지 않습니다</span>
+          <% end %>
+        </span>
+        <div data-inline-edit-target="editor" class="hidden">
+          <input data-inline-edit-target="input" type="number" min="1" value="<%= transaction.amount %>"
+                 data-action="keydown->inline-edit#handleKeydown blur->inline-edit#handleBlur"
+                 class="text-sm border-gray-300 rounded px-1 py-0.5 w-24 focus:ring-1 focus:ring-indigo-500">
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <%# Read-only: badges for installment/coupon, plain amount %>
+    <div class="flex items-center justify-end gap-2">
+      <% if transaction.installment? %>
+        <span class="text-[11px] font-medium text-violet-600">
+          <%= transaction.installment_badge %>
+        </span>
+      <% end %>
+      <% if transaction.coupon? %>
+        <span class="text-[11px] font-medium text-amber-600">
+          소비쿠폰
+        </span>
+        <span class="relative group text-sm text-gray-900 font-medium tabular-nums inline-block w-28 text-right cursor-help">
+          <span class="border-b border-dashed border-gray-400"><%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %></span>
+          <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-gray-800 text-white whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">합계에 포함되지 않습니다</span>
+        </span>
+      <% else %>
+        <span class="text-sm text-gray-900 font-medium tabular-nums inline-block w-28 text-right">
+          <%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>
+        </span>
+      <% end %>
+    </div>
+  <% end %>
+</td>

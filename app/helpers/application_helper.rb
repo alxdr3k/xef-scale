@@ -1,4 +1,6 @@
 module ApplicationHelper
+  include Pagy::Frontend
+
   def safe_return_to(fallback_path)
     return_to = params[:return_to]
     return fallback_path if return_to.blank?

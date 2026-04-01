@@ -13,9 +13,11 @@ class DashboardsController < ApplicationController
                               .includes(:category, :financial_institution)
                               .order(date: :desc)
 
-    @total_spending = @transactions.sum(:amount)
-    @category_breakdown = build_category_breakdown(@transactions, @total_spending)
+    @total_spending = @transactions.excluding_coupon.sum(:amount)
+    @category_breakdown = build_category_breakdown(@transactions.excluding_coupon, @total_spending)
     @recent_transactions = @transactions.limit(10)
+    @budget = @workspace.budget
+    @budget_progress = @budget&.progress_for_month(@year, @month)
 
     render :monthly
   end
@@ -48,15 +50,15 @@ class DashboardsController < ApplicationController
                               .where(date: Date.new(@year, 1, 1)..Date.new(@year, 12, 31))
                               .includes(:category)
 
-    @total_spending = @transactions.sum(:amount)
+    @total_spending = @transactions.excluding_coupon.sum(:amount)
     @monthly_average = @total_spending / 12
-    @category_breakdown = build_category_breakdown(@transactions, @total_spending)
+    @category_breakdown = build_category_breakdown(@transactions.excluding_coupon, @total_spending)
 
     # 월별 카테고리 데이터 (차트용)
     @monthly_data = build_monthly_category_data(@year)
 
     # 월별 총액 계산
-    monthly_totals = (1..12).map { |m| @workspace.transactions.active.for_month(@year, m).sum(:amount) }
+    monthly_totals = (1..12).map { |m| @workspace.transactions.active.excluding_coupon.for_month(@year, m).sum(:amount) }
 
     # 최고 지출 월
     max_val, max_idx = monthly_totals.each_with_index.max_by { |val, _| val }
@@ -72,6 +74,12 @@ class DashboardsController < ApplicationController
     end
 
     render :yearly
+  end
+
+  def recurring
+    @view_type = "recurring"
+    detector = RecurringPaymentDetector.new(@workspace)
+    @recurring_patterns = detector.detect
   end
 
   private

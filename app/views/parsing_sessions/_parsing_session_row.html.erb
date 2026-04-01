@@ -1,46 +1,76 @@
-<tr id="<%= dom_id(parsing_session) %>">
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-    <%= parsing_session.processed_file.original_filename %>
-  </td>
-  <td class="px-6 py-4 whitespace-nowrap">
-    <% case parsing_session.status %>
-    <% when 'pending' %>
-      <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">대기중</span>
-    <% when 'processing' %>
-      <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">처리중</span>
-    <% when 'completed' %>
-      <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">완료</span>
-    <% when 'failed' %>
-      <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">실패</span>
+<tr id="<%= dom_id(parsing_session) %>"
+    <% if parsing_session.can_discard? %>
+      data-bulk-select-target="row"
+      data-transaction-id="<%= parsing_session.id %>"
+      data-action="click->bulk-select#toggleRow"
     <% end %>
-    <% if parsing_session.completed? %>
-      <% case parsing_session.review_status %>
-      <% when 'pending_review' %>
-        <span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 ml-1">검토 대기</span>
-      <% when 'committed' %>
-        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800 ml-1">확정</span>
-      <% when 'rolled_back' %>
-        <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800 ml-1">롤백</span>
-      <% when 'discarded' %>
-        <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 ml-1">취소됨</span>
+    class="group/row transition-colors duration-150 <%= 'cursor-pointer' if parsing_session.can_discard? %>">
+  <td class="px-2 py-4 text-center text-sm text-gray-400 font-mono">
+    #<%= parsing_session.id %>
+  </td>
+  <td class="px-4 py-4 text-sm text-gray-900">
+    <div class="whitespace-nowrap overflow-hidden text-ellipsis">
+      <span class="align-middle">
+        <% if parsing_session.text_paste? %>
+          <span class="text-gray-600">텍스트 붙여넣기</span>
+        <% elsif parsing_session.processed_file %>
+          <%= parsing_session.processed_file.original_filename %>
+        <% else %>
+          <span class="text-gray-400">파일 정보 없음</span>
+        <% end %>
+      </span>
+      <% if parsing_session.notes.present? %>
+        <span data-action="click->note-panel#open:stop"
+              data-note-panel-url-param="<%= inline_update_workspace_parsing_session_path(workspace, parsing_session) %>"
+              data-note-panel-original-param="<%= parsing_session.notes || '' %>"
+              data-note-panel-merchant-param="<%= parsing_session.processed_file&.original_filename || '텍스트 붙여넣기' %>"
+              data-note-panel-date-param="<%= parsing_session.created_at.strftime('%Y.%m.%d') %>"
+              data-note-panel-amount-param="<%= "성공 #{parsing_session.success_count}건" %>"
+              data-note-panel-row-id-param="<%= dom_id(parsing_session) %>"
+              data-note-panel-trigger
+              class="cursor-pointer hover:bg-amber-100 ml-1.5 align-middle inline-block">
+          <%= render 'shared/notes_badge', notes: parsing_session.notes %>
+        </span>
+      <% else %>
+        <span data-action="click->note-panel#open:stop"
+              data-note-panel-url-param="<%= inline_update_workspace_parsing_session_path(workspace, parsing_session) %>"
+              data-note-panel-original-param=""
+              data-note-panel-merchant-param="<%= parsing_session.processed_file&.original_filename || '텍스트 붙여넣기' %>"
+              data-note-panel-date-param="<%= parsing_session.created_at.strftime('%Y.%m.%d') %>"
+              data-note-panel-amount-param="<%= "성공 #{parsing_session.success_count}건" %>"
+              data-note-panel-row-id-param="<%= dom_id(parsing_session) %>"
+              data-note-panel-trigger
+              class="cursor-pointer text-gray-400 hover:text-blue-500 opacity-0 group-hover/row:opacity-100 transition-opacity ml-1.5 align-middle inline-block"
+              title="메모 추가">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+          </svg>
+        </span>
       <% end %>
+    </div>
+  </td>
+  <td class="px-4 py-4 whitespace-nowrap">
+    <%= render 'shared/status_badge', status: parsing_session.status, type: :processing %>
+    <% if parsing_session.completed? %>
+      <span class="ml-1"><%= render 'shared/status_badge', status: parsing_session.review_status, type: :review %></span>
     <% end %>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
     <% if parsing_session.completed? %>
       성공 <%= parsing_session.success_count %>건
-      <% if parsing_session.duplicate_count.to_i > 0 %>
-        · 중복 <%= parsing_session.duplicate_count %>건
+      <% pending_dup_count = parsing_session.duplicate_confirmations.select { |dc| dc.status == "pending" }.size %>
+      <% if pending_dup_count > 0 %>
+        · 중복 <%= pending_dup_count %>건
       <% end %>
       <% if parsing_session.error_count.to_i > 0 %>
         · 오류 <%= parsing_session.error_count %>건
       <% end %>
     <% end %>
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
     <%= time_ago_in_words(parsing_session.created_at) %> 전
   </td>
-  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+  <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
     <% if parsing_session.completed? %>
       <% if parsing_session.review_pending? %>
         <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),

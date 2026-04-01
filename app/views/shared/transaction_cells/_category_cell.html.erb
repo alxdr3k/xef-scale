@@ -1,0 +1,90 @@
+<%# Locals: transaction (required), editable (default: false), categories (optional, falls back to @categories), workspace (optional, falls back to @workspace), show_management_links (default: false) %>
+<% editable = local_assigns.fetch(:editable, false) %>
+<% categories = local_assigns.fetch(:categories, nil) || @categories %>
+<% workspace = local_assigns.fetch(:workspace, nil) || @workspace %>
+<% show_management_links = local_assigns.fetch(:show_management_links, false) %>
+
+<td class="px-4 py-2 h-14 whitespace-nowrap">
+  <% if editable && categories %>
+    <div data-controller="category-selector"
+         data-category-selector-transaction-id-value="<%= transaction.id %>"
+         data-category-selector-workspace-id-value="<%= workspace.id %>"
+         data-category-selector-current-category-id-value="<%= transaction.category_id %>"
+         class="relative">
+      <button type="button"
+              data-action="click->category-selector#toggle"
+              data-category-selector-target="badge"
+              class="cursor-pointer hover:ring-2 hover:ring-indigo-200 rounded-full transition-all">
+        <% if transaction.category %>
+          <span class="px-2 py-1 text-xs rounded-full inline-flex items-center gap-1 max-w-28"
+                style="background-color: <%= transaction.category.color %>20; color: <%= transaction.category.color %>">
+            <span class="truncate"><%= transaction.category.name %></span>
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </span>
+        <% else %>
+          <span class="text-gray-400 text-sm inline-flex items-center gap-1 px-2 py-1 rounded-full hover:bg-gray-100">
+            미분류
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </span>
+        <% end %>
+      </button>
+
+      <!-- Dropdown -->
+      <div data-category-selector-target="dropdown"
+           class="hidden absolute z-50 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 left-0">
+        <div class="max-h-60 overflow-y-auto" data-category-selector-target="list">
+          <% categories.each do |cat| %>
+            <button type="button"
+                    data-action="click->category-selector#selectCategory"
+                    data-category-id="<%= cat.id %>"
+                    class="w-full text-left px-3 py-2 h-14 text-sm hover:bg-gray-50 flex items-center justify-between <%= transaction.category_id == cat.id ? 'bg-indigo-50' : '' %>">
+              <span class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full" style="background-color: <%= cat.color %>"></span>
+                <%= cat.name %>
+              </span>
+              <% if transaction.category_id == cat.id %>
+                <svg class="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                </svg>
+              <% end %>
+            </button>
+          <% end %>
+
+          <% if transaction.category_id.present? %>
+            <hr class="my-1">
+            <button type="button"
+                    data-action="click->category-selector#selectCategory"
+                    data-category-id=""
+                    class="w-full text-left px-3 py-2 h-14 text-sm text-gray-500 hover:bg-gray-50">
+              미분류로 설정
+            </button>
+          <% end %>
+        </div>
+
+        <% if show_management_links %>
+          <hr class="my-1">
+          <button type="button"
+                  data-action="click->category-selector#openSlideover"
+                  class="w-full text-left px-3 py-2 h-14 text-sm text-indigo-600 hover:bg-indigo-50">
+            + 새 카테고리 만들기
+          </button>
+          <a href="<%= workspace_categories_path(workspace) %>"
+             class="block px-3 py-2 h-14 text-sm text-gray-500 hover:bg-gray-50">
+            카테고리 관리
+          </a>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <%# Read-only category badge %>
+    <% if transaction.category %>
+      <%= render 'shared/category_badge', category: transaction.category %>
+    <% else %>
+      <span class="text-gray-400 text-sm">미분류</span>
+    <% end %>
+  <% end %>
+</td>

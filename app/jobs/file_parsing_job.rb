@@ -3,8 +3,13 @@ require "open3"
 class FileParsingJob < ApplicationJob
   queue_as :default
 
-  def perform(processed_file_id)
+  IMAGE_EXTENSIONS = %w[.jpg .jpeg .png .webp .heic].freeze
+  BANK_IDENTIFIERS = %w[toss_bank kakao_bank mg_bank].freeze
+  CARD_COMPANY_PATTERNS = %w[신한카드 하나카드 삼성카드 현대카드 국민카드 롯데카드 우리카드 BC카드 NH카드].freeze
+
+  def perform(processed_file_id, institution_identifier: nil)
     processed_file = ProcessedFile.find(processed_file_id)
+    @institution_identifier = institution_identifier
     processed_file.mark_processing!
 
     parsing_session = processed_file.create_parsing_session!(
@@ -16,6 +21,23 @@ class FileParsingJob < ApplicationJob
 
     begin
       result = parse_file(processed_file)
+
+      user = processed_file.uploaded_by
+
+      # 제외 거래처 필터링
+      excluded = user&.excluded_merchants || []
+      if excluded.any?
+        result = result.reject { |tx| excluded.any? { |pattern| tx[:merchant]&.include?(pattern) } }
+      end
+
+      # 카드사 출금 제외 (은행 내역만 대상)
+      if user&.exclude_card_withdrawals? && result.any? { |tx| BANK_IDENTIFIERS.include?(tx[:institution_identifier]) }
+        result = result.reject do |tx|
+          BANK_IDENTIFIERS.include?(tx[:institution_identifier]) &&
+            CARD_COMPANY_PATTERNS.any? { |pattern| tx[:merchant]&.include?(pattern) }
+        end
+      end
+
       workspace = processed_file.workspace
 
       # Create transactions (1차: CategoryMapping + keyword 매칭만 사용)
@@ -53,17 +75,31 @@ class FileParsingJob < ApplicationJob
         stats[:gemini] = gemini_count
       end
 
-      parsing_session.complete!(stats)
-      processed_file.mark_completed!
+      if stats[:total].zero?
+        parsing_session.fail!
+        processed_file.mark_failed!
+        create_failure_notifications(parsing_session)
+      else
+        parsing_session.complete!(stats)
+        processed_file.mark_completed!
 
-      # Create notifications for workspace members
-      create_completion_notifications(parsing_session)
+        # Create notifications for workspace members
+        create_completion_notifications(parsing_session)
+      end
 
-    rescue StandardError => e
+    rescue => e
       Rails.logger.error "Parsing failed: #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
       parsing_session.fail!
       processed_file.mark_failed!
+    ensure
+      # Ensure status transitions even for non-StandardError exceptions (LoadError, SyntaxError, etc.)
+      if parsing_session&.processing?
+        parsing_session.fail! rescue nil
+      end
+      if processed_file&.reload&.processing?
+        processed_file.mark_failed! rescue nil
+      end
     end
   end
 
@@ -71,8 +107,12 @@ class FileParsingJob < ApplicationJob
 
   def parse_file(processed_file)
     filename = processed_file.filename.downcase
+    ext = File.extname(filename)
 
-    if filename.end_with?(".xls", ".xlsx")
+    if image_file?(ext) && @institution_identifier.present?
+      parser = ParserRouter.route_by_identifier(@institution_identifier, processed_file)
+      parser.parse
+    elsif filename.end_with?(".xls", ".xlsx")
       # Use Python parser for Excel files (more reliable)
       parse_with_python(processed_file)
     else
@@ -82,12 +122,17 @@ class FileParsingJob < ApplicationJob
     end
   end
 
+  def image_file?(ext)
+    IMAGE_EXTENSIONS.include?(ext)
+  end
+
   def parse_with_python(processed_file)
     # Download file to temp location
     tempfile = download_to_tempfile(processed_file)
 
     begin
-      result = PythonExcelParser.parse(tempfile.path)
+      password = processed_file.uploaded_by&.statement_password
+      result = PythonExcelParser.parse(tempfile.path, password: password)
       result[:transactions]
     ensure
       tempfile.close
@@ -109,7 +154,7 @@ class FileParsingJob < ApplicationJob
   end
 
   def create_transaction_without_gemini(workspace, tx_data, parsing_session)
-    category = match_category_without_gemini(workspace, tx_data[:merchant])
+    category = match_category_without_gemini(workspace, tx_data[:merchant], amount: tx_data[:amount])
     institution = FinancialInstitution.find_by(identifier: tx_data[:institution_identifier])
 
     workspace.transactions.create!(
@@ -120,6 +165,7 @@ class FileParsingJob < ApplicationJob
       # 할부/혜택 관련 필드
       installment_month: tx_data[:installment_month],
       installment_total: tx_data[:installment_total],
+      payment_type: tx_data[:payment_type] || "lump_sum",
       original_amount: tx_data[:original_amount],
       benefit_type: tx_data[:benefit_type],
       benefit_amount: tx_data[:benefit_amount],
@@ -131,11 +177,11 @@ class FileParsingJob < ApplicationJob
     )
   end
 
-  def match_category_without_gemini(workspace, merchant)
+  def match_category_without_gemini(workspace, merchant, amount: nil)
     return nil if merchant.blank?
 
     # 1순위: CategoryMapping 테이블에서 찾기
-    mapping = CategoryMapping.find_for_merchant(workspace, merchant)
+    mapping = CategoryMapping.find_for_merchant(workspace, merchant, amount: amount)
     return mapping.category if mapping
 
     # 2순위: Category keyword 매칭
@@ -170,14 +216,20 @@ class FileParsingJob < ApplicationJob
       transaction.update!(category: category)
       categorized_count += 1
 
-      # 매핑 저장 (같은 merchant가 여러 번 나와도 한 번만 저장)
-      unless CategoryMapping.exists?(workspace: workspace, merchant_pattern: transaction.merchant)
-        CategoryMapping.create!(
+      # 매핑 저장 - find_or_create_by로 Race Condition 방지
+      begin
+        CategoryMapping.find_or_create_by!(
           workspace: workspace,
           merchant_pattern: transaction.merchant,
-          category: category,
-          source: "gemini"
-        )
+          description_pattern: nil,
+          match_type: "exact",
+          amount: nil
+        ) do |mapping|
+          mapping.category = category
+          mapping.source = "gemini"
+        end
+      rescue ActiveRecord::RecordNotUnique
+        # Another thread created the mapping, which is fine
       end
     end
 
@@ -193,20 +245,32 @@ class FileParsingJob < ApplicationJob
 
   def find_duplicate(workspace, transaction)
     scope = workspace.transactions
-                     .reviewable
-                     .where(date: transaction.date, merchant: transaction.merchant, amount: transaction.amount)
+                     .active
+                     .where(date: transaction.date, amount: transaction.amount)
                      .where.not(id: transaction.id)
 
     # 할부 거래인 경우: installment_month도 비교
     if transaction.installment_month.present?
       scope = scope.where(installment_month: transaction.installment_month)
     else
-      # 일시불인 경우: installment_month가 nil인 거래와만 비교
-      # 기존 거래(nil)와도 호환되도록 nil 허용
       scope = scope.where(installment_month: nil)
     end
 
     scope.first
+  end
+
+  def create_failure_notifications(parsing_session)
+    workspace = parsing_session.workspace
+
+    if workspace.owner
+      Notification.create_parsing_failed!(parsing_session, workspace.owner)
+    end
+
+    workspace.workspace_memberships.where(role: %w[co_owner member_write]).find_each do |membership|
+      next if membership.user_id == workspace.owner_id
+
+      Notification.create_parsing_failed!(parsing_session, membership.user)
+    end
   end
 
   def create_completion_notifications(parsing_session)
@@ -217,8 +281,8 @@ class FileParsingJob < ApplicationJob
       Notification.create_parsing_complete!(parsing_session, workspace.owner)
     end
 
-    # Notify workspace members with write access
-    workspace.workspace_memberships.where(role: %w[co_owner member_write]).find_each do |membership|
+    # Notify all workspace members
+    workspace.workspace_memberships.where(role: %w[co_owner member_write member_read]).find_each do |membership|
       next if membership.user_id == workspace.owner_id
 
       Notification.create_parsing_complete!(parsing_session, membership.user)

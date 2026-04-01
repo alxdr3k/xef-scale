@@ -15,7 +15,7 @@ class ReviewsController < ApplicationController
     @duplicate_confirmations = @parsing_session.duplicate_confirmations
                                                .pending
                                                .includes(
-                                                 original_transaction: [ :financial_institution, :category ],
+                                                 original_transaction: [ :financial_institution, :category, :parsing_session ],
                                                  new_transaction: [ :financial_institution, :category ]
                                                )
                                                .order(:created_at)
@@ -23,6 +23,7 @@ class ReviewsController < ApplicationController
 
   def commit
     if @parsing_session.commit_all!(current_user)
+      check_budget_alerts
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
                   notice: "#{@parsing_session.transactions.committed.count}건의 거래가 확정되었습니다."
     else
@@ -126,21 +127,86 @@ class ReviewsController < ApplicationController
   def update_transaction
     @transaction = @parsing_session.transactions.find(params[:transaction_id])
 
+    # Prevent editing finalized sessions
+    if @parsing_session.review_committed? || @parsing_session.review_rolled_back? || @parsing_session.review_discarded?
+      head :forbidden
+      return
+    end
+
     # Only allow editing specific fields
-    permitted = [ :category_id, :notes, :description ]
+    permitted = [ :category_id, :notes, :merchant, :date, :amount, :payment_type, :installment_month, :installment_total ]
     # Allow source change only if currently unknown
     permitted << :financial_institution_id if @transaction.source_editable?
 
     old_category_id = @transaction.category_id
-    old_description = @transaction.description
+    old_merchant = @transaction.merchant
+
+    # Handle inline editing (single field updates via JSON)
+    if params[:field].present? && params[:transaction].blank?
+      field = params[:field]
+      value = params[:value]
+
+      # Validate field is allowed
+      unless permitted.map(&:to_s).include?(field)
+        head :unprocessable_entity
+        return
+      end
+
+      # Convert and validate value
+      case field
+      when "amount"
+        value = Integer(value, exception: false)
+        if value.nil? || value <= 0
+          head :unprocessable_entity
+          return
+        end
+      when "date"
+        begin
+          value = Date.parse(value)
+        rescue ArgumentError, TypeError
+          head :unprocessable_entity
+          return
+        end
+      when "category_id"
+        if value.present? && !@workspace.categories.exists?(value)
+          head :unprocessable_entity
+          return
+        end
+      end
+
+      if @transaction.update(field => value)
+        # If merchant changed, try to auto-categorize
+        if field == "merchant"
+          new_category = CategoryMapping.find_category_for_merchant_and_description(
+            @workspace,
+            @transaction.merchant,
+            @transaction.description
+          )
+          if new_category && new_category.id != old_category_id
+            @transaction.update(category: new_category)
+          end
+        end
+
+        respond_to do |format|
+          format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), notice: "거래가 수정되었습니다." }
+          format.turbo_stream { flash.now[:notice] = "거래가 수정되었습니다." }
+        end
+        return
+      else
+        head :unprocessable_entity
+        return
+      end
+    end
+
+    # Handle form-based updates (original behavior)
     transaction_params = params.require(:transaction).permit(permitted)
 
     if @transaction.update(transaction_params)
-      # 설명이 변경되었고, 사용자가 직접 카테고리를 변경하지 않았으면 재매칭
-      description_changed = old_description != @transaction.description
+      # merchant가 변경되었고, 사용자가 직접 카테고리를 변경하지 않았으면 재매칭
+      merchant_changed = old_merchant != @transaction.merchant
       category_not_manually_changed = transaction_params[:category_id].blank?
 
-      if description_changed && category_not_manually_changed
+      if merchant_changed && category_not_manually_changed
         new_category = CategoryMapping.find_category_for_merchant_and_description(
           @workspace,
           @transaction.merchant,
@@ -188,6 +254,31 @@ class ReviewsController < ApplicationController
     end
   end
 
+  def check_budget_alerts
+    budget = @workspace.budget
+    return unless budget
+
+    year = Date.current.year
+    month = Date.current.month
+    progress = budget.progress_for_month(year, month)
+
+    alert_type = if progress[:percentage] >= 100
+      "budget_exceeded"
+    elsif progress[:percentage] >= 80
+      "budget_warning"
+    end
+    return unless alert_type
+
+    @workspace.members.find_each do |member|
+      already_alerted = Notification.where(
+        workspace: @workspace, user: member, notification_type: alert_type
+      ).where("created_at >= ?", Date.current.beginning_of_month).exists?
+
+      next if already_alerted
+      Notification.create_budget_alert!(@workspace, member, alert_type, progress)
+    end
+  end
+
   def create_category_mapping(transaction, category)
     return if transaction.merchant.blank? || category.nil?
 
@@ -197,7 +288,9 @@ class ReviewsController < ApplicationController
     mapping = CategoryMapping.find_or_initialize_by(
       workspace: @workspace,
       merchant_pattern: transaction.merchant,
-      description_pattern: description_pattern
+      description_pattern: description_pattern,
+      match_type: "exact",
+      amount: nil
     )
 
     mapping.category = category

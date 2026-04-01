@@ -5,4 +5,7 @@
   <%= link_to '연도별',
       yearly_dashboard_path(year: @year),
       class: "px-4 py-2 rounded-md text-sm font-medium transition-colors #{@view_type == 'yearly' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" %>
+  <%= link_to '반복 결제',
+      recurring_dashboard_path,
+      class: "px-4 py-2 rounded-md text-sm font-medium transition-colors #{@view_type == 'recurring' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}" %>
 </div>

@@ -1,0 +1,47 @@
+<%# Locals: transaction (required), editable (default: false), update_url (optional), institutions (optional) %>
+<% editable = local_assigns.fetch(:editable, false) %>
+<% update_url = local_assigns.fetch(:update_url, nil) %>
+<% institutions = local_assigns.fetch(:institutions, nil) %>
+
+<td class="px-4 py-2 h-14 whitespace-nowrap text-sm text-gray-500">
+  <% if editable && institutions.present? && update_url && transaction.source_editable? %>
+    <%= form_with model: transaction,
+        url: update_url,
+        method: :patch, data: { controller: 'auto-submit' } do |f| %>
+      <%= f.collection_select :financial_institution_id, institutions, :id, :name,
+          { include_blank: '알수없음' },
+          class: 'text-sm rounded border-gray-300',
+          data: { action: 'change->auto-submit#submit' } %>
+    <% end %>
+  <% else %>
+    <% ps = transaction.parsing_session %>
+    <% has_source = ps.present? %>
+    <% if has_source %>
+      <div data-controller="source-popover" class="relative inline-block">
+        <span data-action="click->source-popover#toggle:stop"
+              class="cursor-pointer hover:text-gray-700 hover:underline decoration-dotted underline-offset-2 inline-block truncate max-w-full align-middle">
+          <%= transaction.financial_institution&.name || '-' %>
+        </span>
+        <div data-source-popover-target="popover"
+             class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-56">
+          <div class="text-xs text-gray-400 mb-1">원본 파일</div>
+          <a href="<%= review_workspace_parsing_session_path(transaction.workspace, ps) %>"
+             class="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline truncate block"
+             data-action="click->source-popover#navigate:stop">
+            <%= ps.processed_file&.original_filename || ps.processed_file&.filename || (ps.text_paste? ? '텍스트 붙여넣기' : '파일 업로드') %>
+          </a>
+          <div class="text-xs text-gray-400 mt-1.5">
+            업로드 <%= time_ago_in_words(ps.created_at) %> 전
+          </div>
+          <% if ps.review_committed? %>
+            <div class="text-xs text-green-600 mt-0.5">확정됨</div>
+          <% end %>
+        </div>
+      </div>
+    <% else %>
+      <span class="inline-block truncate max-w-full align-middle">
+        <%= transaction.financial_institution&.name || '-' %>
+      </span>
+    <% end %>
+  <% end %>
+</td>

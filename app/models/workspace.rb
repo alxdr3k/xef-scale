@@ -8,7 +8,9 @@ class Workspace < ApplicationRecord
   has_many :category_mappings, dependent: :destroy
   has_many :transactions, dependent: :destroy
   has_many :processed_files, dependent: :destroy
-  has_many :parsing_sessions, through: :processed_files
+  has_many :parsing_sessions, dependent: :destroy
+  has_many :api_keys, dependent: :destroy
+  has_one :budget, dependent: :destroy
 
   validates :name, presence: true
 

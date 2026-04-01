@@ -1,0 +1,11 @@
+<%# Locals: transaction (required) %>
+<td class="px-4 py-2 h-14 whitespace-nowrap text-sm text-gray-500">
+  <% badge = transaction.payment_type_badge %>
+  <% if badge %>
+    <span class="<%= transaction.payment_type == 'installment' ? 'text-blue-600' : 'text-gray-500' %>">
+      <%= badge %>
+    </span>
+  <% else %>
+    일시불
+  <% end %>
+</td>

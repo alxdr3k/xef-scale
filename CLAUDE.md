@@ -48,12 +48,42 @@ Final transaction format:
 - **금액** (amount): Integer amount
 - **지출 위치** (source): Bank/card name
 
+## 아키텍처
+
+### 파싱 흐름
+
+```
+파일 업로드 → ParserRouter → Institution Parser → Transaction 저장
+     │              │                │
+     │              │                └── 금융기관별 파싱 로직
+     │              └── 파일 내용 기반 금융기관 식별
+     └── Excel/CSV/PDF
+```
+
+### 핵심 서비스
+
+| 서비스 | 위치 | 역할 |
+|--------|------|------|
+| `ParserRouter` | `app/services/parser_router.rb` | 파일 → 적합한 Parser 라우팅 |
+| `ShinhanCardParser` | `app/services/parsers/shinhan_card_parser.rb` | 신한카드 명세서 파싱 |
+| `HanaCardParser` | `app/services/parsers/hana_card_parser.rb` | 하나카드 명세서 파싱 |
+| `TossBankParser` | `app/services/parsers/toss_bank_parser.rb` | 토스뱅크 내역 파싱 |
+| `KakaoBankParser` | `app/services/parsers/kakao_bank_parser.rb` | 카카오뱅크 내역 파싱 |
+
+### 데이터 모델
+
+```
+User ──< Workspace ──< Transaction
+              │
+              └──< ProcessedFile (업로드 이력)
+```
+
 ## 참조 안내
 
 - 모델: `app/models/`
 - DB 스키마: `db/schema.rb`
 - API 라우트: `config/routes.rb`
-- 환경변수: Doppler `xef-scale` 프로젝트 (`.env.example` 참조)
+- 환경변수: Doppler `xef-scale` 프로젝트
 
 ## Development Commands
 
@@ -139,7 +169,7 @@ k8s 클러스터에 배포 (ops 레포의 Kustomize 사용)
 kubectl apply -k ~/ws/xeflabs/ops/apps/xef-scale/overlays/{stg,prd}
 ```
 
-환경변수: `.env.example` 참조, Doppler `xef-scale` 프로젝트에서 관리
+환경변수: Doppler `xef-scale` 프로젝트에서 관리
 
 ## 라이브러리 문서 조회 (context7)
 

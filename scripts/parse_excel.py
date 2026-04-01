@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Excel Parser for Korean Financial Statements
-Supports: Hana Card, Shinhan Card, Toss Bank, Kakao Bank
+Supports: Hana Card, Shinhan Card, Toss Bank, Kakao Bank, Samsung Card
 """
 
 import sys
@@ -9,6 +9,8 @@ import json
 import re
 import warnings
 import os
+import argparse
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from contextlib import redirect_stdout, redirect_stderr
@@ -28,10 +30,11 @@ except ImportError:
 
 # Institution signatures for identification
 SIGNATURES = {
-    'hana_card': ['하나카드', '이용일', '가맹점명', '이용대금 명세서', '거래일자'],
+    'hana_card': ['하나카드', '가맹점명', '이용대금 명세서', '거래일자'],
     'shinhan_card': ['신한카드', '이용일자', '승인번호'],
     'toss_bank': ['토스뱅크', 'Toss', '수신자', '거래유형'],
     'kakao_bank': ['kakao', '카카오뱅크', '거래일시', '거래구분'],
+    'samsung_card': ['삼성카드', '입금후잔액', '이용구분'],
 }
 
 
@@ -66,6 +69,7 @@ def parse_date(date_str):
         '%Y/%m/%d',
         '%y.%m.%d',
         '%y-%m-%d',
+        '%Y%m%d',
     ]
 
     for fmt in formats:
@@ -82,17 +86,17 @@ def parse_date(date_str):
 
 
 def parse_amount(amount):
-    """Parse amount, handling various formats"""
+    """Parse amount, handling various formats (preserves sign for cancellations)"""
     if pd.isna(amount):
         return 0
 
     if isinstance(amount, (int, float)):
-        return abs(int(amount))
+        return int(amount)
 
     # Remove currency symbols, commas, spaces
     cleaned = re.sub(r'[^\d.-]', '', str(amount))
     try:
-        return abs(int(float(cleaned)))
+        return int(float(cleaned))
     except ValueError:
         return 0
 
@@ -195,7 +199,7 @@ def parse_hana_card(df):
 
         # 금액 정보
         original_amount = parse_amount(get_cell_safe(row, original_amount_col))
-        if original_amount <= 0:
+        if original_amount == 0:
             continue
 
         # 할부 정보 (컬럼이 없으면 None)
@@ -210,7 +214,7 @@ def parse_hana_card(df):
         is_installment = benefit_category == '할부' or (installment_total and installment_total > 1)
 
         # amount 결정: 할부면 결제원금, 아니면 이용금액
-        amount = monthly_amount if is_installment and monthly_amount > 0 else original_amount
+        amount = monthly_amount if is_installment and monthly_amount != 0 else original_amount
 
         transactions.append({
             'date': date,
@@ -259,7 +263,7 @@ def parse_shinhan_card(df):
             continue
 
         amount = parse_amount(row.iloc[2]) if len(row) > 2 else 0
-        if amount <= 0:
+        if amount == 0:
             continue
 
         transactions.append({
@@ -274,36 +278,89 @@ def parse_shinhan_card(df):
 
 
 def parse_toss_bank(df):
-    """Parse Toss Bank statement"""
+    """Parse Toss Bank statement with dynamic column detection (withdrawal only)"""
     transactions = []
 
-    # Find header row
-    header_row = None
+    # Find header row (handles both '거래일시' and '거래 일시' with space)
+    header_row_idx = None
     for idx, row in df.iterrows():
         row_str = ' '.join(str(v) for v in row.values if pd.notna(v))
-        if '거래일시' in row_str or '거래유형' in row_str:
-            header_row = idx
+        # Normalize spaces for matching
+        normalized = re.sub(r'\s+', '', row_str)
+        if '거래일시' in normalized or '거래유형' in normalized:
+            header_row_idx = idx
             break
 
-    if header_row is None:
+    if header_row_idx is None:
         return transactions
 
-    for idx in range(header_row + 1, len(df)):
+    # Dynamic column detection (normalize spaces in header cell names)
+    header = df.iloc[header_row_idx]
+    col_map = {}
+    for col_idx, cell in enumerate(header):
+        cell_str = re.sub(r'\s+', '', str(cell).strip())  # remove all whitespace
+        if '거래일시' in cell_str:
+            col_map['date'] = col_idx
+        elif cell_str in ('내용', '적요', '거래내용'):
+            col_map['merchant'] = col_idx
+        elif '거래금액' in cell_str:
+            col_map['amount'] = col_idx
+        elif '출금' in cell_str and '잔액' not in cell_str:
+            col_map['withdrawal'] = col_idx
+        elif '입금' in cell_str and '잔액' not in cell_str:
+            col_map['deposit'] = col_idx
+        elif cell_str in ('수신자', '보낸분'):
+            col_map['counterpart'] = col_idx
+        elif '거래유형' in cell_str:
+            col_map['type'] = col_idx
+
+    date_col = col_map.get('date', 0)
+    merchant_col = col_map.get('merchant', col_map.get('counterpart', 1))
+    amount_col = col_map.get('amount')
+    withdrawal_col = col_map.get('withdrawal')
+    type_col = col_map.get('type')
+
+    for idx in range(header_row_idx + 1, len(df)):
         row = df.iloc[idx]
 
-        if pd.isna(row.iloc[0]):
+        # Date (may contain time like "2026.01.30 11:30:23")
+        date_val = row.iloc[date_col] if date_col < len(row) else None
+        if pd.isna(date_val):
             continue
 
-        date = parse_date(row.iloc[0])
+        date_str = str(date_val).strip().split(' ')[0]  # take date part only
+        date = parse_date(date_str)
         if not date:
             continue
 
-        merchant = str(row.iloc[1]).strip() if len(row) > 1 and pd.notna(row.iloc[1]) else ''
-        if not merchant or merchant == 'nan':
+        # Determine if withdrawal: two patterns
+        # Pattern A: separate 출금/입금 columns
+        # Pattern B: single 거래 금액 column + 거래 유형 column
+        amount = 0
+        if withdrawal_col is not None:
+            # Pattern A
+            amount = parse_amount(row.iloc[withdrawal_col]) if withdrawal_col < len(row) else 0
+        elif amount_col is not None:
+            # Pattern B: use 거래 유형 or sign of amount
+            raw_amount = parse_amount(row.iloc[amount_col]) if amount_col < len(row) else 0
+            is_withdrawal = False
+            if type_col is not None and type_col < len(row):
+                tx_type = str(row.iloc[type_col]).strip() if pd.notna(row.iloc[type_col]) else ''
+                is_withdrawal = tx_type == '출금'
+            else:
+                is_withdrawal = raw_amount < 0
+
+            if is_withdrawal:
+                amount = abs(raw_amount)
+
+        if amount == 0:
             continue
 
-        amount = parse_amount(row.iloc[2]) if len(row) > 2 else 0
-        if amount <= 0:
+        # Merchant: prefer 적요/내용, fallback to counterpart
+        merchant = get_cell_safe(row, merchant_col)
+        if (not merchant or merchant == 'nan') and 'counterpart' in col_map:
+            merchant = get_cell_safe(row, col_map['counterpart'])
+        if not merchant or merchant == 'nan':
             continue
 
         transactions.append({
@@ -347,7 +404,7 @@ def parse_kakao_bank(df):
             continue
 
         amount = parse_amount(row.iloc[2]) if len(row) > 2 else 0
-        if amount <= 0:
+        if amount == 0:
             continue
 
         transactions.append({
@@ -359,6 +416,168 @@ def parse_kakao_bank(df):
         })
 
     return transactions
+
+
+def parse_samsung_card(df, file_path):
+    """Parse Samsung Card statement (supports multiple sheets: 일시불, 할부)"""
+    transactions = []
+
+    # Extract payment date from filename (e.g., samsungcard_20250626.xlsx)
+    payment_date = None
+    match = re.search(r'(\d{4})(\d{2})(\d{2})', os.path.basename(file_path))
+    if match:
+        payment_date = f"{match.group(1)}.{match.group(2)}.{match.group(3)}"
+
+    # Read all sheets
+    try:
+        all_sheets = pd.read_excel(file_path, sheet_name=None, header=None, engine='openpyxl')
+    except Exception:
+        all_sheets = {'Sheet1': df}
+
+    for sheet_name, sheet_df in all_sheets.items():
+        # Find header row containing '이용일' and '가맹점'
+        header_row_idx = None
+        for idx, row in sheet_df.iterrows():
+            row_str = ' '.join(str(v) for v in row.values if pd.notna(v))
+            if '이용일' in row_str and '가맹점' in row_str:
+                header_row_idx = idx
+                break
+
+        if header_row_idx is None:
+            continue
+
+        # Build column map from header
+        header = sheet_df.iloc[header_row_idx]
+        col_map = {}
+        for col_idx, cell in enumerate(header):
+            cell_str = str(cell).strip()
+            if cell_str == '이용일':
+                col_map['date'] = col_idx
+            elif cell_str == '가맹점':
+                col_map['merchant'] = col_idx
+            elif cell_str == '이용금액':
+                col_map['original_amount'] = col_idx
+            elif cell_str == '원금':
+                col_map['principal'] = col_idx
+            elif cell_str == '개월':
+                col_map['installment_total'] = col_idx
+            elif cell_str == '회차':
+                col_map['installment_month'] = col_idx
+            elif cell_str == '이용혜택':
+                col_map['benefit_type'] = col_idx
+            elif cell_str == '혜택금액':
+                col_map['benefit_amount'] = col_idx
+
+        date_col = col_map.get('date', 0)
+        merchant_col = col_map.get('merchant', 2)
+        principal_col = col_map.get('principal')
+
+        is_installment = '할부' in str(sheet_name)
+        payment_type = 'installment' if is_installment else 'lump_sum'
+
+        for idx in range(header_row_idx + 1, len(sheet_df)):
+            row = sheet_df.iloc[idx]
+
+            # Date
+            date_val = row.iloc[date_col] if date_col < len(row) else None
+            if pd.isna(date_val) or str(date_val).strip() == '':
+                continue
+
+            date = parse_date(str(date_val).strip())
+            if not date:
+                continue
+
+            # Merchant
+            merchant = get_cell_safe(row, merchant_col)
+            if not merchant or merchant == 'nan' or '합계' in merchant:
+                continue
+
+            # Amount: use 원금 (principal) column - it's the numeric monthly charge
+            amount = 0
+            if principal_col is not None and principal_col < len(row) and pd.notna(row.iloc[principal_col]):
+                try:
+                    amount = int(float(row.iloc[principal_col]))
+                except (ValueError, TypeError):
+                    amount = 0
+
+            if amount == 0:
+                # Fallback to 이용금액
+                original_col = col_map.get('original_amount')
+                if original_col is not None:
+                    amount = parse_amount(get_cell_safe(row, original_col))
+
+            # Skip zero amounts only
+            if amount == 0:
+                continue
+
+            # Installment info
+            inst_total = None
+            inst_month = None
+            if is_installment:
+                inst_total = parse_int_safe(get_cell_safe(row, col_map.get('installment_total')))
+                inst_month = parse_int_safe(get_cell_safe(row, col_map.get('installment_month')))
+
+            # 할부 2회차 이후는 결제일(파일명) 사용, 1회차와 일시불은 원래 이용일 사용
+            use_payment_date = is_installment and inst_month and inst_month > 1 and payment_date
+            final_date = payment_date if use_payment_date else date
+
+            tx = {
+                'date': final_date,
+                'merchant': merchant,
+                'amount': amount,
+                'description': merchant,
+                'payment_type': payment_type,
+                'institution_identifier': 'samsung_card'
+            }
+
+            # Original amount for installments
+            if is_installment:
+                orig = col_map.get('original_amount')
+                if orig is not None:
+                    orig_amount = parse_amount(get_cell_safe(row, orig))
+                    if orig_amount != 0:
+                        tx['original_amount'] = orig_amount
+                if inst_total:
+                    tx['installment_total'] = inst_total
+                if inst_month:
+                    tx['installment_month'] = inst_month
+
+            # Benefit info
+            benefit_type = get_cell_safe(row, col_map.get('benefit_type'))
+            benefit_amount_val = parse_amount(get_cell_safe(row, col_map.get('benefit_amount')))
+            if benefit_type and benefit_type.strip() and benefit_type.strip() != ' ':
+                tx['benefit_type'] = benefit_type.strip()
+            if benefit_amount_val:
+                tx['benefit_amount'] = benefit_amount_val
+
+            transactions.append(tx)
+
+    return transactions
+
+
+def decrypt_if_needed(file_path, password):
+    """Decrypt an encrypted Excel file using msoffcrypto. Returns (decrypted_path, is_temp)."""
+    if not password:
+        return file_path, False
+
+    try:
+        import msoffcrypto
+    except ImportError:
+        return file_path, False
+
+    try:
+        with open(file_path, 'rb') as f:
+            ms_file = msoffcrypto.OfficeFile(f)
+            if not ms_file.is_encrypted():
+                return file_path, False
+
+            ms_file.load_key(password=password)
+            tmp = tempfile.NamedTemporaryFile(suffix=Path(file_path).suffix, delete=False)
+            ms_file.decrypt(tmp)
+            tmp.close()
+            return tmp.name, True
+    except Exception as e:
+        raise RuntimeError(f"Decryption failed: {e}")
 
 
 def read_excel_file(file_path):
@@ -391,66 +610,85 @@ def read_excel_file(file_path):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(json.dumps({"error": "Usage: parse_excel.py <file_path>"}))
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Parse Korean financial Excel statements')
+    parser.add_argument('file_path', help='Path to the Excel file')
+    parser.add_argument('--password', default=None, help='Password for encrypted Excel files')
+    args = parser.parse_args()
 
-    file_path = sys.argv[1]
+    file_path = args.file_path
 
     if not Path(file_path).exists():
         print(json.dumps({"error": f"File not found: {file_path}"}))
         sys.exit(1)
 
-    # Read file
-    result = read_excel_file(file_path)
-    if isinstance(result, dict) and 'error' in result:
-        print(json.dumps(result))
-        sys.exit(1)
-
-    df = result
-
-    # Read raw content for institution detection
+    # Decrypt if needed
+    decrypted_path = file_path
+    is_temp = False
     try:
-        with open(file_path, 'rb') as f:
-            raw_content = f.read(5000).decode('utf-8', errors='ignore')
-    except:
-        raw_content = ""
-
-    # Identify institution
-    institution = identify_institution(df, raw_content)
-
-    if not institution:
-        print(json.dumps({
-            "error": "Unknown institution format",
-            "institution": None,
-            "transactions": []
-        }))
+        decrypted_path, is_temp = decrypt_if_needed(file_path, args.password)
+    except RuntimeError as e:
+        print(json.dumps({"error": str(e)}))
         sys.exit(1)
 
-    # Parse based on institution
-    parsers = {
-        'hana_card': parse_hana_card,
-        'shinhan_card': parse_shinhan_card,
-        'toss_bank': parse_toss_bank,
-        'kakao_bank': parse_kakao_bank,
-    }
+    try:
+        # Read file
+        result = read_excel_file(decrypted_path)
+        if isinstance(result, dict) and 'error' in result:
+            print(json.dumps(result))
+            sys.exit(1)
 
-    parser = parsers.get(institution)
-    if not parser:
+        df = result
+
+        # Read raw content for institution detection
+        try:
+            with open(decrypted_path, 'rb') as f:
+                raw_content = f.read(5000).decode('utf-8', errors='ignore')
+        except:
+            raw_content = ""
+
+        # Identify institution
+        institution = identify_institution(df, raw_content)
+
+        if not institution:
+            print(json.dumps({
+                "error": "Unknown institution format",
+                "institution": None,
+                "transactions": []
+            }))
+            sys.exit(1)
+
+        # Parse based on institution
+        parsers = {
+            'hana_card': parse_hana_card,
+            'shinhan_card': parse_shinhan_card,
+            'toss_bank': parse_toss_bank,
+            'kakao_bank': parse_kakao_bank,
+            'samsung_card': lambda d: parse_samsung_card(d, decrypted_path),
+        }
+
+        inst_parser = parsers.get(institution)
+        if not inst_parser:
+            print(json.dumps({
+                "error": f"No parser for institution: {institution}",
+                "institution": institution,
+                "transactions": []
+            }))
+            sys.exit(1)
+
+        transactions = inst_parser(df)
+
         print(json.dumps({
-            "error": f"No parser for institution: {institution}",
             "institution": institution,
-            "transactions": []
+            "transactions": transactions,
+            "count": len(transactions)
         }))
-        sys.exit(1)
-
-    transactions = parser(df)
-
-    print(json.dumps({
-        "institution": institution,
-        "transactions": transactions,
-        "count": len(transactions)
-    }))
+    finally:
+        # Clean up temp file from decryption
+        if is_temp and decrypted_path != file_path:
+            try:
+                os.unlink(decrypted_path)
+            except OSError:
+                pass
 
 
 if __name__ == '__main__':

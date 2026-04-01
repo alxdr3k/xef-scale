@@ -77,8 +77,8 @@ class Parsers::BaseParserTest < ActiveSupport::TestCase
     assert_equal 12500, @parser.send(:parse_amount, "12500")
   end
 
-  test "parse_amount returns absolute value" do
-    assert_equal 12500, @parser.send(:parse_amount, "-12,500")
+  test "parse_amount preserves negative sign for cancellations" do
+    assert_equal(-12500, @parser.send(:parse_amount, "-12,500"))
   end
 
   test "parse_amount returns 0 for blank input" do

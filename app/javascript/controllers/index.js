@@ -7,17 +7,35 @@ import { application } from "./application"
 import AutoFilterController from "./auto_filter_controller"
 application.register("auto-filter", AutoFilterController)
 
+import AutoRefreshController from "./auto_refresh_controller"
+application.register("auto-refresh", AutoRefreshController)
+
 import AutoSubmitController from "./auto_submit_controller"
 application.register("auto-submit", AutoSubmitController)
 
 import BulkSelectController from "./bulk_select_controller"
 application.register("bulk-select", BulkSelectController)
 
+import CategoryBroadcastController from "./category_broadcast_controller"
+application.register("category-broadcast", CategoryBroadcastController)
+
 import CategorySelectorController from "./category_selector_controller"
 application.register("category-selector", CategorySelectorController)
 
 import CategorySuggestController from "./category_suggest_controller"
 application.register("category-suggest", CategorySuggestController)
+
+import CommentController from "./comment_controller"
+application.register("comment", CommentController)
+
+import CommentFormController from "./comment_form_controller"
+application.register("comment-form", CommentFormController)
+
+import CommentPanelController from "./comment_panel_controller"
+application.register("comment-panel", CommentPanelController)
+
+import ColorPickerController from "./color_picker_controller"
+application.register("color-picker", ColorPickerController)
 
 import ChartController from "./chart_controller"
 application.register("chart", ChartController)
@@ -31,11 +49,20 @@ application.register("dashboard-category", DashboardCategoryController)
 import DropdownController from "./dropdown_controller"
 application.register("dropdown", DropdownController)
 
+import FileTypeDetectorController from "./file_type_detector_controller"
+application.register("file-type-detector", FileTypeDetectorController)
+
+import DuplicateModalController from "./duplicate_modal_controller"
+application.register("duplicate-modal", DuplicateModalController)
+
 import DuplicateReviewController from "./duplicate_review_controller"
 application.register("duplicate-review", DuplicateReviewController)
 
-import EditModalController from "./edit_modal_controller"
-application.register("edit-modal", EditModalController)
+import InlineEditController from "./inline_edit_controller"
+application.register("inline-edit", InlineEditController)
+
+import InstallmentPopoverController from "./installment_popover_controller"
+application.register("installment-popover", InstallmentPopoverController)
 
 import HelloController from "./hello_controller"
 application.register("hello", HelloController)
@@ -43,8 +70,14 @@ application.register("hello", HelloController)
 import MonthPickerController from "./month_picker_controller"
 application.register("month-picker", MonthPickerController)
 
+import NotePanelController from "./note_panel_controller"
+application.register("note-panel", NotePanelController)
+
 import NotificationsController from "./notifications_controller"
 application.register("notifications", NotificationsController)
+
+import SourcePopoverController from "./source_popover_controller"
+application.register("source-popover", SourcePopoverController)
 
 import SlideoverCloseController from "./slideover_close_controller"
 application.register("slideover-close", SlideoverCloseController)
@@ -52,8 +85,14 @@ application.register("slideover-close", SlideoverCloseController)
 import SlideoverController from "./slideover_controller"
 application.register("slideover", SlideoverController)
 
+import TabsController from "./tabs_controller"
+application.register("tabs", TabsController)
+
 import ToastController from "./toast_controller"
 application.register("toast", ToastController)
+
+import TruncateTooltipController from "./truncate_tooltip_controller"
+application.register("truncate-tooltip", TruncateTooltipController)
 
 import YearPickerController from "./year_picker_controller"
 application.register("year-picker", YearPickerController)

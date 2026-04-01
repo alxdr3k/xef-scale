@@ -6,16 +6,27 @@ class Transaction < ApplicationRecord
   belongs_to :committed_by, class_name: "User", optional: true
 
   has_one :allowance_transaction, foreign_key: :expense_transaction_id, dependent: :destroy
+  has_many :comments, dependent: :destroy, inverse_of: :commentable_transaction
   has_many :duplicate_confirmations_as_original, class_name: "DuplicateConfirmation",
            foreign_key: :original_transaction_id, dependent: :destroy
   has_many :duplicate_confirmations_as_new, class_name: "DuplicateConfirmation",
            foreign_key: :new_transaction_id, dependent: :destroy
 
   STATUSES = %w[pending_review committed rolled_back].freeze
+  PAYMENT_TYPES = %w[lump_sum installment coupon].freeze
+
+  enum :payment_type, {
+    lump_sum: "lump_sum",
+    installment: "installment",
+    coupon: "coupon"
+  }, default: :lump_sum
 
   validates :date, presence: true
   validates :amount, presence: true, numericality: { only_integer: true }
   validates :status, inclusion: { in: STATUSES }
+  validates :payment_type, inclusion: { in: PAYMENT_TYPES }
+
+  before_save :clear_installment_fields, if: -> { payment_type_changed? && payment_type != "installment" }
 
   scope :active, -> { where(deleted: false, status: "committed") }
   scope :deleted, -> { where(deleted: true) }
@@ -38,11 +49,28 @@ class Transaction < ApplicationRecord
   scope :by_institution, ->(institution_id) { where(financial_institution_id: institution_id) if institution_id.present? }
   scope :search, ->(query) {
     return all if query.blank?
-    where("merchant LIKE ? OR description LIKE ? OR notes LIKE ?",
-          "%#{query}%", "%#{query}%", "%#{query}%")
+    escaped = sanitize_sql_like(query)
+    where("transactions.merchant LIKE ? OR transactions.notes LIKE ?",
+          "%#{escaped}%", "%#{escaped}%")
   }
   scope :excluding_allowance, -> {
     where.not(id: AllowanceTransaction.select(:expense_transaction_id))
+  }
+  scope :excluding_coupon, -> { where.not(payment_type: "coupon") }
+  scope :coupons_only, -> { where(payment_type: "coupon") }
+  scope :with_duplicates, -> {
+    join_condition = "INNER JOIN transactions t2 ON
+      t1.id < t2.id AND
+      t1.workspace_id = t2.workspace_id AND
+      t1.date = t2.date AND
+      t1.amount = t2.amount AND
+      t1.status = 'committed' AND t2.status = 'committed' AND
+      t1.deleted = false AND t2.deleted = false"
+
+    sub1 = unscoped.select("t1.id").from("transactions t1").joins(join_condition)
+    sub2 = unscoped.select("t2.id").from("transactions t1").joins(join_condition)
+
+    where("transactions.id IN (#{sub1.to_sql}) OR transactions.id IN (#{sub2.to_sql})")
   }
 
   def soft_delete!
@@ -100,5 +128,27 @@ class Transaction < ApplicationRecord
   def installment_badge
     return nil unless installment?
     "할부 #{installment_month}/#{installment_total}회차"
+  end
+
+  def payment_type_badge
+    case payment_type
+    when "installment"
+      if installment_total.present? && installment_month.present?
+        "할부 #{installment_month}/#{installment_total}회차"
+      else
+        "할부"
+      end
+    when "coupon"
+      "소비쿠폰"
+    else
+      nil # 일시불은 표시 안함 (기본값이므로)
+    end
+  end
+
+  private
+
+  def clear_installment_fields
+    self.installment_month = nil
+    self.installment_total = nil
   end
 end

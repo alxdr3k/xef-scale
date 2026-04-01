@@ -24,6 +24,11 @@ class ApplicationHelperTest < ActionView::TestCase
     assert_equal "", result
   end
 
+  # Test that Pagy::Frontend is included
+  test "includes Pagy::Frontend" do
+    assert ApplicationHelper.included_modules.include?(Pagy::Frontend)
+  end
+
   test "pagy_nav html structure" do
     # This test verifies the helper module has the pagy_nav method defined
     assert respond_to?(:pagy_nav)

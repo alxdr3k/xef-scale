@@ -1,0 +1,16 @@
+# Test API keys — digest computed with a fixed test key
+
+active_key:
+  workspace: main_workspace
+  name: Test API Key
+  key_digest: test_active_key_digest_placeholder
+  key_prefix: xef_test
+  last_used_at:
+  revoked_at:
+
+revoked_key:
+  workspace: main_workspace
+  name: Revoked Key
+  key_digest: test_revoked_key_digest_placeholder
+  key_prefix: xef_test
+  revoked_at: <%= 1.day.ago %>

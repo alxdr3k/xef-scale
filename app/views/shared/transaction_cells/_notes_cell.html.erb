@@ -1,0 +1,26 @@
+<%# Locals: transaction (required), editable (default: false), update_url (required if editable) %>
+<% editable = local_assigns.fetch(:editable, false) %>
+<% update_url = local_assigns.fetch(:update_url, nil) %>
+
+<td class="px-4 py-2 h-14">
+  <% if editable && update_url %>
+    <span data-action="click->note-panel#open:stop"
+          data-note-panel-url-param="<%= update_url %>"
+          data-note-panel-original-param="<%= transaction.notes || '' %>"
+          data-note-panel-merchant-param="<%= transaction.merchant %>"
+          data-note-panel-date-param="<%= transaction.formatted_date %>"
+          data-note-panel-amount-param="<%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %>"
+          data-note-panel-row-id-param="<%= dom_id(transaction) %>"
+          data-note-panel-trigger
+          data-controller="truncate-tooltip"
+          data-action="click->note-panel#open:stop mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
+          class="cursor-pointer hover:bg-blue-50 hover:text-blue-700 px-1 -mx-1 rounded text-sm inline-block truncate max-w-full align-middle
+                 <%= transaction.notes.present? ? 'text-gray-700' : 'text-gray-400 italic' %>">
+      <%= transaction.notes.presence || '메모 추가...' %>
+    </span>
+  <% else %>
+    <span data-controller="truncate-tooltip"
+          data-action="mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
+          class="text-sm text-gray-600 inline-block truncate max-w-full align-middle"><%= transaction.notes %></span>
+  <% end %>
+</td>

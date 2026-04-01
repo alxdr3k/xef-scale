@@ -55,12 +55,15 @@ gem "omniauth-rails_csrf_protection"
 gem "pundit"
 
 # Pagination (pinned to 6.x for Backend/Frontend API compatibility)
-gem "pagy", "~> 43.2"
+gem "pagy", "~> 6.0"
 
 # File parsing
 gem "roo"                    # Excel/CSV parsing
 gem "roo-xls"                # Old .xls format support
 gem "pdf-reader"             # PDF text extraction
+gem "ferrum"                 # Headless Chrome for encrypted HTML parsing
+
+# AI parsing uses Gemini Flash via direct HTTP (Net::HTTP)
 
 # Code coverage
 gem "simplecov", require: false, group: :test

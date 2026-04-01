@@ -32,10 +32,17 @@ class CategoriesController < ApplicationController
         @transaction.update(category_id: @category.id)
         @categories = @workspace.categories.order(:name)
         flash.now[:notice] = "카테고리가 추가되고 거래에 적용되었습니다."
+        broadcast_html = content_tag(:div, "",
+          data: {
+            controller: "category-broadcast",
+            category_broadcast_id_value: @category.id,
+            category_broadcast_name_value: @category.name,
+            category_broadcast_color_value: @category.color
+          })
         render turbo_stream: [
           turbo_stream.replace(dom_id(@transaction), partial: "transactions/transaction_row", locals: { transaction: @transaction }),
           turbo_stream.update("flash", partial: "shared/flash"),
-          turbo_stream.append("slideover-content", '<div data-controller="slideover-close"></div>'.html_safe)
+          turbo_stream.append("slideover-content", broadcast_html + '<div data-controller="slideover-close"></div>'.html_safe)
         ]
       else
         respond_to do |format|

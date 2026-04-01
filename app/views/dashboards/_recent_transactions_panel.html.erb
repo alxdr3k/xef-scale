@@ -12,7 +12,7 @@
           <div class="text-sm text-gray-500">
             <%= tx.formatted_date %>
             <% if tx.category %>
-              · <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100"><%= tx.category.name %></span>
+              · <%= render 'shared/category_badge', category: tx.category %>
             <% end %>
           </div>
         </div>

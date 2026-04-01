@@ -93,7 +93,7 @@ module Parsers
       # 할부 거래는 결제원금(column 5), 일시불은 이용금액(column 2) 사용
       is_installment = installment_total && installment_total > 1
       amount = is_installment ? row[5].to_i : row[2].to_i
-      return nil if amount <= 0
+      return nil if amount.zero?
 
       # 할부 2회차 이후는 출금일 사용, 1회차와 일시불은 원래 거래일 사용
       use_payment_date = is_installment && installment_month && installment_month > 1 && payment_date

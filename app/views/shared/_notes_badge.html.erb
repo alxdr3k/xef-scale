@@ -1,0 +1,7 @@
+<%# Locals: notes (required), max_width (optional) %>
+<% max_width = local_assigns.fetch(:max_width, '8rem') %>
+<% if notes.present? %>
+  <span class="bg-amber-50 text-amber-700 text-xs px-1.5 py-0.5 rounded inline-block truncate align-middle" style="max-width: <%= max_width %>">
+    <%= notes %>
+  </span>
+<% end %>

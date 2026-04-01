@@ -30,7 +30,10 @@ class NotificationsController < ApplicationController
 
     respond_to do |format|
       format.html { redirect_back(fallback_location: notifications_path) }
-      format.turbo_stream
+      format.turbo_stream {
+        @notifications = current_user.notifications.recent.includes(:workspace, :notifiable)
+        @pagy, @notifications = pagy(@notifications, items: 20)
+      }
       format.json { render json: { success: true } }
     end
   end

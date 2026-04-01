@@ -1,6 +1,6 @@
 class ApplicationController < ActionController::Base
   include Pundit::Authorization
-  include Pagy::Method
+  include Pagy::Backend
 
   # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
   allow_browser versions: :modern
@@ -10,9 +10,18 @@ class ApplicationController < ActionController::Base
   helper_method :current_workspace
 
   rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
-  rescue_from Pagy::RangeError, with: :handle_pagy_overflow
+  rescue_from Pagy::OverflowError, with: :handle_pagy_overflow
 
   protected
+
+  def after_sign_in_path_for(resource)
+    token = session.delete(:invitation_token)
+    if token.present?
+      join_workspace_path(token: token)
+    else
+      super
+    end
+  end
 
   def configure_permitted_parameters
     devise_parameter_sanitizer.permit(:sign_up, keys: [ :name ])

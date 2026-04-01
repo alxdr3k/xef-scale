@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_31_100000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -49,6 +49,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.index ["user_id"], name: "index_allowance_transactions_on_user_id"
   end
 
+  create_table "api_keys", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "key_digest", null: false
+    t.string "key_prefix", limit: 8, null: false
+    t.datetime "last_used_at"
+    t.string "name", null: false
+    t.datetime "revoked_at"
+    t.string "scopes", default: "read", null: false
+    t.datetime "updated_at", null: false
+    t.integer "workspace_id", null: false
+    t.index ["key_digest"], name: "index_api_keys_on_key_digest", unique: true
+    t.index ["workspace_id", "revoked_at"], name: "index_api_keys_on_workspace_id_and_revoked_at"
+    t.index ["workspace_id"], name: "index_api_keys_on_workspace_id"
+  end
+
+  create_table "budgets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "monthly_amount", null: false
+    t.datetime "updated_at", null: false
+    t.integer "workspace_id", null: false
+    t.index ["workspace_id"], name: "index_budgets_on_workspace_id", unique: true
+  end
+
   create_table "categories", force: :cascade do |t|
     t.string "color"
     t.datetime "created_at", null: false
@@ -60,16 +83,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
   end
 
   create_table "category_mappings", force: :cascade do |t|
+    t.integer "amount"
     t.integer "category_id", null: false
     t.datetime "created_at", null: false
     t.string "description_pattern"
+    t.string "match_type", default: "exact", null: false
     t.string "merchant_pattern", null: false
     t.string "source", default: "import"
     t.datetime "updated_at", null: false
     t.integer "workspace_id", null: false
     t.index ["category_id"], name: "index_category_mappings_on_category_id"
-    t.index ["workspace_id", "merchant_pattern", "description_pattern"], name: "idx_category_mappings_workspace_merchant_desc", unique: true
+    t.index ["workspace_id", "merchant_pattern", "description_pattern", "match_type", "amount"], name: "idx_category_mappings_unique", unique: true
     t.index ["workspace_id"], name: "index_category_mappings_on_workspace_id"
+  end
+
+  create_table "comments", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "edited_at"
+    t.integer "transaction_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["transaction_id"], name: "index_comments_on_transaction_id"
+    t.index ["user_id"], name: "index_comments_on_user_id"
   end
 
   create_table "duplicate_confirmations", force: :cascade do |t|
@@ -119,10 +155,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.datetime "created_at", null: false
     t.integer "duplicate_count"
     t.integer "error_count"
-    t.integer "processed_file_id", null: false
+    t.text "notes"
+    t.integer "processed_file_id"
     t.string "review_status", default: "pending_review"
     t.datetime "rolled_back_at"
     t.integer "rolled_back_by_id"
+    t.string "source_type", default: "file_upload"
     t.datetime "started_at"
     t.string "status"
     t.integer "success_count"
@@ -141,7 +179,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.string "original_filename"
     t.string "status"
     t.datetime "updated_at", null: false
+    t.integer "uploaded_by_id"
     t.integer "workspace_id", null: false
+    t.index ["uploaded_by_id"], name: "index_processed_files_on_uploaded_by_id"
     t.index ["workspace_id"], name: "index_processed_files_on_workspace_id"
   end
 
@@ -150,6 +190,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.integer "benefit_amount"
     t.string "benefit_type"
     t.integer "category_id"
+    t.integer "comments_count", default: 0, null: false
     t.datetime "committed_at"
     t.integer "committed_by_id"
     t.datetime "created_at", null: false
@@ -163,6 +204,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.text "notes"
     t.integer "original_amount"
     t.integer "parsing_session_id"
+    t.string "payment_type", default: "lump_sum", null: false
     t.string "status", default: "committed", null: false
     t.datetime "updated_at", null: false
     t.integer "workspace_id", null: false
@@ -172,6 +214,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.index ["parsing_session_id"], name: "index_transactions_on_parsing_session_id"
     t.index ["status"], name: "index_transactions_on_status"
     t.index ["workspace_id", "category_id"], name: "index_transactions_on_workspace_id_and_category_id"
+    t.index ["workspace_id", "date", "amount"], name: "index_transactions_on_workspace_date_amount"
     t.index ["workspace_id", "date"], name: "index_transactions_on_workspace_id_and_date"
     t.index ["workspace_id", "status"], name: "index_transactions_on_workspace_id_and_status"
     t.index ["workspace_id"], name: "index_transactions_on_workspace_id"
@@ -187,6 +230,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
+    t.text "settings"
     t.string "uid"
     t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -229,9 +273,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "allowance_transactions", "transactions", column: "expense_transaction_id"
   add_foreign_key "allowance_transactions", "users"
+  add_foreign_key "api_keys", "workspaces"
+  add_foreign_key "budgets", "workspaces"
   add_foreign_key "categories", "workspaces"
   add_foreign_key "category_mappings", "categories"
   add_foreign_key "category_mappings", "workspaces"
+  add_foreign_key "comments", "transactions"
+  add_foreign_key "comments", "users"
   add_foreign_key "duplicate_confirmations", "parsing_sessions"
   add_foreign_key "duplicate_confirmations", "transactions", column: "new_transaction_id"
   add_foreign_key "duplicate_confirmations", "transactions", column: "original_transaction_id"
@@ -241,6 +289,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_25_132334) do
   add_foreign_key "parsing_sessions", "users", column: "committed_by_id"
   add_foreign_key "parsing_sessions", "users", column: "rolled_back_by_id"
   add_foreign_key "parsing_sessions", "workspaces"
+  add_foreign_key "processed_files", "users", column: "uploaded_by_id"
   add_foreign_key "processed_files", "workspaces"
   add_foreign_key "transactions", "categories"
   add_foreign_key "transactions", "financial_institutions"

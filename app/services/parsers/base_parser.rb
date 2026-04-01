@@ -70,12 +70,12 @@ module Parsers
     def parse_amount(amount_string)
       return 0 if amount_string.blank?
 
-      # Remove currency symbols, commas, spaces
+      # Remove currency symbols, commas, spaces (preserves sign for cancellations)
       cleaned = amount_string.to_s.gsub(/[^\d.-]/, "")
-      cleaned.to_i.abs
+      cleaned.to_i
     end
 
-    def build_transaction(date:, merchant:, amount:, description: nil, installment_month: nil, installment_total: nil)
+    def build_transaction(date:, merchant:, amount:, description: nil, installment_month: nil, installment_total: nil, payment_type: nil, benefit_type: nil, benefit_amount: nil)
       {
         date: date,
         merchant: merchant.to_s.strip,
@@ -83,7 +83,10 @@ module Parsers
         amount: amount,
         institution_identifier: institution_identifier,
         installment_month: installment_month,
-        installment_total: installment_total
+        installment_total: installment_total,
+        payment_type: payment_type,
+        benefit_type: benefit_type,
+        benefit_amount: benefit_amount
       }
     end
   end

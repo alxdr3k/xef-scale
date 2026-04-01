@@ -1,0 +1,50 @@
+<div id="note-panel"
+     data-note-panel-target="panel"
+     class="hidden fixed w-80 bg-white rounded-xl shadow-2xl border border-gray-200/60 z-40
+            transition-all duration-200">
+  <div class="p-5">
+    <!-- Header -->
+    <div class="flex items-start justify-between mb-4">
+      <div class="flex-1 min-w-0">
+        <h3 class="text-sm font-semibold text-gray-900 mb-1">메모</h3>
+        <p class="text-xs text-gray-500 truncate" data-note-panel-target="context"></p>
+      </div>
+      <button data-action="click->note-panel#close"
+              class="p-1.5 -mr-1.5 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Textarea -->
+    <textarea data-note-panel-target="input"
+              data-action="keydown->note-panel#handleKeydown"
+              rows="6"
+              class="w-full text-sm text-gray-900 placeholder:text-gray-400
+                     border border-gray-300 rounded-lg resize-none
+                     focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                     leading-relaxed px-3 py-2.5"
+              placeholder="이 거래에 대한 메모를 입력하세요..."></textarea>
+
+    <!-- Footer -->
+    <div class="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
+      <div class="text-[11px] text-gray-400">
+        <kbd class="px-1 py-0.5 bg-gray-100 rounded border border-gray-200 text-[10px]">ESC</kbd> 닫기
+        <span class="mx-1">·</span>
+        <kbd class="px-1 py-0.5 bg-gray-100 rounded border border-gray-200 text-[10px]">⌘↵</kbd> 저장
+      </div>
+      <div class="flex gap-2">
+        <button data-action="click->note-panel#close"
+                class="px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
+          취소
+        </button>
+        <button data-action="click->note-panel#save"
+                data-note-panel-target="saveButton"
+                class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors">
+          저장
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

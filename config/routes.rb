@@ -41,20 +41,33 @@ Rails.application.routes.draw do
       member do
         post :toggle_allowance
         patch :quick_update_category
+        patch :inline_update
+        patch :restore
       end
       collection do
         get :export
         get :suggest_category
+        post :bulk_update
+        get :duplicates
       end
+      resources :comments, only: [ :index, :create, :update, :destroy ]
     end
 
     # Categories within workspace
     resources :categories, except: [ :show ]
 
+    # Category mappings (분류 규칙)
+    resources :category_mappings, except: [ :show ]
+
     # File uploads and parsing
     resources :parsing_sessions, only: [ :index, :show, :create ] do
+      collection do
+        post :text_parse
+        post :bulk_discard
+      end
       resources :duplicate_confirmations, only: [ :update ]
       member do
+        patch :inline_update
         get :review, to: "reviews#show"
         post :commit, to: "reviews#commit"
         post :rollback, to: "reviews#rollback"
@@ -70,15 +83,34 @@ Rails.application.routes.draw do
   get "join/:token", to: "workspace_invitations#join", as: :join_workspace
 
   # Allowance tracking
-  resources :allowances, only: [ :index ]
+  resources :allowances, only: [ :index ] do
+    collection do
+      post :bulk_update
+    end
+  end
 
   # Dashboard
   resource :dashboard, only: [] do
     get :monthly, action: :monthly
     get :yearly, action: :yearly
+    get :recurring, action: :recurring
     get "category_transactions/:category_id", action: :category_transactions, as: :category_transactions
   end
   get "dashboard", to: "dashboards#monthly", as: :dashboard
+
+  # User Settings
+  resource :user_settings, only: [ :show, :update ], path: "settings"
+
+  # API v1
+  namespace :api do
+    namespace :v1 do
+      resources :transactions, only: [ :index, :show, :create ]
+      resource :summaries, only: [] do
+        get :monthly
+        get :yearly
+      end
+    end
+  end
 
   # Notifications
   resources :notifications, only: [ :index ] do

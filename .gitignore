@@ -84,6 +84,7 @@ shrimp_data/
 
 # Claude
 .claude/settings.local.json
+.claude/ralph-loop*.md
 
 # User uploaded files
 *.xls
@@ -95,3 +96,5 @@ test-results/
 
 # Python virtual environment
 .venv/
+__pycache__/
+.claude/worktrees/

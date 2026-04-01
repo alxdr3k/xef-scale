@@ -1,5 +1,6 @@
 class ProcessedFile < ApplicationRecord
   belongs_to :workspace
+  belongs_to :uploaded_by, class_name: "User", optional: true
   has_one :parsing_session, dependent: :destroy
   has_one_attached :file
 

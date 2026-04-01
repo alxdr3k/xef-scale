@@ -1,0 +1,4 @@
+<%= turbo_stream.prepend "category-mappings-list", partial: "mapping_row", locals: { mapping: @mapping } %>
+<%= turbo_stream.remove "no-mappings-row" %>
+<%= turbo_stream.update "flash", partial: "shared/flash" %>
+<%= turbo_stream.append "slideover-content", '<div data-controller="slideover-close"></div>'.html_safe %>
