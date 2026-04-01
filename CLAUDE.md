@@ -125,6 +125,11 @@ expense-tracker/
 
 This project uses Korean for transaction descriptions, merchant names, and categories. UI can be internationalized via Rails I18n.
 
+## Git 규칙
+
+- PR merge 시 **squash 금지**, 반드시 **merge commit** 사용 (커밋 히스토리 보존)
+- Conventional Commits 형식 사용
+
 ## CI/CD 워크플로우 (필수 준수)
 
 **절대 직접 빌드/배포하지 마세요.** 모든 빌드와 배포는 GitHub Actions를 통해 자동화되어 있습니다.
