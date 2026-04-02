@@ -1,0 +1,56 @@
+<div id="<%= dom_id(parsing_session) %>_card"
+    <% if parsing_session.can_discard? %>
+      data-bulk-select-target="row"
+      data-transaction-id="<%= parsing_session.id %>"
+      data-action="click->bulk-select#toggleRow"
+    <% end %>
+    class="px-4 py-3 <%= 'cursor-pointer' if parsing_session.can_discard? %>">
+  <div class="flex items-center justify-between">
+    <span class="text-sm text-gray-900 truncate flex-1 mr-2">
+      <% if parsing_session.text_paste? %>
+        <span class="text-gray-600">문자 입력</span>
+      <% elsif parsing_session.processed_file %>
+        <%= parsing_session.processed_file.original_filename %>
+      <% else %>
+        <span class="text-gray-400">파일 정보 없음</span>
+      <% end %>
+    </span>
+    <span class="flex-shrink-0">
+      <%= render 'shared/status_badge', status: parsing_session.status, type: :processing %>
+      <% if parsing_session.completed? %>
+        <span class="ml-1"><%= render 'shared/status_badge', status: parsing_session.review_status, type: :review %></span>
+      <% end %>
+    </span>
+  </div>
+  <div class="flex items-center justify-between mt-1">
+    <span class="text-xs text-gray-500">
+      <% if parsing_session.completed? %>
+        성공 <%= parsing_session.success_count %>건
+        <% pending_dup_count = parsing_session.duplicate_confirmations.select { |dc| dc.status == "pending" }.size %>
+        <% if pending_dup_count > 0 %>
+          · 중복 <%= pending_dup_count %>건
+        <% end %>
+        <% if parsing_session.error_count.to_i > 0 %>
+          · 오류 <%= parsing_session.error_count %>건
+        <% end %>
+      <% end %>
+    </span>
+    <span class="text-xs text-gray-400"><%= time_ago_in_words(parsing_session.created_at) %> 전</span>
+  </div>
+  <% if parsing_session.completed? %>
+    <div class="mt-2">
+      <% if parsing_session.review_pending? %>
+        <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
+            class: 'text-xs text-indigo-600 hover:text-indigo-900 font-medium' %>
+      <% else %>
+        <%= link_to '상세보기', review_workspace_parsing_session_path(workspace, parsing_session),
+            class: 'text-xs text-gray-600 hover:text-gray-900' %>
+      <% end %>
+    </div>
+  <% elsif parsing_session.has_duplicates? && parsing_session.pending_duplicates.any? %>
+    <div class="mt-2">
+      <%= link_to '중복 확인', workspace_parsing_session_path(workspace, parsing_session),
+          class: 'text-xs text-indigo-600 hover:text-indigo-900' %>
+    </div>
+  <% end %>
+</div>
