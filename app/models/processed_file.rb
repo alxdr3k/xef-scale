@@ -1,4 +1,6 @@
 class ProcessedFile < ApplicationRecord
+  include Turbo::Broadcastable
+
   belongs_to :workspace
   belongs_to :uploaded_by, class_name: "User", optional: true
   has_one :parsing_session, dependent: :destroy
@@ -39,5 +41,16 @@ class ProcessedFile < ApplicationRecord
 
   def mark_failed!
     update!(status: "failed")
+  end
+
+  after_commit :broadcast_removal, if: -> {
+    saved_change_to_status? && %w[completed failed].include?(status)
+  }
+
+  private
+
+  def broadcast_removal
+    broadcast_remove_to(workspace, target: "pending_file_row_#{id}")
+    broadcast_remove_to(workspace, target: "pending_file_card_#{id}")
   end
 end
