@@ -49,6 +49,9 @@ application.register("dashboard-category", DashboardCategoryController)
 import DropdownController from "./dropdown_controller"
 application.register("dropdown", DropdownController)
 
+import EditModalController from "./edit_modal_controller"
+application.register("edit-modal", EditModalController)
+
 import FileTypeDetectorController from "./file_type_detector_controller"
 application.register("file-type-detector", FileTypeDetectorController)
 
@@ -61,6 +64,9 @@ application.register("duplicate-review", DuplicateReviewController)
 import InlineEditController from "./inline_edit_controller"
 application.register("inline-edit", InlineEditController)
 
+import InputTabsController from "./input_tabs_controller"
+application.register("input-tabs", InputTabsController)
+
 import InstallmentPopoverController from "./installment_popover_controller"
 application.register("installment-popover", InstallmentPopoverController)
 
@@ -72,6 +78,9 @@ application.register("month-picker", MonthPickerController)
 
 import NotePanelController from "./note_panel_controller"
 application.register("note-panel", NotePanelController)
+
+import OnboardingController from "./onboarding_controller"
+application.register("onboarding", OnboardingController)
 
 import NotificationsController from "./notifications_controller"
 application.register("notifications", NotificationsController)
