@@ -156,17 +156,25 @@ class ParsingSession < ApplicationRecord
     transactions.pending_review.count
   end
 
-  after_commit :broadcast_row_update, if: -> {
+  after_commit :broadcast_status_update, if: -> {
     saved_change_to_status? || saved_change_to_review_status?
   }
 
   private
 
-  def broadcast_row_update
+  def broadcast_status_update
+    # Desktop table row
     broadcast_replace_to(
       workspace,
       target: dom_id(self),
       partial: "parsing_sessions/parsing_session_row",
+      locals: { parsing_session: self, workspace: workspace }
+    )
+    # Mobile card
+    broadcast_replace_to(
+      workspace,
+      target: "#{dom_id(self)}_card",
+      partial: "parsing_sessions/parsing_session_card",
       locals: { parsing_session: self, workspace: workspace }
     )
   end
