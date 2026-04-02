@@ -52,9 +52,6 @@ application.register("dropdown", DropdownController)
 import EditModalController from "./edit_modal_controller"
 application.register("edit-modal", EditModalController)
 
-import FileTypeDetectorController from "./file_type_detector_controller"
-application.register("file-type-detector", FileTypeDetectorController)
-
 import DuplicateModalController from "./duplicate_modal_controller"
 application.register("duplicate-modal", DuplicateModalController)
 
@@ -63,9 +60,6 @@ application.register("duplicate-review", DuplicateReviewController)
 
 import InlineEditController from "./inline_edit_controller"
 application.register("inline-edit", InlineEditController)
-
-import InputTabsController from "./input_tabs_controller"
-application.register("input-tabs", InputTabsController)
 
 import InstallmentPopoverController from "./installment_popover_controller"
 application.register("installment-popover", InstallmentPopoverController)
