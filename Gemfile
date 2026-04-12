@@ -55,7 +55,7 @@ gem "omniauth-rails_csrf_protection"
 gem "pundit"
 
 # Pagination (pinned to 6.x for Backend/Frontend API compatibility)
-gem "pagy", "~> 6.0"
+gem "pagy", "~> 43.5"
 
 # File parsing
 gem "roo"                    # Excel/CSV parsing
