@@ -15,8 +15,6 @@ class AiTextParsingJob < ApplicationJob
       stats = { total: 0, success: 0, duplicate: 0, error: 0 }
 
       result[:transactions].each do |tx_data|
-        next if tx_data[:is_cancel] # TODO: 취소 거래 매칭 로직 추후 구현
-
         stats[:total] += 1
         begin
           transaction = create_transaction(workspace, tx_data, parsing_session)

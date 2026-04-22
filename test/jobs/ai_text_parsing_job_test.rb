@@ -42,4 +42,43 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     assert_equal "text_paste", tx.source_type
     assert_in_delta 0.82, tx.parse_confidence.to_f, 0.001
   end
+
+  test "perform persists cancellation transactions with negative amount instead of skipping" do
+    fake_result = {
+      transactions: [
+        {
+          date: Date.new(2026, 3, 15),
+          merchant: "스타벅스강남점",
+          amount: -50000,
+          institution: "신한카드",
+          payment_type: "lump_sum",
+          installment_month: nil,
+          installment_total: nil,
+          is_cancel: true,
+          confidence: 0.92
+        }
+      ],
+      raw_text: @parsing_session.notes,
+      model_used: "gemini-test"
+    }
+
+    original_new = AiTextParser.method(:new)
+    original_parse = AiTextParser.instance_method(:parse)
+    AiTextParser.define_singleton_method(:new) { |*| allocate }
+    AiTextParser.define_method(:parse) { |_text| fake_result }
+
+    begin
+      assert_difference -> { @workspace.transactions.count }, 1 do
+        AiTextParsingJob.new.perform(@parsing_session.id)
+      end
+    ensure
+      AiTextParser.define_singleton_method(:new, original_new)
+      AiTextParser.define_method(:parse, original_parse)
+    end
+
+    tx = @workspace.transactions.order(:created_at).last
+    assert_equal(-50000, tx.amount, "취소 거래는 음수로 저장되어야 함")
+    assert tx.pending_review?, "취소 거래도 검토 대기 상태로 들어가야 함"
+    assert_equal @parsing_session, tx.parsing_session
+  end
 end
