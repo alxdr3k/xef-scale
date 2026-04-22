@@ -7,6 +7,7 @@ module Api
         transaction = current_workspace.transactions.build(create_params)
         transaction.status = "committed"
         transaction.committed_at = Time.current
+        transaction.source_type = "api"
 
         if transaction.save
           render json: { data: serialize_transaction(transaction) }, status: :created
@@ -57,19 +58,7 @@ module Api
 
       private
 
-      def sanitize_year(value)
-        return nil if value.blank?
-        year = Integer(value.to_s, exception: false)
-        return nil unless year && year.between?(2000, 2100)
-        year
-      end
-
-      def sanitize_month(value)
-        return nil if value.blank?
-        month = Integer(value.to_s, exception: false)
-        return nil unless month && month.between?(1, 12)
-        month
-      end
+      include DateParamSanitization
 
       def create_params
         params.require(:transaction).permit(

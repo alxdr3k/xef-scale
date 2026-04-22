@@ -71,7 +71,9 @@ class AiTextParsingJob < ApplicationJob
       financial_institution: institution,
       category: category,
       status: "pending_review",
-      parsing_session: parsing_session
+      parsing_session: parsing_session,
+      source_type: "text_paste",
+      parse_confidence: tx_data[:confidence]
     )
   end
 

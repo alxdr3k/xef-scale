@@ -105,7 +105,9 @@ class FileParsingJob < ApplicationJob
       category: category,
       financial_institution: institution,
       status: "pending_review",
-      parsing_session: parsing_session
+      parsing_session: parsing_session,
+      source_type: "image_upload",
+      parse_confidence: tx_data[:confidence]
     )
   end
 

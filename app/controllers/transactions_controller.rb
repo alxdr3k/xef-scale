@@ -45,6 +45,7 @@ class TransactionsController < ApplicationController
 
   def create
     @transaction = @workspace.transactions.build(transaction_params)
+    @transaction.source_type ||= "manual"
 
     if @transaction.save
       @categories = @workspace.categories.order(:name)

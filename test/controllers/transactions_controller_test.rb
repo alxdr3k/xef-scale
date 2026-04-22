@@ -81,6 +81,7 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
       }
     end
     assert_redirected_to workspace_transactions_path(@workspace)
+    assert_equal "manual", Transaction.last.source_type
   end
 
   test "create fails with invalid params" do
