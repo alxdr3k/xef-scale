@@ -1,51 +1,11 @@
 <div class="max-w-2xl mx-auto">
   <h1 class="text-2xl font-bold text-gray-900 mb-6">계정 설정</h1>
 
-  <!-- Statement Settings -->
+  <!-- 파싱 설정 -->
   <div class="bg-white shadow rounded-lg p-6 mb-8">
-    <h2 class="text-lg font-semibold text-gray-900 mb-2">명세서 설정</h2>
+    <h2 class="text-lg font-semibold text-gray-900 mb-2">파싱 설정</h2>
 
     <%= form_with url: user_settings_path, method: :patch, class: 'space-y-6' do |f| %>
-      <!-- 통합 비밀번호 -->
-      <div>
-        <% has_password = current_user.statement_password.present? %>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
-          금융권 명세서 비밀번호
-          <% if has_password %>
-            <span class="ml-2 text-xs text-green-600 font-normal">저장됨</span>
-          <% end %>
-        </label>
-        <input type="password"
-               name="user[statement_password]"
-               placeholder="<%= has_password ? '변경하려면 새 비밀번호 입력' : '생년월일 6자리 (YYMMDD)' %>"
-               autocomplete="off"
-               class="w-full max-w-xs rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-        <p class="mt-1 text-xs text-gray-400">
-          신한카드, 하나카드, 토스뱅크 등 암호화된 명세서의 비밀번호 (일반적으로 생년월일 6자리)
-        </p>
-      </div>
-
-      <!-- 카드사 출금 제외 -->
-      <div class="flex items-start">
-        <div class="flex items-center h-5">
-          <input type="hidden" name="user[exclude_card_withdrawals]" value="0">
-          <input type="checkbox"
-                 name="user[exclude_card_withdrawals]"
-                 value="1"
-                 <%= 'checked' if current_user.exclude_card_withdrawals? %>
-                 class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
-        </div>
-        <div class="ml-3">
-          <label class="text-sm font-medium text-gray-700">
-            은행 내역에서 카드사 출금 제외
-          </label>
-          <p class="text-xs text-gray-400">
-            은행 통장 내역(새마을금고, 토스뱅크, 카카오뱅크) 파싱 시 카드 대금 자동이체 건을 제외합니다.
-            카드 명세서를 별도로 업로드하는 경우 이중 집계를 방지할 수 있습니다.
-          </p>
-        </div>
-      </div>
-
       <!-- 제외 거래처 -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -66,74 +26,15 @@
     <% end %>
   </div>
 
-  <!-- 금융기관별 명세서 가이드 -->
+  <!-- 스크린샷 업로드 가이드 -->
   <div class="bg-white shadow rounded-lg p-6 mb-8">
-    <h2 class="text-lg font-semibold text-gray-900 mb-4">금융기관별 명세서 가이드</h2>
-    <p class="text-sm text-gray-500 mb-4">각 금융기관에서 명세서를 다운로드하거나 이메일로 받는 방법입니다.</p>
-
-    <div class="space-y-4">
-      <details class="group">
-        <summary class="flex justify-between items-center cursor-pointer text-sm font-medium text-gray-900 py-2">
-          신한카드
-          <svg class="h-4 w-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-        </summary>
-        <div class="text-sm text-gray-600 pl-2 pb-2 space-y-1">
-          <p><strong>다운로드:</strong> 신한SOL 앱 → 마이 → 이용내역 → 기간 선택 → Excel/PDF 다운로드</p>
-          <p><strong>이메일:</strong> 신한카드 홈페이지 → 마이신한 → 명세서 → 이메일 수신 설정</p>
-        </div>
-      </details>
-
-      <details class="group">
-        <summary class="flex justify-between items-center cursor-pointer text-sm font-medium text-gray-900 py-2">
-          하나카드
-          <svg class="h-4 w-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-        </summary>
-        <div class="text-sm text-gray-600 pl-2 pb-2 space-y-1">
-          <p><strong>다운로드:</strong> 하나카드 앱 → 카드 → 이용내역 → 명세서 조회 → Excel 다운로드</p>
-          <p><strong>이메일:</strong> 하나카드 홈페이지 → 마이페이지 → 이메일 명세서 신청 (HTML 형식 지원)</p>
-        </div>
-      </details>
-
-      <details class="group">
-        <summary class="flex justify-between items-center cursor-pointer text-sm font-medium text-gray-900 py-2">
-          삼성카드
-          <svg class="h-4 w-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-        </summary>
-        <div class="text-sm text-gray-600 pl-2 pb-2 space-y-1">
-          <p><strong>다운로드:</strong> 삼성카드 앱 → 전체메뉴 → 이용내역/명세서 → 기간 선택 → Excel 다운로드</p>
-          <p><strong>이메일:</strong> 삼성카드 홈페이지 → My → 명세서 → 이메일 명세서 설정</p>
-        </div>
-      </details>
-
-      <details class="group">
-        <summary class="flex justify-between items-center cursor-pointer text-sm font-medium text-gray-900 py-2">
-          토스뱅크
-          <svg class="h-4 w-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-        </summary>
-        <div class="text-sm text-gray-600 pl-2 pb-2 space-y-1">
-          <p><strong>다운로드:</strong> 토스 앱 → 토스뱅크 계좌 → 거래내역 → 내보내기 → Excel/CSV</p>
-        </div>
-      </details>
-
-      <details class="group">
-        <summary class="flex justify-between items-center cursor-pointer text-sm font-medium text-gray-900 py-2">
-          카카오뱅크
-          <svg class="h-4 w-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-        </summary>
-        <div class="text-sm text-gray-600 pl-2 pb-2 space-y-1">
-          <p><strong>다운로드:</strong> 카카오뱅크 앱 → 계좌 → 거래내역 → 내보내기 → Excel/CSV</p>
-        </div>
-      </details>
-
-      <details class="group">
-        <summary class="flex justify-between items-center cursor-pointer text-sm font-medium text-gray-900 py-2">
-          새마을금고
-          <svg class="h-4 w-4 text-gray-400 group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-        </summary>
-        <div class="text-sm text-gray-600 pl-2 pb-2 space-y-1">
-          <p><strong>다운로드:</strong> 새마을금고 인터넷뱅킹 → 계좌조회 → 거래내역 조회 → Excel 다운로드</p>
-        </div>
-      </details>
+    <h2 class="text-lg font-semibold text-gray-900 mb-2">스크린샷 업로드 가이드</h2>
+    <p class="text-sm text-gray-500 mb-4">
+      현재 <strong>신한카드 이용대금 명세서</strong> 스크린샷을 지원합니다. 명세서를 열어 전체가 보이는 화면을 캡처한 뒤 <em>거래 추가</em>에서 이미지(JPG/PNG/WEBP/HEIC)로 업로드하세요.
+    </p>
+    <div class="text-sm text-gray-600 space-y-1">
+      <p><strong>신한카드:</strong> 신한SOL 앱 → 마이 → 이용내역 또는 청구서 → 화면 캡처 → 거래 추가에서 업로드</p>
+      <p class="text-xs text-gray-400">다른 기관 명세서는 금융 문자 복사 → <em>문자 붙여넣기</em> 입력창에 붙여넣어 주세요.</p>
     </div>
   </div>
 

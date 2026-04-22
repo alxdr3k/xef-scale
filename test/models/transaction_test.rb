@@ -172,4 +172,25 @@ class TransactionTest < ActiveSupport::TestCase
     )
     assert transaction.duplicate_confirmations_as_original.any?
   end
+
+  test "category must belong to the same workspace" do
+    transaction = Transaction.new(
+      workspace: workspaces(:main_workspace),
+      date: Date.current,
+      amount: 1000,
+      category: categories(:other_category)
+    )
+    assert_not transaction.valid?
+    assert_includes transaction.errors[:category_id], "은(는) 같은 워크스페이스에 속해야 합니다"
+  end
+
+  test "category from same workspace is valid" do
+    transaction = Transaction.new(
+      workspace: workspaces(:main_workspace),
+      date: Date.current,
+      amount: 1000,
+      category: categories(:food)
+    )
+    assert transaction.valid?
+  end
 end

@@ -1,6 +1,6 @@
 # xef-scale 아키텍처
 
-xef-scale은 한국 금융기관의 지출 명세서(Excel/PDF/CSV)를 업로드하여 자동 파싱하고 분류하는 Rails 기반 지출 추적 앱입니다.
+xef-scale은 한국 금융기관의 지출 내역을 **금융 문자 붙여넣기**와 **명세서 스크린샷 업로드** 두 경로로 받아 Gemini로 파싱하고 분류하는 Rails 기반 지출 추적 앱입니다. Excel/PDF/CSV/HTML 명세서는 지원하지 않습니다.
 
 ## 핵심 데이터 흐름
 
@@ -10,14 +10,14 @@ xef-scale은 한국 금융기관의 지출 명세서(Excel/PDF/CSV)를 업로드
     ▼
 Workspace (멀티테넌트 단위)
     │
-    ▼
-ProcessedFile 업로드 (Excel/PDF/CSV)
+    ├─► 텍스트 붙여넣기 ─► AiTextParsingJob ─► AiTextParser (Gemini Flash)
     │
-    ▼
-FileParsingJob (비동기, SolidQueue)
-    │
-    ├─► ParserRouter (기관 식별)
-    │       └─► 기관별 Parser (TossBankParser, ShinhanCardParser 등)
+    └─► 이미지 업로드 (ProcessedFile, JPG/PNG/WEBP/HEIC)
+           │
+           ▼
+        FileParsingJob (SolidQueue)
+           │
+           └─► ImageStatementParser ─► GeminiVisionParserService (Gemini Vision)
     │
     ▼
 Transaction 생성 (pending_review)
@@ -30,9 +30,9 @@ Transaction 생성 (pending_review)
 중복 감지 → DuplicateConfirmation
     │
     ▼
-사용자 리뷰 (ReviewSession)
+사용자 리뷰 (ParsingSession)
     │
-    ├─► commit! → status: committed
+    ├─► commit! → status: committed  (pending duplicates 없어야 함)
     └─► rollback! → status: rolled_back
 ```
 
@@ -46,7 +46,7 @@ Transaction 생성 (pending_review)
 | **CategoryMapping** | 상점명 → 카테고리 매핑 규칙. source: import/gemini/manual |
 | **ParsingSession** | 파일 파싱 세션. 상태 관리 및 통계 추적 |
 | **ProcessedFile** | 업로드된 파일 (ActiveStorage) |
-| **FinancialInstitution** | 금융기관 정보 (6개: 신한카드, 하나카드, 토스뱅크/페이, 카카오뱅크/페이) |
+| **FinancialInstitution** | 금융기관 정보. 이미지 파서는 현재 신한카드 명세서 스크린샷을 타깃으로 함 |
 
 ### 모델 관계
 
@@ -68,8 +68,9 @@ Workspace ──┬── Category ──── CategoryMapping
 
 | 서비스 | 위치 | 역할 |
 |--------|------|------|
-| ParserRouter | `app/services/parser_router.rb` | 파일 내용 기반 금융기관 식별 및 파서 라우팅 |
-| BaseParser | `app/services/parsers/base_parser.rb` | 파서 추상 기본 클래스 |
+| AiTextParser | `app/services/ai_text_parser.rb` | 금융 문자 → 거래 구조화 (Gemini Flash) |
+| ImageStatementParser | `app/services/image_statement_parser.rb` | 업로드된 이미지를 Gemini Vision에 전달하고 결과 정규화 |
+| GeminiVisionParserService | `app/services/gemini_vision_parser_service.rb` | Gemini Vision API 호출 |
 | GeminiCategoryService | `app/services/gemini_category_service.rb` | AI 기반 카테고리 분류 |
 
 ## Transaction 상태 머신
@@ -88,12 +89,10 @@ pending_review ──► committed (확정)
 - Ruby 3.3+, Rails 8.0+
 - SQLite3
 - Solid Queue (백그라운드 작업)
-- ActiveStorage (파일 저장)
+- ActiveStorage (이미지 저장)
 - Devise + OmniAuth (인증)
-- Roo, PDF::Reader (파일 파싱)
-- Google Gemini API (AI 카테고리화)
+- Google Gemini API (텍스트 파싱 / 이미지 파싱 / 카테고리화)
 
 ## 관련 문서
 
 - [카테고리화 전략](categorization.md): 3단계 카테고리 매칭 로직
-- [파서 시스템](parser-system.md): 금융기관별 파서 구현

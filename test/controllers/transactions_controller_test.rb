@@ -44,6 +44,26 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "index ignores out-of-range month instead of crashing" do
+    get workspace_transactions_path(@workspace, year: Date.current.year, month: 13)
+    assert_response :success
+  end
+
+  test "index ignores non-numeric month instead of crashing" do
+    get workspace_transactions_path(@workspace, year: Date.current.year, month: "abc")
+    assert_response :success
+  end
+
+  test "index ignores out-of-range year instead of crashing" do
+    get workspace_transactions_path(@workspace, year: 0, month: 1)
+    assert_response :success
+  end
+
+  test "export ignores out-of-range month instead of crashing" do
+    get export_workspace_transactions_path(@workspace, format: :csv, year: Date.current.year, month: 13)
+    assert_response :success
+  end
+
   test "new displays form" do
     get new_workspace_transaction_path(@workspace)
     assert_response :success

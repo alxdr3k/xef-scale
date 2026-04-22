@@ -42,11 +42,6 @@ class AiTextParsingJob < ApplicationJob
         parsing_session.fail!
       else
         parsing_session.complete!(stats)
-        # Auto-commit: mark session as committed (transactions already committed above)
-        parsing_session.update!(
-          review_status: "committed",
-          committed_at: Time.current
-        )
         create_completion_notifications(parsing_session)
       end
 
@@ -75,8 +70,7 @@ class AiTextParsingJob < ApplicationJob
       installment_total: tx_data[:installment_total],
       financial_institution: institution,
       category: category,
-      status: "committed",
-      committed_at: Time.current,
+      status: "pending_review",
       parsing_session: parsing_session
     )
   end

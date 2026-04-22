@@ -94,4 +94,83 @@ class ProcessedFileTest < ActiveSupport::TestCase
     failed = ProcessedFile.failed
     failed.each { |pf| assert pf.failed? }
   end
+
+  test "rejects files with disallowed extension" do
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "malware.exe",
+      status: "pending"
+    )
+    pf.file.attach(
+      io: StringIO.new("payload"),
+      filename: "malware.exe",
+      content_type: "application/octet-stream"
+    )
+    assert_not pf.valid?
+    assert pf.errors[:file].any? { |msg| msg.include?("지원하지 않는 파일 형식") }
+  end
+
+  test "rejects excel/csv/pdf even if uploaded by mistake" do
+    %w[statement.xlsx statement.csv statement.pdf].each do |name|
+      pf = ProcessedFile.new(
+        workspace: workspaces(:main_workspace),
+        filename: name,
+        status: "pending"
+      )
+      pf.file.attach(
+        io: StringIO.new("x"),
+        filename: name,
+        content_type: "application/octet-stream"
+      )
+      assert_not pf.valid?, "#{name} should be rejected"
+      assert pf.errors[:file].any? { |msg| msg.include?("지원하지 않는 파일 형식") }
+    end
+  end
+
+  test "rejects files with disallowed content type even if extension is allowed" do
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "statement.png",
+      status: "pending"
+    )
+    pf.file.attach(
+      io: StringIO.new("<script>"),
+      filename: "statement.png",
+      content_type: "application/x-msdownload"
+    )
+    assert_not pf.valid?
+    assert pf.errors[:file].any? { |msg| msg.include?("콘텐츠 타입") }
+  end
+
+  test "rejects files larger than MAX_FILE_SIZE" do
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new("x"),
+      filename: "huge.png",
+      content_type: "image/png"
+    )
+    blob.update_column(:byte_size, ProcessedFile::MAX_FILE_SIZE + 1)
+
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "huge.png",
+      status: "pending"
+    )
+    pf.file.attach(blob)
+    assert_not pf.valid?
+    assert pf.errors[:file].any? { |msg| msg.include?("MB") }
+  end
+
+  test "accepts allowed png content type" do
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "statement.png",
+      status: "pending"
+    )
+    pf.file.attach(
+      io: StringIO.new("fake-png-bytes"),
+      filename: "statement.png",
+      content_type: "image/png"
+    )
+    assert pf.valid?, pf.errors.full_messages.join(", ")
+  end
 end

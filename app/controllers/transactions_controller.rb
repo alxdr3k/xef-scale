@@ -7,8 +7,8 @@ class TransactionsController < ApplicationController
   before_action :require_workspace_write_access, only: [ :new, :create, :edit, :update, :destroy, :quick_update_category, :inline_update, :bulk_update, :restore ]
 
   def index
-    @year = params[:year].presence&.to_i || Date.current.year
-    @month = params[:month].presence&.to_i
+    @year = sanitize_year(params[:year]) || Date.current.year
+    @month = sanitize_month(params[:month])
 
     transactions = @workspace.transactions.active.excluding_allowance.includes(:category, :financial_institution, parsing_session: :processed_file)
 
@@ -288,12 +288,11 @@ class TransactionsController < ApplicationController
   def export
     transactions = @workspace.transactions.active.includes(:category, :financial_institution, parsing_session: :processed_file)
 
-    if params[:year].present?
-      transactions = if params[:month].present?
-                       transactions.for_month(params[:year], params[:month])
-      else
-                       transactions.for_year(params[:year])
-      end
+    year = sanitize_year(params[:year])
+    month = sanitize_month(params[:month])
+
+    if year
+      transactions = month ? transactions.for_month(year, month) : transactions.for_year(year)
     end
 
     respond_to do |format|
@@ -419,5 +418,21 @@ class TransactionsController < ApplicationController
     return nil if description.blank?
 
     description.strip.presence
+  end
+
+  def sanitize_year(value)
+    return nil if value.blank?
+    year = Integer(value.to_s, exception: false)
+    return nil unless year
+    return nil unless year.between?(2000, 2100)
+    year
+  end
+
+  def sanitize_month(value)
+    return nil if value.blank?
+    month = Integer(value.to_s, exception: false)
+    return nil unless month
+    return nil unless month.between?(1, 12)
+    month
   end
 end

@@ -1,6 +1,6 @@
 # 카테고리화 전략
 
-xef-scale은 거래를 자동으로 분류하기 위해 3단계 카테고리화 전략을 사용합니다.
+xef-scale은 거래를 자동으로 분류하기 위해 최대 3단계 카테고리화 전략을 사용합니다. **이미지 스크린샷 업로드 경로(`FileParsingJob`)는 3단계 전부**를 실행하고, **텍스트 붙여넣기 경로(`AiTextParsingJob`)는 1-2단계만** 실행합니다 (AI 호출이 텍스트 파싱 단계에서 이미 1번 일어나기 때문에 카테고리화는 규칙 기반으로만 수행).
 
 ## Why 3단계인가?
 
@@ -54,7 +54,7 @@ CategoryMapping.find_for_merchant(workspace, merchant)
 ```
 
 **source 필드의 의미**:
-- `import`: CSV/Excel 파일에서 가져온 매핑
+- `import`: 업로드/파싱 과정에서 학습된 매핑
 - `gemini`: Gemini AI가 분류한 결과
 - `manual`: 사용자가 직접 지정
 
@@ -121,7 +121,8 @@ Gemini 분류 결과는 CategoryMapping으로 저장됩니다:
 
 | 파일 | 역할 |
 |------|------|
-| `app/jobs/file_parsing_job.rb` | 3단계 매칭 로직 |
+| `app/jobs/file_parsing_job.rb` | 이미지 업로드 경로의 3단계 매칭 (Mapping → keyword → Gemini) |
+| `app/jobs/ai_text_parsing_job.rb` | 텍스트 붙여넣기 경로의 1-2단계 매칭 (Mapping → keyword) |
 | `app/models/category_mapping.rb` | 매핑 모델 |
 | `app/models/category.rb` | keyword 매칭 |
-| `app/services/gemini_category_service.rb` | AI 분류 |
+| `app/services/gemini_category_service.rb` | AI 분류 (3단계 전용) |

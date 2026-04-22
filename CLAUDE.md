@@ -7,11 +7,13 @@ This file provides guidance to Claude Code when working with code in this reposi
 **Expense Tracker (지출 추적 앱)** - A Rails 8 application for tracking personal expenses from Korean financial institutions.
 
 ### Core Concept
-Users manually download financial statements (Excel/PDF) from their bank apps/websites and upload them through the web interface. The system:
-1. Identifies the financial institution through content-based routing
-2. Parses the data using institution-specific parsers
-3. Stores transactions in a unified format (SQLite)
-4. Provides filtering, categorization, and analytics
+Users import transactions via two paths, both parsed by Gemini:
+1. **Text paste** — paste a card/bank SMS; `AiTextParser` (Gemini Flash) extracts transactions.
+2. **Screenshot upload** — upload a card statement screenshot (JPG/PNG/WEBP/HEIC); `ImageStatementParser` calls `GeminiVisionParserService` (Gemini Vision) to extract transactions.
+
+Excel, PDF, CSV, and HTML statements are **not** supported.
+
+Both paths produce `pending_review` transactions that the user reviews, resolves duplicates for, and commits. Auto-categorization falls back from `CategoryMapping` → `Category` keyword match → `GeminiCategoryService`.
 
 ## Technology Stack
 
@@ -22,7 +24,7 @@ Users manually download financial statements (Excel/PDF) from their bank apps/we
 - **Authentication**: Devise + OmniAuth Google OAuth2
 - **Authorization**: Pundit (RBAC)
 - **Background Jobs**: Solid Queue (Rails 8 default)
-- **File Parsing**: Roo (Excel), CSV (built-in), pdf-reader (PDF)
+- **AI Parsing**: Gemini Flash (text) + Gemini Vision (screenshots) via direct HTTP
 
 ### Frontend
 - **Hotwire**: Turbo + Stimulus
@@ -31,12 +33,11 @@ Users manually download financial statements (Excel/PDF) from their bank apps/we
 
 ## Supported Financial Institutions
 
-- 신한카드 (Shinhan Card)
-- 하나카드 (Hana Card)
-- 토스뱅크 (Toss Bank)
-- 토스페이 (Toss Pay)
-- 카카오뱅크 (Kakao Bank)
-- 카카오페이 (Kakao Pay)
+Image parser currently targets:
+
+- 신한카드 (Shinhan Card) — 이용대금 명세서 스크린샷
+
+Text paste works for any Korean bank/card SMS.
 
 ## Data Schema
 
@@ -53,22 +54,20 @@ Final transaction format:
 ### 파싱 흐름
 
 ```
-파일 업로드 → ParserRouter → Institution Parser → Transaction 저장
-     │              │                │
-     │              │                └── 금융기관별 파싱 로직
-     │              └── 파일 내용 기반 금융기관 식별
-     └── Excel/CSV/PDF
+텍스트 붙여넣기 ──► AiTextParser (Gemini Flash) ─┐
+                                                  ├─► pending_review Transaction ─► 검토 ─► committed
+이미지 업로드 ────► ImageStatementParser ────────┘
+                    └► GeminiVisionParserService (Gemini Vision)
 ```
 
 ### 핵심 서비스
 
 | 서비스 | 위치 | 역할 |
 |--------|------|------|
-| `ParserRouter` | `app/services/parser_router.rb` | 파일 → 적합한 Parser 라우팅 |
-| `ShinhanCardParser` | `app/services/parsers/shinhan_card_parser.rb` | 신한카드 명세서 파싱 |
-| `HanaCardParser` | `app/services/parsers/hana_card_parser.rb` | 하나카드 명세서 파싱 |
-| `TossBankParser` | `app/services/parsers/toss_bank_parser.rb` | 토스뱅크 내역 파싱 |
-| `KakaoBankParser` | `app/services/parsers/kakao_bank_parser.rb` | 카카오뱅크 내역 파싱 |
+| `AiTextParser` | `app/services/ai_text_parser.rb` | 붙여넣기 텍스트를 Gemini Flash로 파싱 |
+| `ImageStatementParser` | `app/services/image_statement_parser.rb` | 이미지 파일을 다운로드하고 Vision 결과를 정규화 |
+| `GeminiVisionParserService` | `app/services/gemini_vision_parser_service.rb` | Gemini Vision API 호출 |
+| `GeminiCategoryService` | `app/services/gemini_category_service.rb` | 미분류 거래 카테고리 추천 |
 
 ### 데이터 모델
 
@@ -188,7 +187,6 @@ kubectl apply -k ~/ws/xeflabs/ops/apps/xef-scale/overlays/{stg,prd}
 - devise, omniauth, omniauth-google-oauth2
 - pundit (authorization)
 - solid_queue, solid_cache
-- roo (Excel), pdf-reader (PDF)
 - tailwindcss
 
 ## gstack
