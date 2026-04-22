@@ -164,6 +164,20 @@ class ParsingSession < ApplicationRecord
     transactions.pending_review.count
   end
 
+  # Snapshot of what this import actually did to the ledger after commit.
+  # Used by the post-commit banner so the user can see the diff (committed
+  # vs. excluded vs. duplicate decisions) instead of just a row count.
+  def commit_summary
+    {
+      committed: transactions.committed.count,
+      excluded: transactions.rolled_back.count,
+      uncategorized: transactions.committed.where(category_id: nil).count,
+      originals_replaced: duplicate_confirmations.where(status: "keep_new").count,
+      originals_kept: duplicate_confirmations.where(status: "keep_original").count,
+      duplicates_kept_both: duplicate_confirmations.where(status: "keep_both").count
+    }
+  end
+
   after_commit :broadcast_status_update, if: -> {
     saved_change_to_status? || saved_change_to_review_status?
   }
