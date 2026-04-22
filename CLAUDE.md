@@ -7,13 +7,14 @@ This file provides guidance to Claude Code when working with code in this reposi
 **Expense Tracker (지출 추적 앱)** - A Rails 8 application for tracking personal expenses from Korean financial institutions.
 
 ### Core Concept
-Users import transactions via two paths, both parsed by Gemini:
-1. **Text paste** — paste a card/bank SMS; `AiTextParser` (Gemini Flash) extracts transactions.
-2. **Screenshot upload** — upload a card statement screenshot (JPG/PNG/WEBP/HEIC); `ImageStatementParser` calls `GeminiVisionParserService` (Gemini Vision) to extract transactions.
+Users enter transactions via three paths — direct manual entry plus two Gemini-backed parsing paths:
+1. **Direct entry** — the `TransactionsController#new/#create` form creates a transaction directly in `committed` state (no parsing session).
+2. **Text paste** — paste a card/bank SMS; `AiTextParser` (Gemini Flash) extracts transactions.
+3. **Screenshot upload** — upload a card statement screenshot (JPG/PNG/WEBP/HEIC); `ImageStatementParser` calls `GeminiVisionParserService` (Gemini Vision) to extract transactions.
 
-Excel, PDF, CSV, and HTML statements are **not** supported.
+Excel, PDF, CSV, and HTML statements are **not** supported. These three paths are the entire input surface — no email/IMAP, no directory watchers, no non-image statement uploads.
 
-Both paths produce `pending_review` transactions that the user reviews, resolves duplicates for, and commits. Auto-categorization falls back from `CategoryMapping` → `Category` keyword match → `GeminiCategoryService`.
+Paths 2 and 3 produce `pending_review` transactions that the user reviews, resolves duplicates for, and commits. Auto-categorization falls back from `CategoryMapping` → `Category` keyword match → `GeminiCategoryService`.
 
 ## Technology Stack
 
