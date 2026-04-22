@@ -176,4 +176,113 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert_not session.commit_all!(users(:admin))
     assert session.review_pending?
   end
+
+  # --- Deferred duplicate-decision application ---
+
+  # A fresh session + original + new pending_review transaction with a resolved
+  # DuplicateConfirmation between them. Lets us exercise commit/discard/rollback
+  # without polluting the shared completed_session fixture.
+  def build_session_with_duplicate(decision:)
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review",
+      total_count: 1,
+      success_count: 1,
+      duplicate_count: 1,
+      started_at: 2.minutes.ago,
+      completed_at: 1.minute.ago
+    )
+    original = workspace.transactions.create!(
+      date: Date.new(2026, 1, 5),
+      merchant: "스타벅스강남점",
+      amount: 5800,
+      status: "committed"
+    )
+    new_tx = workspace.transactions.create!(
+      date: Date.new(2026, 1, 5),
+      merchant: "스타벅스강남점",
+      amount: 5800,
+      status: "pending_review",
+      parsing_session: session
+    )
+    session.duplicate_confirmations.create!(
+      original_transaction: original,
+      new_transaction: new_tx,
+      status: decision
+    )
+    [ session, original, new_tx ]
+  end
+
+  test "discard_all! with keep_new decision leaves original committed transaction untouched" do
+    session, original, new_tx = build_session_with_duplicate(decision: "keep_new")
+
+    assert session.discard_all!
+
+    # Pending new transaction was destroyed
+    assert_not Transaction.exists?(new_tx.id)
+    # Original stays active — no silent data loss on discard
+    original.reload
+    assert_not original.deleted
+    assert original.committed?
+  end
+
+  test "commit_all! with keep_new soft-deletes original and commits new" do
+    session, original, new_tx = build_session_with_duplicate(decision: "keep_new")
+
+    assert session.commit_all!(users(:admin))
+
+    original.reload
+    new_tx.reload
+
+    assert original.deleted, "original should be soft-deleted after keep_new commit"
+    assert original.committed?, "original status is unchanged"
+    assert_not new_tx.deleted
+    assert new_tx.committed?
+  end
+
+  test "rollback_all! after keep_new commit restores the original" do
+    session, original, new_tx = build_session_with_duplicate(decision: "keep_new")
+
+    assert session.commit_all!(users(:admin))
+    assert session.rollback_all!(users(:admin))
+
+    original.reload
+    new_tx.reload
+
+    assert_not original.deleted, "original should be restored on rollback"
+    assert original.committed?
+    assert new_tx.rolled_back?
+  end
+
+  test "commit_all! with keep_original leaves original untouched and does not commit the new pending transaction" do
+    session, original, new_tx = build_session_with_duplicate(decision: "keep_original")
+
+    assert session.commit_all!(users(:admin))
+
+    original.reload
+    new_tx.reload
+
+    assert_not original.deleted
+    assert original.committed?
+    # The new pending transaction must not end up committed — otherwise a
+    # "deleted + committed" or duplicate-committed row would leak through.
+    assert new_tx.rolled_back?
+    assert_not new_tx.committed?
+  end
+
+  test "commit_all! with keep_both commits new transaction and keeps original" do
+    session, original, new_tx = build_session_with_duplicate(decision: "keep_both")
+
+    assert session.commit_all!(users(:admin))
+
+    original.reload
+    new_tx.reload
+
+    assert_not original.deleted
+    assert original.committed?
+    assert new_tx.committed?
+    assert_not new_tx.deleted
+  end
 end
