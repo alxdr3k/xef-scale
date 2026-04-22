@@ -117,7 +117,7 @@ class ParsingSession < ApplicationRecord
 
     ActiveRecord::Base.transaction do
       apply_duplicate_decisions!
-      transactions.pending_review.find_each do |tx|
+      transactions.pending_review.where(deleted: false).find_each do |tx|
         tx.commit!(user)
       end
       update!(
@@ -177,6 +177,13 @@ class ParsingSession < ApplicationRecord
   # committed data untouched.
   def apply_duplicate_decisions!
     duplicate_confirmations.resolved.find_each do |dc|
+      new_tx = dc.new_transaction
+      # If the user excluded the new transaction from this import (rolled back
+      # or soft-deleted during review), the duplicate decision no longer
+      # applies — there is no "new" row to keep, so the original should not be
+      # touched even when the prior decision was keep_new.
+      next if new_tx.rolled_back? || new_tx.deleted
+
       case dc.status
       when "keep_new"
         original = dc.original_transaction
@@ -185,7 +192,6 @@ class ParsingSession < ApplicationRecord
         # The new transaction is part of this session's pending_review set;
         # rolling it back keeps it out of the subsequent commit loop and out
         # of the `active` scope so no duplicate row is ever surfaced.
-        new_tx = dc.new_transaction
         new_tx.rollback! if new_tx.pending_review?
       end
     end

@@ -91,9 +91,14 @@ class ReviewsController < ApplicationController
 
     case action
     when "delete"
-      count = transactions.count
-      transactions.find_each(&:soft_delete!)
-      notice = "#{count}건의 거래가 삭제되었습니다."
+      count = 0
+      transactions.find_each do |tx|
+        if tx.pending_review?
+          tx.rollback!
+          count += 1
+        end
+      end
+      notice = "#{count}건의 거래가 이번 가져오기에서 제외되었습니다."
     when "mark_allowance"
       count = 0
       transactions.find_each do |tx|
