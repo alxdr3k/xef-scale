@@ -18,6 +18,8 @@ class DashboardsController < ApplicationController
     @recent_transactions = @transactions.limit(10)
     @budget = @workspace.budget
     @budget_progress = @budget&.progress_for_month(@year, @month)
+    @daily_average_denominator = daily_average_denominator(@year, @month)
+    @daily_average = @daily_average_denominator.zero? ? 0 : (@total_spending / @daily_average_denominator)
 
     render :monthly
   end
@@ -88,6 +90,22 @@ class DashboardsController < ApplicationController
     @workspace = current_workspace
     unless @workspace
       redirect_to new_workspace_path, notice: "먼저 워크스페이스를 생성해 주세요."
+    end
+  end
+
+  # Days that have already happened in the selected month. For the current
+  # month that's today's day-of-month; for past months it's the full month;
+  # for future months no spending has accrued yet so we return 0 (callers
+  # must guard against division by zero).
+  def daily_average_denominator(year, month)
+    today = Date.current
+    selected = Date.new(year, month, 1)
+    if selected.year == today.year && selected.month == today.month
+      today.day
+    elsif selected < today.beginning_of_month
+      selected.end_of_month.day
+    else
+      0
     end
   end
 

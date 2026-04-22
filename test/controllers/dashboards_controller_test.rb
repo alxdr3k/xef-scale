@@ -59,4 +59,44 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     get yearly_dashboard_path, params: { year: 999_999 }
     assert_response :success
   end
+
+  test "monthly dashboard daily average divides by full month for past months" do
+    past = Date.current - 2.months
+    @workspace.transactions.create!(
+      date: Date.new(past.year, past.month, 5),
+      amount: 30_000,
+      status: "committed"
+    )
+
+    get dashboard_path, params: { year: past.year, month: past.month }
+
+    assert_response :success
+    expected_denominator = Date.new(past.year, past.month, 1).end_of_month.day
+    expected_average = 30_000 / expected_denominator
+    assert_equal expected_denominator, controller.instance_variable_get(:@daily_average_denominator)
+    assert_equal expected_average, controller.instance_variable_get(:@daily_average)
+  end
+
+  test "monthly dashboard daily average uses today's day for the current month" do
+    @workspace.transactions.create!(
+      date: Date.current,
+      amount: 7_000,
+      status: "committed"
+    )
+
+    get dashboard_path, params: { year: Date.current.year, month: Date.current.month }
+
+    assert_response :success
+    assert_equal Date.current.day, controller.instance_variable_get(:@daily_average_denominator)
+  end
+
+  test "monthly dashboard daily average is hidden for future months" do
+    future = Date.current.next_month.next_month
+
+    get dashboard_path, params: { year: future.year, month: future.month }
+
+    assert_response :success
+    assert_equal 0, controller.instance_variable_get(:@daily_average_denominator)
+    assert_select "span", text: /일 평균/, count: 0
+  end
 end
