@@ -11,14 +11,7 @@ class TransactionsController < ApplicationController
     @month = sanitize_month(params[:month])
 
     transactions = @workspace.transactions.active.excluding_allowance.includes(:category, :financial_institution, parsing_session: :processed_file)
-
-    # Filters
-    transactions = transactions.for_year(@year) if @year && @month.nil?
-    transactions = transactions.for_month(@year, @month) if @year && @month.present?
-    transactions = transactions.by_category(params[:category_id]) if params[:category_id].present?
-    transactions = transactions.by_institution(params[:institution_id]) if params[:institution_id].present?
-    transactions = transactions.search(params[:q]) if params[:q].present?
-
+    transactions = apply_index_filters(transactions, year: @year, month: @month)
     transactions = transactions.order(date: :desc, created_at: :desc)
 
     @pagy, @transactions = pagy(transactions, items: 50)
@@ -287,14 +280,11 @@ class TransactionsController < ApplicationController
   end
 
   def export
-    transactions = @workspace.transactions.active.includes(:category, :financial_institution, parsing_session: :processed_file)
-
     year = sanitize_year(params[:year])
     month = sanitize_month(params[:month])
 
-    if year
-      transactions = month ? transactions.for_month(year, month) : transactions.for_year(year)
-    end
+    transactions = @workspace.transactions.active.excluding_allowance.includes(:category, :financial_institution, parsing_session: :processed_file)
+    transactions = apply_index_filters(transactions, year: year, month: month)
 
     respond_to do |format|
       format.csv do
@@ -419,6 +409,15 @@ class TransactionsController < ApplicationController
     return nil if description.blank?
 
     description.strip.presence
+  end
+
+  def apply_index_filters(scope, year:, month:)
+    scope = scope.for_year(year) if year && month.nil?
+    scope = scope.for_month(year, month) if year && month.present?
+    scope = scope.by_category(params[:category_id]) if params[:category_id].present?
+    scope = scope.by_institution(params[:institution_id]) if params[:institution_id].present?
+    scope = scope.search(params[:q]) if params[:q].present?
+    scope
   end
 
   def sanitize_year(value)

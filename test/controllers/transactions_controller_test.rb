@@ -151,6 +151,31 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "export honors category filter so it matches the index view" do
+    get export_workspace_transactions_path(@workspace, format: :csv, category_id: categories(:food).id)
+    assert_response :success
+    body = response.body
+    assert_includes body, transactions(:food_transaction).merchant
+    assert_not_includes body, transactions(:transport_transaction).merchant
+    assert_not_includes body, transactions(:shopping_transaction).merchant
+  end
+
+  test "export honors institution filter so it matches the index view" do
+    get export_workspace_transactions_path(@workspace, format: :csv, institution_id: financial_institutions(:hana_card).id)
+    assert_response :success
+    body = response.body
+    assert_includes body, transactions(:transport_transaction).merchant
+    assert_not_includes body, transactions(:food_transaction).merchant
+  end
+
+  test "export honors search query so it matches the index view" do
+    get export_workspace_transactions_path(@workspace, format: :csv, q: "마라탕")
+    assert_response :success
+    body = response.body
+    assert_includes body, transactions(:food_transaction).merchant
+    assert_not_includes body, transactions(:transport_transaction).merchant
+  end
+
 
   test "update with invalid params renders edit" do
     patch workspace_transaction_path(@workspace, @transaction), params: {
