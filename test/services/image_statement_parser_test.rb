@@ -1,6 +1,8 @@
 require "test_helper"
 
 class ImageStatementParserTest < ActiveSupport::TestCase
+  PNG_MAGIC = "\x89PNG\r\n\x1A\n\x00\x00\x00\rIHDR".b.freeze
+
   setup do
     @workspace = workspaces(:main_workspace)
     @processed_file = @workspace.processed_files.build(
@@ -9,7 +11,7 @@ class ImageStatementParserTest < ActiveSupport::TestCase
       status: "pending"
     )
     @processed_file.file.attach(
-      io: StringIO.new("fake-image-bytes"),
+      io: StringIO.new(PNG_MAGIC),
       filename: "statement.png",
       content_type: "image/png"
     )
