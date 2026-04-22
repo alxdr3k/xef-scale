@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_22_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_22_100100) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -268,6 +268,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_22_100000) do
   end
 
   create_table "workspaces", force: :cascade do |t|
+    t.boolean "ai_category_suggestions_enabled", default: true, null: false
+    t.datetime "ai_consent_acknowledged_at"
+    t.boolean "ai_image_parsing_enabled", default: true, null: false
+    t.boolean "ai_text_parsing_enabled", default: true, null: false
     t.datetime "created_at", null: false
     t.string "name", null: false
     t.integer "owner_id", null: false

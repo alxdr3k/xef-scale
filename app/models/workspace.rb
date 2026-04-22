@@ -17,6 +17,19 @@ class Workspace < ApplicationRecord
   after_create :add_owner_as_member
   after_create :create_default_categories
 
+  # The user has not yet acknowledged that AI features (text/image parsing
+  # and category suggestions) send data to an external provider. The review
+  # workflow shows a one-time consent banner while this is true.
+  def ai_consent_required?
+    ai_consent_acknowledged_at.nil? && (
+      ai_text_parsing_enabled? || ai_image_parsing_enabled? || ai_category_suggestions_enabled?
+    )
+  end
+
+  def acknowledge_ai_consent!
+    update!(ai_consent_acknowledged_at: Time.current)
+  end
+
   def admins
     members.joins(:workspace_memberships)
            .where(workspace_memberships: { workspace_id: id, role: %w[owner co_owner] })

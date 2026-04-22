@@ -2,6 +2,17 @@
   <h1 class="text-2xl font-bold text-gray-900 mb-2">거래 추가</h1>
   <p class="text-gray-600 mb-6">금융 문자를 붙여넣거나 명세서 스크린샷을 올려 거래를 등록하세요.</p>
 
+  <% if @workspace.ai_consent_required? %>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-900">
+      <p class="font-medium mb-1">외부 AI 사용 안내</p>
+      <p>붙여넣는 SMS 본문과 업로드한 명세서 이미지는 외부 AI(Google Gemini)로 전송되어 거래로 변환됩니다.</p>
+      <p class="mt-2">
+        <%= link_to '워크스페이스 설정에서 동의 또는 비활성화', settings_workspace_path(@workspace),
+            class: 'underline font-medium' %>
+      </p>
+    </div>
+  <% end %>
+
   <!-- Onboarding Overlay -->
   <div data-onboarding-target="overlay" class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
     <div class="flex justify-between items-start">

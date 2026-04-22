@@ -80,4 +80,27 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     post workspace_parsing_sessions_path(@workspace), params: { files: [ "" ] }
     assert_redirected_to workspace_parsing_sessions_path(@workspace)
   end
+
+  test "text_parse refuses when AI text parsing is disabled" do
+    @workspace.update!(ai_text_parsing_enabled: false)
+
+    post text_parse_workspace_parsing_sessions_path(@workspace),
+         params: { text: "신한카드 1,000원 사용 마라탕" }
+
+    assert_redirected_to workspace_parsing_sessions_path(@workspace)
+    assert_match(/AI 문자 파싱/, flash[:alert])
+    assert_equal 0, @workspace.parsing_sessions.where(source_type: "text_paste").count
+  end
+
+  test "create refuses when AI image parsing is disabled" do
+    @workspace.update!(ai_image_parsing_enabled: false)
+    file = fixture_file_upload("test_statement.png", "image/png")
+
+    assert_no_difference "ProcessedFile.count" do
+      post workspace_parsing_sessions_path(@workspace), params: { files: [ file ] }
+    end
+
+    assert_redirected_to workspace_parsing_sessions_path(@workspace)
+    assert_match(/AI 스크린샷 파싱/, flash[:alert])
+  end
 end

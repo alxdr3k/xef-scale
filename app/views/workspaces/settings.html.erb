@@ -17,6 +17,65 @@
     <% end %>
   </div>
 
+  <!-- AI Settings -->
+  <div class="bg-white shadow rounded-lg p-6 mb-8">
+    <h2 class="text-lg font-semibold text-gray-900 mb-2">AI 사용 설정</h2>
+    <p class="text-sm text-gray-600 mb-4">
+      AI 문자 파싱과 스크린샷 파싱을 사용하면 입력한 SMS 본문 또는 명세서 이미지가
+      외부 Gemini API로 전송되어 거래로 변환됩니다. AI 카테고리 추천을 사용하면
+      거래처 이름이 외부 Gemini API로 전송되어 카테고리를 추천받습니다. 비활성화하면
+      해당 입력 경로는 사용할 수 없거나 자동 추천이 동작하지 않습니다.
+    </p>
+
+    <% unless @workspace.ai_consent_acknowledged_at %>
+      <div class="rounded-md bg-amber-50 border border-amber-200 p-3 mb-4 text-sm text-amber-800">
+        외부 AI 사용에 대한 동의가 아직 기록되지 않았습니다. 아래 체크박스로 동의하면
+        시간 정보가 함께 저장됩니다.
+      </div>
+    <% else %>
+      <p class="text-xs text-gray-500 mb-4">
+        외부 AI 사용 동의일: <%= @workspace.ai_consent_acknowledged_at.strftime('%Y-%m-%d %H:%M') %>
+      </p>
+    <% end %>
+
+    <%= form_with model: @workspace, class: 'space-y-3' do |f| %>
+      <label class="flex items-start gap-2">
+        <%= f.check_box :ai_text_parsing_enabled, class: 'mt-1' %>
+        <span>
+          <span class="font-medium text-gray-900">AI 문자 파싱 사용</span>
+          <span class="block text-xs text-gray-500">금융 SMS 텍스트를 Gemini Flash로 파싱.</span>
+        </span>
+      </label>
+      <label class="flex items-start gap-2">
+        <%= f.check_box :ai_image_parsing_enabled, class: 'mt-1' %>
+        <span>
+          <span class="font-medium text-gray-900">AI 스크린샷 파싱 사용</span>
+          <span class="block text-xs text-gray-500">명세서 이미지를 Gemini Vision으로 파싱.</span>
+        </span>
+      </label>
+      <label class="flex items-start gap-2">
+        <%= f.check_box :ai_category_suggestions_enabled, class: 'mt-1' %>
+        <span>
+          <span class="font-medium text-gray-900">AI 카테고리 추천 사용</span>
+          <span class="block text-xs text-gray-500">미분류 거래의 카테고리를 Gemini로 추천.</span>
+        </span>
+      </label>
+
+      <% unless @workspace.ai_consent_acknowledged_at %>
+        <label class="flex items-start gap-2 pt-2">
+          <%= check_box_tag "workspace[ai_consent_acknowledged]", "true", false, class: 'mt-1' %>
+          <span class="text-sm text-gray-700">
+            위 항목에 사용되는 데이터가 외부 AI(Google Gemini)로 전송됨을 이해하고 동의합니다.
+          </span>
+        </label>
+      <% end %>
+
+      <div>
+        <%= f.submit 'AI 설정 저장', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
+      </div>
+    <% end %>
+  </div>
+
   <!-- Members -->
   <div class="bg-white shadow rounded-lg p-6 mb-8">
     <h2 class="text-lg font-semibold text-gray-900 mb-4">멤버</h2>

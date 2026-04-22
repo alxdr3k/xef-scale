@@ -53,7 +53,7 @@ class FileParsingJob < ApplicationJob
         end
       end
 
-      if uncategorized_transactions.any?
+      if uncategorized_transactions.any? && workspace.ai_category_suggestions_enabled?
         gemini_count = categorize_with_gemini_batch(workspace, uncategorized_transactions)
         stats[:gemini] = gemini_count
       end
