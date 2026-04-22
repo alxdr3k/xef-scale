@@ -4,8 +4,8 @@ class DashboardsController < ApplicationController
 
   def monthly
     @view_type = "monthly"
-    @year = params[:year]&.to_i || Date.current.year
-    @month = params[:month]&.to_i || Date.current.month
+    @year = sanitize_year(params[:year]) || Date.current.year
+    @month = sanitize_month(params[:month]) || Date.current.month
 
     @transactions = @workspace.transactions
                               .active
@@ -23,8 +23,8 @@ class DashboardsController < ApplicationController
   end
 
   def category_transactions
-    @year = params[:year]&.to_i || Date.current.year
-    @month = params[:month]&.to_i || Date.current.month
+    @year = sanitize_year(params[:year]) || Date.current.year
+    @month = sanitize_month(params[:month]) || Date.current.month
     @category = @workspace.categories.find(params[:category_id])
 
     @transactions = @workspace.transactions
@@ -43,7 +43,7 @@ class DashboardsController < ApplicationController
 
   def yearly
     @view_type = "yearly"
-    @year = params[:year]&.to_i || Date.current.year
+    @year = sanitize_year(params[:year]) || Date.current.year
 
     @transactions = @workspace.transactions
                               .active

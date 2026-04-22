@@ -9,8 +9,8 @@ class WorkspacesController < ApplicationController
   end
 
   def show
-    @year = params[:year]&.to_i || Date.current.year
-    @month = params[:month]&.to_i || Date.current.month
+    @year = sanitize_year(params[:year]) || Date.current.year
+    @month = sanitize_month(params[:month]) || Date.current.month
 
     @transactions = @workspace.transactions
                               .active
