@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_22_074047) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_22_090100) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -86,6 +86,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_22_074047) do
     t.integer "amount"
     t.integer "category_id", null: false
     t.datetime "created_at", null: false
+    t.string "dedup_signature", null: false
     t.string "description_pattern"
     t.string "match_type", default: "exact", null: false
     t.string "merchant_pattern", null: false
@@ -93,7 +94,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_22_074047) do
     t.datetime "updated_at", null: false
     t.integer "workspace_id", null: false
     t.index ["category_id"], name: "index_category_mappings_on_category_id"
-    t.index ["workspace_id", "merchant_pattern", "description_pattern", "match_type", "amount"], name: "idx_category_mappings_unique", unique: true
+    t.index ["workspace_id", "dedup_signature"], name: "idx_category_mappings_unique", unique: true
     t.index ["workspace_id"], name: "index_category_mappings_on_workspace_id"
   end
 
@@ -203,8 +204,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_22_074047) do
     t.string "merchant"
     t.text "notes"
     t.integer "original_amount"
+    t.decimal "parse_confidence", precision: 4, scale: 3
     t.integer "parsing_session_id"
     t.string "payment_type", default: "lump_sum", null: false
+    t.string "source_type"
     t.string "status", default: "committed", null: false
     t.datetime "updated_at", null: false
     t.integer "workspace_id", null: false
@@ -212,6 +215,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_22_074047) do
     t.index ["date", "merchant", "amount"], name: "index_transactions_on_date_and_merchant_and_amount"
     t.index ["financial_institution_id"], name: "index_transactions_on_financial_institution_id"
     t.index ["parsing_session_id"], name: "index_transactions_on_parsing_session_id"
+    t.index ["source_type"], name: "index_transactions_on_source_type"
     t.index ["status"], name: "index_transactions_on_status"
     t.index ["workspace_id", "category_id"], name: "index_transactions_on_workspace_id_and_category_id"
     t.index ["workspace_id", "date", "amount"], name: "index_transactions_on_workspace_date_amount"

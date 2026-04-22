@@ -1,12 +1,13 @@
 # Expense Tracker (지출 추적 앱)
 
-A Rails 8 application for tracking expenses from Korean financial statements. Users add transactions by pasting financial SMS/text or uploading screenshots of card statements, and the system parses them with Gemini (text + vision).
+A Rails 8 application for tracking expenses from Korean financial statements. Users add transactions by entering them directly, pasting financial SMS/text, or uploading screenshots of card statements. Text and image inputs are parsed with Gemini (Flash for text, Vision for images).
 
 ## Features
 
 - **Workspace Management**: Create and manage multiple workspaces for organizing expenses
 - **Transaction Management**: Track, filter, and categorize expenses
-- **Two import paths**:
+- **Three input paths** (the full input surface):
+  - **Direct entry**: Create a transaction manually via the web UI
   - **Text paste**: Paste card/bank SMS and Gemini Flash extracts transactions
   - **Screenshot upload**: Upload card statement screenshots (JPG/PNG/WEBP/HEIC) and Gemini Vision extracts transactions
 - **Allowance Tracking**: Mark transactions as allowance for personal budget tracking
@@ -104,20 +105,21 @@ test/
 - **ParsingSession**: Parsing job tracking (source: text paste or image upload)
 - **WorkspaceInvitation**: Team member invitations
 
-## Import flow
+## Input paths
 
-Two entry points, same review pipeline:
+Three entry points. Text and image paths share the same parse → review → commit pipeline; direct entry skips it.
 
-1. **Text paste** → `AiTextParser` (Gemini Flash) → `pending_review` transactions
-2. **Screenshot upload (JPG/PNG/WEBP/HEIC)** → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision) → `pending_review` transactions
+1. **Direct entry** → form in the transactions UI creates a committed transaction immediately (no review session)
+2. **Text paste** → `AiTextParser` (Gemini Flash) → `pending_review` transactions
+3. **Screenshot upload (JPG/PNG/WEBP/HEIC)** → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision) → `pending_review` transactions
 
-Then:
+For the parsing paths (2 and 3):
 
-3. Auto-categorization runs via `CategoryMapping` + `Category` keyword match; uncategorized merchants fall back to `GeminiCategoryService`
-4. Duplicate detection creates `DuplicateConfirmation` records for review
-5. User reviews the session and commits — pending duplicates must be resolved first
+4. Auto-categorization runs via `CategoryMapping` + `Category` keyword match; uncategorized merchants fall back to `GeminiCategoryService`
+5. Duplicate detection creates `DuplicateConfirmation` records for review
+6. User reviews the session and commits — pending duplicates must be resolved first
 
-Excel, PDF, CSV, and HTML statements are **not** supported. Only image screenshots.
+Excel, PDF, CSV, and HTML statements are **not** supported. Only direct entry, SMS/text paste, and image screenshots.
 
 ## License
 

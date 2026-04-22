@@ -44,4 +44,19 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "h2", text: /최근 거래/
   end
+
+  test "monthly dashboard ignores out-of-range month param instead of 500ing" do
+    get dashboard_path, params: { year: 2024, month: 13 }
+    assert_response :success
+  end
+
+  test "monthly dashboard ignores non-integer date params" do
+    get dashboard_path, params: { year: "abc", month: "xyz" }
+    assert_response :success
+  end
+
+  test "yearly dashboard ignores out-of-range year param" do
+    get yearly_dashboard_path, params: { year: 999_999 }
+    assert_response :success
+  end
 end

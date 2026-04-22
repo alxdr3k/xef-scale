@@ -128,4 +128,29 @@ class WorkspaceInvitationTest < ActiveSupport::TestCase
     # Token should be generated on save
     assert_not_nil invitation.token
   end
+
+  test "use! re-checks capacity under the row lock so it cannot exceed max_uses" do
+    invitation = WorkspaceInvitation.create!(
+      workspace: workspaces(:main_workspace),
+      invited_by: users(:admin),
+      max_uses: 1,
+      current_uses: 0
+    )
+
+    # Simulate another request filling the slot between our `usable?` check
+    # and the increment. Trigger it from inside `with_lock` via a stub so the
+    # row we hold locally is stale.
+    original_with_lock = WorkspaceInvitation.instance_method(:with_lock)
+    WorkspaceInvitation.define_method(:with_lock) do |&block|
+      WorkspaceInvitation.where(id: id).update_all(current_uses: max_uses)
+      original_with_lock.bind(self).call(&block)
+    end
+
+    begin
+      assert_not invitation.use!
+      assert_equal 1, invitation.reload.current_uses
+    ensure
+      WorkspaceInvitation.define_method(:with_lock, original_with_lock)
+    end
+  end
 end

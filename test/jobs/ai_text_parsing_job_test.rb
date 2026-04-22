@@ -26,4 +26,20 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     assert_nil tx.committed_at
     assert_equal @parsing_session, tx.parsing_session
   end
+
+  test "create_transaction records text_paste source and parse_confidence" do
+    job = AiTextParsingJob.new
+    tx_data = {
+      date: Date.current,
+      merchant: "스타벅스강남점",
+      amount: 5000,
+      payment_type: "lump_sum",
+      confidence: 0.82
+    }
+
+    tx = job.send(:create_transaction, @workspace, tx_data, @parsing_session)
+
+    assert_equal "text_paste", tx.source_type
+    assert_in_delta 0.82, tx.parse_confidence.to_f, 0.001
+  end
 end

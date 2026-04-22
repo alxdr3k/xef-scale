@@ -38,24 +38,28 @@ class DuplicateConfirmationTest < ActiveSupport::TestCase
     assert_equal "keep_both", dc.status
   end
 
-  test "keep_original! soft deletes new transaction" do
+  test "keep_original! records decision without mutating transactions" do
     dc = duplicate_confirmations(:pending_duplicate)
     new_tx = dc.new_transaction
+    original_tx = dc.original_transaction
 
     dc.keep_original!
 
     assert_equal "keep_original", dc.status
-    assert new_tx.reload.deleted
+    assert_not new_tx.reload.deleted
+    assert_not original_tx.reload.deleted
   end
 
-  test "keep_new! soft deletes original transaction" do
+  test "keep_new! records decision without mutating transactions" do
     dc = duplicate_confirmations(:pending_duplicate)
     original_tx = dc.original_transaction
+    new_tx = dc.new_transaction
 
     dc.keep_new!
 
     assert_equal "keep_new", dc.status
-    assert original_tx.reload.deleted
+    assert_not original_tx.reload.deleted
+    assert_not new_tx.reload.deleted
   end
 
   test "resolve! with keep_both calls keep_both!" do

@@ -24,6 +24,16 @@ class WorkspacesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "show ignores out-of-range date params instead of 500ing" do
+    get workspace_path(@workspace, year: 999_999, month: 13), as: :html
+    assert_response :success
+  end
+
+  test "show ignores non-integer date params" do
+    get workspace_path(@workspace, year: "abc", month: "xyz"), as: :html
+    assert_response :success
+  end
+
   test "new displays form" do
     get new_workspace_path
     assert_response :success

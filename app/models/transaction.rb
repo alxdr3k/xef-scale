@@ -14,6 +14,7 @@ class Transaction < ApplicationRecord
 
   STATUSES = %w[pending_review committed rolled_back].freeze
   PAYMENT_TYPES = %w[lump_sum installment coupon].freeze
+  SOURCE_TYPES = %w[manual text_paste image_upload api import].freeze
 
   enum :payment_type, {
     lump_sum: "lump_sum",
@@ -25,6 +26,10 @@ class Transaction < ApplicationRecord
   validates :amount, presence: true, numericality: { only_integer: true }
   validates :status, inclusion: { in: STATUSES }
   validates :payment_type, inclusion: { in: PAYMENT_TYPES }
+  validates :source_type, inclusion: { in: SOURCE_TYPES }, allow_nil: true
+  validates :parse_confidence,
+            numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 },
+            allow_nil: true
   validate :category_belongs_to_workspace
 
   before_save :clear_installment_fields, if: -> { payment_type_changed? && payment_type != "installment" }

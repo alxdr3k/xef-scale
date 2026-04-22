@@ -161,13 +161,70 @@ class ProcessedFileTest < ActiveSupport::TestCase
   end
 
   test "accepts allowed png content type" do
+    png_magic = "\x89PNG\r\n\x1A\n\x00\x00\x00\rIHDR".b
     pf = ProcessedFile.new(
       workspace: workspaces(:main_workspace),
       filename: "statement.png",
       status: "pending"
     )
     pf.file.attach(
-      io: StringIO.new("fake-png-bytes"),
+      io: StringIO.new(png_magic),
+      filename: "statement.png",
+      content_type: "image/png"
+    )
+    assert pf.valid?, pf.errors.full_messages.join(", ")
+  end
+
+  test "rejects non-image payload masquerading as .jpg" do
+    # PDF bytes under a .jpg extension — the kind of spoof that would
+    # otherwise pass the extension/content_type check and be shipped to
+    # Gemini Vision as an image. Either the ActiveStorage content-type
+    # check or the Marcel magic-number sniff must reject it.
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "statement.jpg",
+      status: "pending"
+    )
+    pf.file.attach(
+      io: StringIO.new("%PDF-1.4\n%\xE2\xE3\xCF\xD3\nfake pdf"),
+      filename: "statement.jpg",
+      content_type: "image/jpeg"
+    )
+    assert_not pf.valid?
+    assert pf.errors[:file].any? { |msg| msg.include?("콘텐츠 타입") || msg.include?("이미지가 아닙니다") },
+           "expected content-type or magic-number rejection, got: #{pf.errors.full_messages.join(', ')}"
+  end
+
+  test "rejects text payload with spoofed image content_type and .jpg extension" do
+    # When the caller fibs about content_type, ActiveStorage trusts them and
+    # the old code would let the upload through. Marcel sniffing the
+    # persisted blob bytes catches this.
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new("this is plain text, not a real jpg image\n" * 4),
+      filename: "note.jpg",
+      content_type: "image/jpeg",
+      identify: false
+    )
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "note.jpg",
+      status: "pending"
+    )
+    pf.file.attach(blob)
+    assert_not pf.valid?
+    assert pf.errors[:file].any? { |msg| msg.include?("이미지가 아닙니다") },
+           "expected magic-number rejection, got: #{pf.errors.full_messages.join(', ')}"
+  end
+
+  test "accepts real png magic bytes" do
+    png_magic = "\x89PNG\r\n\x1A\n\x00\x00\x00\rIHDR".b
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "statement.png",
+      status: "pending"
+    )
+    pf.file.attach(
+      io: StringIO.new(png_magic),
       filename: "statement.png",
       content_type: "image/png"
     )

@@ -116,6 +116,7 @@ class ParsingSession < ApplicationRecord
     return false unless can_commit?
 
     ActiveRecord::Base.transaction do
+      apply_duplicate_decisions!
       transactions.pending_review.find_each do |tx|
         tx.commit!(user)
       end
@@ -133,6 +134,7 @@ class ParsingSession < ApplicationRecord
 
     ActiveRecord::Base.transaction do
       transactions.committed.where(parsing_session_id: id).find_each(&:rollback!)
+      undo_duplicate_decisions!
       update!(
         review_status: "rolled_back",
         rolled_back_at: Time.current,
@@ -146,6 +148,8 @@ class ParsingSession < ApplicationRecord
     return false unless can_discard?
 
     ActiveRecord::Base.transaction do
+      # Originals are not touched until commit_all!, so discarding only needs
+      # to throw away the imported pending_review rows.
       transactions.pending_review.destroy_all
       update!(review_status: "discarded")
     end
@@ -165,6 +169,38 @@ class ParsingSession < ApplicationRecord
   }
 
   private
+
+  # Apply deferred duplicate-resolution decisions at commit time. Keeping the
+  # side effects here (instead of in DuplicateConfirmation) ensures that
+  # decisions made during review only affect the originals once the user
+  # actually commits the import, so discarding the session leaves existing
+  # committed data untouched.
+  def apply_duplicate_decisions!
+    duplicate_confirmations.resolved.find_each do |dc|
+      case dc.status
+      when "keep_new"
+        original = dc.original_transaction
+        original.soft_delete! unless original.deleted?
+      when "keep_original"
+        # The new transaction is part of this session's pending_review set;
+        # rolling it back keeps it out of the subsequent commit loop and out
+        # of the `active` scope so no duplicate row is ever surfaced.
+        new_tx = dc.new_transaction
+        new_tx.rollback! if new_tx.pending_review?
+      end
+    end
+  end
+
+  # Undo the side effects of apply_duplicate_decisions! for a rollback: any
+  # originals that were soft-deleted because the user chose keep_new must be
+  # restored now that the session's committed transactions are being rolled
+  # back.
+  def undo_duplicate_decisions!
+    duplicate_confirmations.where(status: "keep_new").find_each do |dc|
+      original = dc.original_transaction
+      original.restore! if original.deleted?
+    end
+  end
 
   def broadcast_status_update
     # Desktop table row

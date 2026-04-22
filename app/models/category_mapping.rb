@@ -6,12 +6,15 @@ class CategoryMapping < ApplicationRecord
 
   SOURCES = %w[import gemini manual].freeze
   MATCH_TYPES = %w[exact contains].freeze
+  # Field separator for dedup_signature. Picked a control char that cannot
+  # appear inside merchant_pattern / description_pattern.
+  DEDUP_SEPARATOR = "\x1F"
+
+  before_validation :sync_dedup_signature
 
   validates :merchant_pattern, presence: true
-  validates :merchant_pattern, uniqueness: {
-    scope: [ :workspace_id, :description_pattern, :match_type, :amount ],
-    message: "이미 등록된 매핑입니다"
-  }
+  validates :dedup_signature, presence: true,
+                              uniqueness: { scope: :workspace_id, message: "이미 등록된 매핑입니다" }
   validates :source, inclusion: { in: SOURCES }
   validates :match_type, inclusion: { in: MATCH_TYPES }
   validates :amount, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
@@ -101,6 +104,18 @@ class CategoryMapping < ApplicationRecord
   end
 
   private
+
+  # Keep the dedup signature in sync with the fields it derives from so the
+  # `(workspace_id, dedup_signature)` unique index catches NULL-amount races
+  # that SQLite's NULL-distinct unique indexes would otherwise allow.
+  def sync_dedup_signature
+    self.dedup_signature = [
+      merchant_pattern.to_s,
+      description_pattern.to_s,
+      match_type.to_s,
+      amount.to_s
+    ].join(DEDUP_SEPARATOR)
+  end
 
   def category_belongs_to_workspace
     if category && workspace && category.workspace_id != workspace_id

@@ -4,6 +4,7 @@ class ReviewsController < ApplicationController
   before_action :require_workspace_access
   before_action :set_parsing_session
   before_action :require_workspace_write_access, except: [ :show ]
+  before_action :reject_if_finalized, only: [ :bulk_update, :bulk_resolve_duplicates, :update_transaction ]
 
   def show
     @transactions = @parsing_session.reviewable_transactions
@@ -133,12 +134,6 @@ class ReviewsController < ApplicationController
   def update_transaction
     @transaction = @parsing_session.transactions.find(params[:transaction_id])
 
-    # Prevent editing finalized sessions
-    if @parsing_session.review_committed? || @parsing_session.review_rolled_back? || @parsing_session.review_discarded?
-      head :forbidden
-      return
-    end
-
     # Only allow editing specific fields
     permitted = [ :category_id, :notes, :merchant, :date, :amount, :payment_type, :installment_month, :installment_total ]
     # Allow source change only if currently unknown
@@ -257,6 +252,22 @@ class ReviewsController < ApplicationController
   def require_workspace_write_access
     unless current_user.can_write?(@workspace)
       redirect_to root_path, alert: "수정 권한이 없습니다."
+    end
+  end
+
+  # Once a parsing session has been committed / rolled back / discarded, the
+  # import workflow is frozen. Block bulk edits and inline edits here so the
+  # guard doesn't depend on action-specific checks.
+  def reject_if_finalized
+    return if @parsing_session.review_pending?
+
+    respond_to do |format|
+      format.turbo_stream { head :forbidden }
+      format.json { head :forbidden }
+      format.html do
+        redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
+                    alert: "이미 종료된 세션은 수정할 수 없습니다."
+      end
     end
   end
 

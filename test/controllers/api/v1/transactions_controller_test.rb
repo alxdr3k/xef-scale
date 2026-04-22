@@ -192,6 +192,7 @@ module Api
         tx = Transaction.last
         assert_equal "committed", tx.status
         assert_not_nil tx.committed_at
+        assert_equal "api", tx.source_type
       end
 
       test "create with optional fields" do
