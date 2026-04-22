@@ -94,4 +94,66 @@ class ProcessedFileTest < ActiveSupport::TestCase
     failed = ProcessedFile.failed
     failed.each { |pf| assert pf.failed? }
   end
+
+  test "rejects files with disallowed extension" do
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "malware.exe",
+      status: "pending"
+    )
+    pf.file.attach(
+      io: StringIO.new("payload"),
+      filename: "malware.exe",
+      content_type: "application/octet-stream"
+    )
+    assert_not pf.valid?
+    assert pf.errors[:file].any? { |msg| msg.include?("지원하지 않는 파일 형식") }
+  end
+
+  test "rejects files with disallowed content type even if extension is allowed" do
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "statement.csv",
+      status: "pending"
+    )
+    pf.file.attach(
+      io: StringIO.new("<script>"),
+      filename: "statement.csv",
+      content_type: "application/x-msdownload"
+    )
+    assert_not pf.valid?
+    assert pf.errors[:file].any? { |msg| msg.include?("콘텐츠 타입") }
+  end
+
+  test "rejects files larger than MAX_FILE_SIZE" do
+    blob = ActiveStorage::Blob.create_and_upload!(
+      io: StringIO.new("x"),
+      filename: "huge.csv",
+      content_type: "text/csv"
+    )
+    blob.update_column(:byte_size, ProcessedFile::MAX_FILE_SIZE + 1)
+
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "huge.csv",
+      status: "pending"
+    )
+    pf.file.attach(blob)
+    assert_not pf.valid?
+    assert pf.errors[:file].any? { |msg| msg.include?("MB") }
+  end
+
+  test "accepts allowed csv content type" do
+    pf = ProcessedFile.new(
+      workspace: workspaces(:main_workspace),
+      filename: "statement.csv",
+      status: "pending"
+    )
+    pf.file.attach(
+      io: StringIO.new("date,amount\n"),
+      filename: "statement.csv",
+      content_type: "text/csv"
+    )
+    assert pf.valid?, pf.errors.full_messages.join(", ")
+  end
 end

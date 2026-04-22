@@ -130,4 +130,50 @@ class ParsingSessionTest < ActiveSupport::TestCase
     session = ParsingSession.new(status: "processing", started_at: Time.current, completed_at: nil)
     assert_nil session.duration
   end
+
+  test "has_unresolved_duplicates? returns true when pending duplicates exist" do
+    session = parsing_sessions(:completed_session)
+    session.duplicate_confirmations.create!(
+      original_transaction: transactions(:food_transaction),
+      new_transaction: transactions(:transport_transaction),
+      status: "pending"
+    )
+    assert session.has_unresolved_duplicates?
+  end
+
+  test "has_unresolved_duplicates? returns false when no pending duplicates" do
+    session = parsing_sessions(:completed_session)
+    session.duplicate_confirmations.destroy_all
+    assert_not session.has_unresolved_duplicates?
+  end
+
+  test "can_commit? returns false when unresolved duplicates exist" do
+    session = parsing_sessions(:completed_session)
+    session.update!(review_status: "pending_review")
+    session.duplicate_confirmations.create!(
+      original_transaction: transactions(:food_transaction),
+      new_transaction: transactions(:transport_transaction),
+      status: "pending"
+    )
+    assert_not session.can_commit?
+  end
+
+  test "can_commit? returns true when duplicates are all resolved" do
+    session = parsing_sessions(:completed_session)
+    session.update!(review_status: "pending_review")
+    session.duplicate_confirmations.destroy_all
+    assert session.can_commit?
+  end
+
+  test "commit_all! is blocked while duplicates remain unresolved" do
+    session = parsing_sessions(:completed_session)
+    session.update!(review_status: "pending_review")
+    session.duplicate_confirmations.create!(
+      original_transaction: transactions(:food_transaction),
+      new_transaction: transactions(:transport_transaction),
+      status: "pending"
+    )
+    assert_not session.commit_all!(users(:admin))
+    assert session.review_pending?
+  end
 end

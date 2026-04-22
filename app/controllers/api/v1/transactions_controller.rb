@@ -18,8 +18,11 @@ module Api
       def index
         transactions = current_workspace.transactions.active
 
-        transactions = transactions.for_year(params[:year]) if params[:year].present?
-        transactions = transactions.for_month(params[:year] || Date.current.year, params[:month]) if params[:month].present?
+        year = sanitize_year(params[:year])
+        month = sanitize_month(params[:month])
+
+        transactions = transactions.for_year(year) if year && month.nil?
+        transactions = transactions.for_month(year || Date.current.year, month) if month
         transactions = transactions.by_category(params[:category_id]) if params[:category_id].present?
         transactions = transactions.by_institution(params[:institution_id]) if params[:institution_id].present?
         transactions = transactions.search(params[:q]) if params[:q].present?
@@ -53,6 +56,20 @@ module Api
       end
 
       private
+
+      def sanitize_year(value)
+        return nil if value.blank?
+        year = Integer(value.to_s, exception: false)
+        return nil unless year && year.between?(2000, 2100)
+        year
+      end
+
+      def sanitize_month(value)
+        return nil if value.blank?
+        month = Integer(value.to_s, exception: false)
+        return nil unless month && month.between?(1, 12)
+        month
+      end
 
       def create_params
         params.require(:transaction).permit(

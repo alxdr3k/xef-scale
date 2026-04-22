@@ -22,6 +22,12 @@ class ReviewsController < ApplicationController
   end
 
   def commit
+    if @parsing_session.has_unresolved_duplicates?
+      redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
+                  alert: "중복으로 의심되는 거래가 남아 있습니다. 먼저 처리해 주세요."
+      return
+    end
+
     if @parsing_session.commit_all!(current_user)
       check_budget_alerts
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),

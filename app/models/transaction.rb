@@ -25,6 +25,7 @@ class Transaction < ApplicationRecord
   validates :amount, presence: true, numericality: { only_integer: true }
   validates :status, inclusion: { in: STATUSES }
   validates :payment_type, inclusion: { in: PAYMENT_TYPES }
+  validate :category_belongs_to_workspace
 
   before_save :clear_installment_fields, if: -> { payment_type_changed? && payment_type != "installment" }
 
@@ -150,5 +151,11 @@ class Transaction < ApplicationRecord
   def clear_installment_fields
     self.installment_month = nil
     self.installment_total = nil
+  end
+
+  def category_belongs_to_workspace
+    return if category_id.blank?
+    return if category && workspace_id && category.workspace_id == workspace_id
+    errors.add(:category_id, "은(는) 같은 워크스페이스에 속해야 합니다")
   end
 end

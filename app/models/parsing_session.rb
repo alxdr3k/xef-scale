@@ -80,6 +80,10 @@ class ParsingSession < ApplicationRecord
     duplicate_confirmations.where(status: "pending")
   end
 
+  def has_unresolved_duplicates?
+    pending_duplicates.exists?
+  end
+
   def review_pending?
     review_status == "pending_review"
   end
@@ -97,7 +101,7 @@ class ParsingSession < ApplicationRecord
   end
 
   def can_commit?
-    completed? && review_pending?
+    completed? && review_pending? && !has_unresolved_duplicates?
   end
 
   def can_rollback?
