@@ -138,17 +138,36 @@ class TransactionsController < ApplicationController
     category_id = params[:category_id].presence
     old_category_id = @transaction.category_id
 
-    @transaction.update(category_id: category_id)
-    @categories = @workspace.categories.order(:name)
-
-    # 카테고리가 변경되었으면 매핑 생성
-    if category_id.present? && category_id.to_i != old_category_id
-      create_category_mapping(@transaction, @transaction.category)
+    if category_id.present? && !@workspace.categories.exists?(id: category_id)
+      respond_to do |format|
+        format.turbo_stream { head :unprocessable_entity }
+        format.json do
+          render json: { success: false, errors: [ "다른 워크스페이스의 카테고리는 사용할 수 없습니다." ] },
+                 status: :unprocessable_entity
+        end
+      end
+      return
     end
 
-    respond_to do |format|
-      format.turbo_stream
-      format.json { render json: { success: true } }
+    if @transaction.update(category_id: category_id)
+      @categories = @workspace.categories.order(:name)
+
+      if category_id.present? && category_id.to_i != old_category_id
+        create_category_mapping(@transaction, @transaction.category)
+      end
+
+      respond_to do |format|
+        format.turbo_stream
+        format.json { render json: { success: true } }
+      end
+    else
+      respond_to do |format|
+        format.turbo_stream { head :unprocessable_entity }
+        format.json do
+          render json: { success: false, errors: @transaction.errors.full_messages },
+                 status: :unprocessable_entity
+        end
+      end
     end
   end
 

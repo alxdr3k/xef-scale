@@ -177,6 +177,40 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
   end
 
 
+  test "quick_update_category sets the category and returns success" do
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: categories(:transport).id },
+          headers: { "Accept" => "application/json" }
+
+    assert_response :success
+    assert_equal categories(:transport).id, @transaction.reload.category_id
+    body = JSON.parse(response.body)
+    assert_equal true, body["success"]
+  end
+
+  test "quick_update_category rejects categories from other workspaces" do
+    foreign = categories(:other_category)
+    original_category_id = @transaction.category_id
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: foreign.id },
+          headers: { "Accept" => "application/json" }
+
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    assert_equal false, body["success"]
+    assert_equal original_category_id, @transaction.reload.category_id
+  end
+
+  test "quick_update_category clears category when blank" do
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: "" },
+          headers: { "Accept" => "application/json" }
+
+    assert_response :success
+    assert_nil @transaction.reload.category_id
+  end
+
   test "update with invalid params renders edit" do
     patch workspace_transaction_path(@workspace, @transaction), params: {
       transaction: { date: "", amount: "" }
