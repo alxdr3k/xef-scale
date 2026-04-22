@@ -106,7 +106,7 @@ class GeminiCategoryService
   end
 
   def call_gemini_api(model, prompt, max_tokens: 50)
-    uri = URI("#{API_BASE_URL}/#{model}:generateContent?key=#{@api_key}")
+    uri = URI("#{API_BASE_URL}/#{model}:generateContent")
 
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
@@ -115,6 +115,7 @@ class GeminiCategoryService
 
     request = Net::HTTP::Post.new(uri)
     request["Content-Type"] = "application/json"
+    request["x-goog-api-key"] = @api_key
     request.body = {
       contents: [ { parts: [ { text: prompt } ] } ],
       generationConfig: {

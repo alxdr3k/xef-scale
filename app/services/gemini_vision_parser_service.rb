@@ -14,6 +14,8 @@ class GeminiVisionParserService
   class ApiError < StandardError; end
   class AllModelsFailedError < StandardError; end
 
+  EMPTY_RESULT = { payment_date: nil, transactions: [] }.freeze
+
   RESPONSE_SCHEMA = {
     type: "OBJECT",
     properties: {
@@ -93,7 +95,7 @@ class GeminiVisionParserService
   private
 
   def call_gemini_api(model, image_data, mime_type)
-    uri = URI("#{API_BASE_URL}/#{model}:generateContent?key=#{@api_key}")
+    uri = URI("#{API_BASE_URL}/#{model}:generateContent")
 
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
@@ -102,6 +104,7 @@ class GeminiVisionParserService
 
     request = Net::HTTP::Post.new(uri)
     request["Content-Type"] = "application/json"
+    request["x-goog-api-key"] = @api_key
     request.body = {
       contents: [
         {
@@ -134,12 +137,22 @@ class GeminiVisionParserService
 
   def parse_response(response)
     text = response.dig("candidates", 0, "content", "parts", 0, "text")
-    return [] if text.blank?
+    return EMPTY_RESULT.dup if text.blank?
 
     data = JSON.parse(text)
-    return [] unless data.is_a?(Array)
 
-    data.filter_map do |item|
+    # The response schema is an OBJECT { payment_date, transactions: [...] }.
+    # Tolerate legacy/bare-array responses as well.
+    raw_transactions = if data.is_a?(Hash)
+      data["transactions"] || []
+    elsif data.is_a?(Array)
+      data
+    else
+      []
+    end
+
+    transactions = raw_transactions.filter_map do |item|
+      next unless item.is_a?(Hash)
       next unless item["date"].present? && item["merchant"].present? && item["amount"].present?
 
       {
@@ -151,8 +164,12 @@ class GeminiVisionParserService
         installment_total: item["installment_total"]&.to_i
       }
     end
+
+    payment_date = data.is_a?(Hash) ? data["payment_date"] : nil
+
+    { payment_date: payment_date, transactions: transactions }
   rescue JSON::ParserError => e
     Rails.logger.error "[GeminiVisionParser] JSON parse error: #{e.message}"
-    []
+    EMPTY_RESULT.dup
   end
 end
