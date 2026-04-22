@@ -22,9 +22,14 @@ class WorkspaceInvitation < ApplicationRecord
     !expired? && !used_up?
   end
 
+  # Two accepts of the same invitation link can race between `usable?` and
+  # `increment!`, which would let more members join than `max_uses` allows.
+  # Reload under a row lock so only one caller sees the final slot.
   def use!
-    return false unless usable?
-    increment!(:current_uses)
+    with_lock do
+      return false unless usable?
+      increment!(:current_uses)
+    end
     true
   end
 
