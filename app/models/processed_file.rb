@@ -9,21 +9,12 @@ class ProcessedFile < ApplicationRecord
   STATUSES = %w[pending processing completed failed].freeze
 
   MAX_FILE_SIZE = 20.megabytes
-  ALLOWED_EXTENSIONS = %w[.xls .xlsx .csv .pdf .html .htm .jpg .jpeg .png .webp .heic].freeze
+  ALLOWED_EXTENSIONS = %w[.jpg .jpeg .png .webp .heic].freeze
   ALLOWED_CONTENT_TYPES = %w[
-    application/vnd.ms-excel
-    application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-    application/vnd.ms-excel.sheet.macroEnabled.12
-    text/csv
-    application/csv
-    text/plain
-    application/pdf
-    text/html
     image/jpeg
     image/png
     image/webp
     image/heic
-    application/octet-stream
   ].freeze
 
   validates :filename, presence: true

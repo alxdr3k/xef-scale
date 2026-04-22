@@ -31,7 +31,7 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create with file uploads and queues job" do
-    file = fixture_file_upload("test_statement.csv", "text/csv")
+    file = fixture_file_upload("test_statement.png", "image/png")
 
     assert_difference "ProcessedFile.count" do
       post workspace_parsing_sessions_path(@workspace), params: { files: [ file ] }
@@ -41,8 +41,8 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "create with multiple files uploads all and queues jobs" do
-    file1 = fixture_file_upload("test_statement.csv", "text/csv")
-    file2 = fixture_file_upload("test_statement.csv", "text/csv")
+    file1 = fixture_file_upload("test_statement.png", "image/png")
+    file2 = fixture_file_upload("test_statement.png", "image/png")
 
     assert_difference "ProcessedFile.count", 2 do
       post workspace_parsing_sessions_path(@workspace), params: { files: [ file1, file2 ] }
@@ -54,7 +54,7 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
   test "member with read-only access cannot upload" do
     sign_out @user
     sign_in users(:reader)
-    file = fixture_file_upload("test_statement.csv", "text/csv")
+    file = fixture_file_upload("test_statement.png", "image/png")
 
     post workspace_parsing_sessions_path(@workspace), params: { files: [ file ] }
     assert_redirected_to workspace_path(@workspace)

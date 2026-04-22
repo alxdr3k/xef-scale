@@ -31,7 +31,7 @@ xef-scale Phase A는 가족 공유 UX, read-only API, 예산/반복결제를 구
 
 **Target:** 창업자 본인과 아내. 여러 카드/은행을 쓰는 한국인 부부.
 
-**Narrowest Wedge (Phase B):** 웹에서 금융 문자를 복붙하거나 스크린샷을 올리면, AI가 자동으로 파싱하여 거래 데이터로 저장. 기존 Excel 업로드와 병행.
+**Narrowest Wedge (Phase B):** 웹에서 금융 문자를 복붙하거나 스크린샷을 올리면, AI가 자동으로 파싱하여 거래 데이터로 저장. Excel/PDF 업로드 경로는 제거됐다.
 
 ## Constraints
 

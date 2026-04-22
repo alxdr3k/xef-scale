@@ -54,7 +54,7 @@ CategoryMapping.find_for_merchant(workspace, merchant)
 ```
 
 **source 필드의 의미**:
-- `import`: CSV/Excel 파일에서 가져온 매핑
+- `import`: 업로드/파싱 과정에서 학습된 매핑
 - `gemini`: Gemini AI가 분류한 결과
 - `manual`: 사용자가 직접 지정
 

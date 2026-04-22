@@ -57,13 +57,7 @@ gem "pundit"
 # Pagination (pinned to 6.x for Backend/Frontend API compatibility)
 gem "pagy", "~> 6.0"
 
-# File parsing
-gem "roo"                    # Excel/CSV parsing
-gem "roo-xls"                # Old .xls format support
-gem "pdf-reader"             # PDF text extraction
-gem "ferrum"                 # Headless Chrome for encrypted HTML parsing
-
-# AI parsing uses Gemini Flash via direct HTTP (Net::HTTP)
+# AI parsing (text + Gemini Vision for screenshots) uses Gemini via direct HTTP (Net::HTTP)
 
 # Code coverage
 gem "simplecov", require: false, group: :test

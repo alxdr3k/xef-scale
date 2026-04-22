@@ -1,16 +1,14 @@
 # Expense Tracker (지출 추적 앱)
 
-A Rails 8 application for tracking expenses by automatically parsing financial statements from Korean banks and credit cards.
+A Rails 8 application for tracking expenses from Korean financial statements. Users add transactions by pasting financial SMS/text or uploading screenshots of card statements, and the system parses them with Gemini (text + vision).
 
 ## Features
 
 - **Workspace Management**: Create and manage multiple workspaces for organizing expenses
 - **Transaction Management**: Track, filter, and categorize expenses
-- **File Parsing**: Automatically parse statements from Korean financial institutions:
-  - 신한카드 (Shinhan Card)
-  - 하나카드 (Hana Card)
-  - 토스뱅크 (Toss Bank)
-  - 카카오뱅크 (Kakao Bank)
+- **Two import paths**:
+  - **Text paste**: Paste card/bank SMS and Gemini Flash extracts transactions
+  - **Screenshot upload**: Upload card statement screenshots (JPG/PNG/WEBP/HEIC) and Gemini Vision extracts transactions
 - **Allowance Tracking**: Mark transactions as allowance for personal budget tracking
 - **Member Collaboration**: Invite team members with different permission levels
 - **Export**: Export transactions to CSV format
@@ -24,13 +22,14 @@ A Rails 8 application for tracking expenses by automatically parsing financial s
 - **Hotwire** (Turbo + Stimulus)
 - **Devise** + OmniAuth (authentication with Google OAuth2)
 - **Pagy** 6.x (pagination)
+- **Gemini** (Flash for text, Vision for screenshots) via direct HTTP
 
 ## Requirements
 
 - Ruby 3.3.10+
-- Python 3.10+ (for Excel parsing)
 - Bun (for JavaScript/CSS bundling)
 - SQLite3
+- `GEMINI_API_KEY` environment variable
 
 ## Setup
 
@@ -46,27 +45,21 @@ A Rails 8 application for tracking expenses by automatically parsing financial s
    bun install
    ```
 
-3. Setup Python virtual environment (for Excel parsing):
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   pip install -r scripts/requirements.txt
-   ```
-
-4. Setup database:
+3. Setup database:
    ```bash
    rails db:create db:migrate db:seed
    ```
 
-5. Configure Google OAuth (for authentication):
+4. Configure Google OAuth (for authentication):
    - Create credentials at [Google Cloud Console](https://console.cloud.google.com/)
    - Set environment variables:
      ```bash
      export GOOGLE_CLIENT_ID="your-client-id"
      export GOOGLE_CLIENT_SECRET="your-client-secret"
+     export GEMINI_API_KEY="your-gemini-api-key"
      ```
 
-6. Start the server:
+5. Start the server:
    ```bash
    bin/dev
    ```
@@ -77,8 +70,6 @@ A Rails 8 application for tracking expenses by automatically parsing financial s
 bundle exec rails test
 ```
 
-Test coverage: ~80% (line coverage)
-
 ## Project Structure
 
 ```
@@ -87,9 +78,12 @@ app/
 ├── models/           # ActiveRecord models
 ├── views/            # ERB templates
 ├── helpers/          # View helpers
-├── jobs/             # Background jobs (file parsing)
+├── jobs/             # Background jobs (image parsing)
 └── services/         # Business logic
-    └── parsers/      # Institution-specific parsers
+    ├── ai_text_parser.rb             # Gemini Flash text parser
+    ├── image_statement_parser.rb     # Screenshot parser wrapper
+    ├── gemini_vision_parser_service.rb # Gemini Vision API client
+    └── gemini_category_service.rb    # Gemini-based category suggestions
 
 test/
 ├── controllers/      # Controller tests
@@ -104,17 +98,24 @@ test/
 - **Workspace**: Container for transactions and members
 - **Transaction**: Individual expense records
 - **Category**: Transaction categorization with keyword matching
-- **ProcessedFile**: Uploaded financial statement files
-- **ParsingSession**: File parsing job tracking
+- **ProcessedFile**: Uploaded statement screenshots (image files only)
+- **ParsingSession**: Parsing job tracking (source: text paste or image upload)
 - **WorkspaceInvitation**: Team member invitations
 
-## File Parsing
+## Import flow
 
-1. Upload a statement file (Excel, CSV, or PDF)
-2. System identifies the financial institution
-3. Parser extracts transaction data
-4. Duplicate detection prevents redundant entries
-5. Transactions are auto-categorized based on merchant keywords
+Two entry points, same review pipeline:
+
+1. **Text paste** → `AiTextParser` (Gemini Flash) → `pending_review` transactions
+2. **Screenshot upload (JPG/PNG/WEBP/HEIC)** → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision) → `pending_review` transactions
+
+Then:
+
+3. Auto-categorization runs via `CategoryMapping` + `Category` keyword match; uncategorized merchants fall back to `GeminiCategoryService`
+4. Duplicate detection creates `DuplicateConfirmation` records for review
+5. User reviews the session and commits — pending duplicates must be resolved first
+
+Excel, PDF, CSV, and HTML statements are **not** supported. Only image screenshots.
 
 ## License
 
