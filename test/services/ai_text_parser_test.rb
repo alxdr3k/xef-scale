@@ -115,7 +115,7 @@ class AiTextParserTest < ActiveSupport::TestCase
     assert_equal 3, tx[:installment_total]
   end
 
-  test "extract_transactions handles cancellation" do
+  test "extract_transactions stores cancellation as negative amount" do
     parser = AiTextParser.new(api_key: "test_key")
 
     fake_response = {
@@ -143,6 +143,36 @@ class AiTextParserTest < ActiveSupport::TestCase
     transactions = parser.send(:extract_transactions, fake_response)
     tx = transactions.first
     assert_equal true, tx[:is_cancel]
+    assert_equal(-50000, tx[:amount], "취소 거래는 음수 금액으로 저장되어야 함")
+  end
+
+  test "extract_transactions negates even when model returns already-negative amount" do
+    parser = AiTextParser.new(api_key: "test_key")
+
+    fake_response = {
+      "candidates" => [ {
+        "content" => {
+          "parts" => [ {
+            "text" => {
+              transactions: [
+                {
+                  date: "2026-03-15",
+                  merchant: "스타벅스강남점",
+                  amount: -50000,
+                  institution: "신한카드",
+                  payment_type: "lump_sum",
+                  is_cancel: true,
+                  confidence: 0.92
+                }
+              ]
+            }.to_json
+          } ]
+        }
+      } ]
+    }
+
+    tx = parser.send(:extract_transactions, fake_response).first
+    assert_equal(-50000, tx[:amount], "모델이 이미 음수를 줬어도 결과는 음수 한 번만 적용")
   end
 
   test "extract_transactions handles multiple transactions" do

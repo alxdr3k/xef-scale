@@ -85,9 +85,9 @@ class AiTextParser
       - confidence: 파싱 신뢰도 (0.0~1.0)
 
       규칙:
-      1. 금액에서 "원", 콤마를 제거하고 정수로 변환
+      1. 금액에서 "원", 콤마를 제거하고 양의 정수로 변환 (부호는 시스템이 붙입니다)
       2. 날짜에 연도가 없으면 #{current_year}년으로 설정
-      3. 승인취소/취소 문자는 is_cancel: true
+      3. 승인취소/취소/환불 문자는 is_cancel: true (amount는 원래 결제액을 양수로 그대로 두세요)
       4. 텍스트에 여러 거래가 있으면 모두 추출
       5. 거래가 아닌 텍스트(광고, 안내 등)는 무시
       6. 확실하지 않은 필드는 null로 설정
@@ -163,18 +163,22 @@ class AiTextParser
     transactions = parsed["transactions"] || []
 
     transactions.map do |tx|
+      is_cancel = tx["is_cancel"] || false
+      amount = tx["amount"].to_i.abs
+      amount = -amount if is_cancel
+
       {
         date: parse_date(tx["date"]),
         merchant: tx["merchant"]&.strip,
-        amount: tx["amount"].to_i,
+        amount: amount,
         institution: tx["institution"]&.strip,
         payment_type: tx["payment_type"] || "lump_sum",
         installment_month: tx["installment_month"],
         installment_total: tx["installment_total"],
-        is_cancel: tx["is_cancel"] || false,
+        is_cancel: is_cancel,
         confidence: tx["confidence"]&.to_f || 0.0
       }
-    end.select { |tx| tx[:date].present? && tx[:amount].positive? }
+    end.select { |tx| tx[:date].present? && tx[:amount] != 0 }
   rescue JSON::ParserError => e
     Rails.logger.error "[AiTextParser] JSON parse error: #{e.message}"
     []
