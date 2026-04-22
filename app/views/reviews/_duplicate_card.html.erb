@@ -4,8 +4,25 @@
   <% merchant_diff = original.merchant != new_tx.merchant %>
   <% institution_diff = original.financial_institution_id != new_tx.financial_institution_id %>
   <% category_diff = original.category_id != new_tx.category_id %>
+  <% confidence = confirmation.match_confidence.presence || "medium" %>
+  <% confidence_label, confidence_classes = case confidence
+                                            when "high"
+                                              [ "중복 가능성 높음", "bg-red-100 text-red-700 border-red-200" ]
+                                            when "low"
+                                              [ "중복 가능성 낮음", "bg-gray-100 text-gray-600 border-gray-200" ]
+                                            else
+                                              [ "중복 가능성 보통", "bg-amber-100 text-amber-700 border-amber-200" ]
+                                            end %>
   <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
        data-duplicate-review-target="card">
+    <div class="px-4 pt-3 pb-1 flex items-center justify-between">
+      <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border <%= confidence_classes %>">
+        <%= confidence_label %>
+        <% if confirmation.match_score %>
+          <span class="text-[10px] font-normal opacity-75">(<%= confirmation.match_score %>점)</span>
+        <% end %>
+      </span>
+    </div>
     <!-- Comparison Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
       <!-- Original Transaction (Left) -->

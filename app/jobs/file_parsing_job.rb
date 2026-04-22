@@ -34,12 +34,14 @@ class FileParsingJob < ApplicationJob
 
           uncategorized_transactions << transaction if transaction.category_id.nil?
 
-          duplicate = find_duplicate(workspace, transaction)
-          if duplicate
+          match = DuplicateDetector.new(workspace, transaction).find_match
+          if match
             parsing_session.duplicate_confirmations.create!(
-              original_transaction: duplicate,
+              original_transaction: match.transaction,
               new_transaction: transaction,
-              status: "pending"
+              status: "pending",
+              match_confidence: match.confidence,
+              match_score: match.score
             )
             stats[:duplicate] += 1
           end
@@ -168,21 +170,6 @@ class FileParsingJob < ApplicationJob
   rescue StandardError => e
     Rails.logger.error "[FileParsingJob] Gemini API 오류: #{e.message}"
     0
-  end
-
-  def find_duplicate(workspace, transaction)
-    scope = workspace.transactions
-                     .active
-                     .where(date: transaction.date, amount: transaction.amount)
-                     .where.not(id: transaction.id)
-
-    if transaction.installment_month.present?
-      scope = scope.where(installment_month: transaction.installment_month)
-    else
-      scope = scope.where(installment_month: nil)
-    end
-
-    scope.first
   end
 
   def create_failure_notifications(parsing_session)

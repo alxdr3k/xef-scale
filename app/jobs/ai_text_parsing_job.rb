@@ -19,12 +19,14 @@ class AiTextParsingJob < ApplicationJob
         begin
           transaction = create_transaction(workspace, tx_data, parsing_session)
 
-          duplicate = find_duplicate(workspace, transaction)
-          if duplicate
+          match = DuplicateDetector.new(workspace, transaction).find_match
+          if match
             parsing_session.duplicate_confirmations.create!(
-              original_transaction: duplicate,
+              original_transaction: match.transaction,
               new_transaction: transaction,
-              status: "pending"
+              status: "pending",
+              match_confidence: match.confidence,
+              match_score: match.score
             )
             stats[:duplicate] += 1
           end
@@ -88,15 +90,6 @@ class AiTextParsingJob < ApplicationJob
     return mapping.category if mapping
 
     workspace.categories.find { |c| c.matches?(merchant) }
-  end
-
-  def find_duplicate(workspace, transaction)
-    workspace.transactions
-             .active
-             .where(date: transaction.date, amount: transaction.amount)
-             .where.not(id: transaction.id)
-             .where(installment_month: nil)
-             .first
   end
 
   def create_completion_notifications(parsing_session)

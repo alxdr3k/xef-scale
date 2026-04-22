@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_22_090100) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_22_100000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -111,6 +111,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_22_090100) do
 
   create_table "duplicate_confirmations", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "match_confidence", default: "medium", null: false
+    t.integer "match_score"
     t.integer "new_transaction_id", null: false
     t.integer "original_transaction_id", null: false
     t.integer "parsing_session_id", null: false
