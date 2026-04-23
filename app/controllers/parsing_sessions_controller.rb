@@ -47,6 +47,8 @@ class ParsingSessionsController < ApplicationController
       return
     end
 
+    return unless require_ai_consent!
+
     unless @workspace.ai_text_parsing_enabled?
       redirect_to workspace_parsing_sessions_path(@workspace),
                   alert: "AI 문자 파싱이 비활성화되어 있습니다. 워크스페이스 설정에서 활성화한 뒤 다시 시도해 주세요."
@@ -73,6 +75,8 @@ class ParsingSessionsController < ApplicationController
       redirect_to workspace_parsing_sessions_path(@workspace), alert: "파일을 선택해 주세요."
       return
     end
+
+    return unless require_ai_consent!
 
     unless @workspace.ai_image_parsing_enabled?
       redirect_to workspace_parsing_sessions_path(@workspace),
@@ -156,5 +160,17 @@ class ParsingSessionsController < ApplicationController
 
   def set_parsing_session
     @parsing_session = @workspace.parsing_sessions.find(params[:id])
+  end
+
+  # Hard gate: we will not send SMS text or screenshots to an external model
+  # until the workspace has explicitly acknowledged the AI consent notice on
+  # the settings page. Returns true if the caller may proceed, false if a
+  # redirect has already been issued.
+  def require_ai_consent!
+    return true unless @workspace.ai_consent_required?
+
+    redirect_to settings_workspace_path(@workspace),
+                alert: "AI 기능을 사용하려면 워크스페이스 설정에서 외부 AI 사용 동의가 필요합니다."
+    false
   end
 end

@@ -200,8 +200,12 @@ class TransactionsController < ApplicationController
     # Convert and validate value
     case field
     when "amount"
+      # Cancellations/refunds are stored as negative integers (AiTextParser
+      # marks 승인취소/환불 with is_cancel: true and flips the sign). Inline
+      # edits must accept negatives to stay consistent; only zero and
+      # non-integer input are rejected here.
       value = Integer(value, exception: false)
-      if value.nil? || value <= 0
+      if value.nil? || value == 0
         head :unprocessable_entity
         return
       end

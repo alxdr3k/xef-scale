@@ -39,18 +39,18 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "show displays recent transactions section" do
-    get dashboard_path
+  test "monthly view displays recent transactions section" do
+    get monthly_dashboard_path
     assert_response :success
     assert_select "h2", text: /최근 거래/
   end
 
-  test "monthly dashboard ignores out-of-range month param instead of 500ing" do
+  test "dashboard ignores out-of-range month param instead of 500ing" do
     get dashboard_path, params: { year: 2024, month: 13 }
     assert_response :success
   end
 
-  test "monthly dashboard ignores non-integer date params" do
+  test "dashboard ignores non-integer date params" do
     get dashboard_path, params: { year: "abc", month: "xyz" }
     assert_response :success
   end
@@ -68,7 +68,7 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
       status: "committed"
     )
 
-    get dashboard_path, params: { year: past.year, month: past.month }
+    get monthly_dashboard_path, params: { year: past.year, month: past.month }
 
     assert_response :success
     expected_denominator = Date.new(past.year, past.month, 1).end_of_month.day
@@ -84,7 +84,7 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
       status: "committed"
     )
 
-    get dashboard_path, params: { year: Date.current.year, month: Date.current.month }
+    get monthly_dashboard_path, params: { year: Date.current.year, month: Date.current.month }
 
     assert_response :success
     assert_equal Date.current.day, controller.instance_variable_get(:@daily_average_denominator)
@@ -113,10 +113,72 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "calendar dashboard counts pending duplicate confirmations per day" do
+    target = Date.current.beginning_of_month + 4.days
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    original = @workspace.transactions.create!(
+      date: target,
+      amount: 5_000,
+      merchant: "스타벅스",
+      status: "committed"
+    )
+    new_tx = @workspace.transactions.create!(
+      date: target,
+      amount: 5_000,
+      merchant: "스타벅스",
+      status: "pending_review",
+      parsing_session: session
+    )
+    DuplicateConfirmation.create!(
+      parsing_session: session,
+      original_transaction: original,
+      new_transaction: new_tx,
+      status: "pending"
+    )
+
+    get calendar_dashboard_path, params: { year: target.year, month: target.month }
+
+    assert_response :success
+    duplicate_per_day = controller.instance_variable_get(:@duplicate_per_day)
+    assert_equal 1, duplicate_per_day[target]
+  end
+
+  test "calendar dashboard duplicate counts ignore resolved confirmations" do
+    target = Date.current.beginning_of_month + 5.days
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    original = @workspace.transactions.create!(
+      date: target, amount: 3_200, merchant: "CU", status: "committed"
+    )
+    new_tx = @workspace.transactions.create!(
+      date: target, amount: 3_200, merchant: "CU", status: "pending_review",
+      parsing_session: session
+    )
+    DuplicateConfirmation.create!(
+      parsing_session: session,
+      original_transaction: original,
+      new_transaction: new_tx,
+      status: "keep_new"
+    )
+
+    get calendar_dashboard_path, params: { year: target.year, month: target.month }
+
+    assert_response :success
+    duplicate_per_day = controller.instance_variable_get(:@duplicate_per_day)
+    assert_nil duplicate_per_day[target]
+  end
+
   test "monthly dashboard daily average is hidden for future months" do
     future = Date.current.next_month.next_month
 
-    get dashboard_path, params: { year: future.year, month: future.month }
+    get monthly_dashboard_path, params: { year: future.year, month: future.month }
 
     assert_response :success
     assert_equal 0, controller.instance_variable_get(:@daily_average_denominator)
