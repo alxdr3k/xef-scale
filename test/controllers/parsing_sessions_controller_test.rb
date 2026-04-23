@@ -103,4 +103,28 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to workspace_parsing_sessions_path(@workspace)
     assert_match(/AI 스크린샷 파싱/, flash[:alert])
   end
+
+  test "text_parse refuses when AI consent has not been acknowledged" do
+    @workspace.update!(ai_consent_acknowledged_at: nil)
+
+    assert_no_difference "ParsingSession.count" do
+      post text_parse_workspace_parsing_sessions_path(@workspace),
+           params: { text: "신한카드 1,000원 사용 마라탕" }
+    end
+
+    assert_redirected_to settings_workspace_path(@workspace)
+    assert_match(/외부 AI 사용 동의/, flash[:alert])
+  end
+
+  test "create refuses when AI consent has not been acknowledged" do
+    @workspace.update!(ai_consent_acknowledged_at: nil)
+    file = fixture_file_upload("test_statement.png", "image/png")
+
+    assert_no_difference "ProcessedFile.count" do
+      post workspace_parsing_sessions_path(@workspace), params: { files: [ file ] }
+    end
+
+    assert_redirected_to settings_workspace_path(@workspace)
+    assert_match(/외부 AI 사용 동의/, flash[:alert])
+  end
 end

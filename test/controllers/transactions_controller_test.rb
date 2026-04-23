@@ -246,4 +246,26 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     get workspace_transactions_path(@workspace, year: nil, month: nil)
     assert_response :success
   end
+
+  test "inline_update accepts negative amount for cancellations" do
+    patch inline_update_workspace_transaction_path(@workspace, @transaction),
+          params: { field: "amount", value: "-5000" },
+          as: :json
+    assert_response :success
+    assert_equal(-5000, @transaction.reload.amount)
+  end
+
+  test "inline_update rejects zero amount" do
+    patch inline_update_workspace_transaction_path(@workspace, @transaction),
+          params: { field: "amount", value: "0" },
+          as: :json
+    assert_response :unprocessable_entity
+  end
+
+  test "inline_update rejects non-integer amount" do
+    patch inline_update_workspace_transaction_path(@workspace, @transaction),
+          params: { field: "amount", value: "abc" },
+          as: :json
+    assert_response :unprocessable_entity
+  end
 end

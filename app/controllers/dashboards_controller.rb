@@ -109,12 +109,18 @@ class DashboardsController < ApplicationController
                                       .count("DISTINCT transactions.id")
                                       .transform_keys { |d| d.is_a?(String) ? Date.parse(d) : d }
 
+    # Use an explicit alias so the query stays correct even if a future
+    # change joins the transactions table a second time (e.g. via
+    # :original_transaction). Without the alias Rails may silently rename
+    # the :new_transaction join and break the `transactions.date`
+    # reference.
     @duplicate_per_day = DuplicateConfirmation
-                           .joins(:parsing_session, :new_transaction)
+                           .joins(:parsing_session)
+                           .joins("INNER JOIN transactions AS new_transactions ON new_transactions.id = duplicate_confirmations.new_transaction_id")
                            .where(parsing_sessions: { workspace_id: @workspace.id })
                            .where(status: "pending")
-                           .where(transactions: { date: start_date..end_date })
-                           .group("transactions.date")
+                           .where("new_transactions.date BETWEEN ? AND ?", start_date, end_date)
+                           .group("new_transactions.date")
                            .count
                            .transform_keys { |d| d.is_a?(String) ? Date.parse(d) : d }
 

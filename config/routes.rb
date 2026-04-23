@@ -18,7 +18,7 @@ Rails.application.routes.draw do
 
   # Authenticated routes
   authenticated :user do
-    root "dashboards#monthly", as: :authenticated_root
+    root "dashboards#calendar", as: :authenticated_root
   end
 
   # Default root
@@ -98,7 +98,7 @@ Rails.application.routes.draw do
     get "category_transactions/:category_id", action: :category_transactions, as: :category_transactions
     get "calendar_day/:date", action: :calendar_day, as: :calendar_day
   end
-  get "dashboard", to: "dashboards#monthly", as: :dashboard
+  get "dashboard", to: "dashboards#calendar", as: :dashboard
 
   # User Settings
   resource :user_settings, only: [ :show, :update ], path: "settings"

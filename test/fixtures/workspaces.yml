@@ -3,7 +3,9 @@
 main_workspace:
   name: 가계부
   owner: admin
+  ai_consent_acknowledged_at: <%= 1.day.ago %>
 
 other_workspace:
   name: 회사 경비
   owner: other_user
+  ai_consent_acknowledged_at: <%= 1.day.ago %>
