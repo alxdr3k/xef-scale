@@ -94,7 +94,9 @@ Rails.application.routes.draw do
     get :monthly, action: :monthly
     get :yearly, action: :yearly
     get :recurring, action: :recurring
+    get :calendar, action: :calendar
     get "category_transactions/:category_id", action: :category_transactions, as: :category_transactions
+    get "calendar_day/:date", action: :calendar_day, as: :calendar_day
   end
   get "dashboard", to: "dashboards#monthly", as: :dashboard
 

@@ -11,14 +11,7 @@ class TransactionsController < ApplicationController
     @month = sanitize_month(params[:month])
 
     transactions = @workspace.transactions.active.excluding_allowance.includes(:category, :financial_institution, parsing_session: :processed_file)
-
-    # Filters
-    transactions = transactions.for_year(@year) if @year && @month.nil?
-    transactions = transactions.for_month(@year, @month) if @year && @month.present?
-    transactions = transactions.by_category(params[:category_id]) if params[:category_id].present?
-    transactions = transactions.by_institution(params[:institution_id]) if params[:institution_id].present?
-    transactions = transactions.search(params[:q]) if params[:q].present?
-
+    transactions = apply_index_filters(transactions, year: @year, month: @month)
     transactions = transactions.order(date: :desc, created_at: :desc)
 
     @pagy, @transactions = pagy(transactions, items: 50)
@@ -145,17 +138,36 @@ class TransactionsController < ApplicationController
     category_id = params[:category_id].presence
     old_category_id = @transaction.category_id
 
-    @transaction.update(category_id: category_id)
-    @categories = @workspace.categories.order(:name)
-
-    # 카테고리가 변경되었으면 매핑 생성
-    if category_id.present? && category_id.to_i != old_category_id
-      create_category_mapping(@transaction, @transaction.category)
+    if category_id.present? && !@workspace.categories.exists?(id: category_id)
+      respond_to do |format|
+        format.turbo_stream { head :unprocessable_entity }
+        format.json do
+          render json: { success: false, errors: [ "다른 워크스페이스의 카테고리는 사용할 수 없습니다." ] },
+                 status: :unprocessable_entity
+        end
+      end
+      return
     end
 
-    respond_to do |format|
-      format.turbo_stream
-      format.json { render json: { success: true } }
+    if @transaction.update(category_id: category_id)
+      @categories = @workspace.categories.order(:name)
+
+      if category_id.present? && category_id.to_i != old_category_id
+        create_category_mapping(@transaction, @transaction.category)
+      end
+
+      respond_to do |format|
+        format.turbo_stream
+        format.json { render json: { success: true } }
+      end
+    else
+      respond_to do |format|
+        format.turbo_stream { head :unprocessable_entity }
+        format.json do
+          render json: { success: false, errors: @transaction.errors.full_messages },
+                 status: :unprocessable_entity
+        end
+      end
     end
   end
 
@@ -287,14 +299,11 @@ class TransactionsController < ApplicationController
   end
 
   def export
-    transactions = @workspace.transactions.active.includes(:category, :financial_institution, parsing_session: :processed_file)
-
     year = sanitize_year(params[:year])
     month = sanitize_month(params[:month])
 
-    if year
-      transactions = month ? transactions.for_month(year, month) : transactions.for_year(year)
-    end
+    transactions = @workspace.transactions.active.excluding_allowance.includes(:category, :financial_institution, parsing_session: :processed_file)
+    transactions = apply_index_filters(transactions, year: year, month: month)
 
     respond_to do |format|
       format.csv do
@@ -419,6 +428,15 @@ class TransactionsController < ApplicationController
     return nil if description.blank?
 
     description.strip.presence
+  end
+
+  def apply_index_filters(scope, year:, month:)
+    scope = scope.for_year(year) if year && month.nil?
+    scope = scope.for_month(year, month) if year && month.present?
+    scope = scope.by_category(params[:category_id]) if params[:category_id].present?
+    scope = scope.by_institution(params[:institution_id]) if params[:institution_id].present?
+    scope = scope.search(params[:q]) if params[:q].present?
+    scope
   end
 
   def sanitize_year(value)

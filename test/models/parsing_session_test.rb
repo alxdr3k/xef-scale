@@ -285,4 +285,42 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert new_tx.committed?
     assert_not new_tx.deleted
   end
+
+  test "commit_summary reports counts the user can verify after commit" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "text_paste", status: "completed", review_status: "pending_review",
+      total_count: 4, success_count: 4
+    )
+    keep = workspace.transactions.create!(
+      date: Date.current, amount: 1000, status: "pending_review", parsing_session: session
+    )
+    workspace.transactions.create!(
+      date: Date.current, amount: 2000, status: "pending_review", parsing_session: session,
+      category: categories(:food)
+    )
+    excluded = workspace.transactions.create!(
+      date: Date.current, amount: 3000, status: "pending_review", parsing_session: session
+    )
+    excluded.rollback!
+
+    original = workspace.transactions.create!(
+      date: Date.current, amount: 4000, status: "committed"
+    )
+    new_dup = workspace.transactions.create!(
+      date: Date.current, amount: 4000, status: "pending_review", parsing_session: session
+    )
+    session.duplicate_confirmations.create!(
+      original_transaction: original, new_transaction: new_dup, status: "keep_original"
+    )
+
+    assert session.commit_all!(users(:admin))
+
+    summary = session.commit_summary
+    assert_equal 2, summary[:committed], "keep + categorized commit; new_dup is rolled_back, excluded too"
+    assert_equal 2, summary[:excluded]
+    assert_equal 1, summary[:uncategorized], "keep tx has no category"
+    assert_equal 1, summary[:originals_kept]
+    assert_equal 0, summary[:originals_replaced]
+  end
 end

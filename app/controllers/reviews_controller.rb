@@ -31,8 +31,13 @@ class ReviewsController < ApplicationController
 
     if @parsing_session.commit_all!(current_user)
       check_budget_alerts
+      summary = @parsing_session.commit_summary
+      parts = [ "#{summary[:committed]}건의 거래가 확정되었습니다." ]
+      parts << "#{summary[:excluded]}건은 제외되었습니다." if summary[:excluded].positive?
+      parts << "중복 #{summary[:originals_kept]}건은 기존 거래만 남겼습니다." if summary[:originals_kept].positive?
+      parts << "분류 필요 #{summary[:uncategorized]}건." if summary[:uncategorized].positive?
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
-                  notice: "#{@parsing_session.transactions.committed.count}건의 거래가 확정되었습니다."
+                  notice: parts.join(" ")
     else
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
                   alert: "거래 확정에 실패했습니다."
@@ -91,9 +96,14 @@ class ReviewsController < ApplicationController
 
     case action
     when "delete"
-      count = transactions.count
-      transactions.find_each(&:soft_delete!)
-      notice = "#{count}건의 거래가 삭제되었습니다."
+      count = 0
+      transactions.find_each do |tx|
+        if tx.pending_review?
+          tx.rollback!
+          count += 1
+        end
+      end
+      notice = "#{count}건의 거래가 이번 가져오기에서 제외되었습니다."
     when "mark_allowance"
       count = 0
       transactions.find_each do |tx|

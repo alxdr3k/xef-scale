@@ -47,6 +47,12 @@ class ParsingSessionsController < ApplicationController
       return
     end
 
+    unless @workspace.ai_text_parsing_enabled?
+      redirect_to workspace_parsing_sessions_path(@workspace),
+                  alert: "AI 문자 파싱이 비활성화되어 있습니다. 워크스페이스 설정에서 활성화한 뒤 다시 시도해 주세요."
+      return
+    end
+
     parsing_session = @workspace.parsing_sessions.create!(
       source_type: "text_paste",
       status: "pending",
@@ -65,6 +71,12 @@ class ParsingSessionsController < ApplicationController
 
     if uploaded_files.empty?
       redirect_to workspace_parsing_sessions_path(@workspace), alert: "파일을 선택해 주세요."
+      return
+    end
+
+    unless @workspace.ai_image_parsing_enabled?
+      redirect_to workspace_parsing_sessions_path(@workspace),
+                  alert: "AI 스크린샷 파싱이 비활성화되어 있습니다. 워크스페이스 설정에서 활성화한 뒤 다시 시도해 주세요."
       return
     end
 

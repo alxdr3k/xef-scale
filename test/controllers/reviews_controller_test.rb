@@ -53,7 +53,54 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to review_workspace_parsing_session_path(@workspace, @parsing_session)
     assert_match(/종료된/, flash[:alert])
-    assert_not tx.reload.deleted
+    assert tx.reload.pending_review?
+    assert_not tx.deleted
+  end
+
+  test "bulk_update delete excludes pending transactions from import via rollback" do
+    @parsing_session.duplicate_confirmations.destroy_all
+    keep = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, status: "pending_review",
+      parsing_session: @parsing_session
+    )
+    drop = @workspace.transactions.create!(
+      date: Date.current, amount: 2000, status: "pending_review",
+      parsing_session: @parsing_session
+    )
+
+    post bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+         params: { transaction_ids: drop.id.to_s, bulk_action: "delete" }
+
+    assert_redirected_to review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert drop.reload.rolled_back?, "expected dropped tx to be rolled_back"
+    assert_not drop.deleted, "rollback should not soft-delete the row"
+
+    post commit_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert keep.reload.committed?
+    assert drop.reload.rolled_back?, "rolled-back tx must not be committed"
+  end
+
+  test "duplicate keep_new decision is skipped when new transaction is excluded" do
+    @parsing_session.duplicate_confirmations.destroy_all
+    original = transactions(:food_transaction)
+    original.update!(deleted: false, status: "committed")
+
+    new_tx = @workspace.transactions.create!(
+      date: original.date, amount: original.amount,
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    dc = @parsing_session.duplicate_confirmations.create!(
+      original_transaction: original, new_transaction: new_tx, status: "keep_new"
+    )
+
+    post bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+         params: { transaction_ids: new_tx.id.to_s, bulk_action: "delete" }
+    post commit_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_not original.reload.deleted, "original must survive when the new row was excluded"
+    assert new_tx.reload.rolled_back?
+    assert_equal "keep_new", dc.reload.status
   end
 
   test "bulk_resolve_duplicates is refused on finalized sessions" do

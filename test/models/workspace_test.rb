@@ -94,4 +94,22 @@ class WorkspaceTest < ActiveSupport::TestCase
       workspace.destroy
     end
   end
+
+  test "ai_consent_required? is true until acknowledged when any AI feature is enabled" do
+    workspace = Workspace.create!(name: "Consent", owner: users(:admin))
+    assert workspace.ai_consent_required?, "fresh workspace defaults AI on so consent is needed"
+
+    workspace.acknowledge_ai_consent!
+    assert_not workspace.ai_consent_required?
+  end
+
+  test "ai_consent_required? is false when every AI feature is disabled" do
+    workspace = Workspace.create!(
+      name: "All off", owner: users(:admin),
+      ai_text_parsing_enabled: false,
+      ai_image_parsing_enabled: false,
+      ai_category_suggestions_enabled: false
+    )
+    assert_not workspace.ai_consent_required?
+  end
 end

@@ -1,0 +1,96 @@
+<div class="max-w-7xl mx-auto">
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">대시보드</h1>
+    <p class="text-gray-600"><%= @workspace.name %> - <%= @year %>년 <%= @month %>월</p>
+  </div>
+
+  <%= render 'tabs' %>
+
+  <% prev_month = @month == 1 ? 12 : @month - 1 %>
+  <% prev_year = @month == 1 ? @year - 1 : @year %>
+  <% next_month = @month == 12 ? 1 : @month + 1 %>
+  <% next_year = @month == 12 ? @year + 1 : @year %>
+
+  <div class="flex items-center space-x-4 mb-6">
+    <%= link_to '← 이전 달', calendar_dashboard_path(year: prev_year, month: prev_month),
+        class: 'text-indigo-600 hover:text-indigo-800' %>
+    <span class="text-lg font-semibold text-gray-900"><%= @year %>년 <%= @month %>월</span>
+    <%= link_to '다음 달 →', calendar_dashboard_path(year: next_year, month: next_month),
+        class: 'text-indigo-600 hover:text-indigo-800' %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 bg-white shadow rounded-lg p-4">
+      <div class="grid grid-cols-7 text-xs font-medium text-gray-500 mb-2">
+        <% %w[일 월 화 수 목 금 토].each do |label| %>
+          <div class="px-1 py-2 text-center"><%= label %></div>
+        <% end %>
+      </div>
+
+      <div class="grid grid-cols-7 gap-1">
+        <% @calendar_weeks.flatten.each do |day| %>
+          <% in_month = day.month == @month %>
+          <% total = @daily_totals[day].to_i %>
+          <% review_count = @needs_review_per_day[day].to_i %>
+          <% duplicate_count = @duplicate_per_day[day].to_i %>
+          <% uncategorized_count = @uncategorized_per_day[day].to_i %>
+          <% selected = day == @selected_date %>
+          <% today = day == Date.current %>
+          <%= link_to calendar_dashboard_path(year: @year, month: @month, date: day.to_s),
+              class: "block min-h-[88px] p-2 rounded-md border text-left text-xs transition-colors " \
+                     "#{in_month ? 'bg-white' : 'bg-gray-50 text-gray-400'} " \
+                     "#{selected ? 'border-indigo-600 ring-1 ring-indigo-600' : 'border-gray-200 hover:border-indigo-300'}" do %>
+            <div class="flex items-center justify-between">
+              <span class="font-medium <%= today ? 'text-indigo-600' : '' %>"><%= day.day %></span>
+              <% if in_month && total.positive? %>
+                <span class="text-[11px] font-semibold text-gray-900"><%= number_to_currency(total, unit: '₩', precision: 0) %></span>
+              <% end %>
+            </div>
+            <% if in_month %>
+              <div class="mt-1 flex flex-wrap gap-1">
+                <% if review_count.positive? %>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-700">검토 <%= review_count %></span>
+                <% end %>
+                <% if duplicate_count.positive? %>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-red-100 text-red-700">중복 <%= duplicate_count %></span>
+                <% end %>
+                <% if uncategorized_count.positive? %>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-700">미분류 <%= uncategorized_count %></span>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-base font-semibold text-gray-900"><%= @selected_date.strftime('%Y.%m.%d') %></h2>
+        <%= link_to '월간 보기 →',
+            monthly_dashboard_path(year: @year, month: @month),
+            class: 'text-xs text-indigo-600 hover:text-indigo-800' %>
+      </div>
+      <% if @selected_day_transactions.any? %>
+        <ul class="divide-y divide-gray-100">
+          <% @selected_day_transactions.each do |tx| %>
+            <li class="py-2 flex items-start justify-between">
+              <div class="min-w-0 pr-2">
+                <div class="text-sm font-medium text-gray-900 truncate"><%= tx.merchant.presence || '내역 없음' %></div>
+                <div class="text-xs text-gray-500 truncate">
+                  <%= tx.category&.name || '미분류' %>
+                  <% if tx.financial_institution %>
+                    · <%= tx.financial_institution.name %>
+                  <% end %>
+                </div>
+              </div>
+              <div class="text-sm font-semibold text-gray-900 whitespace-nowrap"><%= number_to_currency(tx.amount, unit: '₩', precision: 0) %></div>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p class="text-sm text-gray-500 py-4 text-center">선택한 날짜에는 거래가 없습니다.</p>
+      <% end %>
+    </div>
+  </div>
+</div>

@@ -117,7 +117,7 @@ class ParsingSession < ApplicationRecord
 
     ActiveRecord::Base.transaction do
       apply_duplicate_decisions!
-      transactions.pending_review.find_each do |tx|
+      transactions.pending_review.where(deleted: false).find_each do |tx|
         tx.commit!(user)
       end
       update!(
@@ -164,6 +164,20 @@ class ParsingSession < ApplicationRecord
     transactions.pending_review.count
   end
 
+  # Snapshot of what this import actually did to the ledger after commit.
+  # Used by the post-commit banner so the user can see the diff (committed
+  # vs. excluded vs. duplicate decisions) instead of just a row count.
+  def commit_summary
+    {
+      committed: transactions.committed.count,
+      excluded: transactions.rolled_back.count,
+      uncategorized: transactions.committed.where(category_id: nil).count,
+      originals_replaced: duplicate_confirmations.where(status: "keep_new").count,
+      originals_kept: duplicate_confirmations.where(status: "keep_original").count,
+      duplicates_kept_both: duplicate_confirmations.where(status: "keep_both").count
+    }
+  end
+
   after_commit :broadcast_status_update, if: -> {
     saved_change_to_status? || saved_change_to_review_status?
   }
@@ -177,6 +191,13 @@ class ParsingSession < ApplicationRecord
   # committed data untouched.
   def apply_duplicate_decisions!
     duplicate_confirmations.resolved.find_each do |dc|
+      new_tx = dc.new_transaction
+      # If the user excluded the new transaction from this import (rolled back
+      # or soft-deleted during review), the duplicate decision no longer
+      # applies — there is no "new" row to keep, so the original should not be
+      # touched even when the prior decision was keep_new.
+      next if new_tx.rolled_back? || new_tx.deleted
+
       case dc.status
       when "keep_new"
         original = dc.original_transaction
@@ -185,7 +206,6 @@ class ParsingSession < ApplicationRecord
         # The new transaction is part of this session's pending_review set;
         # rolling it back keeps it out of the subsequent commit loop and out
         # of the `active` scope so no duplicate row is ever surfaced.
-        new_tx = dc.new_transaction
         new_tx.rollback! if new_tx.pending_review?
       end
     end

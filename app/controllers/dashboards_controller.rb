@@ -18,6 +18,8 @@ class DashboardsController < ApplicationController
     @recent_transactions = @transactions.limit(10)
     @budget = @workspace.budget
     @budget_progress = @budget&.progress_for_month(@year, @month)
+    @daily_average_denominator = daily_average_denominator(@year, @month)
+    @daily_average = @daily_average_denominator.zero? ? 0 : (@total_spending / @daily_average_denominator)
 
     render :monthly
   end
@@ -82,12 +84,107 @@ class DashboardsController < ApplicationController
     @recurring_patterns = detector.detect
   end
 
+  def calendar
+    @view_type = "calendar"
+    @year = sanitize_year(params[:year]) || Date.current.year
+    @month = sanitize_month(params[:month]) || Date.current.month
+
+    start_date = Date.new(@year, @month, 1)
+    end_date = start_date.end_of_month
+
+    daily_totals = @workspace.transactions
+                             .active
+                             .excluding_coupon
+                             .where(date: start_date..end_date)
+                             .group(:date)
+                             .sum(:amount)
+    @daily_totals = daily_totals.transform_keys { |d| d.is_a?(String) ? Date.parse(d) : d }
+
+    @needs_review_per_day = @workspace.parsing_sessions
+                                      .needs_review
+                                      .joins(:transactions)
+                                      .where(transactions: { date: start_date..end_date, deleted: false })
+                                      .where.not(transactions: { status: "rolled_back" })
+                                      .group("transactions.date")
+                                      .count("DISTINCT transactions.id")
+                                      .transform_keys { |d| d.is_a?(String) ? Date.parse(d) : d }
+
+    @duplicate_per_day = DuplicateConfirmation
+                           .joins(:parsing_session, :new_transaction)
+                           .where(parsing_sessions: { workspace_id: @workspace.id })
+                           .where(status: "pending")
+                           .where(transactions: { date: start_date..end_date })
+                           .group("transactions.date")
+                           .count
+                           .transform_keys { |d| d.is_a?(String) ? Date.parse(d) : d }
+
+    @uncategorized_per_day = @workspace.transactions
+                                       .active
+                                       .where(date: start_date..end_date, category_id: nil)
+                                       .group(:date)
+                                       .count
+                                       .transform_keys { |d| d.is_a?(String) ? Date.parse(d) : d }
+
+    @calendar_weeks = build_calendar_weeks(start_date, end_date)
+    @selected_date = sanitize_date(params[:date]) || Date.current
+    @selected_date = start_date if @selected_date < start_date || @selected_date > end_date
+
+    @selected_day_transactions = @workspace.transactions
+                                           .active
+                                           .where(date: @selected_date)
+                                           .includes(:category, :financial_institution)
+                                           .order(created_at: :desc)
+  end
+
+  def calendar_day
+    @date = sanitize_date(params[:date]) || Date.current
+    @selected_day_transactions = @workspace.transactions
+                                           .active
+                                           .where(date: @date)
+                                           .includes(:category, :financial_institution)
+                                           .order(created_at: :desc)
+
+    respond_to do |format|
+      format.turbo_stream
+      format.html { redirect_to calendar_dashboard_path(year: @date.year, month: @date.month, date: @date.to_s) }
+    end
+  end
+
   private
 
   def set_workspace
     @workspace = current_workspace
     unless @workspace
       redirect_to new_workspace_path, notice: "먼저 워크스페이스를 생성해 주세요."
+    end
+  end
+
+  def sanitize_date(value)
+    return nil if value.blank?
+    Date.parse(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
+  end
+
+  def build_calendar_weeks(start_date, end_date)
+    grid_start = start_date.beginning_of_week(:sunday)
+    grid_end = end_date.end_of_week(:sunday)
+    (grid_start..grid_end).each_slice(7).to_a
+  end
+
+  # Days that have already happened in the selected month. For the current
+  # month that's today's day-of-month; for past months it's the full month;
+  # for future months no spending has accrued yet so we return 0 (callers
+  # must guard against division by zero).
+  def daily_average_denominator(year, month)
+    today = Date.current
+    selected = Date.new(year, month, 1)
+    if selected.year == today.year && selected.month == today.month
+      today.day
+    elsif selected < today.beginning_of_month
+      selected.end_of_month.day
+    else
+      0
     end
   end
 

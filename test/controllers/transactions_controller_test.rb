@@ -151,6 +151,65 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "export honors category filter so it matches the index view" do
+    get export_workspace_transactions_path(@workspace, format: :csv, category_id: categories(:food).id)
+    assert_response :success
+    body = response.body
+    assert_includes body, transactions(:food_transaction).merchant
+    assert_not_includes body, transactions(:transport_transaction).merchant
+    assert_not_includes body, transactions(:shopping_transaction).merchant
+  end
+
+  test "export honors institution filter so it matches the index view" do
+    get export_workspace_transactions_path(@workspace, format: :csv, institution_id: financial_institutions(:hana_card).id)
+    assert_response :success
+    body = response.body
+    assert_includes body, transactions(:transport_transaction).merchant
+    assert_not_includes body, transactions(:food_transaction).merchant
+  end
+
+  test "export honors search query so it matches the index view" do
+    get export_workspace_transactions_path(@workspace, format: :csv, q: "마라탕")
+    assert_response :success
+    body = response.body
+    assert_includes body, transactions(:food_transaction).merchant
+    assert_not_includes body, transactions(:transport_transaction).merchant
+  end
+
+
+  test "quick_update_category sets the category and returns success" do
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: categories(:transport).id },
+          headers: { "Accept" => "application/json" }
+
+    assert_response :success
+    assert_equal categories(:transport).id, @transaction.reload.category_id
+    body = JSON.parse(response.body)
+    assert_equal true, body["success"]
+  end
+
+  test "quick_update_category rejects categories from other workspaces" do
+    foreign = categories(:other_category)
+    original_category_id = @transaction.category_id
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: foreign.id },
+          headers: { "Accept" => "application/json" }
+
+    assert_response :unprocessable_entity
+    body = JSON.parse(response.body)
+    assert_equal false, body["success"]
+    assert_equal original_category_id, @transaction.reload.category_id
+  end
+
+  test "quick_update_category clears category when blank" do
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: "" },
+          headers: { "Accept" => "application/json" }
+
+    assert_response :success
+    assert_nil @transaction.reload.category_id
+  end
 
   test "update with invalid params renders edit" do
     patch workspace_transaction_path(@workspace, @transaction), params: {

@@ -80,18 +80,43 @@
   <% end %>
 
   <% if @read_only && @parsing_session.review_committed? %>
+    <% summary = @parsing_session.commit_summary %>
     <div class="bg-white rounded-lg shadow p-4 mb-6">
-      <div class="flex justify-between items-center">
-        <div class="text-gray-600">
-          <span class="font-medium">확정일:</span>
-          <%= @parsing_session.committed_at&.strftime('%Y-%m-%d %H:%M') %>
+      <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div class="space-y-2 text-sm text-gray-700">
+          <div class="text-base font-semibold text-gray-900">
+            <%= summary[:committed] %>건이 거래 내역에 반영되었습니다.
+          </div>
+          <% if summary[:originals_replaced].positive? %>
+            <div>중복 <%= summary[:originals_replaced] %>건은 새 거래로 교체되었습니다.</div>
+          <% end %>
+          <% if summary[:originals_kept].positive? %>
+            <div>중복 <%= summary[:originals_kept] %>건은 기존 거래만 남겼습니다.</div>
+          <% end %>
+          <% if summary[:duplicates_kept_both].positive? %>
+            <div>중복 <%= summary[:duplicates_kept_both] %>건은 양쪽 모두 보관했습니다.</div>
+          <% end %>
+          <% if summary[:excluded].positive? %>
+            <div><%= summary[:excluded] %>건은 이번 가져오기에서 제외했습니다.</div>
+          <% end %>
+          <% if summary[:uncategorized].positive? %>
+            <div class="text-amber-700"><%= summary[:uncategorized] %>건은 분류가 필요합니다.</div>
+          <% end %>
+          <div class="text-xs text-gray-500 pt-1">
+            확정일: <%= @parsing_session.committed_at&.strftime('%Y-%m-%d %H:%M') %>
+          </div>
         </div>
-        <%= form_with url: rollback_workspace_parsing_session_path(@workspace, @parsing_session),
-            method: :post, class: 'inline-block', data: { turbo_confirm: '모든 거래를 롤백하시겠습니까? 이 작업은 되돌릴 수 없습니다.' } do %>
-          <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
-            전체 롤백
-          </button>
-        <% end %>
+        <div class="flex flex-wrap gap-2">
+          <%= link_to '거래 내역 보기',
+              workspace_transactions_path(@workspace, year: Date.current.year, month: Date.current.month),
+              class: 'px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700' %>
+          <%= form_with url: rollback_workspace_parsing_session_path(@workspace, @parsing_session),
+              method: :post, class: 'inline-block', data: { turbo_confirm: '이번 가져오기를 모두 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.' } do %>
+            <button type="submit" class="px-4 py-2 bg-white border border-red-600 text-red-600 rounded-lg hover:bg-red-50">
+              가져오기 되돌리기
+            </button>
+          <% end %>
+        </div>
       </div>
     </div>
   <% end %>

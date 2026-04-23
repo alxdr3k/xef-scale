@@ -57,6 +57,18 @@ class WorkspacesController < ApplicationController
   private
 
   def workspace_params
-    params.require(:workspace).permit(:name)
+    attrs = params.require(:workspace).permit(
+      :name,
+      :ai_text_parsing_enabled,
+      :ai_image_parsing_enabled,
+      :ai_category_suggestions_enabled
+    )
+
+    consent = params.dig(:workspace, :ai_consent_acknowledged)
+    if ActiveModel::Type::Boolean.new.cast(consent) && @workspace&.ai_consent_acknowledged_at.nil?
+      attrs[:ai_consent_acknowledged_at] = Time.current
+    end
+
+    attrs
   end
 end
