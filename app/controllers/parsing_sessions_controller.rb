@@ -10,7 +10,7 @@ class ParsingSessionsController < ApplicationController
                                   .includes(:processed_file, :duplicate_confirmations)
                                   .order(created_at: :desc)
 
-    @pagy, @parsing_sessions = pagy(@parsing_sessions, items: 20)
+    @pagy, @parsing_sessions = pagy(@parsing_sessions, limit: 20)
 
     # 아직 parsing_session이 생성되지 않은 pending/processing 파일들
     @pending_files = @workspace.processed_files

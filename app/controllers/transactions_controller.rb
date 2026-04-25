@@ -14,7 +14,7 @@ class TransactionsController < ApplicationController
     transactions = apply_index_filters(transactions, year: @year, month: @month)
     transactions = transactions.order(date: :desc, created_at: :desc)
 
-    @pagy, @transactions = pagy(transactions, items: 50)
+    @pagy, @transactions = pagy(transactions, limit: 50)
 
     # Stats
     @total_amount = transactions.excluding_coupon.sum(:amount)

@@ -55,7 +55,7 @@ gem "omniauth-rails_csrf_protection"
 gem "pundit"
 
 # Pagination (pinned to 6.x for Backend/Frontend API compatibility)
-gem "pagy", "~> 6.0"
+gem "pagy", "~> 9.4"
 
 # AI parsing (text + Gemini Vision for screenshots) uses Gemini via direct HTTP (Net::HTTP)
 
