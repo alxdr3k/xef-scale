@@ -5,7 +5,7 @@ class NotificationsController < ApplicationController
     @notifications = current_user.notifications
                                  .recent
                                  .includes(:workspace, :notifiable)
-    @pagy, @notifications = pagy(@notifications, items: 20)
+    @pagy, @notifications = pagy(@notifications, limit: 20)
 
     respond_to do |format|
       format.html
@@ -32,7 +32,7 @@ class NotificationsController < ApplicationController
       format.html { redirect_back(fallback_location: notifications_path) }
       format.turbo_stream {
         @notifications = current_user.notifications.recent.includes(:workspace, :notifiable)
-        @pagy, @notifications = pagy(@notifications, items: 20)
+        @pagy, @notifications = pagy(@notifications, limit: 20)
       }
       format.json { render json: { success: true } }
     end

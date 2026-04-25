@@ -8,7 +8,7 @@ class ReviewsController < ApplicationController
   def show
     @transactions = @parsing_session.reviewable_transactions
                                     .includes(:category, :financial_institution, :allowance_transaction)
-    @pagy, @transactions = pagy(@transactions, items: 50)
+    @pagy, @transactions = pagy(@transactions, limit: 50)
     @categories = @workspace.categories.order(:name)
     @institutions = FinancialInstitution.all
     @read_only = @parsing_session.review_committed? || @parsing_session.review_rolled_back? || @parsing_session.review_discarded?
