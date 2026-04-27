@@ -15,7 +15,7 @@ class ParsingSessionsController < ApplicationController
       month = params[:month].to_i
       if year.between?(2000, 2100) && month.between?(1, 12)
         range = Date.new(year, month).beginning_of_month..Date.new(year, month).end_of_month
-        @parsing_sessions = @parsing_sessions.where(created_at: range)
+        @parsing_sessions = @parsing_sessions.joins(:transactions).where(transactions: { date: range }).distinct
       end
     end
 
