@@ -31,12 +31,14 @@ test.describe('Transactions (거래 내역)', () => {
 
   test('컬럼 헤더가 현재 UI 순서와 일치한다', async ({ page }) => {
     // Financial institution column removed — now source-only metadata shown in details accordion.
+    // Column order: 날짜 / 내역 / 금액 / 카테고리 / 출처(source metadata) / 댓글
     const headers = page.locator('thead th');
     await expect(headers.nth(0)).toContainText('날짜');
     await expect(headers.nth(1)).toContainText('내역');
     await expect(headers.nth(2)).toContainText('금액');
     await expect(headers.nth(3)).toContainText('카테고리');
-    await expect(headers.nth(4)).toContainText('댓글');
+    await expect(headers.nth(4)).toContainText('출처');
+    await expect(headers.nth(5)).toContainText('댓글');
     await expect(page.locator('thead th:has-text("금융기관")')).not.toBeVisible();
   });
 
