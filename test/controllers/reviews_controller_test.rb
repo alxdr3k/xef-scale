@@ -155,6 +155,32 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
                  "total_commit_count는 페이지네이션 없이 전체 pending_review 수여야 함"
   end
 
+  test "show hides institution column and renders source metadata in popover" do
+    @parsing_session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "스타벅스",
+      amount: 5800,
+      status: "pending_review",
+      source_metadata: {
+        "source_channel" => "pasted_text",
+        "source_app_raw" => "KB Pay",
+        "source_institution_raw" => "KB국민카드"
+      }
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    assert_select "th", text: "금융기관", count: 0
+    assert_select "th", text: "출처", count: 1
+    assert_select "button[aria-label='가져온 출처 보기']", minimum: 1
+    assert_includes response.body, "KB Pay"
+    assert_includes response.body, "KB국민카드"
+    assert_includes response.body, "이 정보는 거래 분류나 예산 계산에 사용되지 않습니다."
+    assert_not_includes response.body, "금융기관 미확인"
+  end
+
   test "bulk_resolve_duplicates is refused on finalized sessions" do
     dc = @parsing_session.duplicate_confirmations.create!(
       original_transaction: transactions(:food_transaction),

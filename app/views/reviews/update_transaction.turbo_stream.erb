@@ -4,6 +4,5 @@
     locals: {
       transaction: @transaction,
       categories: @workspace.categories.order(:name),
-      institutions: FinancialInstitution.all,
       read_only: false
     } %>

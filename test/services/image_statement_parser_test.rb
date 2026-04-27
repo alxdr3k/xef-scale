@@ -49,6 +49,7 @@ class ImageStatementParserTest < ActiveSupport::TestCase
     assert_equal 5800, tx[:amount]
     assert_equal "lump_sum", tx[:payment_type]
     assert_equal "shinhan_card", tx[:institution_identifier]
+    assert_nil tx[:source_institution_raw]
   end
 
   test "normalizes Hash result wrapper with :transactions key" do
@@ -56,5 +57,18 @@ class ImageStatementParserTest < ActiveSupport::TestCase
     raw = { transactions: [ { date: "2026.01.15", merchant: "X", amount: 1000 } ] }
     result = parser.send(:normalize, raw)
     assert_equal 1, result.size
+  end
+
+  test "normalizes parser provided source institution separately from institution identifier hint" do
+    parser = ImageStatementParser.new(@processed_file, institution_identifier: "shinhan_card")
+    raw = [
+      { date: "2026.01.15", merchant: "스타벅스", amount: 5800, institution: "KB국민카드" }
+    ]
+
+    result = parser.send(:normalize, raw)
+
+    assert_equal 1, result.size
+    assert_equal "shinhan_card", result.first[:institution_identifier]
+    assert_equal "KB국민카드", result.first[:source_institution_raw]
   end
 end

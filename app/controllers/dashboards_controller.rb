@@ -10,7 +10,7 @@ class DashboardsController < ApplicationController
     @transactions = @workspace.transactions
                               .active
                               .for_month(@year, @month)
-                              .includes(:category, :financial_institution)
+                              .includes(:category)
                               .order(date: :desc)
 
     @total_spending = @transactions.excluding_coupon.sum(:amount)
@@ -33,7 +33,7 @@ class DashboardsController < ApplicationController
                               .active
                               .for_month(@year, @month)
                               .where(category_id: @category.id)
-                              .includes(:category, :financial_institution)
+                              .includes(:category)
                               .order(date: :desc)
                               .limit(10)
 
@@ -138,7 +138,7 @@ class DashboardsController < ApplicationController
     @selected_day_transactions = @workspace.transactions
                                            .active
                                            .where(date: @selected_date)
-                                           .includes(:category, :financial_institution)
+                                           .includes(:category)
                                            .order(created_at: :desc)
 
     # Action strip aggregates
@@ -153,7 +153,7 @@ class DashboardsController < ApplicationController
     @selected_day_transactions = @workspace.transactions
                                            .active
                                            .where(date: @date)
-                                           .includes(:category, :financial_institution)
+                                           .includes(:category)
                                            .order(created_at: :desc)
 
     respond_to do |format|

@@ -31,7 +31,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 
 1. 사용자가 `parsing_sessions/index`에서 텍스트 붙여넣기 폼에 SMS/문자 텍스트 입력 (≤ 10,000자).
 2. `ParsingSession`이 `source_type: "text_paste"`, `status: "pending"`, `review_status: "pending_review"`로 생성됨. 원문은 `notes` 컬럼에 저장.
-3. `AiTextParsingJob`이 `AiTextParser`로 Gemini Flash 호출. 응답을 `Transaction`(`source_type: "text_paste"`, `status: "pending_review"`)으로 정규화하여 저장.
+3. `AiTextParsingJob`이 `AiTextParser`로 Gemini Flash 호출. 응답을 `Transaction`(`source_type: "text_paste"`, `status: "pending_review"`)으로 정규화하여 저장한다. 금융기관/앱명은 `transactions.source_metadata` 안의 import hint로만 저장하며 핵심 도메인 필드로 승격하지 않는다.
 4. 각 거래에 대해 카테고리 매칭: `CategoryMapping.find_for_merchant` → `Category#matches?` (`Category.keyword`). **텍스트 경로는 Gemini 카테고리 폴백을 호출하지 않는다.**
 5. `DuplicateDetector`가 동일 워크스페이스의 기존 거래와 비교해 `DuplicateConfirmation`을 만든다.
 6. 사용자는 `reviews/show`에서 거래를 확인하고 중복을 해결한 뒤 `commit` 한다. 미해결 중복이 있으면 `ReviewsController#commit`이 거부한다.
@@ -40,7 +40,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 
 1. 사용자가 JPG/PNG/WEBP/HEIC 이미지를 업로드. `ProcessedFile`이 ActiveStorage로 저장되고 모델 레벨에서 확장자/콘텐츠 타입/매직바이트 검증을 통과해야 한다 (≤ 20MB).
 2. `FileParsingJob`이 `ImageStatementParser`(기본 `institution_identifier: "shinhan_card"`) → `GeminiVisionParserService`로 Gemini Vision 호출. 현재 프롬프트는 **신한카드 이용대금 명세서**에 맞춰져 있다.
-3. 파싱 결과는 `Transaction`(`source_type: "image_upload"`, `status: "pending_review"`)으로 저장.
+3. 파싱 결과는 `Transaction`(`source_type: "image_upload"`, `status: "pending_review"`)으로 저장한다. 스크린샷 경로도 `source_metadata`를 사용하지만, `institution_identifier` 같은 parser hint를 기본 UI에 노출하지 않는다.
 4. 카테고리 매칭은 3단계: `CategoryMapping` → `Category#matches?` → 미분류 잔여분에 대해 `GeminiCategoryService.suggest_categories_batch`로 일괄 추천 (워크스페이스의 `ai_category_suggestions_enabled?`가 true일 때).
 5. Gemini 분류 결과는 `CategoryMapping(source: "gemini")`로 저장되어 다음 동일 가맹점에서는 1단계에서 재사용된다.
 6. 중복 감지 → `DuplicateConfirmation` → 사용자 검토 → 커밋. 흐름은 텍스트 경로와 동일.
@@ -100,7 +100,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 | `Workspace` | 멀티테넌트 루트, AI 토글, 동의 시각 보관 |
 | `WorkspaceMembership` | 역할: `owner`, `co_owner`, `member_write`, `member_read` |
 | `WorkspaceInvitation` | 토큰 기반 초대 (`/join/:token`) |
-| `Transaction` | 거래 — `pending_review` / `committed` / `rolled_back`, `source_type` 5종, `payment_type` 3종 |
+| `Transaction` | 거래 — `pending_review` / `committed` / `rolled_back`, `source_type` 5종, `payment_type` 3종, `source_metadata` import hint |
 | `Category` / `CategoryMapping` | 카테고리 + 학습된 매핑 (4단계 우선순위) |
 | `ParsingSession` | 파싱 작업 컨테이너, `source_type: file_upload \| text_paste`, 검토 상태 머신 보유 |
 | `ProcessedFile` | 업로드된 이미지 파일 — 이미지 외 거부 |

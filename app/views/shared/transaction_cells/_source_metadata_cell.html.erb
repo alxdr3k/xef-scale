@@ -3,39 +3,61 @@
     This information is NOT used for categorisation or budget calculations. %>
 <% meta = transaction.source_metadata.presence %>
 <% ps   = transaction.parsing_session %>
+<% channel = meta&.[]("source_channel") %>
+<% app_raw = meta&.[]("source_app_raw").to_s.strip.presence %>
+<% institution_raw = meta&.[]("source_institution_raw").to_s.strip.presence %>
+<% sender_raw = meta&.[]("source_sender_raw").to_s.strip.presence %>
+<% masked_sender = sender_raw&.gsub(/\d(?=\d{4})/, "*") %>
 
-<td class="px-4 py-2 h-14 whitespace-nowrap text-sm text-gray-400">
+<td class="px-2 py-2 h-14 whitespace-nowrap text-center text-sm text-gray-400">
   <% if meta.present? || ps.present? %>
-    <details class="group/source">
-      <summary class="cursor-pointer list-none select-none hover:text-gray-600 transition-colors" title="가져온 출처 보기">
-        <svg class="w-4 h-4 inline-block opacity-50 group-open/source:opacity-75" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+    <div data-controller="source-popover" class="inline-block">
+      <button type="button"
+              data-action="click->source-popover#toggle:stop"
+              aria-label="가져온 출처 보기"
+              title="가져온 출처 보기"
+              class="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
         </svg>
-      </summary>
-      <div class="absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-60 text-xs text-gray-600 space-y-1.5">
+      </button>
+
+      <div data-source-popover-target="popover"
+           class="hidden fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-60 text-left text-xs text-gray-600 space-y-1.5">
         <div class="font-semibold text-gray-700 mb-1">가져온 출처</div>
 
-        <% if meta.present? %>
-          <% channel = meta["source_channel"] %>
-          <% if channel.present? %>
-            <div>
-              <span class="text-gray-400">입력 방식:</span>
-              <%= case channel
-                  when "pasted_text" then "텍스트 붙여넣기"
-                  when "screenshot"  then "스크린샷"
-                  when "manual"      then "직접 입력"
-                  else channel
-                  end %>
-            </div>
-          <% end %>
+        <% if channel.present? %>
+          <div>
+            <span class="text-gray-400">입력 방식:</span>
+            <%= case channel
+                when "pasted_text" then "텍스트 붙여넣기"
+                when "screenshot" then "스크린샷"
+                when "manual" then "직접 입력"
+                when "api" then "API"
+                else channel
+                end %>
+          </div>
+        <% end %>
 
-          <% inst_raw = meta["source_institution_raw"] %>
-          <% if inst_raw.present? %>
-            <div>
-              <span class="text-gray-400">추정 출처:</span>
-              <%= inst_raw %>
-            </div>
-          <% end %>
+        <% if app_raw.present? %>
+          <div>
+            <span class="text-gray-400">추정 출처:</span>
+            <%= app_raw %>
+          </div>
+        <% end %>
+
+        <% if institution_raw.present? %>
+          <div>
+            <span class="text-gray-400">원문 기관명:</span>
+            <%= institution_raw %>
+          </div>
+        <% end %>
+
+        <% if masked_sender.present? %>
+          <div>
+            <span class="text-gray-400">발신처:</span>
+            <%= masked_sender %>
+          </div>
         <% end %>
 
         <% if ps.present? %>
@@ -55,6 +77,6 @@
           이 정보는 거래 분류나 예산 계산에 사용되지 않습니다.
         </div>
       </div>
-    </details>
+    </div>
   <% end %>
 </td>

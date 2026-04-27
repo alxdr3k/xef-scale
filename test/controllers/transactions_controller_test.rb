@@ -1,4 +1,5 @@
 require "test_helper"
+require "csv"
 
 class TransactionsControllerTest < ActionDispatch::IntegrationTest
   setup do
@@ -34,9 +35,11 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "index filters by institution" do
+  test "index ignores legacy institution filter param" do
     get workspace_transactions_path(@workspace, institution_id: financial_institutions(:shinhan_card).id)
     assert_response :success
+    assert_includes response.body, transactions(:food_transaction).merchant
+    assert_includes response.body, transactions(:transport_transaction).merchant
   end
 
   test "index searches by query" do
@@ -57,6 +60,25 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
   test "index ignores out-of-range year instead of crashing" do
     get workspace_transactions_path(@workspace, year: 0, month: 1)
     assert_response :success
+  end
+
+  test "index hides financial institution UI and shows source popover only as metadata" do
+    @transaction.update!(
+      source_metadata: {
+        "source_channel" => "pasted_text",
+        "source_institution_raw" => "KB국민카드"
+      }
+    )
+
+    get workspace_transactions_path(@workspace)
+
+    assert_response :success
+    assert_select "label", text: "금융기관", count: 0
+    assert_select "th", text: "금융기관", count: 0
+    assert_select "th", text: "출처", count: 1
+    assert_select "button[aria-label='가져온 출처 보기']", minimum: 1
+    assert_includes response.body, "원문 기관명:"
+    assert_includes response.body, "KB국민카드"
   end
 
   test "export ignores out-of-range month instead of crashing" do
@@ -141,6 +163,14 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "text/csv; charset=utf-8", response.content_type
   end
 
+  test "export omits source and institution columns from default CSV" do
+    get export_workspace_transactions_path(@workspace, format: :csv)
+
+    assert_response :success
+    headers = CSV.parse(response.body, headers: true).headers
+    assert_equal [ "날짜", "내역", "금액", "분류", "메모" ], headers
+  end
+
   test "export filters by year" do
     get export_workspace_transactions_path(@workspace, format: :csv, year: Date.current.year)
     assert_response :success
@@ -160,12 +190,12 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes body, transactions(:shopping_transaction).merchant
   end
 
-  test "export honors institution filter so it matches the index view" do
+  test "export ignores legacy institution filter param" do
     get export_workspace_transactions_path(@workspace, format: :csv, institution_id: financial_institutions(:hana_card).id)
     assert_response :success
     body = response.body
     assert_includes body, transactions(:transport_transaction).merchant
-    assert_not_includes body, transactions(:food_transaction).merchant
+    assert_includes body, transactions(:food_transaction).merchant
   end
 
   test "export honors search query so it matches the index view" do

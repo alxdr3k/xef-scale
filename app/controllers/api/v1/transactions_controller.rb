@@ -28,7 +28,7 @@ module Api
         transactions = transactions.by_institution(params[:institution_id]) if params[:institution_id].present?
         transactions = transactions.search(params[:q]) if params[:q].present?
 
-        transactions = transactions.includes(:category, :financial_institution)
+        transactions = transactions.includes(:category)
                                    .order(date: :desc)
 
         page = [ (params[:page] || 1).to_i, 1 ].max

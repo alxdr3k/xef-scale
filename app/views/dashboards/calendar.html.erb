@@ -139,9 +139,6 @@
                   <div class="text-sm font-medium text-gray-900 truncate"><%= tx.merchant.presence || '내역 없음' %></div>
                   <div class="text-xs text-gray-500 truncate">
                     <%= tx.category&.name || '미분류' %>
-                    <% if tx.financial_institution %>
-                      · <%= tx.financial_institution.name %>
-                    <% end %>
                   </div>
                 </div>
                 <div class="text-sm font-semibold text-gray-900 whitespace-nowrap"><%= number_to_currency(tx.amount, unit: '₩', precision: 0) %></div>

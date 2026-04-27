@@ -130,9 +130,8 @@ class FileParsingJob < ApplicationJob
 
   def build_source_metadata(tx_data)
     meta = { "source_channel" => "screenshot" }
-    if tx_data[:institution_identifier].present?
-      meta["source_institution_raw"] = tx_data[:institution_identifier]
-    end
+    raw_institution = tx_data[:source_institution_raw].to_s.strip.presence
+    meta["source_institution_raw"] = raw_institution if raw_institution
     meta["parser_confidence"] = tx_data[:confidence].to_f if tx_data[:confidence].present?
     meta
   end

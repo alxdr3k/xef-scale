@@ -8,7 +8,7 @@ class AllowancesController < ApplicationController
 
     @allowance_transactions = current_user.allowance_transactions
                                           .for_month(@year, @month)
-                                          .includes(expense_transaction: [ :category, :financial_institution ])
+                                          .includes(expense_transaction: :category)
                                           .order("transactions.date DESC")
 
     @total_amount = @allowance_transactions.joins(:expense_transaction).sum("transactions.amount")

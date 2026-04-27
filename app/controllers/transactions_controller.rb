@@ -75,7 +75,7 @@ class TransactionsController < ApplicationController
           end
           # Reload to get updated allowance status
           @transaction = @workspace.transactions
-                                   .includes(:allowance_transaction, :category, :financial_institution)
+                                   .includes(:allowance_transaction, :category)
                                    .find(@transaction.id)
         end
       end
@@ -386,14 +386,13 @@ class TransactionsController < ApplicationController
   def generate_csv(transactions)
     require "csv"
     CSV.generate(headers: true, encoding: "UTF-8") do |csv|
-      csv << [ "날짜", "내역", "금액", "분류", "출처", "메모" ]
+      csv << [ "날짜", "내역", "금액", "분류", "메모" ]
       transactions.order(date: :desc).each do |tx|
         csv << [
           tx.formatted_date,
           csv_safe(tx.merchant),
           tx.amount,
           csv_safe(tx.category&.name),
-          csv_safe(tx.source_institution_raw),
           csv_safe(tx.notes)
         ]
       end
@@ -436,7 +435,6 @@ class TransactionsController < ApplicationController
     scope = scope.for_year(year) if year && month.nil?
     scope = scope.for_month(year, month) if year && month.present?
     scope = scope.by_category(params[:category_id]) if params[:category_id].present?
-    scope = scope.by_institution(params[:institution_id]) if params[:institution_id].present?
     scope = scope.search(params[:q]) if params[:q].present?
     scope = scope.where(category_id: nil) if params[:filter] == "uncategorized"
     scope
