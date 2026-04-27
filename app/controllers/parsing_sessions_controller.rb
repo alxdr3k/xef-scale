@@ -193,19 +193,30 @@ class ParsingSessionsController < ApplicationController
       end
       return unless require_ai_consent!
 
-      # text_paste 세션: 실패 세션 삭제 후 새 파싱 세션 생성 (idempotency)
-      source_type = @parsing_session.source_type
-      notes       = @parsing_session.notes
+      # text_paste 세션: 실패 세션 삭제 후 새 파싱 세션 생성 (idempotency + serialization)
       new_session = ActiveRecord::Base.transaction do
-        @parsing_session.destroy!
+        @parsing_session.lock!  # P2: concurrent retry serialization
         @workspace.parsing_sessions.create!(
-          source_type: source_type,
+          source_type: @parsing_session.source_type,
           status: "pending",
           review_status: "pending_review",
-          notes: notes
-        )
+          notes: @parsing_session.notes
+        ).tap { @parsing_session.destroy! }
       end
-      AiTextParsingJob.perform_later(new_session.id)
+
+      # P1: Solid Queue writes to a separate DB — not covered by the above
+      # transaction. If enqueue fails, mark the new session as failed so the
+      # user can retry again instead of being left with an unworkable pending
+      # session.
+      begin
+        AiTextParsingJob.perform_later(new_session.id)
+      rescue StandardError
+        new_session.update_columns(status: "failed")
+        redirect_to workspace_parsing_sessions_path(@workspace),
+                    alert: "재처리 등록에 실패했습니다. 다시 시도해 주세요."
+        return
+      end
+
       redirect_to workspace_parsing_sessions_path(@workspace), notice: "재처리를 시작했습니다."
     end
   end
