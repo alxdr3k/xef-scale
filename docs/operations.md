@@ -56,7 +56,17 @@ bin/rails db:reset    # 개발 전용
 
 `FinancialInstitution::SUPPORTED_INSTITUTIONS` 시드 8건은 `bin/rails db:seed`(즉 [db/seeds.rb](../db/seeds.rb))의 `FinancialInstitution.seed_default!` 호출로 생성된다. `Rails.env.development?`에서는 같은 파일이 테스트 사용자·기본 워크스페이스·샘플 거래도 만든다.
 
-일괄 가져오기 작업은 [lib/tasks/import.rake](../lib/tasks/import.rake)의 `import:backup`, `import:category_mappings`, `import:transactions` 태스크로 수행한다 — `DatabaseBackupService`로 SQLite 백업을 먼저 만들고 `CategoryMapping(source: "import")`과 거래를 만든다. 일반 사용 흐름은 아니며, 시드/마이그레이션과 별도로 관리한다.
+일괄 가져오기 작업은 [lib/tasks/import.rake](../lib/tasks/import.rake)에 정의된 다음 rake 태스크로 수행한다:
+
+- `import:backup` — Step 0: `DatabaseBackupService`로 SQLite 백업.
+- `import:setup_categories` — Step 1: 카테고리 테이블 초기화 + txt 파일에서 카테고리 생성.
+- `import:build_mappings` — Step 2: txt 파일에서 `CategoryMapping(source: "import")` 생성.
+- `import:transactions` — Step 3: txt 파일에서 거래 import.
+- `import:post_backup` — Step 4: import 후 백업.
+- `import:all` — 위 5단계를 순차 실행.
+- `import:list_backups` — 백업 목록 조회.
+
+일반 사용 흐름은 아니며, 시드/마이그레이션과 별도로 관리한다.
 
 ## 백그라운드 잡
 
@@ -127,7 +137,7 @@ E2E (Playwright)는 현재 CI 잡이 없다.
 
 | 증상 | 원인 후보 | 1차 조치 |
 |------|----------|---------|
-| 텍스트 붙여넣기 잡이 즉시 실패 | `GEMINI_API_KEY` 미설정 | env 확인, Doppler에서 동기화 |
+| 텍스트 붙여넣기 후 세션이 곧장 `failed`로 전환 | `GEMINI_API_KEY` 미설정 (잡은 정상 종료, 세션만 fail) | env 확인, Doppler에서 동기화. 잡 로그에서 `[AiTextParsingJob] Unexpected error` 메시지로 식별 가능 |
 | 이미지 업로드가 "지원하지 않는 파일 형식" 거부 | 확장자 외 콘텐츠 타입 / 매직 바이트 불일치 | 실제 이미지인지 확인 (HEIC ↔ JPEG 변환 등) |
 | 검토 화면에서 commit이 alert로 거부 | 미해결 `DuplicateConfirmation` 존재 | 중복 일괄 결정 후 다시 commit |
 | 카테고리가 매번 Gemini로 분류됨 | `CategoryMapping` 학습이 안 됨 | `category_mappings` 테이블 확인. 텍스트 경로에서는 처음부터 Gemini를 호출하지 않으므로, 텍스트 SMS는 keyword 매칭 또는 사용자 직접 입력으로 학습 필요 |

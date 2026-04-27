@@ -91,7 +91,7 @@ User ──< WorkspaceMembership >── Workspace
 - `CategoryMapping.source`:
   - `manual` — 사용자가 직접 거래 카테고리를 바꿀 때 학습 (`TransactionsController#update` 흐름).
   - `gemini` — `FileParsingJob`이 `GeminiCategoryService` 결과를 매핑으로 저장.
-  - `import` — 일괄 가져오기에서 학습. 단일 호출 지점: `lib/tasks/import.rake`의 `import:category_mappings` 태스크.
+  - `import` — 일괄 가져오기에서 학습. 단일 호출 지점: `lib/tasks/import.rake`의 `import:build_mappings` 태스크.
 - `CategoryMapping.find_for_merchant`는 4단계 우선순위 (exact+amount → exact+nil amount → contains+amount → contains+nil amount). `description_pattern`은 일부 매칭 헬퍼에서 추가 사용.
 
 자세한 흐름은 [categorization.md](categorization.md).
