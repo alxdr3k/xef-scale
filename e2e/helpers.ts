@@ -12,13 +12,9 @@ export async function loginAsAdmin(page: Page) {
   await loginAsUser(page, 'test@example.com');
 }
 
-// Legacy login function (kept for compatibility)
-export async function login(page: Page, email: string = 'test@example.com', password: string = 'password123') {
-  await page.goto('/users/sign_in');
-  await page.fill('#user_email', email);
-  await page.fill('#user_password', password);
-  await page.click('input[type="submit"]');
-  await page.waitForURL(/dashboard|workspaces/);
+// Legacy login function (kept for compatibility) — delegates to test_login bypass
+export async function login(page: Page, email: string = 'test@example.com', _password: string = 'password123') {
+  await loginAsUser(page, email);
 }
 
 export async function selectWorkspace(page: Page, workspaceName: string) {
