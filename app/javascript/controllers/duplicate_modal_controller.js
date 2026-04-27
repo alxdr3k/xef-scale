@@ -135,7 +135,6 @@ export default class extends Controller {
       { label: "설명", key: "description", editable: true, type: "text" },
       { label: "금액", key: "amount", editable: false, format: "currency" },
       { label: "카테고리", key: "category", editable: true, type: "select" },
-      { label: "금융기관", key: "institution", editable: false },
       { label: "메모", key: "notes", editable: true, type: "text" }
     ]
 
