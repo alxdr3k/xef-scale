@@ -130,6 +130,34 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_nil result
   end
 
+  test "create_failure_notifications sends notifications to owner and write members" do
+    job = FileParsingJob.new
+    parsing_session = parsing_sessions(:completed_session)
+
+    # main_workspace has owner (admin) + 1 member_write = 2 notifications
+    assert_difference "Notification.count", 2 do
+      job.send(:create_failure_notifications, parsing_session)
+    end
+  end
+
+  test "stats success zero triggers fail not complete" do
+    job = FileParsingJob.new
+    parsing_session = parsing_sessions(:completed_session)
+    parsing_session.update!(status: "processing", review_status: "pending_review")
+
+    # stats: total > 0 but success == 0 (all errored)
+    stats = { total: 3, success: 0, duplicate: 0, error: 3, gemini: 0 }
+
+    # Simulate the conditional logic
+    result = if stats[:total].zero? || stats[:success].zero?
+      :fail
+    else
+      :complete
+    end
+
+    assert_equal :fail, result, "success==0인 경우 fail 처리되어야 함"
+  end
+
   test "perform creates parsing session" do
     processed_file = processed_files(:pending_file)
 

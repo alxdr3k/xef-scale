@@ -32,3 +32,26 @@ processing_session:
   error_count: 0
   started_at: <%= 5.minutes.ago %>
   completed_at:
+
+failed_session:
+  workspace: main_workspace
+  processed_file: failed_file2
+  status: failed
+  total_count: 0
+  success_count: 0
+  duplicate_count: 0
+  error_count: 0
+  started_at: <%= 10.minutes.ago %>
+  completed_at: <%= 9.minutes.ago %>
+
+failed_text_session:
+  workspace: main_workspace
+  source_type: text_paste
+  status: failed
+  total_count: 0
+  success_count: 0
+  duplicate_count: 0
+  error_count: 0
+  notes: "신한카드 1,000원 사용 마라탕"
+  started_at: <%= 15.minutes.ago %>
+  completed_at: <%= 14.minutes.ago %>

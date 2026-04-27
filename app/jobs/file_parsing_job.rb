@@ -5,14 +5,24 @@ class FileParsingJob < ApplicationJob
   def perform(processed_file_id, institution_identifier: nil)
     processed_file = ProcessedFile.find(processed_file_id)
     @institution_identifier = institution_identifier
-    processed_file.mark_processing!
 
-    parsing_session = processed_file.create_parsing_session!(
-      workspace_id: processed_file.workspace_id,
-      status: "processing",
-      review_status: "pending_review"
-    )
-    parsing_session.start!
+    parsing_session = nil
+    ProcessedFile.transaction do
+      processed_file.lock!
+
+      existing = processed_file.parsing_session
+      if existing&.completed? || existing&.review_committed? || existing&.processing?
+        return
+      end
+
+      parsing_session = existing || processed_file.create_parsing_session!(
+        workspace_id: processed_file.workspace_id,
+        status: "processing",
+        review_status: "pending_review"
+      )
+      processed_file.mark_processing! unless processed_file.processing?
+      parsing_session.start! unless parsing_session.processing?
+    end
 
     begin
       result = parse_file(processed_file)
@@ -59,7 +69,7 @@ class FileParsingJob < ApplicationJob
         stats[:gemini] = gemini_count
       end
 
-      if stats[:total].zero?
+      if stats[:total].zero? || stats[:success].zero?
         parsing_session.fail!
         processed_file.mark_failed!
         create_failure_notifications(parsing_session)
@@ -74,6 +84,7 @@ class FileParsingJob < ApplicationJob
       Rails.logger.error e.backtrace.join("\n")
       parsing_session.fail!
       processed_file.mark_failed!
+      create_failure_notifications(parsing_session) if parsing_session
     ensure
       if parsing_session&.processing?
         parsing_session.fail! rescue nil

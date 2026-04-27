@@ -20,3 +20,10 @@ failed_file:
   original_filename: unknown_format.png
   file_hash: failed123456
   status: failed
+
+failed_file2:
+  workspace: main_workspace
+  filename: stored_bad_image.png
+  original_filename: bad_image.png
+  file_hash: failed789012
+  status: failed

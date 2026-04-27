@@ -43,6 +43,49 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     assert_in_delta 0.82, tx.parse_confidence.to_f, 0.001
   end
 
+  test "create_failure_notifications sends notifications to owner and write members" do
+    job = AiTextParsingJob.new
+
+    # main_workspace has owner (admin) + 1 member_write = 2 notifications
+    assert_difference "Notification.count", 2 do
+      job.send(:create_failure_notifications, @parsing_session)
+    end
+  end
+
+  test "perform fails session when all transactions error out" do
+    fake_result = {
+      transactions: [
+        {
+          date: Date.new(2026, 3, 15),
+          merchant: nil,       # nil merchant will cause create! to fail
+          amount: nil,         # nil amount will cause validation failure
+          institution: nil,
+          payment_type: "lump_sum",
+          installment_month: nil,
+          installment_total: nil,
+          confidence: 0.5
+        }
+      ],
+      raw_text: @parsing_session.notes,
+      model_used: "gemini-test"
+    }
+
+    original_new = AiTextParser.method(:new)
+    original_parse = AiTextParser.instance_method(:parse)
+    AiTextParser.define_singleton_method(:new) { |*| allocate }
+    AiTextParser.define_method(:parse) { |_text| fake_result }
+
+    begin
+      AiTextParsingJob.new.perform(@parsing_session.id)
+    ensure
+      AiTextParser.define_singleton_method(:new, original_new)
+      AiTextParser.define_method(:parse, original_parse)
+    end
+
+    # session should be failed (success == 0)
+    assert @parsing_session.reload.failed?, "success==0이면 세션이 failed 상태여야 함"
+  end
+
   test "perform persists cancellation transactions with negative amount instead of skipping" do
     fake_result = {
       transactions: [
