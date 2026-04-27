@@ -9,13 +9,14 @@ test.describe('Allowances (용돈)', () => {
   test('테이블 렌더링 - 컬럼 순서 확인', async ({ page }) => {
     await page.goto('/allowances?year=2025&month=1');
 
-    // Header columns in current UI: date / merchant / amount / category / institution.
+    // Header columns in current UI: date / merchant / amount / category.
+    // Financial institution column was removed (now source-only metadata).
     // (Per-row release was removed in favor of bulk-select; there is no "작업" column.)
     await expect(page.locator('thead th:has-text("날짜")')).toBeVisible();
     await expect(page.locator('thead th:has-text("내역")')).toBeVisible();
     await expect(page.locator('thead th:has-text("금액")')).toBeVisible();
     await expect(page.locator('thead th:has-text("카테고리")')).toBeVisible();
-    await expect(page.locator('thead th:has-text("금융기관")')).toBeVisible();
+    await expect(page.locator('thead th:has-text("금융기관")')).not.toBeVisible();
   });
 
   // The per-row "해제" button no longer exists — unmark happens via bulk-select.
