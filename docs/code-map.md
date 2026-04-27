@@ -140,8 +140,8 @@ JS 번들링: bun + esbuild. CSS: tailwind CLI. 시작은 `bin/dev` (Procfile.de
 | Path | Purpose |
 |------|---------|
 | [.github/workflows/ci.yml](../.github/workflows/ci.yml) | brakeman, bundler-audit, rubocop, rails test, system-test |
-| [.github/workflows/release.yml](../.github/workflows/release.yml) | release-please + Docker RC 빌드 + STG 자동 배포 + Release 태그 + PRD 배포 |
-| [.github/workflows/deploy-stg.yml](../.github/workflows/deploy-stg.yml) | 수동 STG 배포 (`workflow_dispatch`) |
+| [.github/workflows/release.yml](../.github/workflows/release.yml) | release-please + Docker RC 빌드 + STG reusable workflow 호출 + Release 태그 + PRD 배포 |
+| [.github/workflows/deploy-stg.yml](../.github/workflows/deploy-stg.yml) | STG 배포 reusable workflow (`workflow_call`) + 수동 배포 (`workflow_dispatch`) |
 | [.github/workflows/deploy-prd.yml](../.github/workflows/deploy-prd.yml) | 수동 PRD 배포 (`workflow_dispatch`) |
 | [Dockerfile](../Dockerfile) | 프로덕션 이미지 (Ruby 3.3.10-slim, jemalloc) |
 | [release-please-config.json](../release-please-config.json), [.release-please-manifest.json](../.release-please-manifest.json) | release-please 설정 |

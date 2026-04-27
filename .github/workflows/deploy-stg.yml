@@ -2,6 +2,17 @@ name: Deploy STG
 
 on:
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Optional image tag to write to STG before applying"
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      image_tag:
+        description: "Optional image tag to write to STG before applying"
+        required: false
+        type: string
 
 jobs:
   deploy:
@@ -21,12 +32,44 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
 
       - name: Deploy to STG
+        shell: bash
         env:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
         run: |
+          set -euo pipefail
+
+          if [ -n "$IMAGE_TAG" ] && ! [[ "$IMAGE_TAG" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+            echo "Invalid image_tag: $IMAGE_TAG" >&2
+            exit 1
+          fi
+
           ssh -o "ProxyCommand=./cloudflared access ssh --hostname %h --id $CF_ACCESS_CLIENT_ID --secret $CF_ACCESS_CLIENT_SECRET" \
               -o StrictHostKeyChecking=no \
               -o UserKnownHostsFile=/dev/null \
               root@ssh.xeflabs.com \
-              'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && cd /root/ops && git pull && kubectl apply -k apps/${{ github.event.repository.name }}/overlays/stg'
+              "IMAGE_TAG='${IMAGE_TAG}' REPOSITORY_NAME='${REPOSITORY_NAME}' bash -se" <<'REMOTE_SCRIPT'
+          set -euo pipefail
+
+          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+          cd /root/ops
+          git pull
+
+          if [ -n "$IMAGE_TAG" ]; then
+            cd "apps/${REPOSITORY_NAME}/overlays/stg"
+            sed -i "s|newTag:.*|newTag: \"${IMAGE_TAG}\"|" kustomization.yaml
+            git add kustomization.yaml
+
+            if ! git diff --cached --quiet; then
+              git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' \
+                commit -m "chore(${REPOSITORY_NAME}): update stg image to ${IMAGE_TAG}"
+              git push
+            fi
+
+            kubectl apply -k .
+          else
+            kubectl apply -k "apps/${REPOSITORY_NAME}/overlays/stg"
+          fi
+          REMOTE_SCRIPT

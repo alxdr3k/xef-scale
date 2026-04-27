@@ -96,13 +96,13 @@ bin/rails db:reset    # 개발 전용
 1. `Release` 워크플로 (`.github/workflows/release.yml`)가 `release-please`를 실행.
 2. **Release PR이 아닌** 일반 push에서는 `docker-rc` 잡이 RC 이미지를 빌드해 ghcr.io에 push:
    - `${VERSION}-rc.${run_number}` + `latest` 태그.
-3. `deploy-stg` 잡이 cloudflared + SSH로 ops 호스트에 접속, ops 레포의 `apps/<repo>/overlays/stg/kustomization.yaml`의 `newTag`를 RC 태그로 갱신해 커밋·푸시한 후 `kubectl apply -k .` 실행.
+3. `deploy-stg` 잡이 `.github/workflows/deploy-stg.yml` reusable workflow를 호출한다. 이 워크플로는 cloudflared + SSH로 ops 호스트에 접속, ops 레포의 `apps/<repo>/overlays/stg/kustomization.yaml`의 `newTag`를 RC 태그로 갱신해 커밋·푸시한 후 `kubectl apply -k .` 실행.
 4. **Release PR이 머지될 때**는 `docker-release` 잡이 `latest` 이미지를 release 태그로 다시 태깅하고, `deploy-prd` 잡이 동일한 SSH/kubectl 흐름으로 `apps/<repo>/overlays/prd/kustomization.yaml`을 갱신해 PRD에 배포한다.
 
 ### 수동 배포
 
 - `.github/workflows/deploy-prd.yml` — `workflow_dispatch`로 PRD에 즉시 `kubectl apply -k apps/<repo>/overlays/prd` 실행.
-- `.github/workflows/deploy-stg.yml` — STG 수동 배포 (확인되지 않은 부분이 있다면 워크플로 파일을 직접 보고 결정).
+- `.github/workflows/deploy-stg.yml` — STG 수동 배포. `image_tag` 입력이 있으면 STG `newTag`를 갱신한 뒤 배포하고, 비어 있으면 현재 ops 설정을 그대로 다시 apply한다.
 
 ### 환경
 
