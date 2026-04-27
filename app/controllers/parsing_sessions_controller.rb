@@ -135,10 +135,10 @@ class ParsingSessionsController < ApplicationController
       redirect_to workspace_parsing_sessions_path(@workspace), notice: message
     elsif success_count.zero?
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  alert: "파일 업로드에 실패했습니다. #{failed_files.join(' / ')}"
+                  alert: "파일 업로드에 실패했습니다. #{summarize_failed_files(failed_files)}"
     else
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  notice: "#{success_count}개 업로드 완료. 실패: #{failed_files.join(' / ')}"
+                  notice: "#{success_count}개 업로드 완료. 실패: #{summarize_failed_files(failed_files)}"
     end
   end
 
@@ -177,8 +177,10 @@ class ParsingSessionsController < ApplicationController
       return unless require_ai_consent!
 
       # 실패 세션을 삭제하고 새 파싱 세션 생성
-      @parsing_session.destroy!
-      processed_file.update!(status: "pending")
+      ActiveRecord::Base.transaction do
+        @parsing_session.destroy!
+        processed_file.update!(status: "pending")
+      end
       FileParsingJob.perform_later(processed_file.id)
       redirect_to workspace_parsing_sessions_path(@workspace), notice: "재처리를 시작했습니다."
     else
@@ -242,6 +244,12 @@ class ParsingSessionsController < ApplicationController
 
   def set_parsing_session
     @parsing_session = @workspace.parsing_sessions.find(params[:id])
+  end
+
+  def summarize_failed_files(failed_files, limit: 3)
+    shown = failed_files.first(limit)
+    rest  = failed_files.size - shown.size
+    rest > 0 ? "#{shown.join(" / ")} 외 #{rest}개" : shown.join(" / ")
   end
 
   # Hard gate: we will not send SMS text or screenshots to an external model
