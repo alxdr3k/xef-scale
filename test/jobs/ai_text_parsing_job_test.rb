@@ -43,6 +43,42 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     assert_in_delta 0.82, tx.parse_confidence.to_f, 0.001
   end
 
+  test "create_transaction stores source institution in source_metadata not financial_institution" do
+    job = AiTextParsingJob.new
+    tx_data = {
+      date: Date.current,
+      merchant: "스타벅스강남점",
+      amount: 5000,
+      payment_type: "lump_sum",
+      institution: "신한카드",
+      confidence: 0.9
+    }
+
+    tx = job.send(:create_transaction, @workspace, tx_data, @parsing_session)
+
+    assert_nil tx.financial_institution_id, "financial_institution_id는 nil이어야 합니다"
+    assert_equal "신한카드", tx.source_institution_raw, "source_metadata에 원문 기관명이 저장되어야 합니다"
+    assert_equal "pasted_text", tx.source_channel
+  end
+
+  test "create_transaction without institution is still valid" do
+    job = AiTextParsingJob.new
+    tx_data = {
+      date: Date.current,
+      merchant: "GS25 역삼점",
+      amount: 1200,
+      payment_type: "lump_sum",
+      institution: nil,
+      confidence: 0.75
+    }
+
+    tx = job.send(:create_transaction, @workspace, tx_data, @parsing_session)
+
+    assert tx.valid?, "금융기관 없이도 거래가 valid해야 합니다"
+    assert_nil tx.source_institution_raw
+    assert tx.pending_review?
+  end
+
   test "create_failure_notifications sends notifications to owner and write members" do
     job = AiTextParsingJob.new
 

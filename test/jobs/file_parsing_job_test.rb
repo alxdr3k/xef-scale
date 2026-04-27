@@ -86,7 +86,7 @@ class FileParsingJobTest < ActiveJob::TestCase
     end
   end
 
-  test "create_transaction sets financial institution" do
+  test "create_transaction does not expose parser hint identifier as source institution" do
     institution = financial_institutions(:shinhan_card)
     job = FileParsingJob.new
     tx_data = {
@@ -98,10 +98,44 @@ class FileParsingJobTest < ActiveJob::TestCase
     }
 
     tx = job.send(:create_transaction_without_gemini, @workspace, tx_data, @parsing_session)
-    assert_equal institution, tx.financial_institution
+    assert_nil tx.financial_institution_id, "financial_institution FK는 nil이어야 합니다"
+    assert_nil tx.source_institution_raw,
+               "institution_identifier parser hint should not leak into user-facing source metadata"
+    assert_equal "screenshot", tx.source_channel
   end
 
-  test "create_transaction handles nil institution identifier" do
+  test "create_transaction preserves parser raw institution in source_metadata when present" do
+    job = FileParsingJob.new
+    tx_data = {
+      date: Date.current,
+      merchant: "Test",
+      description: "Test",
+      amount: 10000,
+      institution_identifier: "shinhan_card",
+      source_institution_raw: "KB국민카드"
+    }
+
+    tx = job.send(:create_transaction_without_gemini, @workspace, tx_data, @parsing_session)
+    assert_equal "KB국민카드", tx.source_institution_raw
+  end
+
+  test "create_transaction with nil institution identifier is valid" do
+    job = FileParsingJob.new
+    tx_data = {
+      date: Date.current,
+      merchant: "Test Merchant",
+      description: "Test",
+      amount: 10000,
+      institution_identifier: nil
+    }
+
+    tx = job.send(:create_transaction_without_gemini, @workspace, tx_data, @parsing_session)
+    assert_nil tx.financial_institution
+    assert_nil tx.source_institution_raw
+    assert tx.valid?
+  end
+
+  test "create_transaction with unknown institution identifier is valid" do
     job = FileParsingJob.new
     tx_data = {
       date: Date.current,
@@ -113,6 +147,8 @@ class FileParsingJobTest < ActiveJob::TestCase
 
     tx = job.send(:create_transaction_without_gemini, @workspace, tx_data, @parsing_session)
     assert_nil tx.financial_institution
+    assert_nil tx.source_institution_raw
+    assert tx.valid?
   end
 
   test "match_category finds category with matching keyword" do

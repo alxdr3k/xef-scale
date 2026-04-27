@@ -72,7 +72,6 @@
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">내역</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">금액</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">카테고리</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">금융기관</th>
         </tr>
       </thead>
       <tbody class="bg-white divide-y divide-gray-200">
@@ -87,7 +86,6 @@
             <%= render 'shared/transaction_cells/merchant_cell', transaction: transaction %>
             <%= render 'shared/transaction_cells/amount_cell', transaction: transaction %>
             <%= render 'shared/transaction_cells/category_cell', transaction: transaction %>
-            <%= render 'shared/transaction_cells/institution_cell', transaction: transaction %>
           </tr>
         <% end %>
 

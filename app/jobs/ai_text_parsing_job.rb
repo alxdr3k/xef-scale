@@ -62,8 +62,12 @@ class AiTextParsingJob < ApplicationJob
   private
 
   def create_transaction(workspace, tx_data, parsing_session)
-    institution = find_institution(tx_data[:institution])
     category = match_category(workspace, tx_data[:merchant])
+
+    # institution is import/source metadata only — not a domain field.
+    # Store the raw name from the parser in source_metadata; do NOT
+    # look up a FinancialInstitution record or block on absence.
+    metadata = build_source_metadata(tx_data)
 
     workspace.transactions.create!(
       date: tx_data[:date],
@@ -72,19 +76,20 @@ class AiTextParsingJob < ApplicationJob
       payment_type: tx_data[:payment_type] || "lump_sum",
       installment_month: tx_data[:installment_month],
       installment_total: tx_data[:installment_total],
-      financial_institution: institution,
       category: category,
       status: "pending_review",
       parsing_session: parsing_session,
       source_type: "text_paste",
-      parse_confidence: tx_data[:confidence]
+      parse_confidence: tx_data[:confidence],
+      source_metadata: metadata
     )
   end
 
-  def find_institution(name)
-    return nil if name.blank?
-    sanitized = ActiveRecord::Base.sanitize_sql_like(name)
-    FinancialInstitution.find_by("name LIKE ?", "%#{sanitized}%")
+  def build_source_metadata(tx_data)
+    meta = { "source_channel" => "pasted_text" }
+    meta["source_institution_raw"] = tx_data[:institution].strip if tx_data[:institution].present?
+    meta["parser_confidence"] = tx_data[:confidence].to_f if tx_data[:confidence].present?
+    meta
   end
 
   def match_category(workspace, merchant)

@@ -30,13 +30,16 @@ test.describe('Transactions (거래 내역)', () => {
   });
 
   test('컬럼 헤더가 현재 UI 순서와 일치한다', async ({ page }) => {
+    // Financial institution column removed — now source-only metadata shown in details accordion.
+    // Column order: 날짜 / 내역 / 금액 / 카테고리 / 출처(source metadata) / 댓글
     const headers = page.locator('thead th');
     await expect(headers.nth(0)).toContainText('날짜');
     await expect(headers.nth(1)).toContainText('내역');
     await expect(headers.nth(2)).toContainText('금액');
     await expect(headers.nth(3)).toContainText('카테고리');
-    await expect(headers.nth(4)).toContainText('금융기관');
+    await expect(headers.nth(4)).toContainText('출처');
     await expect(headers.nth(5)).toContainText('댓글');
+    await expect(page.locator('thead th:has-text("금융기관")')).not.toBeVisible();
   });
 
   test('합계 금액과 총 건수가 표시된다', async ({ page }) => {
@@ -126,13 +129,10 @@ test.describe('Transactions (거래 내역)', () => {
     await expect(list.getByText('카카오T')).not.toBeVisible();
   });
 
-  test('금융기관 필터 적용 시 해당 기관 거래만 표시된다', async ({ page }) => {
-    await page.locator('select#institution_id').selectOption({ label: '신한카드' });
-    await page.waitForLoadState('networkidle');
-    await expect(page).toHaveURL(/institution_id=\d+/);
-    const list = page.locator('#transactions-list');
-    await expect(list.getByText('마라탕 집')).toBeVisible();
-    await expect(list.getByText('쿠팡')).not.toBeVisible();
+  test('금융기관 필터 드롭다운이 UI에 존재하지 않는다', async ({ page }) => {
+    // Financial institution was demoted to source metadata.
+    // The institution_id filter select is no longer rendered in the UI.
+    await expect(page.locator('select#institution_id')).not.toBeVisible();
   });
 
   test('검색어 입력 시 디바운스 후 결과가 필터된다', async ({ page }) => {

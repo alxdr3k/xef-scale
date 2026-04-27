@@ -5,6 +5,12 @@ class Transaction < ApplicationRecord
   belongs_to :parsing_session, optional: true
   belongs_to :committed_by, class_name: "User", optional: true
 
+  # source_metadata stores import/source hints as JSON.
+  # Keys: source_channel, source_app_raw, source_institution_raw,
+  #       source_sender_raw, parser_confidence
+  # None of these fields are used for categorisation or budget calculations.
+  store :source_metadata, coder: JSON
+
   has_one :allowance_transaction, foreign_key: :expense_transaction_id, dependent: :destroy
   has_many :comments, dependent: :destroy, inverse_of: :commentable_transaction
   has_many :duplicate_confirmations_as_original, class_name: "DuplicateConfirmation",
@@ -123,8 +129,21 @@ class Transaction < ApplicationRecord
     update!(status: "rolled_back")
   end
 
+  # source_institution_raw: raw institution name captured during import (display-only)
+  def source_institution_raw
+    source_metadata&.fetch("source_institution_raw", nil)
+  end
+
+  # source_channel: how this transaction entered the system (pasted_text, screenshot, manual)
+  def source_channel
+    source_metadata&.fetch("source_channel", nil)
+  end
+
   def source_editable?
-    financial_institution.nil? || financial_institution.identifier == "unknown"
+    # The institution_cell dropdown is only shown when the institution is
+    # unknown/absent; now that financial_institution is purely optional metadata
+    # on committed transactions, we suppress this entirely for imported rows.
+    false
   end
 
   def installment?

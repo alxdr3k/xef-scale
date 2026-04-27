@@ -10,7 +10,7 @@ class TransactionsController < ApplicationController
     @year = sanitize_year(params[:year]) || Date.current.year
     @month = sanitize_month(params[:month])
 
-    transactions = @workspace.transactions.active.excluding_allowance.includes(:category, :financial_institution, parsing_session: :processed_file)
+    transactions = @workspace.transactions.active.excluding_allowance.includes(:category, parsing_session: :processed_file)
     transactions = apply_index_filters(transactions, year: @year, month: @month)
     transactions = transactions.order(date: :desc, created_at: :desc)
 
@@ -19,7 +19,6 @@ class TransactionsController < ApplicationController
     # Stats
     @total_amount = transactions.excluding_coupon.sum(:amount)
     @categories = @workspace.categories.order(:name)
-    @institutions = FinancialInstitution.order(:name)
 
     respond_to do |format|
       format.html
@@ -33,7 +32,6 @@ class TransactionsController < ApplicationController
   def new
     @transaction = @workspace.transactions.build(date: Date.current)
     @categories = @workspace.categories
-    @institutions = FinancialInstitution.all
   end
 
   def create
@@ -48,14 +46,12 @@ class TransactionsController < ApplicationController
       end
     else
       @categories = @workspace.categories
-      @institutions = FinancialInstitution.all
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
     @categories = @workspace.categories
-    @institutions = FinancialInstitution.all
   end
 
   def update
@@ -79,7 +75,7 @@ class TransactionsController < ApplicationController
           end
           # Reload to get updated allowance status
           @transaction = @workspace.transactions
-                                   .includes(:allowance_transaction, :category, :financial_institution)
+                                   .includes(:allowance_transaction, :category)
                                    .find(@transaction.id)
         end
       end
@@ -91,7 +87,6 @@ class TransactionsController < ApplicationController
       end
     else
       @categories = @workspace.categories
-      @institutions = FinancialInstitution.all
       render :edit, status: :unprocessable_entity
     end
   end
@@ -116,7 +111,7 @@ class TransactionsController < ApplicationController
 
     # 변경된 상태 반영을 위해 reload (association 캐시 포함)
     @transaction = @workspace.transactions
-                             .includes(:allowance_transaction, :category, :financial_institution)
+                             .includes(:allowance_transaction, :category)
                              .find(@transaction.id)
 
     # turbo_stream 응답을 위한 변수 설정
@@ -124,7 +119,6 @@ class TransactionsController < ApplicationController
     @source = params[:source]
     if @source == "review"
       @parsing_session = @workspace.parsing_sessions.find(params[:parsing_session_id])
-      @institutions = FinancialInstitution.all
       @read_only = false
     end
 
@@ -306,7 +300,7 @@ class TransactionsController < ApplicationController
     year = sanitize_year(params[:year])
     month = sanitize_month(params[:month])
 
-    transactions = @workspace.transactions.active.excluding_allowance.includes(:category, :financial_institution, parsing_session: :processed_file)
+    transactions = @workspace.transactions.active.excluding_allowance.includes(:category, parsing_session: :processed_file)
     transactions = apply_index_filters(transactions, year: year, month: month)
 
     respond_to do |format|
@@ -319,7 +313,7 @@ class TransactionsController < ApplicationController
   end
 
   def duplicates
-    transactions = @workspace.transactions.active.includes(:category, :financial_institution, parsing_session: :processed_file)
+    transactions = @workspace.transactions.active.includes(:category, parsing_session: :processed_file)
                             .with_duplicates
                             .order(date: :desc, amount: :desc, created_at: :desc)
 
@@ -373,7 +367,6 @@ class TransactionsController < ApplicationController
       formatted_amount: transaction.formatted_amount,
       category: transaction.category&.name,
       category_id: transaction.category_id,
-      institution: transaction.financial_institution&.name,
       notes: transaction.notes,
       created_at: transaction.created_at.strftime("%m/%d %H:%M"),
       delete_url: workspace_transaction_path(@workspace, transaction),
@@ -385,7 +378,7 @@ class TransactionsController < ApplicationController
   def transaction_params
     params.require(:transaction).permit(
       :date, :merchant, :amount, :notes,
-      :category_id, :financial_institution_id, :payment_type,
+      :category_id, :payment_type,
       :installment_month, :installment_total
     )
   end
@@ -393,14 +386,13 @@ class TransactionsController < ApplicationController
   def generate_csv(transactions)
     require "csv"
     CSV.generate(headers: true, encoding: "UTF-8") do |csv|
-      csv << [ "날짜", "내역", "금액", "분류", "금융기관", "메모" ]
+      csv << [ "날짜", "내역", "금액", "분류", "메모" ]
       transactions.order(date: :desc).each do |tx|
         csv << [
           tx.formatted_date,
           csv_safe(tx.merchant),
           tx.amount,
           csv_safe(tx.category&.name),
-          csv_safe(tx.financial_institution&.name),
           csv_safe(tx.notes)
         ]
       end
@@ -443,7 +435,6 @@ class TransactionsController < ApplicationController
     scope = scope.for_year(year) if year && month.nil?
     scope = scope.for_month(year, month) if year && month.present?
     scope = scope.by_category(params[:category_id]) if params[:category_id].present?
-    scope = scope.by_institution(params[:institution_id]) if params[:institution_id].present?
     scope = scope.search(params[:q]) if params[:q].present?
     scope = scope.where(category_id: nil) if params[:filter] == "uncategorized"
     scope

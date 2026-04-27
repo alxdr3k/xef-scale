@@ -103,7 +103,10 @@ class FileParsingJob < ApplicationJob
 
   def create_transaction_without_gemini(workspace, tx_data, parsing_session)
     category = match_category_without_gemini(workspace, tx_data[:merchant], amount: tx_data[:amount])
-    institution = FinancialInstitution.find_by(identifier: tx_data[:institution_identifier])
+
+    # institution_identifier is an import hint from the processed_file; store it
+    # in source_metadata rather than linking a FinancialInstitution record.
+    metadata = build_source_metadata(tx_data)
 
     workspace.transactions.create!(
       date: tx_data[:date],
@@ -117,12 +120,20 @@ class FileParsingJob < ApplicationJob
       benefit_type: tx_data[:benefit_type],
       benefit_amount: tx_data[:benefit_amount],
       category: category,
-      financial_institution: institution,
       status: "pending_review",
       parsing_session: parsing_session,
       source_type: "image_upload",
-      parse_confidence: tx_data[:confidence]
+      parse_confidence: tx_data[:confidence],
+      source_metadata: metadata
     )
+  end
+
+  def build_source_metadata(tx_data)
+    meta = { "source_channel" => "screenshot" }
+    raw_institution = tx_data[:source_institution_raw].to_s.strip.presence
+    meta["source_institution_raw"] = raw_institution if raw_institution
+    meta["parser_confidence"] = tx_data[:confidence].to_f if tx_data[:confidence].present?
+    meta
   end
 
   def match_category_without_gemini(workspace, merchant, amount: nil)

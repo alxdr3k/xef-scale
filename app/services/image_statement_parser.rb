@@ -59,6 +59,7 @@ class ImageStatementParser
         payment_type: tx[:payment_type] || tx["payment_type"] || "lump_sum",
         installment_month: tx[:installment_month] || tx["installment_month"],
         installment_total: tx[:installment_total] || tx["installment_total"],
+        source_institution_raw: (tx[:source_institution_raw] || tx["source_institution_raw"] || tx[:institution] || tx["institution"]).to_s.strip.presence,
         institution_identifier: @institution_identifier
       }
     end

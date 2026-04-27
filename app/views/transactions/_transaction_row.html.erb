@@ -10,6 +10,6 @@
   <%= render 'shared/transaction_cells/merchant_cell', transaction: transaction, editable: true, update_url: update_url %>
   <%= render 'shared/transaction_cells/amount_cell', transaction: transaction, editable: true, update_url: update_url %>
   <%= render 'shared/transaction_cells/category_cell', transaction: transaction, editable: true, show_management_links: true, workspace: @workspace %>
-  <%= render 'shared/transaction_cells/institution_cell', transaction: transaction %>
+  <%= render 'shared/transaction_cells/source_metadata_cell', transaction: transaction %>
   <%= render 'shared/transaction_cells/comment_badge_cell', transaction: transaction %>
 </tr>

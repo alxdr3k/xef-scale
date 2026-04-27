@@ -147,6 +147,16 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, duplicate_per_day[target]
   end
 
+  test "calendar dashboard does not surface financial institution names" do
+    target = transactions(:food_transaction).date
+
+    get calendar_dashboard_path, params: { year: target.year, month: target.month, date: target.to_s }
+
+    assert_response :success
+    assert_includes response.body, transactions(:food_transaction).merchant
+    assert_not_includes response.body, financial_institutions(:shinhan_card).name
+  end
+
   test "calendar dashboard duplicate counts ignore resolved confirmations" do
     target = Date.current.beginning_of_month + 5.days
     session = @workspace.parsing_sessions.create!(
