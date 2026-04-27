@@ -397,14 +397,19 @@ class TransactionsController < ApplicationController
       transactions.order(date: :desc).each do |tx|
         csv << [
           tx.formatted_date,
-          tx.merchant,
+          csv_safe(tx.merchant),
           tx.amount,
-          tx.category&.name,
-          tx.financial_institution&.name,
-          tx.notes
+          csv_safe(tx.category&.name),
+          csv_safe(tx.financial_institution&.name),
+          csv_safe(tx.notes)
         ]
       end
     end
+  end
+
+  def csv_safe(value)
+    str = value.to_s
+    str.start_with?("=", "+", "-", "@", "\t", "\r") ? "'#{str}" : str
   end
 
   def create_category_mapping(transaction, category)

@@ -1,5 +1,6 @@
 class FileParsingJob < ApplicationJob
   queue_as :default
+  discard_on ActiveRecord::RecordNotFound
 
   def perform(processed_file_id, institution_identifier: nil)
     processed_file = ProcessedFile.find(processed_file_id)

@@ -115,7 +115,9 @@ class ParsingSession < ApplicationRecord
   def commit_all!(user)
     return false unless can_commit?
 
-    ActiveRecord::Base.transaction do
+    with_lock do
+      return false unless can_commit?
+
       apply_duplicate_decisions!
       transactions.pending_review.where(deleted: false).find_each do |tx|
         tx.commit!(user)

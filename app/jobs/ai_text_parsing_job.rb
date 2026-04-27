@@ -1,5 +1,6 @@
 class AiTextParsingJob < ApplicationJob
   queue_as :default
+  discard_on ActiveRecord::RecordNotFound
 
   def perform(parsing_session_id)
     parsing_session = ParsingSession.find(parsing_session_id)
