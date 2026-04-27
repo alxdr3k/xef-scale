@@ -153,11 +153,14 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
 
   test "retry on failed text_paste session creates new parsing session and enqueues job" do
     failed = parsing_sessions(:failed_text_session)
-    assert_difference "ParsingSession.count", 1 do
+    failed_id = failed.id
+    # destroy old + create new → net count unchanged
+    assert_no_difference "ParsingSession.count" do
       assert_enqueued_with(job: AiTextParsingJob) do
         post retry_workspace_parsing_session_path(@workspace, failed)
       end
     end
+    assert_not ParsingSession.exists?(failed_id)
     assert_redirected_to workspace_parsing_sessions_path(@workspace)
     assert_equal "재처리를 시작했습니다.", flash[:notice]
   end
