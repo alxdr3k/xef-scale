@@ -19,6 +19,16 @@ class ParsingSessionsController < ApplicationController
       end
     end
 
+    case params[:filter]
+    when "needs_review"
+      @parsing_sessions = @parsing_sessions.needs_review
+    when "has_duplicates"
+      @parsing_sessions = @parsing_sessions
+                            .joins(:duplicate_confirmations)
+                            .where(duplicate_confirmations: { status: "pending" })
+                            .distinct
+    end
+
     @pagy, @parsing_sessions = pagy(@parsing_sessions, limit: 20)
 
     # 아직 parsing_session이 생성되지 않은 pending/processing 파일들
