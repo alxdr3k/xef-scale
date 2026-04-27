@@ -117,12 +117,13 @@ class ParsingSessionsController < ApplicationController
         filename: uploaded_file.original_filename,
         original_filename: uploaded_file.original_filename,
         status: "pending",
-        uploaded_by: current_user
+        uploaded_by: current_user,
+        institution_identifier: params[:institution_identifier].presence
       )
       processed_file.file.attach(uploaded_file)
 
       if processed_file.save
-        job_args = { institution_identifier: params[:institution_identifier] }.compact
+        job_args = { institution_identifier: processed_file.institution_identifier }.compact
         FileParsingJob.perform_later(processed_file.id, **job_args)
         success_count += 1
       else
@@ -181,7 +182,8 @@ class ParsingSessionsController < ApplicationController
         @parsing_session.destroy!
         processed_file.update!(status: "pending")
       end
-      FileParsingJob.perform_later(processed_file.id)
+      job_args = { institution_identifier: processed_file.institution_identifier }.compact
+      FileParsingJob.perform_later(processed_file.id, **job_args)
       redirect_to workspace_parsing_sessions_path(@workspace), notice: "재처리를 시작했습니다."
     else
       unless @workspace.ai_text_parsing_enabled?
