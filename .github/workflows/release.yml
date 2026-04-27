@@ -64,42 +64,10 @@ jobs:
   # STG 배포 (ops 레포 image tag 업데이트 → kubectl apply)
   deploy-stg:
     needs: docker-rc
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install cloudflared
-        run: |
-          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
-          chmod +x cloudflared
-
-      - name: Setup SSH
-        env:
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-
-      - name: Update image tag and deploy to STG
-        env:
-          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-          RC_TAG: ${{ needs.docker-rc.outputs.rc_tag }}
-        run: |
-          ssh -o "ProxyCommand=./cloudflared access ssh --hostname %h --id $CF_ACCESS_CLIENT_ID --secret $CF_ACCESS_CLIENT_SECRET" \
-              -o StrictHostKeyChecking=no \
-              -o UserKnownHostsFile=/dev/null \
-              root@ssh.xeflabs.com \
-              "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml && \
-               cd /root/ops && git pull && \
-               cd apps/${{ github.event.repository.name }}/overlays/stg && \
-               sed -i 's|newTag:.*|newTag: \"${RC_TAG}\"|' kustomization.yaml && \
-               git add kustomization.yaml && \
-               if ! git diff --cached --quiet; then \
-                 git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' \
-                   commit -m 'chore(xef-scale): update stg image to ${RC_TAG}' && \
-                 git push; \
-               fi && \
-               kubectl apply -k ."
+    uses: ./.github/workflows/deploy-stg.yml
+    with:
+      image_tag: ${{ needs.docker-rc.outputs.rc_tag }}
+    secrets: inherit
 
   # Release 이미지 태그 추가 (빌드 없음)
   docker-release:
