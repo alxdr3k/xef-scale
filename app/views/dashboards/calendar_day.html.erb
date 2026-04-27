@@ -1,0 +1,53 @@
+<%# Turbo Frame wrapper — when this view is loaded inside the
+    "calendar-day-panel" frame only the content of this frame tag is
+    injected into the page, leaving the rest of the calendar intact. %>
+<turbo-frame id="calendar-day-panel">
+  <div class="bg-white shadow rounded-lg p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-base font-semibold text-gray-900"><%= @date.strftime('%Y.%m.%d') %></h2>
+      <%= link_to '월간 보기 →',
+          monthly_dashboard_path(year: @date.year, month: @date.month),
+          class: 'text-xs text-indigo-600 hover:text-indigo-800' %>
+    </div>
+
+    <% if @selected_day_transactions.any? %>
+      <%# Daily total %>
+      <% day_total = @selected_day_transactions.sum(&:amount) %>
+      <div class="mb-3 text-right text-sm font-semibold text-gray-700">
+        합계 <%= number_to_currency(day_total, unit: '₩', precision: 0) %>
+      </div>
+
+      <ul class="divide-y divide-gray-100">
+        <% @selected_day_transactions.each do |tx| %>
+          <li class="py-2 flex items-start justify-between gap-2">
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-medium text-gray-900 truncate"><%= tx.merchant.presence || '내역 없음' %></div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <% if tx.category %>
+                  <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: <%= tx.category.color %>"></span>
+                  <span class="text-xs text-gray-500 truncate"><%= tx.category.name %></span>
+                <% else %>
+                  <span class="text-xs text-gray-400 italic">미분류</span>
+                <% end %>
+                <% if tx.financial_institution %>
+                  <span class="text-xs text-gray-400">· <%= tx.financial_institution.name %></span>
+                <% end %>
+              </div>
+            </div>
+            <div class="text-sm font-semibold text-gray-900 whitespace-nowrap flex-shrink-0">
+              <%= number_to_currency(tx.amount, unit: '₩', precision: 0) %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="flex flex-col items-center justify-center py-8 text-gray-400">
+        <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <p class="text-sm">거래 내역이 없습니다.</p>
+      </div>
+    <% end %>
+  </div>
+</turbo-frame>

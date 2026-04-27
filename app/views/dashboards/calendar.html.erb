@@ -6,10 +6,58 @@
 
   <%= render 'tabs' %>
 
+  <%# Action strip: monthly summary + quick-filter badges %>
+  <div class="bg-white shadow rounded-xl px-4 py-3 mb-5 flex flex-wrap items-center gap-3">
+    <div class="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+      <span class="text-gray-500 font-normal"><%= @year %>년 <%= @month %>월 지출</span>
+      <%= number_to_currency(@monthly_total, unit: '₩', precision: 0) %>
+    </div>
+
+    <div class="h-4 w-px bg-gray-200 hidden sm:block"></div>
+
+    <div class="flex flex-wrap gap-2">
+      <% if @needs_review_total > 0 %>
+        <%= link_to workspace_parsing_sessions_path(@workspace),
+            class: "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors" do %>
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+          검토 필요 <%= @needs_review_total %>건
+        <% end %>
+      <% else %>
+        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-400">
+          검토 필요 0건
+        </span>
+      <% end %>
+
+      <% if @duplicate_total > 0 %>
+        <%= link_to workspace_parsing_sessions_path(@workspace),
+            class: "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 hover:bg-red-200 transition-colors" do %>
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z"/><path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z"/></svg>
+          중복 의심 <%= @duplicate_total %>건
+        <% end %>
+      <% else %>
+        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-300">
+          중복 의심 0건
+        </span>
+      <% end %>
+
+      <% if @uncategorized_total > 0 %>
+        <%= link_to workspace_transactions_path(@workspace, filter: 'uncategorized'),
+            class: "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors" do %>
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+          미분류 <%= @uncategorized_total %>건
+        <% end %>
+      <% else %>
+        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-400">
+          미분류 0건
+        </span>
+      <% end %>
+    </div>
+  </div>
+
   <% prev_month = @month == 1 ? 12 : @month - 1 %>
-  <% prev_year = @month == 1 ? @year - 1 : @year %>
+  <% prev_year  = @month == 1 ? @year - 1 : @year %>
   <% next_month = @month == 12 ? 1 : @month + 1 %>
-  <% next_year = @month == 12 ? @year + 1 : @year %>
+  <% next_year  = @month == 12 ? @year + 1 : @year %>
 
   <div class="flex items-center space-x-4 mb-6">
     <%= link_to '← 이전 달', calendar_dashboard_path(year: prev_year, month: prev_month),
@@ -20,6 +68,7 @@
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <%# Calendar grid %>
     <div class="lg:col-span-2 bg-white shadow rounded-lg p-4">
       <div class="grid grid-cols-7 text-xs font-medium text-gray-500 mb-2">
         <% %w[일 월 화 수 목 금 토].each do |label| %>
@@ -29,14 +78,19 @@
 
       <div class="grid grid-cols-7 gap-1">
         <% @calendar_weeks.flatten.each do |day| %>
-          <% in_month = day.month == @month %>
-          <% total = @daily_totals[day].to_i %>
-          <% review_count = @needs_review_per_day[day].to_i %>
-          <% duplicate_count = @duplicate_per_day[day].to_i %>
+          <% in_month         = day.month == @month %>
+          <% total            = @daily_totals[day].to_i %>
+          <% review_count     = @needs_review_per_day[day].to_i %>
+          <% duplicate_count  = @duplicate_per_day[day].to_i %>
           <% uncategorized_count = @uncategorized_per_day[day].to_i %>
-          <% selected = day == @selected_date %>
-          <% today = day == Date.current %>
-          <%= link_to calendar_dashboard_path(year: @year, month: @month, date: day.to_s),
+          <% selected         = day == @selected_date %>
+          <% today            = day == Date.current %>
+          <%# Each cell navigates via Turbo Frame "calendar-day-panel" so the
+              right-side panel updates without a full page reload. The outer
+              calendar_dashboard_path also updates the URL (and selected state)
+              via a data-turbo-action advance. %>
+          <%= link_to calendar_day_dashboard_path(date: day.to_s),
+              data: { turbo_frame: "calendar-day-panel" },
               class: "block min-h-[88px] p-2 rounded-md border text-left text-xs transition-colors " \
                      "#{in_month ? 'bg-white' : 'bg-gray-50 text-gray-400'} " \
                      "#{selected ? 'border-indigo-600 ring-1 ring-indigo-600' : 'border-gray-200 hover:border-indigo-300'}" do %>
@@ -64,33 +118,39 @@
       </div>
     </div>
 
-    <div class="bg-white shadow rounded-lg p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-base font-semibold text-gray-900"><%= @selected_date.strftime('%Y.%m.%d') %></h2>
-        <%= link_to '월간 보기 →',
-            monthly_dashboard_path(year: @year, month: @month),
-            class: 'text-xs text-indigo-600 hover:text-indigo-800' %>
-      </div>
-      <% if @selected_day_transactions.any? %>
-        <ul class="divide-y divide-gray-100">
-          <% @selected_day_transactions.each do |tx| %>
-            <li class="py-2 flex items-start justify-between">
-              <div class="min-w-0 pr-2">
-                <div class="text-sm font-medium text-gray-900 truncate"><%= tx.merchant.presence || '내역 없음' %></div>
-                <div class="text-xs text-gray-500 truncate">
-                  <%= tx.category&.name || '미분류' %>
-                  <% if tx.financial_institution %>
-                    · <%= tx.financial_institution.name %>
-                  <% end %>
+    <%# Day detail panel — loaded via Turbo Frame on cell click %>
+    <turbo-frame id="calendar-day-panel" src="<%= calendar_day_dashboard_path(date: @selected_date.to_s) %>"
+                 class="contents">
+      <%# Eager-render the initial selected date so the panel is populated
+          on first load without a separate round-trip. %>
+      <div class="bg-white shadow rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold text-gray-900"><%= @selected_date.strftime('%Y.%m.%d') %></h2>
+          <%= link_to '월간 보기 →',
+              monthly_dashboard_path(year: @year, month: @month),
+              class: 'text-xs text-indigo-600 hover:text-indigo-800' %>
+        </div>
+        <% if @selected_day_transactions.any? %>
+          <ul class="divide-y divide-gray-100">
+            <% @selected_day_transactions.each do |tx| %>
+              <li class="py-2 flex items-start justify-between">
+                <div class="min-w-0 pr-2">
+                  <div class="text-sm font-medium text-gray-900 truncate"><%= tx.merchant.presence || '내역 없음' %></div>
+                  <div class="text-xs text-gray-500 truncate">
+                    <%= tx.category&.name || '미분류' %>
+                    <% if tx.financial_institution %>
+                      · <%= tx.financial_institution.name %>
+                    <% end %>
+                  </div>
                 </div>
-              </div>
-              <div class="text-sm font-semibold text-gray-900 whitespace-nowrap"><%= number_to_currency(tx.amount, unit: '₩', precision: 0) %></div>
-            </li>
-          <% end %>
-        </ul>
-      <% else %>
-        <p class="text-sm text-gray-500 py-4 text-center">선택한 날짜에는 거래가 없습니다.</p>
-      <% end %>
-    </div>
+                <div class="text-sm font-semibold text-gray-900 whitespace-nowrap"><%= number_to_currency(tx.amount, unit: '₩', precision: 0) %></div>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="text-sm text-gray-500 py-4 text-center">선택한 날짜에는 거래가 없습니다.</p>
+        <% end %>
+      </div>
+    </turbo-frame>
   </div>
 </div>
