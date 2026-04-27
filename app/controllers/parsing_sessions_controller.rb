@@ -10,6 +10,31 @@ class ParsingSessionsController < ApplicationController
                                   .includes(:processed_file, :duplicate_confirmations)
                                   .order(created_at: :desc)
 
+    month_range = nil
+    if params[:year].present? && params[:month].present?
+      year  = params[:year].to_i
+      month = params[:month].to_i
+      if year.between?(2000, 2100) && month.between?(1, 12)
+        month_range = Date.new(year, month).beginning_of_month..Date.new(year, month).end_of_month
+        @parsing_sessions = @parsing_sessions.joins(:transactions).where(transactions: { date: month_range }).distinct
+      end
+    end
+
+    case params[:filter]
+    when "needs_review"
+      @parsing_sessions = @parsing_sessions.needs_review
+    when "has_duplicates"
+      dc_where = { status: "pending" }
+      if month_range
+        month_tx_ids = @workspace.transactions.where(date: month_range).select(:id)
+        dc_where[:new_transaction_id] = month_tx_ids
+      end
+      @parsing_sessions = @parsing_sessions
+                            .joins(:duplicate_confirmations)
+                            .where(duplicate_confirmations: dc_where)
+                            .distinct
+    end
+
     @pagy, @parsing_sessions = pagy(@parsing_sessions, limit: 20)
 
     # 아직 parsing_session이 생성되지 않은 pending/processing 파일들

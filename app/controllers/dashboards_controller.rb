@@ -140,6 +140,12 @@ class DashboardsController < ApplicationController
                                            .where(date: @selected_date)
                                            .includes(:category, :financial_institution)
                                            .order(created_at: :desc)
+
+    # Action strip aggregates
+    @monthly_total = @daily_totals.values.sum
+    @needs_review_total = @needs_review_per_day.values.sum
+    @duplicate_total = @duplicate_per_day.values.sum
+    @uncategorized_total = @uncategorized_per_day.values.sum
   end
 
   def calendar_day
@@ -151,8 +157,7 @@ class DashboardsController < ApplicationController
                                            .order(created_at: :desc)
 
     respond_to do |format|
-      format.turbo_stream
-      format.html { redirect_to calendar_dashboard_path(year: @date.year, month: @date.month, date: @date.to_s) }
+      format.html
     end
   end
 

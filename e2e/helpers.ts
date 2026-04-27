@@ -30,7 +30,7 @@ export async function selectWorkspace(page: Page, workspaceName: string) {
 }
 
 export async function navigateToParsingSessions(page: Page) {
-  await page.click('a:has-text("파일 업로드")');
+  await page.click('a:has-text("가져오기")');
   await page.waitForURL(/parsing_sessions/);
 }
 
