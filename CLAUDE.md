@@ -1,197 +1,76 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with code in this repository.
+Claude Code가 이 레포에서 작업할 때 따라야 할 **Claude 전용 운영 규칙**.
 
-## Project Overview
+일반적인 구현 컨텍스트(현재 구현·런타임·데이터 모델·테스트/운영 명령)는 [AGENTS.md](AGENTS.md)와 [docs/](docs/)에서 시작하라. 본 문서는 그 위에 Claude 환경에서만 추가로 지켜야 할 안전 규칙을 다룬다.
 
-**Expense Tracker (지출 추적 앱)** - A Rails 8 application for tracking personal expenses from Korean financial institutions.
+## 읽기 순서
 
-### Core Concept
-Users enter transactions via three paths — direct manual entry plus two Gemini-backed parsing paths:
-1. **Direct entry** — the `TransactionsController#new/#create` form creates a transaction directly in `committed` state (no parsing session).
-2. **Text paste** — paste a card/bank SMS; `AiTextParser` (Gemini Flash) extracts transactions.
-3. **Screenshot upload** — upload a card statement screenshot (JPG/PNG/WEBP/HEIC); `ImageStatementParser` calls `GeminiVisionParserService` (Gemini Vision) to extract transactions.
-
-Excel, PDF, CSV, and HTML statements are **not** supported. These three paths are the entire input surface — no email/IMAP, no directory watchers, no non-image statement uploads.
-
-Paths 2 and 3 produce `pending_review` transactions that the user reviews, resolves duplicates for, and commits. Auto-categorization falls back from `CategoryMapping` → `Category` keyword match → `GeminiCategoryService`.
-
-## Technology Stack
-
-### Backend
-- **Ruby**: 3.3+
-- **Rails**: 8.0+
-- **Database**: SQLite3
-- **Authentication**: Devise + OmniAuth Google OAuth2
-- **Authorization**: Pundit (RBAC)
-- **Background Jobs**: Solid Queue (Rails 8 default)
-- **AI Parsing**: Gemini Flash (text) + Gemini Vision (screenshots) via direct HTTP
-
-### Frontend
-- **Hotwire**: Turbo + Stimulus
-- **CSS**: Tailwind CSS 3
-- **Icons**: Heroicons
-
-## Supported Financial Institutions
-
-Image parser currently targets:
-
-- 신한카드 (Shinhan Card) — 이용대금 명세서 스크린샷
-
-Text paste works for any Korean bank/card SMS.
-
-## Data Schema
-
-Final transaction format:
-- **월** (month): mm format
-- **날짜** (date): yyyy.mm.dd format
-- **분류** (category): Auto-categorized based on merchant name
-- **내역** (item): Merchant/transaction description
-- **금액** (amount): Integer amount
-- **지출 위치** (source): Bank/card name
-
-## 아키텍처
-
-### 파싱 흐름
-
-```
-텍스트 붙여넣기 ──► AiTextParser (Gemini Flash) ─┐
-                                                  ├─► pending_review Transaction ─► 검토 ─► committed
-이미지 업로드 ────► ImageStatementParser ────────┘
-                    └► GeminiVisionParserService (Gemini Vision)
-```
-
-### 핵심 서비스
-
-| 서비스 | 위치 | 역할 |
-|--------|------|------|
-| `AiTextParser` | `app/services/ai_text_parser.rb` | 붙여넣기 텍스트를 Gemini Flash로 파싱 |
-| `ImageStatementParser` | `app/services/image_statement_parser.rb` | 이미지 파일을 다운로드하고 Vision 결과를 정규화 |
-| `GeminiVisionParserService` | `app/services/gemini_vision_parser_service.rb` | Gemini Vision API 호출 |
-| `GeminiCategoryService` | `app/services/gemini_category_service.rb` | 미분류 거래 카테고리 추천 |
-
-### 데이터 모델
-
-```
-User ──< Workspace ──< Transaction
-              │
-              └──< ProcessedFile (업로드 이력)
-```
-
-## 참조 안내
-
-- 모델: `app/models/`
-- DB 스키마: `db/schema.rb`
-- API 라우트: `config/routes.rb`
-- 환경변수: Doppler `xef-scale` 프로젝트
-
-## Development Commands
-
-```bash
-# Start development server
-bin/dev
-
-# Run tests
-rails test
-rails test:system
-
-# Database operations
-rails db:migrate
-rails db:seed
-rails db:reset
-```
-
-## Directory Structure
-
-```
-expense-tracker/
-├── app/
-│   ├── controllers/
-│   ├── models/
-│   ├── policies/        # Pundit authorization
-│   ├── services/        # Parser services
-│   ├── jobs/            # Solid Queue background jobs
-│   └── views/
-├── config/
-│   ├── routes.rb
-│   └── initializers/
-├── db/
-│   ├── migrate/
-│   └── seeds.rb
-└── test/
-```
-
-## Language Note
-
-This project uses Korean for transaction descriptions, merchant names, and categories. UI can be internationalized via Rails I18n.
+1. [AGENTS.md](AGENTS.md) — 모든 에이전트 공통.
+2. [docs/context/current-state.md](docs/context/current-state.md), [docs/code-map.md](docs/code-map.md), [docs/testing.md](docs/testing.md).
+3. 본 문서의 Claude 전용 규칙.
 
 ## Git 규칙
 
-- PR merge 시 **squash 금지**, 반드시 **merge commit** 사용 (커밋 히스토리 보존)
-- Conventional Commits 형식 사용
+- PR merge 시 **squash 금지**, 반드시 **merge commit**을 사용한다 (커밋 히스토리 보존).
+- Conventional Commits 형식.
+- `.claude/`, `CLAUDE.md`, `AGENTS.md` 등 Claude/에이전트 관련 파일 수정은 `chore` 타입을 사용 (예: `chore: update claude operating rules`).
 
 ## CI/CD 워크플로우 (필수 준수)
 
-**절대 직접 빌드/배포하지 마세요.** 모든 빌드와 배포는 GitHub Actions를 통해 자동화되어 있습니다.
+**절대 직접 빌드/배포하지 않는다.** 모든 빌드와 배포는 GitHub Actions가 수행한다.
 
-### 금지 사항
+### 금지
 
-- `docker build` 직접 실행 금지
-- `docker push` 직접 실행 금지
-- ghcr.io에 이미지 직접 푸시 금지
+- `docker build` 직접 실행 금지.
+- `docker push` 금지.
+- ghcr.io에 이미지 직접 push 금지.
 
-### 올바른 배포 프로세스
+### 올바른 흐름
 
-1. 코드 변경 후 Conventional Commits 형식으로 커밋
-2. dev 브랜치에 푸시
-3. main으로 PR 생성 및 머지
-4. release-please가 자동으로 Release PR 생성
-5. Release PR 머지 → 자동으로 Docker 이미지 빌드 및 ghcr.io 푸시
-6. ops 레포의 kustomization.yaml에서 이미지 태그 업데이트
-7. kubectl apply로 배포 (또는 CD workflow)
+1. Conventional Commits로 커밋한다.
+2. dev 브랜치(또는 `claude/*`, `feature/*`)에 push.
+3. main으로 PR 생성·머지.
+4. release-please가 자동으로 Release PR 생성.
+5. Release PR 머지 → Docker 이미지 빌드 + ghcr.io push (CI가 처리).
+6. ops 레포에서 `kustomization.yaml` 이미지 태그 자동 갱신 + `kubectl apply` (CI/CD가 처리).
 
-### Dockerfile 수정 시
+자세한 흐름과 환경/도메인은 [docs/operations.md](docs/operations.md). Dockerfile을 수정한다면 직접 빌드하지 말고 커밋 후 CI에 맡긴다. 로컬 테스트는 `bin/dev`.
 
-Dockerfile을 수정했다면:
-- 직접 빌드하지 말고 커밋 후 CI/CD를 통해 빌드
-- 로컬 테스트가 필요하면 `bin/dev`로 개발 서버 실행
+## Skills / 브라우징 / 외부 도구
 
-### Claude Code 관련 파일 수정 시
+- 웹 브라우징은 반드시 `/browse` 스킬(gstack)을 사용한다. `mcp__claude-in-chrome__*` 도구는 사용하지 않는다.
+- 라이브러리 문서 조회(`context7`)는 다음 경우에만 사용한다:
+  - 에러/경고 발생 시 (특히 deprecation).
+  - 최신 버전 기능 사용 시.
+  - 불확실하거나 기억이 모호할 때.
+- 사용 가능한 스킬 (호출 시 `/skill-name` 형식): `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`, `/qa-only`, `/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/retro`, `/investigate`, `/document-release`, `/codex`, `/cso`, `/autoplan`, `/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`, `/unfreeze`, `/gstack-upgrade`, `/learn`.
 
-`.claude/`, `CLAUDE.md` 등 Claude Code 관련 파일 수정 시:
-- `chore` 타입 사용 (예: `chore: update claude code commands`)
+## 운영 안전
 
-## 배포
+- `git push --force` / `--force-with-lease`, `git reset --hard`, branch 삭제, `--no-verify`, `--no-gpg-sign`은 사용자 명시 승인 없이 실행하지 않는다 (글로벌 규칙).
+- main / dev 브랜치 직접 push 금지. PR 흐름을 따른다.
+- secret/credential을 노출하는 변경은 사전 확인 필수.
 
-k8s 클러스터에 배포 (ops 레포의 Kustomize 사용)
+## 작업 위임
 
-| 환경 | 도메인 | Namespace |
-|------|--------|-----------|
-| stg | stg-scale.xeflabs.com | apps-stg |
-| prd | scale.xeflabs.com | apps-prd |
+복잡한 설계/구현/리뷰 작업은 글로벌 Agent Delegation Policy에 따라 전문 에이전트에 위임한다 (단순 작업은 직접 처리 허용). 본 레포에서 자주 쓰는 매핑:
 
-```bash
-kubectl apply -k ~/ws/xeflabs/ops/apps/xef-scale/overlays/{stg,prd}
-```
+- 백엔드 설계/구현 → `senior-backend-architect`
+- 프론트엔드 설계/구현 → `frontend-architect`
+- DB 설계/마이그레이션 → `database-architect`
+- 코드 리뷰 → `feature-dev:code-reviewer`
+- 코드 탐색 → `Explore`
+- 기능 분해/조율 → `project-manager`
 
-환경변수: Doppler `xef-scale` 프로젝트에서 관리
+## 본 문서가 다루지 않는 것
 
-## 라이브러리 문서 조회 (context7)
+다음 정보는 다른 문서에 있다. 본 문서에서 중복하지 않는다.
 
-다음 경우에만 context7으로 문서 확인:
-- 에러/경고 발생 시 (특히 deprecation)
-- 최신 버전 기능 사용 시
-- 불확실하거나 기억이 모호할 때
-
-### 주요 라이브러리
-- rails (8.x), turbo-rails, stimulus-rails
-- devise, omniauth, omniauth-google-oauth2
-- pundit (authorization)
-- solid_queue, solid_cache
-- tailwindcss
-
-## gstack
-
-웹 브라우징은 반드시 `/browse` 스킬(gstack)을 사용한다. `mcp__claude-in-chrome__*` 도구는 사용하지 않는다.
-
-사용 가능한 스킬: `/office-hours`, `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review`, `/design-consultation`, `/design-shotgun`, `/design-html`, `/review`, `/ship`, `/land-and-deploy`, `/canary`, `/benchmark`, `/browse`, `/connect-chrome`, `/qa`, `/qa-only`, `/design-review`, `/setup-browser-cookies`, `/setup-deploy`, `/retro`, `/investigate`, `/document-release`, `/codex`, `/cso`, `/autoplan`, `/plan-devex-review`, `/devex-review`, `/careful`, `/freeze`, `/guard`, `/unfreeze`, `/gstack-upgrade`, `/learn`
+- 제품 정의 → [PRD.md](PRD.md)
+- 현재 구현 상태 → [docs/context/current-state.md](docs/context/current-state.md)
+- 아키텍처 / 런타임 / 데이터 모델 → [docs/architecture.md](docs/architecture.md), [docs/runtime.md](docs/runtime.md), [docs/data-model.md](docs/data-model.md)
+- 카테고리화 / AI 파이프라인 → [docs/categorization.md](docs/categorization.md), [docs/ai-pipeline.md](docs/ai-pipeline.md)
+- 테스트 / 린트 / 스캔 명령 → [docs/testing.md](docs/testing.md)
+- 운영 / 환경변수 / 배포 / 트러블슈팅 → [docs/operations.md](docs/operations.md)
+- 모든 에이전트 공통 가이드 → [AGENTS.md](AGENTS.md)
