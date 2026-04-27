@@ -2,8 +2,8 @@ class ParsingSessionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :require_workspace_write_access, only: [ :create, :text_parse, :bulk_discard, :inline_update ]
-  before_action :set_parsing_session, only: [ :inline_update ]
+  before_action :require_workspace_write_access, only: [ :create, :text_parse, :bulk_discard, :inline_update, :retry, :destroy ]
+  before_action :set_parsing_session, only: [ :inline_update, :retry, :destroy ]
 
   def index
     @parsing_sessions = @workspace.parsing_sessions
@@ -110,7 +110,7 @@ class ParsingSessionsController < ApplicationController
     end
 
     success_count = 0
-    failed_count = 0
+    failed_files = []
 
     uploaded_files.each do |uploaded_file|
       processed_file = @workspace.processed_files.build(
@@ -126,18 +126,19 @@ class ParsingSessionsController < ApplicationController
         FileParsingJob.perform_later(processed_file.id, **job_args)
         success_count += 1
       else
-        failed_count += 1
+        failed_files << "#{uploaded_file.original_filename}: #{processed_file.errors.full_messages.join(', ')}"
       end
     end
 
-    if failed_count.zero?
+    if failed_files.empty?
       message = success_count == 1 ? "파일이 업로드되었습니다. 처리 중입니다..." : "#{success_count}개 파일이 업로드되었습니다. 처리 중입니다..."
       redirect_to workspace_parsing_sessions_path(@workspace), notice: message
     elsif success_count.zero?
-      redirect_to workspace_parsing_sessions_path(@workspace), alert: "파일 업로드에 실패했습니다."
+      redirect_to workspace_parsing_sessions_path(@workspace),
+                  alert: "파일 업로드에 실패했습니다. #{failed_files.join(' / ')}"
     else
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  notice: "#{success_count}개 파일 업로드 완료, #{failed_count}개 실패"
+                  notice: "#{success_count}개 업로드 완료. 실패: #{failed_files.join(' / ')}"
     end
   end
 
@@ -157,6 +158,59 @@ class ParsingSessionsController < ApplicationController
     else
       head :unprocessable_entity
     end
+  end
+
+  def retry
+    unless @parsing_session.failed?
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: "실패한 세션만 재시도할 수 있습니다."
+      return
+    end
+
+    processed_file = @parsing_session.processed_file
+
+    if processed_file
+      unless @workspace.ai_image_parsing_enabled?
+        redirect_to workspace_parsing_sessions_path(@workspace),
+                    alert: "AI 스크린샷 파싱이 비활성화되어 있습니다."
+        return
+      end
+      return unless require_ai_consent!
+
+      # 실패 세션을 삭제하고 새 파싱 세션 생성
+      @parsing_session.destroy!
+      processed_file.update!(status: "pending")
+      FileParsingJob.perform_later(processed_file.id)
+      redirect_to workspace_parsing_sessions_path(@workspace), notice: "재처리를 시작했습니다."
+    else
+      unless @workspace.ai_text_parsing_enabled?
+        redirect_to workspace_parsing_sessions_path(@workspace),
+                    alert: "AI 문자 파싱이 비활성화되어 있습니다."
+        return
+      end
+      return unless require_ai_consent!
+
+      # text_paste 세션: 새 파싱 세션 생성
+      new_session = @workspace.parsing_sessions.create!(
+        source_type: @parsing_session.source_type,
+        status: "pending",
+        review_status: "pending_review",
+        notes: @parsing_session.notes
+      )
+      AiTextParsingJob.perform_later(new_session.id)
+      redirect_to workspace_parsing_sessions_path(@workspace), notice: "재처리를 시작했습니다."
+    end
+  end
+
+  def destroy
+    unless @parsing_session.failed? || @parsing_session.review_discarded?
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: "실패하거나 취소된 세션만 삭제할 수 있습니다."
+      return
+    end
+
+    @parsing_session.transactions.find_each(&:rollback!) rescue nil
+    @parsing_session.destroy!
+
+    redirect_to workspace_parsing_sessions_path(@workspace), notice: "세션이 삭제되었습니다."
   end
 
   def bulk_discard
