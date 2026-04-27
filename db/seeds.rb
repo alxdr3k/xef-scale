@@ -35,10 +35,13 @@ if Rails.env.development? || Rails.env.test?
     # load. Each merchant has a distinct category+institution to support the
     # filter tests.
     today = Date.today
+    # Clamp offsets so dates never slip into the previous month on the 1st/2nd.
+    d1 = today.day > 1 ? today - 1 : today
+    d2 = today.day > 2 ? today - 2 : today
     fixed_transactions = [
-      { date: today,             merchant: "마라탕 집",     amount: 12000, description: "점심",  category: cat_food,  institution: inst_shinhan },
-      { date: today - 1,         merchant: "카카오T",      amount: 8800,  description: "택시",  category: cat_trans, institution: inst_hana },
-      { date: today - 2,         merchant: "쿠팡",         amount: 45000, description: "생활용품", category: cat_shop, institution: inst_toss }
+      { date: today, merchant: "마라탕 집",     amount: 12000, description: "점심",     category: cat_food,  institution: inst_shinhan },
+      { date: d1,    merchant: "카카오T",       amount: 8800,  description: "택시",     category: cat_trans, institution: inst_hana },
+      { date: d2,    merchant: "쿠팡",          amount: 45000, description: "생활용품", category: cat_shop,  institution: inst_toss }
     ]
 
     fixed_transactions.each do |tx|
