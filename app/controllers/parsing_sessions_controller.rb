@@ -193,13 +193,18 @@ class ParsingSessionsController < ApplicationController
       end
       return unless require_ai_consent!
 
-      # text_paste 세션: 새 파싱 세션 생성
-      new_session = @workspace.parsing_sessions.create!(
-        source_type: @parsing_session.source_type,
-        status: "pending",
-        review_status: "pending_review",
-        notes: @parsing_session.notes
-      )
+      # text_paste 세션: 실패 세션 삭제 후 새 파싱 세션 생성 (idempotency)
+      source_type = @parsing_session.source_type
+      notes       = @parsing_session.notes
+      new_session = ActiveRecord::Base.transaction do
+        @parsing_session.destroy!
+        @workspace.parsing_sessions.create!(
+          source_type: source_type,
+          status: "pending",
+          review_status: "pending_review",
+          notes: notes
+        )
+      end
       AiTextParsingJob.perform_later(new_session.id)
       redirect_to workspace_parsing_sessions_path(@workspace), notice: "재처리를 시작했습니다."
     end
