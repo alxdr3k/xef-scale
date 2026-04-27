@@ -193,4 +193,51 @@ class TransactionTest < ActiveSupport::TestCase
     )
     assert transaction.valid?
   end
+
+  # --- financial institution is NOT a required domain field ---
+
+  test "transaction is valid without financial institution" do
+    transaction = Transaction.new(
+      workspace: workspaces(:main_workspace),
+      date: Date.current,
+      amount: 5800,
+      merchant: "스타벅스",
+      status: "committed"
+    )
+    assert transaction.valid?, "금융기관 없이도 거래가 valid해야 합니다: #{transaction.errors.full_messages}"
+  end
+
+  test "source_institution_raw returns value from source_metadata" do
+    transaction = transactions(:food_transaction)
+    transaction.source_metadata = { "source_institution_raw" => "KB국민카드", "source_channel" => "pasted_text" }
+    assert_equal "KB국민카드", transaction.source_institution_raw
+  end
+
+  test "source_institution_raw returns nil when source_metadata is blank" do
+    transaction = Transaction.new(
+      workspace: workspaces(:main_workspace),
+      date: Date.current,
+      amount: 1000
+    )
+    assert_nil transaction.source_institution_raw
+  end
+
+  test "source_channel returns channel from source_metadata" do
+    transaction = transactions(:food_transaction)
+    transaction.source_metadata = { "source_channel" => "pasted_text" }
+    assert_equal "pasted_text", transaction.source_channel
+  end
+
+  test "source_editable? always returns false" do
+    # Institution is import-only metadata; the inline dropdown is suppressed entirely
+    transaction = transactions(:food_transaction)
+    assert_not transaction.source_editable?
+
+    transaction_no_institution = Transaction.new(
+      workspace: workspaces(:main_workspace),
+      date: Date.current,
+      amount: 1000
+    )
+    assert_not transaction_no_institution.source_editable?
+  end
 end

@@ -2,7 +2,6 @@
   <% original = confirmation.original_transaction %>
   <% new_tx = confirmation.new_transaction %>
   <% merchant_diff = original.merchant != new_tx.merchant %>
-  <% institution_diff = original.financial_institution_id != new_tx.financial_institution_id %>
   <% category_diff = original.category_id != new_tx.category_id %>
   <% confidence = confirmation.match_confidence.presence || "medium" %>
   <% confidence_label, confidence_classes = case confidence
@@ -49,7 +48,6 @@
             <span class="font-semibold text-gray-900"><%= number_to_currency(original.amount, unit: '₩', precision: 0) %></span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2">
-            <%= render 'shared/institution_badge', institution: original.financial_institution, highlighted: institution_diff %>
             <%= render 'shared/category_badge', category: original.category, highlighted: category_diff %>
           </div>
         </div>
@@ -68,7 +66,6 @@
             <span class="font-semibold text-gray-900"><%= number_to_currency(new_tx.amount, unit: '₩', precision: 0) %></span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2">
-            <%= render 'shared/institution_badge', institution: new_tx.financial_institution, highlighted: institution_diff %>
             <%= render 'shared/category_badge', category: new_tx.category, highlighted: category_diff %>
           </div>
         </div>

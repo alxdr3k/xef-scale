@@ -97,8 +97,8 @@ module Api
         assert tx.key?("amount")
         assert tx.key?("category")
         assert tx.key?("category_id")
-        assert tx.key?("institution")
-        assert tx.key?("institution_id")
+        assert tx.key?("source_institution_raw"), "source_institution_raw (import metadata) should be in API response"
+        assert_not tx.key?("institution_id"), "institution_id (FK) should not be in API response"
         assert tx.key?("payment_type")
         assert tx.key?("notes")
         assert tx.key?("created_at")

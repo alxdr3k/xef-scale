@@ -8,17 +8,16 @@ class ReviewsController < ApplicationController
 
   def show
     @transactions = @parsing_session.reviewable_transactions
-                                    .includes(:category, :financial_institution, :allowance_transaction)
+                                    .includes(:category, :allowance_transaction)
     @total_commit_count = @parsing_session.transactions.pending_review.where(deleted: false).count
     @pagy, @transactions = pagy(@transactions, limit: 50)
     @categories = @workspace.categories.order(:name)
-    @institutions = FinancialInstitution.all
     @read_only = @parsing_session.review_committed? || @parsing_session.review_rolled_back? || @parsing_session.review_discarded?
     @duplicate_confirmations = @parsing_session.duplicate_confirmations
                                                .pending
                                                .includes(
-                                                 original_transaction: [ :financial_institution, :category, :parsing_session ],
-                                                 new_transaction: [ :financial_institution, :category ]
+                                                 original_transaction: [ :category, :parsing_session ],
+                                                 new_transaction: [ :category ]
                                                )
                                                .order(:created_at)
   end
@@ -147,8 +146,6 @@ class ReviewsController < ApplicationController
 
     # Only allow editing specific fields
     permitted = [ :category_id, :notes, :merchant, :date, :amount, :payment_type, :installment_month, :installment_total ]
-    # Allow source change only if currently unknown
-    permitted << :financial_institution_id if @transaction.source_editable?
 
     old_category_id = @transaction.category_id
     old_merchant = @transaction.merchant

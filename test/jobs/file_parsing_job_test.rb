@@ -86,7 +86,8 @@ class FileParsingJobTest < ActiveJob::TestCase
     end
   end
 
-  test "create_transaction sets financial institution" do
+  test "create_transaction stores institution_identifier in source_metadata, not financial_institution" do
+    # institution_identifier is import/source metadata only; financial_institution FK must stay nil
     institution = financial_institutions(:shinhan_card)
     job = FileParsingJob.new
     tx_data = {
@@ -98,10 +99,28 @@ class FileParsingJobTest < ActiveJob::TestCase
     }
 
     tx = job.send(:create_transaction_without_gemini, @workspace, tx_data, @parsing_session)
-    assert_equal institution, tx.financial_institution
+    assert_nil tx.financial_institution_id, "financial_institution FK는 nil이어야 합니다"
+    assert_equal institution.identifier, tx.source_institution_raw,
+                 "institution_identifier는 source_metadata에 저장되어야 합니다"
   end
 
-  test "create_transaction handles nil institution identifier" do
+  test "create_transaction with nil institution identifier is valid" do
+    job = FileParsingJob.new
+    tx_data = {
+      date: Date.current,
+      merchant: "Test Merchant",
+      description: "Test",
+      amount: 10000,
+      institution_identifier: nil
+    }
+
+    tx = job.send(:create_transaction_without_gemini, @workspace, tx_data, @parsing_session)
+    assert_nil tx.financial_institution
+    assert_nil tx.source_institution_raw
+    assert tx.valid?
+  end
+
+  test "create_transaction with unknown institution identifier is valid" do
     job = FileParsingJob.new
     tx_data = {
       date: Date.current,
@@ -113,6 +132,8 @@ class FileParsingJobTest < ActiveJob::TestCase
 
     tx = job.send(:create_transaction_without_gemini, @workspace, tx_data, @parsing_session)
     assert_nil tx.financial_institution
+    assert_equal "nonexistent_identifier", tx.source_institution_raw
+    assert tx.valid?
   end
 
   test "match_category finds category with matching keyword" do

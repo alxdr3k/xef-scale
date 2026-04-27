@@ -1,0 +1,60 @@
+<%# Locals: transaction (required) %>
+<%# Displays import source hints (가져온 출처) in a collapsible detail.
+    This information is NOT used for categorisation or budget calculations. %>
+<% meta = transaction.source_metadata.presence %>
+<% ps   = transaction.parsing_session %>
+
+<td class="px-4 py-2 h-14 whitespace-nowrap text-sm text-gray-400">
+  <% if meta.present? || ps.present? %>
+    <details class="group/source">
+      <summary class="cursor-pointer list-none select-none hover:text-gray-600 transition-colors" title="가져온 출처 보기">
+        <svg class="w-4 h-4 inline-block opacity-50 group-open/source:opacity-75" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+        </svg>
+      </summary>
+      <div class="absolute z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-60 text-xs text-gray-600 space-y-1.5">
+        <div class="font-semibold text-gray-700 mb-1">가져온 출처</div>
+
+        <% if meta.present? %>
+          <% channel = meta["source_channel"] %>
+          <% if channel.present? %>
+            <div>
+              <span class="text-gray-400">입력 방식:</span>
+              <%= case channel
+                  when "pasted_text" then "텍스트 붙여넣기"
+                  when "screenshot"  then "스크린샷"
+                  when "manual"      then "직접 입력"
+                  else channel
+                  end %>
+            </div>
+          <% end %>
+
+          <% inst_raw = meta["source_institution_raw"] %>
+          <% if inst_raw.present? %>
+            <div>
+              <span class="text-gray-400">추정 출처:</span>
+              <%= inst_raw %>
+            </div>
+          <% end %>
+        <% end %>
+
+        <% if ps.present? %>
+          <div>
+            <span class="text-gray-400">세션:</span>
+            <%= link_to "##{ps.id} #{ps.text_paste? ? '텍스트' : (ps.processed_file&.original_filename || '파일')}",
+                review_workspace_parsing_session_path(transaction.workspace, ps),
+                class: "text-indigo-600 hover:underline",
+                data: { action: "click->source-popover#navigate:stop" } %>
+          </div>
+          <% if ps.committed_at.present? %>
+            <div class="text-gray-400">확정: <%= ps.committed_at.strftime('%Y-%m-%d') %></div>
+          <% end %>
+        <% end %>
+
+        <div class="pt-1 text-gray-400 border-t border-gray-100 text-[10px] leading-tight">
+          이 정보는 거래 분류나 예산 계산에 사용되지 않습니다.
+        </div>
+      </div>
+    </details>
+  <% end %>
+</td>

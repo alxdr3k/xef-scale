@@ -63,7 +63,7 @@ module Api
       def create_params
         params.require(:transaction).permit(
           :date, :merchant, :amount, :notes,
-          :category_id, :financial_institution_id,
+          :category_id,
           :payment_type, :installment_month, :installment_total
         )
       end
@@ -76,10 +76,9 @@ module Api
           amount: t.amount,
           category: t.category&.name,
           category_id: t.category_id,
-          institution: t.financial_institution&.name,
-          institution_id: t.financial_institution_id,
           payment_type: t.payment_type,
           notes: t.notes,
+          source_institution_raw: t.source_institution_raw,
           created_at: t.created_at.iso8601
         }
       end

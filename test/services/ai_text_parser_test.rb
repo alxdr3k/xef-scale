@@ -289,9 +289,45 @@ class AiTextParserTest < ActiveSupport::TestCase
     assert item_props[:date]
     assert item_props[:merchant]
     assert item_props[:amount]
-    assert item_props[:institution]
+    assert item_props[:institution], "institution フィールドはスキーマに存在するが、optional"
     assert item_props[:payment_type]
     assert item_props[:is_cancel]
     assert item_props[:confidence]
+
+    # institution is optional — not in required array
+    required_fields = schema[:properties][:transactions][:items][:required]
+    assert_not_includes required_fields, "institution", "institution は required に含まれてはいけない"
+  end
+
+  test "extract_transactions succeeds without institution field" do
+    parser = AiTextParser.new(api_key: "test_key")
+
+    fake_response = {
+      "candidates" => [ {
+        "content" => {
+          "parts" => [ {
+            "text" => {
+              transactions: [
+                {
+                  date: "2026-03-15",
+                  merchant: "스타벅스강남점",
+                  amount: 5800,
+                  payment_type: "lump_sum",
+                  is_cancel: false,
+                  confidence: 0.88
+                  # institution 필드 없음
+                }
+              ]
+            }.to_json
+          } ]
+        }
+      } ]
+    }
+
+    transactions = parser.send(:extract_transactions, fake_response)
+    assert_equal 1, transactions.size
+    tx = transactions.first
+    assert_equal "스타벅스강남점", tx[:merchant]
+    assert_nil tx[:institution]
   end
 end

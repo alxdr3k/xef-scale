@@ -77,7 +77,7 @@ class AiTextParser
       - date: 거래 날짜 (YYYY-MM-DD 형식, 연도가 없으면 #{current_year}년 사용)
       - merchant: 가맹점/상점명
       - amount: 금액 (숫자만, 콤마 제거)
-      - institution: 금융기관명 (신한카드, KB국민카드, 하나카드, 토스뱅크 등)
+      - institution: 금융기관/앱 원문명 (신한카드, KB국민카드, 토스뱅크 등 — 알 수 없으면 null)
       - payment_type: 결제유형 (lump_sum=일시불, installment=할부)
       - installment_month: 할부인 경우 현재 회차 (일시불이면 null)
       - installment_total: 할부인 경우 총 개월수 (일시불이면 null)
@@ -91,6 +91,8 @@ class AiTextParser
       4. 텍스트에 여러 거래가 있으면 모두 추출
       5. 거래가 아닌 텍스트(광고, 안내 등)는 무시
       6. 확실하지 않은 필드는 null로 설정
+      7. merchant(가맹점)에 금융기관명/카드사명을 넣지 마세요. 카드사명은 institution에만 넣으세요.
+      8. institution을 파악할 수 없어도 파싱 실패가 아닙니다. null로 두세요.
     PROMPT
   end
 
@@ -112,7 +114,7 @@ class AiTextParser
             is_cancel: { type: "BOOLEAN" },
             confidence: { type: "NUMBER" }
           },
-          required: %w[date merchant amount institution payment_type is_cancel confidence]
+          required: %w[date merchant amount payment_type is_cancel confidence]
         }
       }
     },
