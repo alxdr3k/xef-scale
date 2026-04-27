@@ -7,6 +7,9 @@ import { application } from "./application"
 import AutoFilterController from "./auto_filter_controller"
 application.register("auto-filter", AutoFilterController)
 
+import CalendarController from "./calendar_controller"
+application.register("calendar", CalendarController)
+
 import AutoRefreshController from "./auto_refresh_controller"
 application.register("auto-refresh", AutoRefreshController)
 

@@ -440,6 +440,7 @@ class TransactionsController < ApplicationController
     scope = scope.by_category(params[:category_id]) if params[:category_id].present?
     scope = scope.by_institution(params[:institution_id]) if params[:institution_id].present?
     scope = scope.search(params[:q]) if params[:q].present?
+    scope = scope.where(category_id: nil) if params[:filter] == "uncategorized"
     scope
   end
 

@@ -76,7 +76,7 @@
         <% end %>
       </div>
 
-      <div class="grid grid-cols-7 gap-1">
+      <div class="grid grid-cols-7 gap-1" data-controller="calendar">
         <% @calendar_weeks.flatten.each do |day| %>
           <% in_month         = day.month == @month %>
           <% total            = @daily_totals[day].to_i %>
@@ -85,12 +85,13 @@
           <% uncategorized_count = @uncategorized_per_day[day].to_i %>
           <% selected         = day == @selected_date %>
           <% today            = day == Date.current %>
-          <%# Each cell navigates via Turbo Frame "calendar-day-panel" so the
-              right-side panel updates without a full page reload. The outer
-              calendar_dashboard_path also updates the URL (and selected state)
-              via a data-turbo-action advance. %>
           <%= link_to calendar_day_dashboard_path(date: day.to_s),
-              data: { turbo_frame: "calendar-day-panel" },
+              data: {
+                turbo_frame: "calendar-day-panel",
+                turbo_action: "advance",
+                calendar_target: "day",
+                action: "click->calendar#select"
+              },
               class: "block min-h-[88px] p-2 rounded-md border text-left text-xs transition-colors " \
                      "#{in_month ? 'bg-white' : 'bg-gray-50 text-gray-400'} " \
                      "#{selected ? 'border-indigo-600 ring-1 ring-indigo-600' : 'border-gray-200 hover:border-indigo-300'}" do %>
