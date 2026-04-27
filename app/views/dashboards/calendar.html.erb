@@ -128,7 +128,8 @@
           <h2 class="text-base font-semibold text-gray-900"><%= @selected_date.strftime('%Y.%m.%d') %></h2>
           <%= link_to '월간 보기 →',
               monthly_dashboard_path(year: @year, month: @month),
-              class: 'text-xs text-indigo-600 hover:text-indigo-800' %>
+              class: 'text-xs text-indigo-600 hover:text-indigo-800',
+              data: { turbo_frame: '_top' } %>
         </div>
         <% if @selected_day_transactions.any? %>
           <ul class="divide-y divide-gray-100">
