@@ -39,8 +39,9 @@ class AiTextParsingJob < ApplicationJob
         end
       end
 
-      if stats[:total].zero?
+      if stats[:total].zero? || stats[:success].zero?
         parsing_session.fail!
+        create_failure_notifications(parsing_session)
       else
         parsing_session.complete!(stats)
         create_completion_notifications(parsing_session)
@@ -49,10 +50,12 @@ class AiTextParsingJob < ApplicationJob
     rescue AiTextParser::ApiError, AiTextParser::ParseError => e
       Rails.logger.error "[AiTextParsingJob] AI parsing failed: #{e.message}"
       parsing_session.fail!
+      create_failure_notifications(parsing_session)
     rescue => e
       Rails.logger.error "[AiTextParsingJob] Unexpected error: #{e.message}"
       Rails.logger.error e.backtrace.first(5).join("\n")
       parsing_session.fail!
+      create_failure_notifications(parsing_session)
     end
   end
 
@@ -91,6 +94,19 @@ class AiTextParsingJob < ApplicationJob
     return mapping.category if mapping
 
     workspace.categories.find { |c| c.matches?(merchant) }
+  end
+
+  def create_failure_notifications(parsing_session)
+    workspace = parsing_session.workspace
+
+    if workspace.owner
+      Notification.create_parsing_failed!(parsing_session, workspace.owner)
+    end
+
+    workspace.workspace_memberships.where(role: %w[co_owner member_write]).find_each do |membership|
+      next if membership.user_id == workspace.owner_id
+      Notification.create_parsing_failed!(parsing_session, membership.user)
+    end
   end
 
   def create_completion_notifications(parsing_session)

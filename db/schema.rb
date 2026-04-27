@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_22_100100) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_27_090000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -140,6 +140,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_22_100100) do
     t.string "notifiable_type"
     t.string "notification_type", null: false
     t.datetime "read_at"
+    t.integer "target_month"
+    t.integer "target_year"
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
@@ -148,6 +150,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_22_100100) do
     t.index ["user_id", "created_at"], name: "index_notifications_on_user_id_and_created_at"
     t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
     t.index ["user_id"], name: "index_notifications_on_user_id"
+    t.index ["workspace_id", "user_id", "notification_type", "target_year", "target_month"], name: "index_notifications_on_budget_dedup"
     t.index ["workspace_id"], name: "index_notifications_on_workspace_id"
   end
 
@@ -170,7 +173,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_22_100100) do
     t.integer "total_count"
     t.datetime "updated_at", null: false
     t.integer "workspace_id", null: false
-    t.index ["processed_file_id"], name: "index_parsing_sessions_on_processed_file_id"
+    t.index ["processed_file_id"], name: "index_parsing_sessions_on_processed_file_id_unique", unique: true, where: "processed_file_id IS NOT NULL"
     t.index ["review_status"], name: "index_parsing_sessions_on_review_status"
     t.index ["workspace_id"], name: "index_parsing_sessions_on_workspace_id"
   end
@@ -179,6 +182,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_22_100100) do
     t.datetime "created_at", null: false
     t.string "file_hash"
     t.string "filename"
+    t.string "institution_identifier"
     t.string "original_filename"
     t.string "status"
     t.datetime "updated_at", null: false

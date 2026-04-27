@@ -60,7 +60,7 @@ Rails.application.routes.draw do
     resources :category_mappings, except: [ :show ]
 
     # File uploads and parsing
-    resources :parsing_sessions, only: [ :index, :show, :create ] do
+    resources :parsing_sessions, only: [ :index, :show, :create, :destroy ] do
       collection do
         post :text_parse
         post :bulk_discard
@@ -68,6 +68,7 @@ Rails.application.routes.draw do
       resources :duplicate_confirmations, only: [ :update ]
       member do
         patch :inline_update
+        post :retry
         get :review, to: "reviews#show"
         post :commit, to: "reviews#commit"
         post :rollback, to: "reviews#rollback"

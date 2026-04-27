@@ -6,6 +6,7 @@ on:
 jobs:
   scan_ruby:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout code
@@ -18,12 +19,13 @@ jobs:
 
       - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
-      
+
       - name: Scan for known security vulnerabilities in gems used
         run: bin/bundler-audit
-      
+
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       RUBOCOP_CACHE_ROOT: tmp/rubocop
     steps:
@@ -50,6 +52,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     # services:
     #  redis:
@@ -78,6 +81,7 @@ jobs:
 
   system-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     # services:
     #  redis:
@@ -110,4 +114,54 @@ jobs:
         with:
           name: screenshots
           path: ${{ github.workspace }}/tmp/screenshots
+          if-no-files-found: ignore
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y node-gyp
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm install
+
+      - name: Build assets
+        run: npm run build && npm run build:css
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Set up test database
+        env:
+          RAILS_ENV: test
+        run: bin/rails db:schema:load db:seed
+
+      - name: Run Playwright E2E tests
+        env:
+          RAILS_ENV: test
+          CI: true
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
           if-no-files-found: ignore

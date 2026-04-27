@@ -85,12 +85,15 @@ test.describe('Calendar dashboard (기본 홈)', () => {
     // Navigate to a historical month unlikely to have seeded data in every cell
     await page.goto('/dashboard?year=2024&month=1&date=2024-01-01');
     await page.waitForLoadState('networkidle');
-    const emptyMsg = page.locator('text=선택한 날짜에는 거래가 없습니다.');
+    // Side panel always renders the selected date heading, then either the
+    // empty-state message or a tx list under it.
+    await expect(page.locator('h2:has-text("2024.01.01")')).toBeVisible();
+    // The selected-day frame renders either a tx list or the "거래 내역이
+    // 없습니다." empty paragraph.
+    const emptyMsg = page.getByText('거래 내역이 없습니다.');
     const hasTxList = page.locator('ul.divide-y');
-    // Either empty message or transaction list must be present
-    const hasEmpty = await emptyMsg.isVisible().catch(() => false);
-    const hasList = await hasTxList.isVisible().catch(() => false);
-    expect(hasEmpty || hasList).toBe(true);
+    const present = (await emptyMsg.count()) > 0 || (await hasTxList.count()) > 0;
+    expect(present).toBe(true);
   });
 
   test('월간 보기 링크가 /dashboard/monthly 로 이동한다', async ({ page }) => {
@@ -110,15 +113,16 @@ test.describe('Monthly report (/dashboard/monthly)', () => {
   test('요약 카드 — 총 지출 표시', async ({ page }) => {
     await page.goto('/dashboard/monthly?year=2025&month=1');
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('text=이번 달 총 지출')).toBeVisible();
-    await expect(page.locator('text=/₩[\\d,]+/')).toBeVisible();
+    // Hero label is "{year}년 {month}월 총 지출"
+    await expect(page.locator('text=/\\d{4}년 \\d{1,2}월 총 지출/')).toBeVisible();
+    await expect(page.locator('text=/₩[\\d,]+/').first()).toBeVisible();
   });
 
   test('요약 카드 — 거래 건수 표시', async ({ page }) => {
     await page.goto('/dashboard/monthly?year=2025&month=1');
     await page.waitForLoadState('networkidle');
-    const countCard = page.locator(':has-text("거래 건수")').filter({ hasText: /\d+건/ });
-    await expect(countCard.first()).toBeVisible();
+    // Hero card shows "{n}건 거래" beneath the total
+    await expect(page.locator('text=/\\d+건 거래/').first()).toBeVisible();
   });
 
   test('이전/다음 달 링크 동작', async ({ page }) => {

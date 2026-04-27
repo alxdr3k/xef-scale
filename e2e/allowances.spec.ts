@@ -6,47 +6,24 @@ test.describe('Allowances (용돈)', () => {
     await loginAsAdmin(page);
   });
 
-  test('테이블 렌더링 - 컬럼 순서와 해제 버튼 확인', async ({ page }) => {
+  test('테이블 렌더링 - 컬럼 순서 확인', async ({ page }) => {
     await page.goto('/allowances?year=2025&month=1');
 
-    // Header columns in correct order
+    // Header columns in current UI: date / merchant / amount / category / institution.
+    // (Per-row release was removed in favor of bulk-select; there is no "작업" column.)
     await expect(page.locator('thead th:has-text("날짜")')).toBeVisible();
     await expect(page.locator('thead th:has-text("내역")')).toBeVisible();
     await expect(page.locator('thead th:has-text("금액")')).toBeVisible();
     await expect(page.locator('thead th:has-text("카테고리")')).toBeVisible();
     await expect(page.locator('thead th:has-text("금융기관")')).toBeVisible();
-    await expect(page.locator('thead th:has-text("작업")')).toBeVisible();
-
-    // Check that transactions are displayed (if any exist)
-    const rows = page.locator('tbody tr');
-    const rowCount = await rows.count();
-
-    if (rowCount > 0) {
-      // Check first transaction row has release button
-      const firstRow = rows.first();
-      await expect(firstRow.locator('button:has-text("해제")')).toBeVisible();
-    }
   });
 
-  test('해제 버튼 - 확인 대화상자와 행 제거', async ({ page }) => {
+  // The per-row "해제" button no longer exists — unmark happens via bulk-select.
+  // Marking the test as fixme until a bulk-select e2e flow is added.
+  test.fixme('해제 버튼 - 확인 대화상자와 행 제거', async ({ page }) => {
+    // TODO(#97): Rewrite against the bulk-select unmark flow (toggle row → click
+    // toolbar "용돈 해제"). Currently no per-row 해제 button exists.
     await page.goto('/allowances?year=2025&month=1');
-
-    const rows = page.locator('tbody tr');
-    const initialCount = await rows.count();
-
-    if (initialCount > 0) {
-      // Set up dialog handler for confirmation
-      page.on('dialog', async dialog => {
-        expect(dialog.message()).toContain('용돈에서 해제하시겠습니까?');
-        await dialog.accept();
-      });
-
-      // Click the release button on first row
-      await rows.first().locator('button:has-text("해제")').click();
-
-      // Wait for Turbo Stream to update - row count should decrease
-      await expect(rows).toHaveCount(initialCount - 1, { timeout: 5000 });
-    }
   });
 
   test('월력 - 드롭다운 열림과 닫힘', async ({ page }) => {
@@ -160,8 +137,10 @@ test.describe('Allowances (용돈)', () => {
     await expect(page).toHaveURL(/year=2024.*month=12|month=12.*year=2024/);
     await expect(page.locator('body')).toContainText('2024년 12월');
 
-    // Click next month twice to get to February 2025
+    // Click next month twice to get to February 2025 (await each navigation
+    // so Turbo finishes before the next click).
     await page.locator('a:has-text("다음 달 →")').click();
+    await expect(page).toHaveURL(/year=2025.*month=1|month=1.*year=2025/);
     await page.locator('a:has-text("다음 달 →")').click();
     await expect(page).toHaveURL(/year=2025.*month=2|month=2.*year=2025/);
     await expect(page.locator('body')).toContainText('2025년 2월');

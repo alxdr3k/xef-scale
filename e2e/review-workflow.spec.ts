@@ -11,7 +11,7 @@ test.describe('Review Workflow', () => {
     await navigateToParsingSessions(page);
 
     // 2. Check that page loaded
-    await expect(page.locator('h1:has-text("파일 업로드")')).toBeVisible();
+    await expect(page.locator('h1:has-text("거래 추가")')).toBeVisible();
 
     // 3. Find any completed session with pending review
     const reviewLink = page.locator('a:has-text("검토하기")').first();

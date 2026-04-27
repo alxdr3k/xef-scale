@@ -52,5 +52,15 @@
       <%= link_to '중복 확인', workspace_parsing_session_path(workspace, parsing_session),
           class: 'text-xs text-indigo-600 hover:text-indigo-900' %>
     </div>
+  <% elsif parsing_session.failed? %>
+    <div class="mt-2 flex items-center gap-3">
+      <%= button_to '재시도', retry_workspace_parsing_session_path(workspace, parsing_session),
+          method: :post,
+          class: 'text-xs text-indigo-600 hover:text-indigo-900 font-medium bg-transparent border-0 cursor-pointer p-0' %>
+      <%= button_to '삭제', workspace_parsing_session_path(workspace, parsing_session),
+          method: :delete,
+          form: { data: { turbo_confirm: "이 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다." } },
+          class: 'text-xs text-red-600 hover:text-red-900 bg-transparent border-0 cursor-pointer p-0' %>
+    </div>
   <% end %>
 </div>

@@ -20,7 +20,7 @@ test.describe('Transactions (거래 내역)', () => {
 
   test('페이지 제목과 워크스페이스명 표시', async ({ page }) => {
     await expect(page.getByRole('heading', { name: '거래 내역' })).toBeVisible();
-    await expect(page.locator('text=가계부')).toBeVisible();
+    await expect(page.getByRole('paragraph').filter({ hasText: '가계부' }).first()).toBeVisible();
   });
 
   test('거래 추가 버튼 노출 및 href 정확성', async ({ page }) => {
@@ -41,8 +41,8 @@ test.describe('Transactions (거래 내역)', () => {
 
   test('합계 금액과 총 건수가 표시된다', async ({ page }) => {
     await expect(page.locator('text=합계:')).toBeVisible();
-    await expect(page.locator('text=/₩[\\d,]+/')).toBeVisible();
-    await expect(page.locator('text=/\\d+건/')).toBeVisible();
+    await expect(page.locator('text=/₩[\\d,]+/').first()).toBeVisible();
+    await expect(page.locator('text=/\\d+건/').first()).toBeVisible();
   });
 
   // --- Seed data ---

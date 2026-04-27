@@ -56,7 +56,7 @@ class Notification < ApplicationRecord
     )
   end
 
-  def self.create_budget_alert!(workspace, user, type, progress)
+  def self.create_budget_alert!(workspace, user, type, progress, year:, month:)
     amount_str = progress[:spending].to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
     budget_str = progress[:budget].to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
 
@@ -65,8 +65,10 @@ class Notification < ApplicationRecord
       workspace: workspace,
       notification_type: type,
       title: type == "budget_exceeded" ? "예산 초과" : "예산 경고",
-      message: "이번 달 지출 ₩#{amount_str} / 예산 ₩#{budget_str} (#{progress[:percentage]}%)",
-      action_url: "/dashboard"
+      message: "#{year}년 #{month}월 지출 ₩#{amount_str} / 예산 ₩#{budget_str} (#{progress[:percentage]}%)",
+      action_url: "/dashboard",
+      target_year: year,
+      target_month: month
     )
   end
 
