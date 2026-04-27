@@ -69,13 +69,11 @@ test.describe('Calendar dashboard (기본 홈)', () => {
     await page.goto('/dashboard?year=2025&month=1');
     await page.waitForLoadState('networkidle');
 
-    // Click the cell for day 15 within the current month
-    const dayCell = page.locator('.grid.grid-cols-7 ~ .grid.grid-cols-7 a, .grid.grid-cols-7 + div a').first();
-    // Use a link with the date param instead — find any in-month cell link
-    const calendarLinks = page.locator('a[href*="date=2025-01-"]');
+    // calendar_day links use path /dashboard/calendar_day/:date
+    const calendarLinks = page.locator('a[href*="calendar_day"]');
     const count = await calendarLinks.count();
     if (count > 0) {
-      const targetLink = calendarLinks.nth(Math.min(14, count - 1)); // aim for ~15th
+      const targetLink = calendarLinks.nth(Math.min(14, count - 1));
       await targetLink.click();
       await page.waitForLoadState('networkidle');
       // Side panel heading changes to the selected date

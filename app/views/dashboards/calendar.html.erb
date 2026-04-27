@@ -41,7 +41,7 @@
       <% end %>
 
       <% if @uncategorized_total > 0 %>
-        <%= link_to workspace_transactions_path(@workspace, filter: 'uncategorized'),
+        <%= link_to workspace_transactions_path(@workspace, filter: 'uncategorized', year: @year, month: @month),
             class: "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors" do %>
           <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
           미분류 <%= @uncategorized_total %>건
@@ -88,7 +88,6 @@
           <%= link_to calendar_day_dashboard_path(date: day.to_s),
               data: {
                 turbo_frame: "calendar-day-panel",
-                turbo_action: "advance",
                 calendar_target: "day",
                 action: "click->calendar#select"
               },
