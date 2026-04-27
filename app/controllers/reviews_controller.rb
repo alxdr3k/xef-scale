@@ -9,6 +9,7 @@ class ReviewsController < ApplicationController
   def show
     @transactions = @parsing_session.reviewable_transactions
                                     .includes(:category, :financial_institution, :allowance_transaction)
+    @total_commit_count = @parsing_session.transactions.pending_review.where(deleted: false).count
     @pagy, @transactions = pagy(@transactions, limit: 50)
     @categories = @workspace.categories.order(:name)
     @institutions = FinancialInstitution.all
@@ -167,7 +168,7 @@ class ReviewsController < ApplicationController
       case field
       when "amount"
         value = Integer(value, exception: false)
-        if value.nil? || value <= 0
+        if value.nil? || value == 0
           head :unprocessable_entity
           return
         end
@@ -285,10 +286,26 @@ class ReviewsController < ApplicationController
     budget = @workspace.budget
     return unless budget
 
-    year = Date.current.year
-    month = Date.current.month
-    progress = budget.progress_for_month(year, month)
+    # 이번 커밋으로 확정된 거래의 월들을 수집
+    committed_transactions = @parsing_session.transactions.where(status: "committed")
+    affected_months = committed_transactions
+      .pluck(:date)
+      .map { |d| [ d.year, d.month ] }
+      .uniq
 
+    # fallback: 커밋된 거래가 없으면 현재 월만 확인
+    affected_months = [ [ Date.current.year, Date.current.month ] ] if affected_months.empty?
+
+    affected_months.each do |year, month|
+      check_budget_alert_for_month(year, month)
+    end
+  end
+
+  def check_budget_alert_for_month(year, month)
+    budget = @workspace.budget
+    return unless budget
+
+    progress = budget.progress_for_month(year, month)
     alert_type = if progress[:percentage] >= 100
       "budget_exceeded"
     elsif progress[:percentage] >= 80
@@ -298,11 +315,12 @@ class ReviewsController < ApplicationController
 
     @workspace.members.find_each do |member|
       already_alerted = Notification.where(
-        workspace: @workspace, user: member, notification_type: alert_type
-      ).where("created_at >= ?", Date.current.beginning_of_month).exists?
+        workspace: @workspace, user: member, notification_type: alert_type,
+        target_year: year, target_month: month
+      ).exists?
 
       next if already_alerted
-      Notification.create_budget_alert!(@workspace, member, alert_type, progress)
+      Notification.create_budget_alert!(@workspace, member, alert_type, progress, year: year, month: month)
     end
   end
 

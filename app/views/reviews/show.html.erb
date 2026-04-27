@@ -68,8 +68,11 @@
               전체 취소
             </button>
           <% end %>
+          <% commit_msg = @pagy.pages > 1 ?
+               "전체 #{@total_commit_count}건 중 현재 #{@transactions.count}건 표시 중입니다. 커밋하면 전체 #{@total_commit_count}건이 거래 내역에 반영됩니다." :
+               "#{@total_commit_count}건의 거래를 거래 내역에 반영하시겠습니까?" %>
           <%= form_with url: commit_workspace_parsing_session_path(@workspace, @parsing_session),
-              method: :post, class: 'inline-block', data: { turbo_confirm: "#{@transactions.count}건의 거래를 거래 내역에 반영하시겠습니까?" } do %>
+              method: :post, class: 'inline-block', data: { turbo_confirm: commit_msg } do %>
             <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
               거래 내역 반영
             </button>
