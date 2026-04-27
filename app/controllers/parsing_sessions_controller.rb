@@ -10,6 +10,15 @@ class ParsingSessionsController < ApplicationController
                                   .includes(:processed_file, :duplicate_confirmations)
                                   .order(created_at: :desc)
 
+    if params[:year].present? && params[:month].present?
+      year  = params[:year].to_i
+      month = params[:month].to_i
+      if year.between?(2000, 2100) && month.between?(1, 12)
+        range = Date.new(year, month).beginning_of_month..Date.new(year, month).end_of_month
+        @parsing_sessions = @parsing_sessions.where(created_at: range)
+      end
+    end
+
     @pagy, @parsing_sessions = pagy(@parsing_sessions, limit: 20)
 
     # 아직 parsing_session이 생성되지 않은 pending/processing 파일들
