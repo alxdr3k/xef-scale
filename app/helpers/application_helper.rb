@@ -1,6 +1,12 @@
 module ApplicationHelper
   include Pagy::Frontend
 
+  APP_NAME = "지출 추적"
+
+  def app_name
+    APP_NAME
+  end
+
   def safe_return_to(fallback_path)
     return_to = params[:return_to]
     return fallback_path if return_to.blank?
