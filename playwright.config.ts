@@ -23,7 +23,7 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'bin/rails server -p 3000',
+    command: 'RAILS_ENV=test bin/rails server -p 3000',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

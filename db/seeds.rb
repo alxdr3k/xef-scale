@@ -3,8 +3,8 @@ puts "Seeding financial institutions..."
 FinancialInstitution.seed_default!
 puts "Created #{FinancialInstitution.count} financial institutions"
 
-# Create a test user if in development
-if Rails.env.development?
+# Create a test user if in development or test
+if Rails.env.development? || Rails.env.test?
   puts "Seeding development data..."
 
   # Create test user
