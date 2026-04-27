@@ -1,6 +1,8 @@
 # xef-scale 아키텍처
 
-xef-scale은 한국 금융기관의 지출 내역을 **금융 문자 붙여넣기**와 **명세서 스크린샷 업로드** 두 경로로 받아 Gemini로 파싱하고 분류하는 Rails 기반 지출 추적 앱입니다. Excel/PDF/CSV/HTML 명세서는 지원하지 않습니다.
+> 본 문서는 *현재* 시스템의 큰 그림이다. 더 짧은 핵심 요약은 [docs/context/current-state.md](context/current-state.md), 입력→파싱→커밋 동작 세부는 [docs/runtime.md](runtime.md), 데이터 모델은 [docs/data-model.md](data-model.md), AI 호출 정책은 [docs/ai-pipeline.md](ai-pipeline.md), 카테고리화는 [docs/categorization.md](categorization.md). 코드/스키마와 충돌하면 코드/스키마가 권위다.
+
+xef-scale은 한국 금융기관의 지출 내역을 **금융 문자 붙여넣기**와 **명세서 스크린샷 업로드** 두 경로(추가로 직접 입력과 API write 경로)로 받아 Gemini로 파싱하고 분류하는 Rails 기반 지출 추적 앱입니다. Excel/PDF/CSV/HTML 명세서는 지원하지 않습니다.
 
 ## 핵심 데이터 흐름
 

@@ -137,8 +137,8 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 다음 항목은 본 PR에서 검증하지 못했거나, 추가 확인이 필요합니다.
 
 - **이미지 파서 멀티 기관 지원** — `ImageStatementParser`의 `institution_identifier`는 컨트롤러에서 전달 가능하지만 (`params[:institution_identifier]`), Vision 프롬프트 자체는 신한카드 명세서 텍스트에 종속됨. 다른 기관 명세서가 들어오면 정확도 저하 가능. 실제 동작 측정 필요.
-- **`Pundit::Authorization` include의 의도** — 모듈은 mount 됐지만 정책 디렉토리가 없음. 의도된 부분 도입인지, 잔재인지 확인 필요.
+- **`Pundit::Authorization` include는 mount만 되어 있고 활성 정책 디렉토리/`authorize` 호출은 0건**. 현재 활성 패턴은 `ApplicationController#require_workspace_*` + `User#can_read?` / `can_write?` / `admin_of?`. 향후 정책 도입 시 ADR 권장.
 - **PRD.md의 모델 폴백 체인 vs 코드** — `AiTextParser`는 4모델, `GeminiCategoryService`는 5모델, `GeminiVisionParserService`는 1모델. PRD/디자인 문서가 코드와 일치한다고 단정하지 않음.
 - **`docs/categorization.md`의 "텍스트 경로는 1-2단계만"** — 코드와 일치하지만, 향후 Gemini 카테고리 폴백을 텍스트 경로에도 적용할지 여부는 미결정.
-- **`Notification.create_parsing_failed!` / `create_parsing_complete!`** — `Notification` 모델 자체가 존재하지만 이 클래스 메서드의 위치/구현은 본 문서에서 추적하지 않았음.
 - **MCP server 등록 방법** — `mcp-server.json`은 정의 파일이지만 실제 등록 방식(`.mcp.json`과의 관계 포함)은 본 PR에서 검증하지 않음.
+- **ActiveStorage blob 보존/삭제 정책** — 파싱 완료/실패/discard 후 원본 이미지 blob의 정리 정책 미검증.

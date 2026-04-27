@@ -54,7 +54,9 @@ bin/rails db:seed     # FinancialInstitution.seed_default! 등
 bin/rails db:reset    # 개발 전용
 ```
 
-`FinancialInstitution::SUPPORTED_INSTITUTIONS` 시드 8건은 `bin/rails db:seed`에서 만들어진다 (`needs audit` — `db/seeds.rb` 호출 여부 확인).
+`FinancialInstitution::SUPPORTED_INSTITUTIONS` 시드 8건은 `bin/rails db:seed`(즉 [db/seeds.rb](../db/seeds.rb))의 `FinancialInstitution.seed_default!` 호출로 생성된다. `Rails.env.development?`에서는 같은 파일이 테스트 사용자·기본 워크스페이스·샘플 거래도 만든다.
+
+일괄 가져오기 작업은 [lib/tasks/import.rake](../lib/tasks/import.rake)의 `import:backup`, `import:category_mappings`, `import:transactions` 태스크로 수행한다 — `DatabaseBackupService`로 SQLite 백업을 먼저 만들고 `CategoryMapping(source: "import")`과 거래를 만든다. 일반 사용 흐름은 아니며, 시드/마이그레이션과 별도로 관리한다.
 
 ## 백그라운드 잡
 
@@ -134,7 +136,7 @@ E2E (Playwright)는 현재 CI 잡이 없다.
 ## Needs audit (운영 측면)
 
 - 워커 프로세스 정의 — k8s manifest / Kamal Procfile에서 어떻게 띄우는지 확인 필요.
-- 시드 자동 실행 시점 — 컨테이너 부팅 시 `db:seed`를 실행하는 init container/entrypoint가 있는지.
+- 컨테이너 부팅 시 자동 `db:seed` 실행 여부 (k8s manifest / Kamal 정의에서 확인).
 - ActiveStorage blob 보존/삭제 정책 — 파싱 완료 후 원본 이미지 삭제 여부 미검증.
 - Gemini API quota / rate limit 모니터링.
 - 배포 SSH 호스트(`ssh.xeflabs.com`) / Cloudflare Access 운영 정책.

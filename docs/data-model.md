@@ -91,7 +91,7 @@ User ──< WorkspaceMembership >── Workspace
 - `CategoryMapping.source`:
   - `manual` — 사용자가 직접 거래 카테고리를 바꿀 때 학습 (`TransactionsController#update` 흐름).
   - `gemini` — `FileParsingJob`이 `GeminiCategoryService` 결과를 매핑으로 저장.
-  - `import` — 일괄 가져오기 등에서 학습 (현재 코드 호출 지점은 검증되지 않음 — `needs audit`).
+  - `import` — 일괄 가져오기에서 학습. 단일 호출 지점: `lib/tasks/import.rake`의 `import:category_mappings` 태스크.
 - `CategoryMapping.find_for_merchant`는 4단계 우선순위 (exact+amount → exact+nil amount → contains+amount → contains+nil amount). `description_pattern`은 일부 매칭 헬퍼에서 추가 사용.
 
 자세한 흐름은 [categorization.md](categorization.md).
@@ -119,10 +119,13 @@ User ──< WorkspaceMembership >── Workspace
 - `financial_institutions.identifier` UNIQUE.
 - `users.email` UNIQUE.
 
+## 확인된 부수 사실
+
+- `Notification.create_parsing_complete!` / `create_parsing_failed!` / `create_budget_alert!` — `app/models/notification.rb`에 클래스 메서드로 정의되어 있다.
+- `CategoryMapping(source: "import")`의 단일 생성 지점은 `lib/tasks/import.rake`(Step 2: 카테고리 매핑 import). 다른 호출 경로는 없다.
+- `Workspace.ai_consent_acknowledged_at`을 갱신하는 UI는 `app/views/workspaces/settings.html.erb` + `WorkspacesController#update`이며, true로 캐스팅된 `consent` 파라미터가 들어왔을 때만 시각을 기록한다.
+- `ParsingSession#processed_file`이 `optional: true`인 이유: `source_type: "text_paste"` 세션은 파일이 없기 때문 (`source_type: "file_upload"` 세션만 `processed_file` 보유).
+
 ## Needs audit
 
-- `Transaction.source_type = "import"`의 실제 사용 지점.
-- `CategoryMapping(source: "import")`을 만드는 호출 경로 (마이그레이션/시드/잡 어디?).
-- `Workspace.ai_consent_required?`와 `Workspace.ai_consent_acknowledged_at`의 UI 플로우 — 본 PR에서는 컨트롤러 게이트만 확인.
-- `Notification` 모델의 `create_parsing_complete!` / `create_parsing_failed!` 정의 위치.
-- `ParsingSession#processed_file`이 `optional: true`인 이유 — text_paste 세션은 파일이 없기 때문이지만 데이터 정합성 점검 필요.
+- `Transaction.source_type = "import"`의 실제 사용 지점 — 모델에는 enum 값으로 선언돼 있으나 `app/`, `lib/`, `db/` 어디에서도 이 값으로 거래를 만드는 코드가 없다 (예약 값으로 보이며 향후 일괄 가져오기 거래 import 시 사용 의도 추정).

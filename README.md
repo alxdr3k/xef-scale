@@ -121,6 +121,10 @@ For the parsing paths (2 and 3):
 
 Excel, PDF, CSV, and HTML statements are **not** supported. Only direct entry, SMS/text paste, and image screenshots.
 
+## Documentation
+
+For implementation context (current state, runtime flow, data model, AI pipeline, testing, operations), see [docs/README.md](docs/README.md). AI coding agents should start with [AGENTS.md](AGENTS.md); Claude-specific operating rules live in [CLAUDE.md](CLAUDE.md).
+
 ## License
 
 This project is proprietary software.
