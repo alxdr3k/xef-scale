@@ -1,8 +1,7 @@
 class AddUniqueIndexToParsingSessions < ActiveRecord::Migration[8.1]
   def up
-    # Remove duplicate parsing sessions, keeping the most recent per processed_file
-    execute <<~SQL
-      DELETE FROM parsing_sessions
+    duplicate_ids = ActiveRecord::Base.connection.select_values(<<~SQL)
+      SELECT id FROM parsing_sessions
       WHERE processed_file_id IS NOT NULL
         AND id NOT IN (
           SELECT MAX(id)
@@ -11,6 +10,15 @@ class AddUniqueIndexToParsingSessions < ActiveRecord::Migration[8.1]
           GROUP BY processed_file_id
         )
     SQL
+
+    if duplicate_ids.any?
+      placeholders = duplicate_ids.map { "?" }.join(",")
+      sanitized = ActiveRecord::Base.send(:sanitize_sql_array, [ "(#{placeholders})", *duplicate_ids ])
+
+      execute "DELETE FROM transactions WHERE parsing_session_id IN #{sanitized}"
+      execute "DELETE FROM duplicate_confirmations WHERE parsing_session_id IN #{sanitized}"
+      execute "DELETE FROM parsing_sessions WHERE id IN #{sanitized}"
+    end
 
     remove_index :parsing_sessions, :processed_file_id,
                  name: "index_parsing_sessions_on_processed_file_id",

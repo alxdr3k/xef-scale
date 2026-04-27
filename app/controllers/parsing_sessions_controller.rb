@@ -207,8 +207,11 @@ class ParsingSessionsController < ApplicationController
       return
     end
 
+    processed_file = @parsing_session.processed_file
+
     @parsing_session.transactions.find_each(&:rollback!) rescue nil
     @parsing_session.destroy!
+    processed_file&.destroy
 
     redirect_to workspace_parsing_sessions_path(@workspace), notice: "세션이 삭제되었습니다."
   end
