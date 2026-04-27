@@ -22,7 +22,7 @@
     <h2 class="text-lg font-semibold text-gray-900 mb-2">AI 사용 설정</h2>
     <p class="text-sm text-gray-600 mb-4">
       AI 문자 파싱과 스크린샷 파싱을 사용하면 입력한 SMS 본문 또는 명세서 이미지가
-      외부 Gemini API로 전송되어 거래로 변환됩니다. AI 카테고리 추천을 사용하면
+      외부 Gemini API로 전송되어 결제로 변환됩니다. AI 카테고리 추천을 사용하면
       거래처 이름이 외부 Gemini API로 전송되어 카테고리를 추천받습니다. 비활성화하면
       해당 입력 경로는 사용할 수 없거나 자동 추천이 동작하지 않습니다.
     </p>
@@ -57,7 +57,7 @@
         <%= f.check_box :ai_category_suggestions_enabled, class: 'mt-1' %>
         <span>
           <span class="font-medium text-gray-900">AI 카테고리 추천 사용</span>
-          <span class="block text-xs text-gray-500">미분류 거래의 카테고리를 Gemini로 추천.</span>
+          <span class="block text-xs text-gray-500">미분류 결제의 카테고리를 Gemini로 추천.</span>
         </span>
       </label>
 
@@ -184,7 +184,7 @@
   <!-- Danger Zone -->
   <div class="bg-white shadow rounded-lg p-6 border-2 border-red-200">
     <h2 class="text-lg font-semibold text-red-600 mb-4">위험 구역</h2>
-    <p class="text-gray-600 mb-4">워크스페이스를 삭제하면 모든 거래 내역과 설정이 영구적으로 삭제됩니다.</p>
+    <p class="text-gray-600 mb-4">워크스페이스를 삭제하면 모든 결제 내역과 설정이 영구적으로 삭제됩니다.</p>
     <%= button_to '워크스페이스 삭제', workspace_path(@workspace),
         method: :delete,
         data: { turbo_confirm: "정말 '#{@workspace.name}' 워크스페이스를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다." },

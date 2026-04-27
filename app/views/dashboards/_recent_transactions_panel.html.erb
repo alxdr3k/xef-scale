@@ -1,6 +1,6 @@
 <div class="bg-white rounded-lg shadow p-6">
   <div class="flex justify-between items-center mb-4">
-    <h2 class="text-lg font-semibold text-gray-900">최근 거래</h2>
+    <h2 class="text-lg font-semibold text-gray-900">최근 결제</h2>
     <%= link_to '전체 보기 →', workspace_transactions_path(@workspace, year: @year, month: @month), data: { turbo_frame: '_top' }, class: 'text-indigo-600 hover:text-indigo-800 text-sm' %>
   </div>
 
@@ -23,7 +23,7 @@
     <% end %>
 
     <% if @recent_transactions.empty? %>
-      <p class="text-gray-500 text-center py-4">최근 거래 내역이 없습니다.</p>
+      <p class="text-gray-500 text-center py-4">최근 결제 내역이 없습니다.</p>
     <% end %>
   </div>
 </div>

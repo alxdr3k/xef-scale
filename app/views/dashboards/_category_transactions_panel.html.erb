@@ -1,7 +1,7 @@
 <div class="bg-white rounded-lg shadow p-6">
   <div class="flex justify-between items-center mb-4">
     <h2 class="text-lg font-semibold" style="color: <%= @category.color %>">
-      <%= @category.name %> 거래
+      <%= @category.name %> 결제
     </h2>
     <div class="flex items-center gap-3">
       <%= link_to '전체 보기 →',
@@ -33,7 +33,7 @@
     <% end %>
 
     <% if @transactions.empty? %>
-      <p class="text-gray-500 text-center py-4">이 카테고리에 거래 내역이 없습니다.</p>
+      <p class="text-gray-500 text-center py-4">이 카테고리에 결제 내역이 없습니다.</p>
     <% end %>
   </div>
 </div>

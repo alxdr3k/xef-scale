@@ -27,7 +27,7 @@
       <!-- Original Transaction (Left) -->
       <div class="p-4">
         <div class="flex items-center gap-2 mb-3">
-          <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">기존 거래</span>
+          <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">기존 결제</span>
           <% if original.parsing_session %>
             <% orig_session = original.parsing_session %>
             <% if orig_session.review_pending? || orig_session.review_committed? %>
@@ -55,7 +55,7 @@
 
       <!-- New Transaction (Right) - Highlighted -->
       <div class="p-4 bg-amber-50">
-        <div class="text-xs font-medium text-amber-600 uppercase tracking-wide mb-3">새 거래</div>
+        <div class="text-xs font-medium text-amber-600 uppercase tracking-wide mb-3">새 결제</div>
         <div class="space-y-2">
           <div class="font-medium text-lg truncate <%= merchant_diff ? 'text-amber-700 bg-amber-100 px-1 -mx-1 rounded' : 'text-gray-900' %>" title="<%= new_tx.merchant %>">
             <%= new_tx.merchant %>
@@ -81,12 +81,12 @@
             data: { turbo_frame: dom_id(confirmation) } do |f| %>
           <!-- keep_original: drop the new transaction, leave the ledger unchanged -->
           <button type="submit" name="decision" value="keep_original"
-                  title="새 거래를 제외하고 기존 거래를 그대로 둡니다. 총액은 변하지 않습니다."
+                  title="새 결제를 제외하고 기존 결제를 그대로 둡니다. 총액은 변하지 않습니다."
                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
-            기존 거래만 남기기
+            기존 결제만 남기기
           </button>
         <% end %>
 
@@ -96,7 +96,7 @@
             data: { turbo_frame: dom_id(confirmation) } do |f| %>
           <!-- keep_both: both rows remain in the ledger, monthly total increases -->
           <button type="submit" name="decision" value="keep_both"
-                  title="두 거래가 모두 장부에 남습니다. 이번 달 총액이 증가합니다."
+                  title="두 결제가 모두 장부에 남습니다. 이번 달 총액이 증가합니다."
                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -111,12 +111,12 @@
             data: { turbo_frame: dom_id(confirmation) } do |f| %>
           <!-- keep_new: hide the existing transaction and use the new one instead -->
           <button type="submit" name="decision" value="keep_new"
-                  title="기존 거래를 숨기고 새 거래를 장부에 반영합니다."
+                  title="기존 결제를 숨기고 새 결제를 장부에 반영합니다."
                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            새 거래로 교체
+            새 결제로 교체
           </button>
         <% end %>
       </div>

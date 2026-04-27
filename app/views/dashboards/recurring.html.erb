@@ -1,7 +1,7 @@
 <div class="max-w-7xl mx-auto">
   <div class="mb-8">
     <h1 class="text-2xl font-bold text-gray-900">반복 결제</h1>
-    <p class="text-gray-600">2개월 이상 동일 상점에서 결제된 거래를 자동으로 감지합니다.</p>
+    <p class="text-gray-600">2개월 이상 동일 상점에서 결제된 항목를 자동으로 감지합니다.</p>
   </div>
 
   <%= render 'tabs' %>
@@ -47,7 +47,7 @@
   <% else %>
     <div class="bg-white rounded-lg shadow p-12 text-center">
       <p class="text-gray-500">반복 결제가 감지되지 않았습니다.</p>
-      <p class="text-sm text-gray-400 mt-1">2개월 이상의 거래 데이터가 쌓이면 자동으로 감지됩니다.</p>
+      <p class="text-sm text-gray-400 mt-1">2개월 이상의 결제 데이터가 쌓이면 자동으로 감지됩니다.</p>
     </div>
   <% end %>
 </div>

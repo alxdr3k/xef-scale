@@ -15,7 +15,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2M3 10l4 4M3 10l4-4"/>
               </svg>
             </button>
-            <h2 class="text-lg font-semibold text-gray-900">중복 거래 검사</h2>
+            <h2 class="text-lg font-semibold text-gray-900">중복 결제 검사</h2>
             <span data-duplicate-modal-target="counter" class="text-sm text-gray-500"></span>
           </div>
           <button data-action="click->duplicate-modal#close" class="text-gray-400 hover:text-gray-600">
@@ -32,15 +32,15 @@
       <div class="p-6">
         <div data-duplicate-modal-target="loading" class="flex flex-col items-center justify-center py-12">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-          <p class="mt-3 text-sm text-gray-500">중복 거래를 검색하고 있습니다...</p>
+          <p class="mt-3 text-sm text-gray-500">중복 결제를 검색하고 있습니다...</p>
         </div>
 
         <div data-duplicate-modal-target="empty" class="hidden text-center py-12">
           <svg class="mx-auto h-12 w-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <p class="mt-3 text-gray-600 font-medium">중복 거래가 없습니다</p>
-          <p class="mt-1 text-sm text-gray-500">모든 거래가 고유합니다.</p>
+          <p class="mt-3 text-gray-600 font-medium">중복 결제가 없습니다</p>
+          <p class="mt-1 text-sm text-gray-500">모든 결제가 고유합니다.</p>
         </div>
 
         <div data-duplicate-modal-target="content" class="hidden"></div>
@@ -52,11 +52,11 @@
         <div class="flex justify-center gap-3">
           <button data-action="click->duplicate-modal#keepLeft"
                   class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
-            ← 기존 거래만 남기기
+            ← 기존 결제만 남기기
           </button>
           <button data-action="click->duplicate-modal#keepRight"
                   class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium">
-            새 거래로 교체하기 →
+            새 결제로 교체하기 →
           </button>
           <button data-action="click->duplicate-modal#keepBoth"
                   class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm font-medium">
@@ -64,7 +64,7 @@
           </button>
         </div>
         <div class="mt-2 text-center text-xs text-gray-400">
-          키보드: ← 기존거래 · → 새거래 · B 둘다남기기 · Z 되돌리기 · Esc 닫기
+          키보드: ← 기존결제 · → 새결제 · B 둘다남기기 · Z 되돌리기 · Esc 닫기
         </div>
       </div>
     </div>
