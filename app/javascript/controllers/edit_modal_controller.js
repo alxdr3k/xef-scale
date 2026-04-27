@@ -34,7 +34,7 @@ export default class extends Controller {
 
     // Update modal title based on action type
     if (this.titleElement) {
-      this.titleElement.textContent = this.isNewTransaction ? "거래 추가" : "거래 수정"
+      this.titleElement.textContent = this.isNewTransaction ? "결제 추가" : "결제 수정"
     }
 
     // Show modal

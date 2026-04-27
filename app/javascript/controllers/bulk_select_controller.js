@@ -118,7 +118,7 @@ export default class extends Controller {
   // 일괄 액션
   deleteSelected() {
     if (this.selectedIds.size === 0) return
-    if (!confirm(`선택한 ${this.selectedIds.size}개의 거래를 삭제하시겠습니까?`)) return
+    if (!confirm(`선택한 ${this.selectedIds.size}개의 결제를 삭제하시겠습니까?`)) return
     this.submitBulkAction("delete")
   }
 
