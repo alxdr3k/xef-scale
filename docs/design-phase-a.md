@@ -1,4 +1,4 @@
-> **Historical design snapshot — not current authority.** 이 문서는 2026-03-26 시점의 Phase A 디자인 스냅샷이며 *역사 기록*이다. 현재 권위 있는 출처는 [docs/context/current-state.md](context/current-state.md)와 [PRD.md](../PRD.md). 더 새로운 결정은 [docs/decisions/](decisions/)와 [docs/design-phase-b.md](design-phase-b.md)를 참조.
+> **Historical design snapshot — not current authority.** 이 문서는 2026-03-26 시점의 Phase A 디자인 스냅샷이며 *역사 기록*이다. 현재 권위 있는 출처는 [docs/context/current-state.md](context/current-state.md)와 [docs/01_PRD.md](01_PRD.md). 더 새로운 결정은 [docs/decisions/](decisions/)와 [docs/design-phase-b.md](design-phase-b.md)를 참조.
 
 # Design: xef-scale — 한국형 가족 공유 지출 추적 앱
 
@@ -8,7 +8,7 @@ Repo: alxdr3k/xef-scale
 Status: APPROVED (Historical — Phase A snapshot)
 Mode: Startup
 
-> **주의 (이후 변경):** 이 문서에 기술된 Excel / PDF / HTML / CSV 기반 기관별 파서(ShinhanCardParser, HanaCardParser, HanaCardHtmlParser, TossBankParser, KakaoBankParser, SamsungCardParser, MgBankParser)와 `ParserRouter`는 현재 제거되어 있다. 입력 경로는 `AiTextParser`(붙여넣기 텍스트)와 `ImageStatementParser` + `GeminiVisionParserService`(스크린샷 이미지) 두 가지뿐이다. 자세한 현재 상태는 `docs/architecture.md`를 참고.
+> **주의 (이후 변경):** 이 문서에 기술된 Excel / PDF / HTML / CSV 기반 기관별 파서(ShinhanCardParser, HanaCardParser, HanaCardHtmlParser, TossBankParser, KakaoBankParser, SamsungCardParser, MgBankParser)와 `ParserRouter`는 현재 제거되어 있다. 입력 경로는 `AiTextParser`(붙여넣기 텍스트)와 `ImageStatementParser` + `GeminiVisionParserService`(스크린샷 이미지) 두 가지뿐이다. 자세한 현재 상태는 [docs/02_HLD.md](02_HLD.md)를 참고.
 
 ## Problem Statement
 

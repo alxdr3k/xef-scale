@@ -6,7 +6,7 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 
 한국 금융 기관(카드/은행)의 지출 내역을 추적하는 Rails 8 웹 앱. 워크스페이스 기반 멀티테넌트, 가족/팀 공유, AI 기반 텍스트·이미지 파싱.
 
-자세한 스코프는 [PRD.md](../../PRD.md).
+자세한 스코프는 [01_PRD.md](../01_PRD.md).
 
 ## 현재 입력 경로 (전체 입력 표면)
 
@@ -112,7 +112,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 | `ApiKey` | API/MCP 인증 |
 | `FinancialInstitution` | 8개 시드 |
 
-자세히는 [data-model.md](../data-model.md), 권위 있는 출처는 [db/schema.rb](../../db/schema.rb)와 `app/models/`.
+자세히는 [DATA_MODEL.md](../current/DATA_MODEL.md), 권위 있는 출처는 [db/schema.rb](../../db/schema.rb)와 `app/models/`.
 
 ## 인증·인가
 
@@ -130,7 +130,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 - 자체 AI 파싱이 메인. BYOAI는 파워유저용 escape hatch.
 - Phase C 수익 모델 (구독/광고/AI 분석) — 별도 설계 예정.
 
-이 우선순위는 시간이 지나면 빠르게 stale 됩니다. 현재 권위 있는 우선순위는 `PRD.md` + 머지된 ADR + 최근 커밋입니다.
+이 우선순위는 시간이 지나면 빠르게 stale 됩니다. 현재 권위 있는 우선순위는 [docs/01_PRD.md](../01_PRD.md) + 머지된 ADR + 최근 커밋입니다.
 
 ## Needs audit
 
@@ -138,7 +138,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 
 - **이미지 파서 멀티 기관 지원** — `ImageStatementParser`의 `institution_identifier`는 컨트롤러에서 전달 가능하지만 (`params[:institution_identifier]`), Vision 프롬프트 자체는 신한카드 명세서 텍스트에 종속됨. 다른 기관 명세서가 들어오면 정확도 저하 가능. 실제 동작 측정 필요.
 - **`Pundit::Authorization` include는 mount만 되어 있고 활성 정책 디렉토리/`authorize` 호출은 0건**. 현재 활성 패턴은 `ApplicationController#require_workspace_*` + `User#can_read?` / `can_write?` / `admin_of?`. 향후 정책 도입 시 ADR 권장.
-- **PRD.md의 모델 폴백 체인 vs 코드** — `AiTextParser`는 4모델, `GeminiCategoryService`는 5모델, `GeminiVisionParserService`는 1모델. PRD/디자인 문서가 코드와 일치한다고 단정하지 않음.
-- **`docs/categorization.md`의 "텍스트 경로는 1-2단계만"** — 코드와 일치하지만, 향후 Gemini 카테고리 폴백을 텍스트 경로에도 적용할지 여부는 미결정.
+- **docs/01_PRD.md의 모델 폴백 체인 vs 코드** — `AiTextParser`는 4모델, `GeminiCategoryService`는 5모델, `GeminiVisionParserService`는 1모델. PRD/디자인 문서가 코드와 일치한다고 단정하지 않음.
+- **`docs/current/CATEGORIZATION.md`의 "텍스트 경로는 1-2단계만"** — 코드와 일치하지만, 향후 Gemini 카테고리 폴백을 텍스트 경로에도 적용할지 여부는 미결정.
 - **MCP server 등록 방법** — `mcp-server.json`은 정의 파일이지만 실제 등록 방식(`.mcp.json`과의 관계 포함)은 본 PR에서 검증하지 않음.
 - **ActiveStorage blob 보존/삭제 정책** — 파싱 완료/실패/discard 후 원본 이미지 blob의 정리 정책 미검증.
