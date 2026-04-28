@@ -1,6 +1,7 @@
 module Api
   module V1
     class TransactionsController < BaseController
+      before_action -> { require_scope!(:read) }, only: [ :index, :show ]
       before_action -> { require_scope!(:write) }, only: [ :create ]
 
       def create
