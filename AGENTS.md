@@ -28,6 +28,8 @@ xef-scale에서 작업하는 AI 코딩 에이전트를 위한 간결한 안내. 
 
 ## 코드를 변경할 때
 
+문서 정책의 전체 매트릭스와 source-of-truth 우선순위는 [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)에 있다. 자주 쓰는 규칙만 요약:
+
 - **테스트를 함께 갱신**한다. CI 잡(`test`, `system-test`, `lint`, `scan_ruby`)은 [docs/testing.md](docs/testing.md) 참조.
 - 런타임 흐름이 바뀌면 [docs/runtime.md](docs/runtime.md) 갱신.
 - 스키마/마이그레이션이 바뀌면 [docs/data-model.md](docs/data-model.md) 갱신.
@@ -35,7 +37,7 @@ xef-scale에서 작업하는 AI 코딩 에이전트를 위한 간결한 안내. 
 - 입력 경로 / 지원 금융기관이 바뀌면 [PRD.md](PRD.md), [README.md](README.md), [docs/context/current-state.md](docs/context/current-state.md) 갱신.
 - 명령이 추가/변경되면 [docs/testing.md](docs/testing.md) 또는 [docs/operations.md](docs/operations.md) 갱신.
 - 아키텍처/제품 방향이 바뀌면 [docs/decisions/ADR-TEMPLATE.md](docs/decisions/ADR-TEMPLATE.md)로 ADR을 만든다 (이전 ADR/디자인 문서는 supersede).
-- 긴 역사적 디자인 문서를 *구현 변경에 맞춰* 다시 쓰지 않는다. 얇은 현재 문서만 패치.
+- 긴 역사적 디자인 문서(`docs/design-phase-*.md`, `docs/design/archive/`, `docs/discovery/`)를 *구현 변경에 맞춰* 다시 쓰지 않는다. 얇은 현재 문서만 패치한다.
 
 ## 검증
 
