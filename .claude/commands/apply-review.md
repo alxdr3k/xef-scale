@@ -1,10 +1,17 @@
-# Apply Review
+---
+description: Apply all review feedback; split into timeout-safe chunks; do not stop until every item is done
+argument-hint: [review text, PR/comment URL, or path to review notes]
+---
+
+# Apply review
 
 Apply **every** item of the review below. Work the whole list to completion in this session — do not hand control back until the list is empty or something is genuinely blocked.
 
-## Arguments
+## Review content
 
-$ARGUMENTS: review text, PR/comment URL, or path to review notes
+$ARGUMENTS
+
+---
 
 ## How to execute
 
@@ -47,15 +54,11 @@ Each todo must be small enough that its execution won't approach response or con
 - Run the project's full verification (tests + lint/type-check as defined by project conventions).
 - Summarize: what changed (one line per todo), what (if anything) remains, and what the user should review.
 
+---
+
 ## Constraints
 
 - **Scope discipline**: address review items only. No drive-by refactors, no speculative cleanup.
 - **Project conventions**: respect `CLAUDE.md`, `.claude/rules/**`, and existing code style. If a review item conflicts with a project rule, flag it and follow the rule.
 - **Commits**: do not commit unless the review or project workflow explicitly requests it. If commits are expected, pair test + implementation per the project's TDD rules.
 - **Secrets / destructive ops**: never fix a review item by weakening a security check, skipping hooks, or force-pushing.
-
-## Notes
-
-- This command automates the review application workflow to ensure every feedback item is addressed.
-- Timeout-safe chunking prevents interruption during a long review list.
-- Always prioritize completion over asking for clarification on minor ambiguities.
