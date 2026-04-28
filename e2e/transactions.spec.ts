@@ -9,7 +9,7 @@ import { loginAsAdmin } from './helpers';
 // Seed workspace: id=1, name="개인 가계부"
 // Seed merchants: 마라탕 집 (식비 / 신한카드), 카카오T (교통), 쿠팡 (쇼핑)
 
-test.describe('Transactions (거래 내역)', () => {
+test.describe('Transactions (결제 내역)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/workspaces/1/transactions');
@@ -19,12 +19,12 @@ test.describe('Transactions (거래 내역)', () => {
   // --- Page structure ---
 
   test('페이지 제목과 워크스페이스명 표시', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: '거래 내역' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '결제 내역' })).toBeVisible();
     await expect(page.getByRole('paragraph').filter({ hasText: '가계부' }).first()).toBeVisible();
   });
 
-  test('거래 추가 버튼 노출 및 href 정확성', async ({ page }) => {
-    const addBtn = page.getByRole('link', { name: '+ 거래 추가' });
+  test('결제 추가 버튼 노출 및 href 정확성', async ({ page }) => {
+    const addBtn = page.getByRole('link', { name: '+ 결제 추가' });
     await expect(addBtn).toBeVisible();
     await expect(addBtn).toHaveAttribute('href', /\/workspaces\/\d+\/transactions\/new/);
   });
@@ -50,7 +50,7 @@ test.describe('Transactions (거래 내역)', () => {
 
   // --- Seed data ---
 
-  test('시드 거래 데이터가 목록에 노출된다', async ({ page }) => {
+  test('시드 결제 데이터가 목록에 노출된다', async ({ page }) => {
     const list = page.locator('#transactions-list');
     await expect(list.locator('tr')).not.toHaveCount(0);
     await expect(list.getByText('마라탕 집')).toBeVisible();
@@ -120,7 +120,7 @@ test.describe('Transactions (거래 내역)', () => {
     await expect(page.locator('select#month')).toHaveValue('3');
   });
 
-  test('카테고리 필터 적용 시 해당 카테고리 거래만 표시된다', async ({ page }) => {
+  test('카테고리 필터 적용 시 해당 카테고리 결제만 표시된다', async ({ page }) => {
     await page.locator('select#category_id').selectOption({ label: '식비' });
     await page.waitForLoadState('networkidle');
     await expect(page).toHaveURL(/category_id=\d+/);
@@ -150,7 +150,7 @@ test.describe('Transactions (거래 내역)', () => {
     await page.locator('input[name="q"]').fill('nonexistent_xyz_12345');
     await page.waitForTimeout(600);
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('#transactions-list').getByText('거래 내역이 없습니다.')).toBeVisible();
+    await expect(page.locator('#transactions-list').getByText('결제 내역이 없습니다.')).toBeVisible();
   });
 
   test('여러 필터를 동시에 적용할 수 있다', async ({ page }) => {

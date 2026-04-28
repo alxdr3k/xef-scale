@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { loginAsAdmin } from './helpers';
 
-// Parsing sessions page = "거래 추가" (/workspaces/:id/parsing_sessions)
+// Parsing sessions page = "결제 추가" (/workspaces/:id/parsing_sessions)
 // Two input methods:
 //   1. 문자 붙여넣기 → POST text_parse_workspace_parsing_sessions_path
 //   2. 스크린샷 업로드 → POST workspace_parsing_sessions_path (multipart)
@@ -10,7 +10,7 @@ import { loginAsAdmin } from './helpers';
 // History table (desktop) / card list (mobile): columns #, 입력내용, 상태, 결과, 시간
 // Bulk select toolbar for discarding sessions
 
-test.describe('Parsing sessions (거래 추가 페이지)', () => {
+test.describe('Parsing sessions (결제 추가 페이지)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/workspaces/1/parsing_sessions');
@@ -20,7 +20,7 @@ test.describe('Parsing sessions (거래 추가 페이지)', () => {
   // --- Page structure ---
 
   test('페이지 제목과 설명 문구가 표시된다', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: '거래 추가' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '결제 추가' })).toBeVisible();
     await expect(page.locator('text=금융 문자를 붙여넣거나')).toBeVisible();
   });
 
@@ -52,7 +52,7 @@ test.describe('Parsing sessions (거래 추가 페이지)', () => {
       await expect(page.locator('a:has-text("워크스페이스 설정에서 동의 또는 비활성화")')).toBeVisible();
     }
     // Either way, page must have the heading
-    await expect(page.getByRole('heading', { name: '거래 추가' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '결제 추가' })).toBeVisible();
   });
 
   // --- Text paste flow ---

@@ -11,14 +11,14 @@ test.describe('Review Workflow', () => {
     await navigateToParsingSessions(page);
 
     // 2. Check that page loaded
-    await expect(page.locator('h1:has-text("거래 추가")')).toBeVisible();
+    await expect(page.locator('h1:has-text("결제 추가")')).toBeVisible();
 
     // 3. Find any completed session with pending review
     const reviewLink = page.locator('a:has-text("검토하기")').first();
     if (await reviewLink.isVisible()) {
       // 4. Go to review page
       await reviewLink.click();
-      await expect(page.locator('h1:has-text("거래 검토")')).toBeVisible();
+      await expect(page.locator('h1:has-text("결제 검토")')).toBeVisible();
 
       // 5. Check transaction table is visible
       const table = page.locator('table');
@@ -121,7 +121,7 @@ test.describe('Review Workflow', () => {
       const sourceTexts = page.locator('td:has-text("하나카드"), td:has-text("신한카드"), td:has-text("토스뱅크")');
 
       // At least verify the page loaded correctly
-      await expect(page.locator('h1:has-text("거래 검토")')).toBeVisible();
+      await expect(page.locator('h1:has-text("결제 검토")')).toBeVisible();
     }
   });
 });
