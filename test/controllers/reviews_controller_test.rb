@@ -177,7 +177,7 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[aria-label='가져온 출처 보기']", minimum: 1
     assert_includes response.body, "KB Pay"
     assert_includes response.body, "KB국민카드"
-    assert_includes response.body, "이 정보는 거래 분류나 예산 계산에 사용되지 않습니다."
+    assert_includes response.body, "이 정보는 결제 분류나 예산 계산에 사용되지 않습니다."
     assert_not_includes response.body, "금융기관 미확인"
   end
 
