@@ -1,6 +1,8 @@
 module Api
   module V1
     class SummariesController < BaseController
+      before_action -> { require_scope!(:read) }
+
       def monthly
         year = (params[:year] || Date.current.year).to_i
         month = (params[:month] || Date.current.month).to_i
