@@ -68,8 +68,10 @@ A Rails 8 application for tracking expenses from Korean financial statements. Us
 ## Running Tests
 
 ```bash
-bundle exec rails test
+bin/rails db:test:prepare test
 ```
+
+See [docs/current/TESTING.md](docs/current/TESTING.md) for the full validation matrix.
 
 ## Project Structure
 

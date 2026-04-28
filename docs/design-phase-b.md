@@ -1,4 +1,4 @@
-> **Historical design snapshot — not current authority.** 이 문서는 2026-03-28 시점의 Phase B/C 디자인 스냅샷이며 *역사 기록*이다. 일부 항목은 머지·구현되었고, 일부는 미구현 상태로 남아 있다. 현재 권위 있는 출처는 [docs/context/current-state.md](context/current-state.md)와 [PRD.md](../PRD.md). 새 결정은 [docs/decisions/](decisions/)에 ADR로 기록된다.
+> **Historical design snapshot — not current authority.** 이 문서는 2026-03-28 시점의 Phase B/C 디자인 스냅샷이며 *역사 기록*이다. 일부 항목은 머지·구현되었고, 일부는 미구현 상태로 남아 있다. 현재 권위 있는 출처는 [docs/context/current-state.md](context/current-state.md)와 [docs/01_PRD.md](01_PRD.md). 새 결정은 [docs/decisions/](decisions/)에 ADR로 기록된다.
 
 # Design: xef-scale Phase B/C — AI Native 입력 + 데이터 OS 수익화
 
