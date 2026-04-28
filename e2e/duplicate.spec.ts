@@ -5,10 +5,10 @@ import { loginAsAdmin } from './helpers';
 // Trigger: "중복 검사" button (data-action="click->duplicate-modal#open")
 // Controller: duplicate-modal (Stimulus)
 // States: loading → empty (no duplicates) | content+footer (duplicates found)
-// Footer actions: "← 기존 거래만 남기기", "새 거래로 교체하기 →", "둘 다 남기기 (B)"
+// Footer actions: "← 기존 결제만 남기기", "새 결제로 교체하기 →", "둘 다 남기기 (B)"
 // Header extras: undo button, counter, progress bar
 
-test.describe('Duplicate modal (중복 거래 검사)', () => {
+test.describe('Duplicate modal (중복 결제 검사)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto('/workspaces/1/transactions');
@@ -24,7 +24,7 @@ test.describe('Duplicate modal (중복 거래 검사)', () => {
     // Modal becomes visible (class "hidden" removed)
     await expect(page.locator('[data-duplicate-modal-target="modal"]')).not.toHaveClass(/hidden/);
     // Title inside modal
-    await expect(page.locator('h2:has-text("중복 거래 검사")')).toBeVisible();
+    await expect(page.locator('h2:has-text("중복 결제 검사")')).toBeVisible();
   });
 
   test('모달 헤더 구성요소 확인 (실행취소·카운터·닫기)', async ({ page }) => {
@@ -69,7 +69,7 @@ test.describe('Duplicate modal (중복 거래 검사)', () => {
     expect(emptyVisible || contentVisible).toBe(true);
 
     if (emptyVisible) {
-      await expect(page.locator('text=중복 거래가 없습니다')).toBeVisible();
+      await expect(page.locator('text=중복 결제가 없습니다')).toBeVisible();
     }
   });
 
@@ -83,8 +83,8 @@ test.describe('Duplicate modal (중복 거래 검사)', () => {
 
     if (footerVisible) {
       // All three resolution buttons must be present
-      await expect(page.getByRole('button', { name: /기존 거래만 남기기/ })).toBeVisible();
-      await expect(page.getByRole('button', { name: /새 거래로 교체하기/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: /기존 결제만 남기기/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: /새 결제로 교체하기/ })).toBeVisible();
       await expect(page.getByRole('button', { name: /둘 다 남기기/ })).toBeVisible();
 
       // Keyboard hint text

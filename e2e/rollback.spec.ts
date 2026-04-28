@@ -92,7 +92,7 @@ test.describe('Discard Functionality', () => {
 
       // Should not show any action buttons (discard, commit)
       await expect(page.locator('button:has-text("취소하기")')).not.toBeVisible();
-      await expect(page.locator('button:has-text("거래 내역 반영")')).not.toBeVisible();
+      await expect(page.locator('button:has-text("결제 내역 반영")')).not.toBeVisible();
     }
   });
 });

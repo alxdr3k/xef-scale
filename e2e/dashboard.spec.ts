@@ -81,16 +81,16 @@ test.describe('Calendar dashboard (기본 홈)', () => {
     }
   });
 
-  test('사이드 패널 — 거래 없는 날짜는 빈 상태 메시지 표시', async ({ page }) => {
+  test('사이드 패널 — 결제 없는 날짜는 빈 상태 메시지 표시', async ({ page }) => {
     // Navigate to a historical month unlikely to have seeded data in every cell
     await page.goto('/dashboard?year=2024&month=1&date=2024-01-01');
     await page.waitForLoadState('networkidle');
     // Side panel always renders the selected date heading, then either the
     // empty-state message or a tx list under it.
     await expect(page.locator('h2:has-text("2024.01.01")')).toBeVisible();
-    // The selected-day frame renders either a tx list or the "거래 내역이
+    // The selected-day frame renders either a tx list or the "결제 내역이
     // 없습니다." empty paragraph.
-    const emptyMsg = page.getByText('거래 내역이 없습니다.');
+    const emptyMsg = page.getByText('결제 내역이 없습니다.');
     const hasTxList = page.locator('ul.divide-y');
     const present = (await emptyMsg.count()) > 0 || (await hasTxList.count()) > 0;
     expect(present).toBe(true);
@@ -118,11 +118,11 @@ test.describe('Monthly report (/dashboard/monthly)', () => {
     await expect(page.locator('text=/₩[\\d,]+/').first()).toBeVisible();
   });
 
-  test('요약 카드 — 거래 건수 표시', async ({ page }) => {
+  test('요약 카드 — 결제 건수 표시', async ({ page }) => {
     await page.goto('/dashboard/monthly?year=2025&month=1');
     await page.waitForLoadState('networkidle');
-    // Hero card shows "{n}건 거래" beneath the total
-    await expect(page.locator('text=/\\d+건 거래/').first()).toBeVisible();
+    // Hero card shows "{n}건 결제" beneath the total
+    await expect(page.locator('text=/\\d+건 결제/').first()).toBeVisible();
   });
 
   test('이전/다음 달 링크 동작', async ({ page }) => {
@@ -143,7 +143,7 @@ test.describe('Monthly report (/dashboard/monthly)', () => {
     await expect(page.locator(':has-text("카테고리별 지출")').first()).toBeVisible();
   });
 
-  test('최근 거래 — 전체 보기 링크가 transactions 페이지로 이동', async ({ page }) => {
+  test('최근 결제 — 전체 보기 링크가 transactions 페이지로 이동', async ({ page }) => {
     await page.goto('/dashboard/monthly?year=2025&month=1');
     await page.waitForLoadState('networkidle');
     const viewAllLink = page.locator('a:has-text("전체 보기 →")').first();

@@ -70,7 +70,7 @@ test.describe('Reviews Page', () => {
   });
 
   // 2. Table rendering - Display transactions
-  test('테이블 렌더링 - 거래 내역 표시', async ({ page }) => {
+  test('테이블 렌더링 - 결제 내역 표시', async ({ page }) => {
     const hasReviewPage = await goToReviewPageWithPendingSession(page);
     test.skip(!hasReviewPage, 'No pending review session available');
 
@@ -246,8 +246,8 @@ test.describe('Reviews Page', () => {
     const hasReviewPage = await goToReviewPageWithPendingSession(page);
     test.skip(!hasReviewPage, 'No pending review session available');
 
-    // Check that commit button exists (actual text: "거래 내역 반영")
-    const commitButton = page.locator('button:has-text("거래 내역 반영")');
+    // Check that commit button exists (actual text: "결제 내역 반영")
+    const commitButton = page.locator('button:has-text("결제 내역 반영")');
     await expect(commitButton).toBeVisible();
   });
 
@@ -262,7 +262,7 @@ test.describe('Reviews Page', () => {
   });
 
   // 9. Commit button click commits transactions
-  test('확정 버튼 클릭 시 거래 확정', async ({ page }) => {
+  test('확정 버튼 클릭 시 결제 확정', async ({ page }) => {
     const hasReviewPage = await goToReviewPageWithPendingSession(page);
     test.skip(!hasReviewPage, 'No pending review session available');
 
@@ -272,7 +272,7 @@ test.describe('Reviews Page', () => {
     });
 
     // Click commit button
-    const commitButton = page.locator('button:has-text("거래 내역 반영")');
+    const commitButton = page.locator('button:has-text("결제 내역 반영")');
     await commitButton.click();
 
     // Wait for the action to complete
@@ -288,7 +288,7 @@ test.describe('Reviews Page', () => {
   });
 
   // 10. Rollback button click rolls back all transactions
-  test('롤백 버튼 클릭 시 모든 거래 롤백', async ({ page }) => {
+  test('롤백 버튼 클릭 시 모든 결제 롤백', async ({ page }) => {
     // First, we need a committed session
     const hasCommittedSession = await goToCommittedSession(page);
     test.skip(!hasCommittedSession, 'No committed session available');
@@ -363,7 +363,7 @@ test.describe('Reviews Page', () => {
   });
 
   // 13. Financial institution dropdown (only for source_editable transactions)
-  test('금융기관 드롭다운 - source_editable 거래만 편집 가능', async ({ page }) => {
+  test('금융기관 드롭다운 - source_editable 결제만 편집 가능', async ({ page }) => {
     const hasReviewPage = await goToReviewPageWithPendingSession(page);
     test.skip(!hasReviewPage, 'No pending review session available');
 
@@ -379,7 +379,7 @@ test.describe('Reviews Page', () => {
     // This verifies the selective editability
 
     // Verify the page loaded correctly regardless of data state
-    await expect(page.locator('h1:has-text("거래 검토")')).toBeVisible();
+    await expect(page.locator('h1:has-text("결제 검토")')).toBeVisible();
 
     // If there are editable sources, verify they work
     if (selectCount > 0) {
@@ -394,7 +394,7 @@ test.describe('Reviews Page', () => {
   });
 
   // 14. Deleted transaction styling
-  test('삭제된 거래는 회색 배경으로 표시', async ({ page }) => {
+  test('삭제된 결제는 회색 배경으로 표시', async ({ page }) => {
     const hasReviewPage = await goToReviewPageWithPendingSession(page);
     test.skip(!hasReviewPage, 'No pending review session available');
 
@@ -424,7 +424,7 @@ test.describe('Reviews Page', () => {
   });
 
   // 15. Pagination (50+ transactions)
-  test('페이지네이션 - 50개 이상 거래 처리', async ({ page }) => {
+  test('페이지네이션 - 50개 이상 결제 처리', async ({ page }) => {
     const hasReviewPage = await goToReviewPageWithPendingSession(page);
     test.skip(!hasReviewPage, 'No pending review session available');
 
