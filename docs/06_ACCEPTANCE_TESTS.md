@@ -11,7 +11,7 @@
 | AC-001 | REQ-001 | Given a writer in a workspace, When they submit the manual transaction form, Then a transaction is created and redirected to the workspace ledger without a parsing session. | automated TEST-001 | pass |
 | AC-002 | REQ-002 | Given AI text parsing is enabled and consented, When pasted text is parsed, Then transactions are created as `pending_review` with `source_type: text_paste` and source metadata stays metadata. | automated TEST-002 | pass |
 | AC-003 | REQ-003 | Given AI image parsing is enabled and consented, When an allowed image is uploaded, Then a processed file/session is created and the file parsing job creates pending review transactions. | automated TEST-003 | pass |
-| AC-004 | REQ-004, NFR-003 | Given an API key, When read/write endpoints are called, Then scope checks are enforced, writes require `write`, created transactions are committed, and other workspace data is hidden. | automated TEST-004 | pass |
+| AC-004 | REQ-004, NFR-003 | Given an API key, When read/write endpoints are called, Then read endpoints require `read`, writes require `write`, created transactions are committed, and other workspace data is hidden. | automated TEST-004 covers write scope + tenant boundary; read-scope enforcement gap | pending |
 | AC-005 | REQ-005 | Given a completed parsing session, When the user commits, rolls back, or discards it, Then transaction statuses and existing originals are updated according to the review action. | automated TEST-005 | pass |
 | AC-006 | REQ-006 | Given pending duplicate confirmations, When commit is requested, Then commit is blocked until duplicates are resolved; resolved duplicate decisions are honored. | automated TEST-005, TEST-006 | pass |
 | AC-007 | REQ-007 | Given transactions with merchants/descriptions, When category matching runs, Then mapping and keyword matches are deterministic; image path can batch Gemini fallback, text path does not call Gemini category fallback. | automated TEST-007 | pass |
@@ -28,7 +28,7 @@
 | TEST-001 | Manual transaction controller flow | `test/controllers/transactions_controller_test.rb` | AC-001, AC-009 |
 | TEST-002 | Text paste parsing job behavior | `test/jobs/ai_text_parsing_job_test.rb` | AC-002, AC-007 |
 | TEST-003 | Image upload/session/job behavior | `test/controllers/parsing_sessions_controller_test.rb`, `test/jobs/file_parsing_job_test.rb` | AC-003, AC-010 |
-| TEST-004 | API key transaction and summary endpoints | `test/controllers/api/v1/transactions_controller_test.rb`, `test/controllers/api/v1/summaries_controller_test.rb` | AC-004 |
+| TEST-004 | API key transaction and summary endpoints | `test/controllers/api/v1/transactions_controller_test.rb`, `test/controllers/api/v1/summaries_controller_test.rb` | AC-004 partial: write scope + tenant boundary; no read-scope negative tests yet |
 | TEST-005 | Review commit/rollback/discard flow | `test/controllers/reviews_controller_test.rb`, `test/integration/parsing_review_flow_test.rb` | AC-005, AC-006 |
 | TEST-006 | Duplicate detector behavior | `test/services/duplicate_detector_test.rb`, `test/jobs/file_parsing_job_test.rb` | AC-006 |
 | TEST-007 | Category matching and mapping behavior | `test/models/category_test.rb`, `test/models/category_mapping_test.rb`, `test/jobs/file_parsing_job_test.rb`, `test/jobs/ai_text_parsing_job_test.rb` | AC-007 |
