@@ -42,7 +42,7 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
   test "monthly view displays recent transactions section" do
     get monthly_dashboard_path
     assert_response :success
-    assert_select "h2", text: /최근 거래/
+    assert_select "h2", text: /최근 결제/
   end
 
   test "dashboard ignores out-of-range month param instead of 500ing" do
