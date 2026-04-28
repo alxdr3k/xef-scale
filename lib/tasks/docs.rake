@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "open3"
+
 namespace :docs do
   desc "Generate all docs/generated/* artifacts"
   task generate: :environment do
@@ -15,7 +17,10 @@ namespace :docs do
     desc "Generate docs/generated/routes.md from config/routes.rb"
     task routes: :environment do
       output = OUTPUT_DIR.join("routes.md")
-      routes = `bin/rails routes`.strip
+      routes, err, status = Open3.capture3("bin/rails", "routes")
+      raise "bin/rails routes failed: #{err.strip}" unless status.success?
+
+      routes = routes.strip
       header = <<~MD
         # Routes (generated)
 

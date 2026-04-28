@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
   pull-requests: write
 
 jobs:
@@ -42,8 +43,7 @@ jobs:
           missing=()
 
           touched_runtime_code=$(printf '%s\n' "$CHANGED" | grep -E '^app/' | grep -Ev '^app/models/' || true)
-          touched_jobs=$(printf '%s\n' "$CHANGED" | grep -E '^app/jobs/' || true)
-          touched_services=$(printf '%s\n' "$CHANGED" | grep -E '^app/(services|parsers|prompts)/' || true)
+          touched_ai_code=$(printf '%s\n' "$CHANGED" | grep -E '^app/(parsers|prompts)/|^app/services/(ai_|gemini_|image_statement_parser)|^app/jobs/(ai_|file_parsing_job|.*parsing_job)\.rb$' || true)
           touched_models=$(printf '%s\n' "$CHANGED" | grep -E '^app/models/' || true)
           touched_routes=$(printf '%s\n' "$CHANGED" | grep -E '^config/routes\.rb$' || true)
           touched_migrations=$(printf '%s\n' "$CHANGED" | grep -E '^db/migrate/' || true)
@@ -60,7 +60,7 @@ jobs:
             missing+=("app/ 변경 감지 → \`docs/current/RUNTIME.md\` / \`docs/context/current-state.md\` / \`docs/current/CODE_MAP.md\` 중 하나를 같은 PR에서 갱신 (또는 ADR 추가).")
           fi
 
-          if { [ -n "$touched_services" ] || [ -n "$touched_jobs" ]; } && [ -z "$touched_ai_doc" ] && [ -z "$touched_decisions" ]; then
+          if [ -n "$touched_ai_code" ] && [ -z "$touched_ai_doc" ] && [ -z "$touched_decisions" ]; then
             missing+=("AI/parser/job 코드 변경 감지 → \`docs/current/AI_PIPELINE.md\` 또는 \`docs/current/CATEGORIZATION.md\`의 SHA 헤더와 본문을 갱신 (또는 ADR 추가).")
           fi
 
@@ -88,8 +88,7 @@ jobs:
             } >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Comment on PR if docs may be stale
-        if: steps.detect.outputs.missing != ''
+      - name: Update doc freshness comment
         uses: actions/github-script@v7
         env:
           MISSING: ${{ steps.detect.outputs.missing }}
@@ -97,6 +96,24 @@ jobs:
           script: |
             const missing = process.env.MISSING || '';
             const marker = '<!-- doc-freshness-check -->';
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.startsWith(marker));
+            if (!missing.trim()) {
+              if (existing) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                });
+              }
+              return;
+            }
+
             const body = [
               marker,
               '### Doc freshness check',
@@ -107,12 +124,6 @@ jobs:
               '정책: `docs/DOCUMENTATION.md`. 이 코멘트는 자동입니다. 의도한 변경이라면 PR template의 "No doc impact" 체크 + 사유로 답하세요.',
             ].join('\n');
 
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const existing = comments.find(c => c.body && c.body.startsWith(marker));
             if (existing) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
