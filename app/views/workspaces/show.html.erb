@@ -6,7 +6,7 @@
         <%= @year %>년 <%= @month %>월
       </p>
     </div>
-    <%= link_to '거래 내역 보기', workspace_transactions_path(@workspace, year: @year, month: @month),
+    <%= link_to '결제 내역 보기', workspace_transactions_path(@workspace, year: @year, month: @month),
         class: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700' %>
   </div>
 
@@ -30,7 +30,7 @@
   <!-- Summary -->
   <div class="grid grid-cols-3 gap-4 mb-8">
     <div class="bg-white rounded-lg shadow p-6">
-      <div class="text-sm text-gray-500 mb-1">총 거래</div>
+      <div class="text-sm text-gray-500 mb-1">총 결제</div>
       <div class="text-2xl font-bold text-gray-900"><%= @transactions.count %>건</div>
     </div>
     <div class="bg-white rounded-lg shadow p-6">
@@ -51,7 +51,7 @@
   <!-- Recent transactions -->
   <div class="bg-white rounded-lg shadow overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-      <h2 class="text-lg font-semibold text-gray-900">최근 거래</h2>
+      <h2 class="text-lg font-semibold text-gray-900">최근 결제</h2>
       <%= link_to '전체 보기 →', workspace_transactions_path(@workspace, year: @year, month: @month),
           class: 'text-indigo-600 hover:text-indigo-800 text-sm' %>
     </div>
@@ -86,7 +86,7 @@
         <% if @transactions.empty? %>
           <tr>
             <td colspan="4" class="px-6 py-12 text-center text-gray-500">
-              이 달에 거래 내역이 없습니다.
+              이 달에 결제 내역이 없습니다.
             </td>
           </tr>
         <% end %>

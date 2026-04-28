@@ -30,7 +30,7 @@
       <%= number_to_currency(@total_spending, unit: '₩', precision: 0) %>
     </div>
     <div class="flex gap-6 mt-3 text-sm text-indigo-200">
-      <span><%= @transactions.count %>건 거래</span>
+      <span><%= @transactions.count %>건 결제</span>
       <% if @daily_average_denominator.positive? %>
         <span>일 평균 <%= number_to_currency(@daily_average, unit: '₩', precision: 0) %></span>
       <% end %>
@@ -57,7 +57,7 @@
         <h2 class="text-lg font-semibold text-gray-900">카테고리별 지출</h2>
         <%= link_to '카테고리 관리', workspace_categories_path(@workspace), class: 'text-sm text-indigo-600 hover:text-indigo-800' %>
       </div>
-      <p class="text-sm text-gray-500 mb-4">카테고리를 클릭하면 해당 거래를 볼 수 있습니다</p>
+      <p class="text-sm text-gray-500 mb-4">카테고리를 클릭하면 해당 결제를 볼 수 있습니다</p>
       <%= render 'category_breakdown' %>
     </div>
 

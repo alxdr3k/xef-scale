@@ -1,11 +1,11 @@
 <div class="max-w-4xl mx-auto" data-controller="bulk-select note-panel onboarding" data-onboarding-page-value="upload" data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick">
-  <h1 class="text-2xl font-bold text-gray-900 mb-2">거래 추가</h1>
-  <p class="text-gray-600 mb-6">금융 문자를 붙여넣거나 명세서 스크린샷을 올려 거래를 등록하세요.</p>
+  <h1 class="text-2xl font-bold text-gray-900 mb-2">결제 추가</h1>
+  <p class="text-gray-600 mb-6">금융 문자를 붙여넣거나 명세서 스크린샷을 올려 결제를 등록하세요.</p>
 
   <% if @workspace.ai_consent_required? %>
     <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-900">
       <p class="font-medium mb-1">외부 AI 사용 안내</p>
-      <p>붙여넣는 SMS 본문과 업로드한 명세서 이미지는 외부 AI(Google Gemini)로 전송되어 거래로 변환됩니다.</p>
+      <p>붙여넣는 SMS 본문과 업로드한 명세서 이미지는 외부 AI(Google Gemini)로 전송되어 결제로 변환됩니다.</p>
       <p class="mt-2">
         <%= link_to '워크스페이스 설정에서 동의 또는 비활성화', settings_workspace_path(@workspace),
             class: 'underline font-medium' %>
@@ -18,7 +18,7 @@
     <div class="flex justify-between items-start">
       <div>
         <p class="text-sm font-medium text-indigo-900">처음이신가요?</p>
-        <p class="text-sm text-indigo-700 mt-1">은행이나 카드사에서 받은 문자 메시지를 아래에 붙여넣으면 AI가 자동으로 거래를 인식합니다.</p>
+        <p class="text-sm text-indigo-700 mt-1">은행이나 카드사에서 받은 문자 메시지를 아래에 붙여넣으면 AI가 자동으로 결제를 인식합니다.</p>
         <p class="text-xs text-indigo-500 mt-1">여러 문자를 한 번에 붙여넣을 수 있어요.</p>
       </div>
       <button data-action="click->onboarding#dismiss" class="text-indigo-400 hover:text-indigo-600 ml-4 flex-shrink-0">
@@ -69,8 +69,8 @@
           <%= f.file_field :files, multiple: true, accept: "image/jpeg,image/png,image/webp,image/heic",
                 class: 'block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100' %>
           <div class="text-sm text-gray-500">
-            신한카드 이용대금 명세서 스크린샷(JPG, PNG, WEBP, HEIC)을 올리면 AI가 거래를 인식합니다.
-            확정 전까지 거래 내역에는 반영되지 않습니다.
+            신한카드 이용대금 명세서 스크린샷(JPG, PNG, WEBP, HEIC)을 올리면 AI가 결제를 인식합니다.
+            확정 전까지 결제 내역에는 반영되지 않습니다.
           </div>
           <div class="flex justify-end">
             <%= submit_tag '스크린샷 업로드', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
