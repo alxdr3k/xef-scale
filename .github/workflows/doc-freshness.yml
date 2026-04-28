@@ -89,6 +89,7 @@ jobs:
           fi
 
       - name: Update doc freshness comment
+        if: github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/github-script@v7
         env:
           MISSING: ${{ steps.detect.outputs.missing }}
