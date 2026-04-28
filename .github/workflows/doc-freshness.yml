@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           missing=()
 
-          touched_app=$(printf '%s\n' "$CHANGED" | grep -E '^app/' || true)
+          touched_runtime_code=$(printf '%s\n' "$CHANGED" | grep -E '^app/' | grep -Ev '^app/models/' || true)
           touched_jobs=$(printf '%s\n' "$CHANGED" | grep -E '^app/jobs/' || true)
           touched_services=$(printf '%s\n' "$CHANGED" | grep -E '^app/(services|parsers|prompts)/' || true)
           touched_models=$(printf '%s\n' "$CHANGED" | grep -E '^app/models/' || true)
@@ -52,10 +52,11 @@ jobs:
           touched_runtime_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/(context/current-state|02_HLD)\.md$|^docs/current/(RUNTIME|CODE_MAP)\.md$' || true)
           touched_data_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/current/DATA_MODEL\.md$' || true)
           touched_ai_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/current/(AI_PIPELINE|CATEGORIZATION)\.md$' || true)
-          touched_generated=$(printf '%s\n' "$CHANGED" | grep -E '^docs/generated/' || true)
+          touched_generated_routes=$(printf '%s\n' "$CHANGED" | grep -E '^docs/generated/routes\.md$' || true)
+          touched_generated_schema=$(printf '%s\n' "$CHANGED" | grep -E '^docs/generated/schema\.md$' || true)
           touched_decisions=$(printf '%s\n' "$CHANGED" | grep -E '^docs/(decisions/|08_DECISION_REGISTER\.md)' || true)
 
-          if [ -n "$touched_app" ] && [ -z "$touched_runtime_doc" ] && [ -z "$touched_decisions" ]; then
+          if [ -n "$touched_runtime_code" ] && [ -z "$touched_runtime_doc" ] && [ -z "$touched_decisions" ]; then
             missing+=("app/ 변경 감지 → \`docs/current/RUNTIME.md\` / \`docs/context/current-state.md\` / \`docs/current/CODE_MAP.md\` 중 하나를 같은 PR에서 갱신 (또는 ADR 추가).")
           fi
 
@@ -67,11 +68,11 @@ jobs:
             missing+=("app/models/ 변경 감지 → \`docs/current/DATA_MODEL.md\` 갱신 (또는 ADR 추가).")
           fi
 
-          if [ -n "$touched_routes" ] && [ -z "$touched_generated" ]; then
+          if [ -n "$touched_routes" ] && [ -z "$touched_generated_routes" ]; then
             missing+=("\`config/routes.rb\` 변경 감지 → \`bin/rake docs:generate:routes\`로 \`docs/generated/routes.md\` 재생성.")
           fi
 
-          if { [ -n "$touched_migrations" ] || [ -n "$touched_schema" ]; } && [ -z "$touched_data_doc" ] && [ -z "$touched_generated" ] && [ -z "$touched_decisions" ]; then
+          if { [ -n "$touched_migrations" ] || [ -n "$touched_schema" ]; } && { [ -z "$touched_data_doc" ] || [ -z "$touched_generated_schema" ]; } && [ -z "$touched_decisions" ]; then
             missing+=("DB 마이그레이션/스키마 변경 감지 → \`docs/current/DATA_MODEL.md\` 갱신 + \`bin/rake docs:generate:schema\` (또는 ADR 추가).")
           fi
 
