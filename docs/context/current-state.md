@@ -89,7 +89,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 - `GET /api/v1/transactions` — `read` 스코프, 필터 (year/month/category/institution/q/page/per_page).
 - `GET /api/v1/transactions/:id` — `read` 스코프.
 - `POST /api/v1/transactions` — `write` 스코프, `Transaction.source_type = "api"`로 즉시 커밋.
-- `GET /api/v1/summaries/monthly` / `yearly` — 월별/연별 집계 (카테고리 breakdown 포함).
+- `GET /api/v1/summaries/monthly` / `yearly` — `read` 스코프, 월별/연별 집계 (카테고리 breakdown 포함).
 - `mcp-server.json` — REST API를 MCP tool로 래핑. `list_transactions`, `get_transaction`, `monthly_summary`, `yearly_summary` 등.
 
 ## 데이터 모델 핵심
