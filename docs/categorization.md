@@ -1,5 +1,8 @@
 # 카테고리화 전략
 
+> Last verified against code: `9e7aa22` (2026-04-28).
+> 카테고리/AI 로직이 바뀌면 같은 PR에서 본 SHA를 갱신한다. 정책: [docs/DOCUMENTATION.md](DOCUMENTATION.md).
+>
 > 본 문서는 카테고리화 단계 자체의 결정 로직을 다룬다. 전체 AI 호출 정책(텍스트·Vision 파싱 포함)과 결정성-우선 원칙은 [docs/ai-pipeline.md](ai-pipeline.md), 입력→커밋 흐름 안의 위치는 [docs/runtime.md](runtime.md) 참조.
 
 xef-scale은 거래를 자동으로 분류하기 위해 최대 3단계 카테고리화 전략을 사용합니다. **이미지 스크린샷 업로드 경로(`FileParsingJob`)는 3단계 전부**를 실행하고, **텍스트 붙여넣기 경로(`AiTextParsingJob`)는 1-2단계만** 실행합니다 (AI 호출이 텍스트 파싱 단계에서 이미 1번 일어나기 때문에 카테고리화는 규칙 기반으로만 수행).

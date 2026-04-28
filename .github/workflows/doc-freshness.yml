@@ -1,0 +1,129 @@
+name: Doc Freshness
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      BASE_REF: ${{ github.event.pull_request.base.ref }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Compute changed paths vs base
+        id: diff
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          CHANGED=$(git diff --name-only "origin/${BASE_REF}...HEAD")
+          {
+            echo "changed<<EOF"
+            echo "$CHANGED"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Detect doc-touching code changes
+        id: detect
+        env:
+          CHANGED: ${{ steps.diff.outputs.changed }}
+        run: |
+          set -euo pipefail
+          missing=()
+
+          touched_app=$(printf '%s\n' "$CHANGED" | grep -E '^app/' || true)
+          touched_jobs=$(printf '%s\n' "$CHANGED" | grep -E '^app/jobs/' || true)
+          touched_services=$(printf '%s\n' "$CHANGED" | grep -E '^app/(services|parsers|prompts)/' || true)
+          touched_models=$(printf '%s\n' "$CHANGED" | grep -E '^app/models/' || true)
+          touched_routes=$(printf '%s\n' "$CHANGED" | grep -E '^config/routes\.rb$' || true)
+          touched_migrations=$(printf '%s\n' "$CHANGED" | grep -E '^db/migrate/' || true)
+          touched_schema=$(printf '%s\n' "$CHANGED" | grep -E '^db/schema\.rb$' || true)
+
+          touched_runtime_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/(runtime|context/current-state|code-map|architecture)\.md$' || true)
+          touched_data_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/data-model\.md$' || true)
+          touched_ai_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/(ai-pipeline|categorization)\.md$' || true)
+          touched_generated=$(printf '%s\n' "$CHANGED" | grep -E '^docs/generated/' || true)
+          touched_decisions=$(printf '%s\n' "$CHANGED" | grep -E '^docs/decisions/' || true)
+
+          if [ -n "$touched_app" ] && [ -z "$touched_runtime_doc" ] && [ -z "$touched_decisions" ]; then
+            missing+=("app/ 변경 감지 → \`docs/runtime.md\` / \`docs/context/current-state.md\` / \`docs/code-map.md\` 중 하나를 같은 PR에서 갱신 (또는 ADR 추가).")
+          fi
+
+          if { [ -n "$touched_services" ] || [ -n "$touched_jobs" ]; } && [ -z "$touched_ai_doc" ] && [ -z "$touched_decisions" ]; then
+            missing+=("AI/parser/job 코드 변경 감지 → \`docs/ai-pipeline.md\` 또는 \`docs/categorization.md\`의 SHA 헤더와 본문을 갱신 (또는 ADR 추가).")
+          fi
+
+          if [ -n "$touched_models" ] && [ -z "$touched_data_doc" ] && [ -z "$touched_decisions" ]; then
+            missing+=("app/models/ 변경 감지 → \`docs/data-model.md\` 갱신 (또는 ADR 추가).")
+          fi
+
+          if [ -n "$touched_routes" ] && [ -z "$touched_generated" ]; then
+            missing+=("\`config/routes.rb\` 변경 감지 → \`bin/rake docs:generate:routes\`로 \`docs/generated/routes.md\` 재생성.")
+          fi
+
+          if { [ -n "$touched_migrations" ] || [ -n "$touched_schema" ]; } && [ -z "$touched_data_doc" ] && [ -z "$touched_generated" ] && [ -z "$touched_decisions" ]; then
+            missing+=("DB 마이그레이션/스키마 변경 감지 → \`docs/data-model.md\` 갱신 + \`bin/rake docs:generate:schema\` (또는 ADR 추가).")
+          fi
+
+          if [ ${#missing[@]} -eq 0 ]; then
+            echo "missing=" >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "missing<<EOF"
+              for m in "${missing[@]}"; do
+                echo "- $m"
+              done
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment on PR if docs may be stale
+        if: steps.detect.outputs.missing != ''
+        uses: actions/github-script@v7
+        env:
+          MISSING: ${{ steps.detect.outputs.missing }}
+        with:
+          script: |
+            const missing = process.env.MISSING || '';
+            const marker = '<!-- doc-freshness-check -->';
+            const body = [
+              marker,
+              '### 📝 Doc freshness check',
+              '',
+              '코드 변경이 thin docs / generated docs를 건드려야 할 수 있습니다.',
+              missing,
+              '',
+              '정책: `docs/DOCUMENTATION.md`. 이 코멘트는 자동입니다 — 의도한 변경이라면 PR template의 "No doc impact" 체크 + 사유로 답하세요.',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

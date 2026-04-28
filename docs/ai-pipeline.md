@@ -1,5 +1,8 @@
 # AI Pipeline
 
+> Last verified against code: `9e7aa22` (2026-04-28).
+> AI 호출 지점/프롬프트/모델/순서가 바뀌면 같은 PR에서 본 SHA를 갱신한다. 정책: [docs/DOCUMENTATION.md](DOCUMENTATION.md).
+
 xef-scale에서 LLM(Gemini)을 호출하는 모든 지점, 결정성-우선 정책, 비용 통제 가이드. 카테고리화 단계 자체에 대한 상세는 [categorization.md](categorization.md)를 참고하고, 본 문서는 AI 호출 전반(텍스트 파싱·이미지 파싱·카테고리 추천)을 다룬다.
 
 ## 원칙: LLM은 데이터베이스가 아니다
