@@ -12,7 +12,7 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 
 - current milestone: `P1-M1` ready — mobile web self-serve input observation and UX hardening.
 - active track / phase / slice: `UX` / `UX-1A` / next recommended slice `UX-1A.1`.
-- last accepted gate: `DOC-1B.3` docs review passed with CI, Codex review, `git diff --check`, and markdown link check evidence.
+- last accepted gate: `DOC-1C.1` full leaf roadmap review passed with PR #117, markdown link check, roadmap consistency check, `git diff --check`, RuboCop, Brakeman, and Bundler Audit evidence.
 - next gate: `ROAD-001` — observed non-engineer mobile web input → review → commit loop, with blockers recorded as slices.
 - canonical ledger: [04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md).
 
