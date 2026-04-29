@@ -50,7 +50,7 @@ bunx playwright test
 ```
 
 - 설정: `playwright.config.ts` — `bin/rails server -p 3000`을 자동으로 띄운다.
-- 스펙: `e2e/*.spec.ts` (allowances, dashboard, notifications, review-workflow, reviews, rollback, transactions).
+- 스펙: `e2e/*.spec.ts` (allowances, dashboard, duplicate, notifications, parsing_session, review-workflow, reviews, rollback, transactions).
 - CI는 Node 20에서 `npm install` → `npm run build && npm run build:css` → `npx playwright install --with-deps chromium` → `RAILS_ENV=test bin/rails db:schema:load db:seed` → `npx playwright test` 순서로 실행한다.
 
 ## JS / CSS 빌드

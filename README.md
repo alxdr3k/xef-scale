@@ -1,15 +1,16 @@
 # Expense Tracker (지출 추적 앱)
 
-A Rails 8 application for tracking expenses from Korean financial statements. Users add transactions by entering them directly, pasting financial SMS/text, or uploading screenshots of card statements. Text and image inputs are parsed with Gemini (Flash for text, Vision for images).
+A Rails 8 application for tracking expenses from Korean financial statements. Users add transactions by entering them directly, pasting financial SMS/text, uploading screenshots of card statements, or writing through the API. Text and image inputs are parsed with Gemini (Flash for text, Vision for images).
 
 ## Features
 
 - **Workspace Management**: Create and manage multiple workspaces for organizing expenses
 - **Transaction Management**: Track, filter, and categorize expenses
-- **Three input paths** (the full input surface):
+- **Four input paths** (the full input surface):
   - **Direct entry**: Create a transaction manually via the web UI
   - **Text paste**: Paste card/bank SMS and Gemini Flash extracts transactions
   - **Screenshot upload**: Upload card statement screenshots (JPG/PNG/WEBP/HEIC) and Gemini Vision extracts transactions
+  - **API write**: Create committed transactions with an API key that has the `write` scope
 - **Allowance Tracking**: Mark transactions as allowance for personal budget tracking
 - **Member Collaboration**: Invite team members with different permission levels
 - **Export**: Export transactions to CSV format
@@ -81,7 +82,7 @@ app/
 ├── models/           # ActiveRecord models
 ├── views/            # ERB templates
 ├── helpers/          # View helpers
-├── jobs/             # Background jobs (image parsing)
+├── jobs/             # Background jobs (text/image parsing)
 └── services/         # Business logic
     ├── ai_text_parser.rb             # Gemini Flash text parser
     ├── image_statement_parser.rb     # Screenshot parser wrapper
@@ -109,19 +110,20 @@ test/
 
 ## Input paths
 
-Three entry points. Text and image paths share the same parse → review → commit pipeline; direct entry skips it.
+Four entry points. Text and image paths share the same parse → review → commit pipeline; direct entry and API write skip it.
 
 1. **Direct entry** → form in the transactions UI creates a committed transaction immediately (no review session)
 2. **Text paste** → `AiTextParser` (Gemini Flash) → `pending_review` transactions
 3. **Screenshot upload (JPG/PNG/WEBP/HEIC)** → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision) → `pending_review` transactions
+4. **API write** → `POST /api/v1/transactions` with a `write` scoped API key creates a committed transaction immediately
 
 For the parsing paths (2 and 3):
 
-4. Auto-categorization runs via `CategoryMapping` + `Category` keyword match; uncategorized merchants fall back to `GeminiCategoryService`
-5. Duplicate detection creates `DuplicateConfirmation` records for review
-6. User reviews the session and commits — pending duplicates must be resolved first
+5. Auto-categorization runs via `CategoryMapping` + `Category` keyword match; only the screenshot path sends remaining uncategorized merchants to `GeminiCategoryService`
+6. Duplicate detection creates `DuplicateConfirmation` records for review
+7. User reviews the session and commits — pending duplicates must be resolved first
 
-Excel, PDF, CSV, and HTML statements are **not** supported. Only direct entry, SMS/text paste, and image screenshots.
+Excel, PDF, CSV, and HTML statements are **not** supported. Only direct entry, SMS/text paste, image screenshots, and API write are in scope.
 
 ## Documentation
 
