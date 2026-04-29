@@ -6,24 +6,6 @@
 
 ## Decisions
 
-### DEC-001: <decision summary>
+No lightweight decisions have been accepted yet.
 
-- Date: <YYYY-MM-DD>
-- Status: accepted / superseded / obsolete
-- Deciders:
-- Supersedes:
-- Superseded by:
-- Resolves:
-- Impacts:
-
-**Context**
-
-**Decision**
-
-**Rationale**
-
-**Consequences**
-
-- Positive:
-- Negative:
-- Follow-ups: Slice `<TRACK-#A.#>` / SPIKE-###
+When a question in [07_QUESTIONS_REGISTER.md](07_QUESTIONS_REGISTER.md) is resolved without needing a full ADR, add an entry from [templates/DECISION_ENTRY.md](templates/DECISION_ENTRY.md).

@@ -17,7 +17,7 @@
 - Owner: product / engineering
 - Status: open
 - Proposed Answer: 현재 제품 계약은 "이미지 업로드 경로가 존재한다"까지로 두고, 비-신한 기관 정확도 보장은 별도 spike/ADR 후 확장한다.
-- Blocks: REQ-003 expansion
+- Blocks: `INP-1A.3`, `INP-1A.4`, `INP-1A.5`, REQ-003 expansion
 - Resolution:
 
 **Context**
@@ -34,7 +34,7 @@
 - Owner: product / engineering
 - Status: open
 - Proposed Answer: 현재는 텍스트 파싱에서 이미 AI를 호출하므로 카테고리화는 `CategoryMapping` + `Category#keyword`로 제한한다. 변경하려면 ADR이 필요하다.
-- Blocks: REQ-007 expansion
+- Blocks: `CAT-1A.2`, `CAT-1A.3`, REQ-007 expansion
 - Resolution:
 
 **Context**
@@ -51,7 +51,7 @@
 - Owner: product / engineering
 - Status: open
 - Proposed Answer: PRD에는 지표 이름만 유지하고, 실제 instrumentation/dashboard는 별도 작업으로 정의한다.
-- Blocks: Metrics section in `docs/01_PRD.md`
+- Blocks: `OBS-1A.4`, `OBS-1A.5`, Metrics section in `docs/01_PRD.md`
 - Resolution:
 
 **Context**
@@ -61,3 +61,71 @@
 **Discussion**
 
 - 후보 후속: 이벤트/집계 저장소, 운영 대시보드, 개인정보 경계 정의.
+
+### Q-004: 결제 provider와 과금 운영 방식을 무엇으로 할 것인가
+
+- Opened: 2026-04-29
+- Owner: product / engineering
+- Status: open
+- Proposed Answer: P1 사용 증거가 생기기 전에는 결제 구현을 시작하지 않는다. 후보는 Stripe, Toss Payments, PortOne/Iamport, 또는 invite-only/manual billing이다.
+- Blocks: `BIZ-2A.2`, `BIZ-2A.3`
+- Resolution:
+
+**Context**
+
+Phase B/C 설계는 자체 AI / BYOAI / 광고 제거 / 데이터 히스토리 제한을 수익 모델 후보로 잡았지만, 한국 결제 provider와 운영 방식은 아직 정하지 않았다.
+
+**Discussion**
+
+- 후보 후속: 한국 카드/정기결제 지원, 세금계산/영수증, 환불, subscription webhook, entitlement sync 비용 비교.
+
+### Q-005: 네이티브 앱 / OS 통합을 언제 어떤 범위로 시작할 것인가
+
+- Opened: 2026-04-29
+- Owner: product / engineering
+- Status: open
+- Proposed Answer: 모바일 웹 + BYOAI path가 실제 사용에서 부족하다는 증거가 생길 때까지 deferred로 둔다. Android SMS 자동 파싱, iOS share extension, PWA camera upload은 각각 spike 후 결정한다.
+- Blocks: `NTV-3A.1`, `NTV-3A.2`, `NTV-3A.3`, `NTV-3A.4`
+- Resolution:
+
+**Context**
+
+iOS SMS 자동 읽기는 구조적으로 제한되고, Android SMS 자동 파싱은 Play 정책/권한/개인정보 비용이 크다. Phase B 설계는 네이티브 앱을 별도 트랙으로 미뤘다.
+
+**Discussion**
+
+- 후보 후속: 플랫폼 정책 확인, WWDC/Apple extension 변화 확인, Android SMS permission 정책 확인, Hotwire Native 유지보수 비용 산정.
+
+### Q-006: 무료 / 유료 자체 AI / BYOAI tier 경계를 어디에 둘 것인가
+
+- Opened: 2026-04-29
+- Owner: product / engineering
+- Status: open
+- Proposed Answer: 무료는 기본 웹 입력과 제한된 데이터 히스토리, 유료는 Vision/무제한 히스토리/가족 공유/API-MCP 확장 후보로 두되 실제 사용 전 구현하지 않는다.
+- Blocks: `BIZ-2A.1`, `BIZ-2A.4`, `BIZ-2A.5`
+- Resolution:
+
+**Context**
+
+Phase B/C 설계는 무료 SMS 복붙, 유료 자체 AI, 유료 BYOAI, 광고 제거, 무제한 워크스페이스/히스토리를 후보로 제안했다. 현재 PRD에는 과금/광고/제한 정책이 제품 계약으로 들어와 있지 않다.
+
+**Discussion**
+
+- 후보 후속: 실제 사용량, Gemini 비용, 가족 공유 가치, API 사용 여부, retention 비용을 본 뒤 entitlement 모델 결정.
+
+### Q-007: 업로드 원본 이미지와 파싱 산출물의 보존/삭제 정책은 무엇인가
+
+- Opened: 2026-04-29
+- Owner: product / engineering
+- Status: open
+- Proposed Answer: 파싱 완료/실패/discard/commit 각각에서 원본 ActiveStorage blob 보존 필요성을 결정하고, 개인정보 최소화 원칙과 디버깅 가능성 사이에서 명시적으로 선택한다.
+- Blocks: `OPS-1A.1`
+- Resolution:
+
+**Context**
+
+현재 이미지는 파싱 중 `Tempfile`로 다운로드 후 삭제되지만, ActiveStorage blob 자체의 명시적 보존/삭제 정책은 current docs에서 `needs audit`로 남아 있다.
+
+**Discussion**
+
+- 후보 후속: commit 후 삭제, 일정 기간 보존, 실패 건만 보존, 사용자가 직접 삭제 중 어떤 정책이 제품/운영에 맞는지 결정.
