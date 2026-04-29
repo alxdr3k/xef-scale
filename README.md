@@ -23,7 +23,7 @@ A Rails 8 application for tracking expenses from Korean financial statements. Us
 - **Tailwind CSS** 4.x (styling)
 - **Hotwire** (Turbo + Stimulus)
 - **Devise** + OmniAuth (authentication with Google OAuth2)
-- **Pagy** 6.x (pagination)
+- **Pagy** 9.x (pagination)
 - **Gemini** (Flash for text, Vision for screenshots) via direct HTTP
 
 ## Requirements
