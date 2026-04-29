@@ -1,6 +1,6 @@
-# Expense Tracker (지출 추적 앱)
+# xef-scale
 
-A Rails 8 application for tracking expenses from Korean financial statements. Users add transactions by entering them directly, pasting financial SMS/text, uploading screenshots of card statements, or writing through the API. Text and image inputs are parsed with Gemini (Flash for text, Vision for images).
+A Rails 8 expense tracking application for Korean financial statements. Users add transactions by entering them directly, pasting financial SMS/text, uploading screenshots of card statements, or writing through the API. Text and image inputs are parsed with Gemini (Flash for text, Vision for images).
 
 ## Features
 

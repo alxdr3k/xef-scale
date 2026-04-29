@@ -1,6 +1,6 @@
 # Testing
 
-xef-scale의 테스트·린트·보안 스캔 명령. 현재 CI(`.github/workflows/ci.yml`)에서 실제로 실행되는 명령만 기록한다. 새 명령을 도입하면 같은 PR에서 본 문서를 갱신.
+xef-scale의 테스트·린트·보안 스캔 명령. 현재 GitHub Actions CI(`.github/workflows/ci.yml`)에서 실행되는 명령을 기준으로 기록하고, 별도 로컬 helper는 구분해서 적는다. 새 명령을 도입하면 같은 PR에서 본 문서를 갱신.
 
 ## Rails 테스트 (Minitest)
 
@@ -73,6 +73,12 @@ bun install
 bin/rails db:create db:migrate db:seed
 bin/dev
 ```
+
+`bin/setup`은 위 절차를 자동화하는 로컬 helper다. `--skip-server`를 주면 서버를 띄우지 않는다.
+
+## 로컬 CI helper
+
+`bin/ci`는 GitHub Actions workflow가 아니라 로컬 ActiveSupport CI helper다. 현재 `config/ci.rb`는 `bin/setup --skip-server`, `bin/rubocop`, `bin/bundler-audit`, `bun audit`, `bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error`, `bin/rails test`, `RAILS_ENV=test bin/rails db:seed:replant`를 실행한다.
 
 `GEMINI_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RAILS_MASTER_KEY` 등 환경변수는 [OPERATIONS.md](OPERATIONS.md) 참조.
 

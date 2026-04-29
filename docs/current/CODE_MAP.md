@@ -145,7 +145,9 @@ JS 번들링: bun + esbuild. CSS: tailwind CLI. 시작은 `bin/dev` (Procfile.de
 | [.github/workflows/deploy-stg.yml](../../.github/workflows/deploy-stg.yml) | STG 배포 reusable workflow (`workflow_call`) + 수동 배포 (`workflow_dispatch`) |
 | [.github/workflows/deploy-prd.yml](../../.github/workflows/deploy-prd.yml) | 수동 PRD 배포 (`workflow_dispatch`) |
 | [Dockerfile](../../Dockerfile) | 프로덕션 이미지 (Ruby 3.3.10-slim, jemalloc) |
+| [config/deploy.yml](../../config/deploy.yml) | Rails/Kamal 스캐폴드. 현재 STG/PRD 배포 source of truth는 아니며 placeholder가 남아 있음 |
 | [release-please-config.json](../../release-please-config.json), [.release-please-manifest.json](../../.release-please-manifest.json) | release-please 설정 |
+| [bin/setup](../../bin/setup), [bin/ci](../../bin/ci), [config/ci.rb](../../config/ci.rb) | 로컬 setup / ActiveSupport CI helper (`bundle`, `bun`, Ruby checks, Rails tests) |
 
 배포 인프라(k8s, kustomize, kubeconfig)는 별도 ops 레포(`~/ws/xeflabs/ops`)에서 관리. 자세한 흐름은 [OPERATIONS.md](OPERATIONS.md).
 
@@ -155,3 +157,4 @@ JS 번들링: bun + esbuild. CSS: tailwind CLI. 시작은 `bin/dev` (Procfile.de
 |------|--------|
 | [app/services/gemini_vision_parser_service.rb](../../app/services/gemini_vision_parser_service.rb) | 프롬프트가 신한카드 양식에 종속 — 다른 기관 명세서 정확도 미측정 |
 | `app/views/financial_institutions/` (현재 없음) | UI 노출 여부 확인 필요 |
+| [config/deploy.yml](../../config/deploy.yml) | Kamal 경로를 쓰지 않는 현재 CD에서는 placeholder가 남아 있음. 재사용 전 감사 필요 |

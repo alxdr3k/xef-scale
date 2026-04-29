@@ -92,7 +92,7 @@ pending_review ──► committed (확정)
 
 ## 기술 스택
 
-- Ruby 3.3+, Rails 8.0+
+- Ruby 3.3+, Rails 8.1.x
 - SQLite3
 - Solid Queue (백그라운드 작업)
 - ActiveStorage (이미지 저장)

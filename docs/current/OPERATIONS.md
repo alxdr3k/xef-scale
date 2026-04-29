@@ -22,6 +22,8 @@ bin/dev
 
 `bin/dev`는 `Procfile.dev`의 `web` (Rails), `js` (esbuild watch), `css` (tailwind CLI watch)를 동시에 실행한다.
 
+`bin/setup`은 같은 로컬 전제를 따른다: `bundle install`, `bun install`, `bin/rails db:prepare`를 수행하고 `--skip-server`가 없으면 `bin/dev`를 실행한다.
+
 ### 테스트 로그인 (개발/테스트 전용)
 
 `Rails.env.development?` 또는 `Rails.env.test?`일 때만 `GET /test_login`으로 시드 사용자에 즉시 로그인한다. 프로덕션에서는 라우트가 노출되지 않는다.
@@ -112,6 +114,8 @@ bin/rails db:reset    # 개발 전용
 | prd | scale.xeflabs.com | apps-prd |
 
 ops 레포 경로: `~/ws/xeflabs/ops/apps/xef-scale/overlays/{stg,prd}` (workspace 루트 CLAUDE.md 참조).
+
+`config/deploy.yml`은 Rails/Kamal 기본 스캐폴드이며 현재 STG/PRD 배포의 source of truth가 아니다. `bin/kamal` 경로를 다시 사용하려면 서비스명, 이미지명, registry, host, storage volume, 워커 정의를 먼저 감사·갱신해야 한다.
 
 수동 kubectl apply (필요 시):
 
