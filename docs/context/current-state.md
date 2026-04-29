@@ -8,6 +8,14 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 
 자세한 스코프는 [01_PRD.md](../01_PRD.md).
 
+## Current Roadmap Position
+
+- current milestone: `P0-M2` — roadmap/status taxonomy and maintenance drift workflow adopted.
+- active track / phase / slice: `DOC` / `DOC-1B` / `DOC-1B.1`.
+- last accepted gate: none recorded yet; latest landed gate evidence is `DOC-1B.1` link/docs review.
+- next gate: publish / PR review for `DOC-1B.1`.
+- canonical ledger: [04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md).
+
 ## 현재 입력 경로 (전체 입력 표면)
 
 세 가지 경로뿐입니다.

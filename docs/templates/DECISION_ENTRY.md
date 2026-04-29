@@ -18,4 +18,4 @@
 
 - 긍정:
 - 부정:
-- Follow-ups: TASK-### / SPIKE-###
+- Follow-ups: Slice `<TRACK-#A.#>` / SPIKE-###

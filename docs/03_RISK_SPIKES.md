@@ -16,7 +16,7 @@
 - Owner:
 - Time-box:
 - Start / End:
-- Status: open / in_progress / done / abandoned
+- Status: open / in_progress / completed / abandoned
 
 **Experiment**
 
@@ -29,4 +29,4 @@ What was observed.
 **Decision / Next Step**
 
 - Decision:
-- Follow-up:
+- Follow-up: Slice `<TRACK-#A.#>` / Q-###

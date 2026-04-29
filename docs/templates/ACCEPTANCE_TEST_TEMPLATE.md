@@ -2,7 +2,7 @@
 
 - Covers: REQ-### / NFR-###
 - Verified by: manual / TEST-###
-- Status: pending / passing / failing
+- Status: defined / not_run / passing / failing / waived
 
 **Scenario**
 
