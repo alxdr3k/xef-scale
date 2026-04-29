@@ -131,7 +131,7 @@ JS 번들링: bun + esbuild. CSS: tailwind CLI. 시작은 `bin/dev` (Procfile.de
 | [test/services/](../../test/services/) | 파서·중복 감지·반복결제 탐지 테스트 |
 | [test/jobs/](../../test/jobs/) | 잡 통합 테스트 (`ai_text_parsing_job_test.rb`, `file_parsing_job_test.rb`) |
 | [test/system/](../../test/system/) | Capybara 시스템 테스트 디렉토리 (현재 커밋된 스펙 없음) |
-| [test/integration/](../../test/integration/), [test/migrations/](../../test/migrations/), [test/benchmarks/](../../test/benchmarks/) | 보조 테스트 |
+| [test/helpers/](../../test/helpers/), [test/integration/](../../test/integration/), [test/migrations/](../../test/migrations/), [test/benchmarks/](../../test/benchmarks/) | 보조 테스트 |
 | [test/fixtures/](../../test/fixtures/) | 픽스처 |
 | [e2e/](../../e2e/) | Playwright E2E 스펙 (`*.spec.ts`) |
 

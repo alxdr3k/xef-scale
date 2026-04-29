@@ -8,7 +8,7 @@ xef-scale의 테스트·린트·보안 스캔 명령. 현재 CI(`.github/workflo
 bin/rails db:test:prepare test
 ```
 
-- `test/models/`, `test/controllers/`, `test/services/`, `test/jobs/`, `test/integration/`, `test/migrations/`, `test/benchmarks/` 등 일반 Minitest 스위트.
+- `test/models/`, `test/controllers/`, `test/helpers/`, `test/services/`, `test/jobs/`, `test/integration/`, `test/migrations/`, `test/benchmarks/` 등 일반 Minitest 스위트.
 - `test/controllers/api/`에 API v1 컨트롤러 요청 테스트 포함.
 - 픽스처: `test/fixtures/`.
 
