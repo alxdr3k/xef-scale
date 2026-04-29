@@ -18,7 +18,7 @@ bin/rails db:test:prepare test
 bin/rails db:test:prepare test:system
 ```
 
-- `test/system/`에 위치. CI에서 실패 시 스크린샷이 `tmp/screenshots`에 저장되어 아티팩트로 업로드된다.
+- CI는 `system-test` 잡을 실행하지만, 현재 `test/system/`에는 커밋된 Capybara 스펙이 없다. 향후 시스템 스펙 실패 시 스크린샷은 `tmp/screenshots`에 저장되어 아티팩트로 업로드된다.
 
 ## 린트
 
