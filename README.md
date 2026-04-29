@@ -30,6 +30,7 @@ A Rails 8 expense tracking application for Korean financial statements. Users ad
 
 - Ruby 3.3.10+
 - Bun (for JavaScript/CSS bundling)
+- Node/Corepack/Yarn (used by Rails asset preparation and Docker builds)
 - SQLite3
 - `GEMINI_API_KEY` environment variable
 

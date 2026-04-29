@@ -57,6 +57,8 @@ bunx playwright test
 
 `bin/dev`로 개발 서버를 띄우면 Procfile.dev에 따라 Rails + esbuild watch + tailwind watch가 함께 기동된다.
 
+JS 의존성은 `package.json`이 단일 manifest이고, lockfile은 로컬 Bun 경로(`bun.lock`)와 Docker/jsbundling-rails Yarn 경로(`yarn.lock`)를 모두 유지한다. `packageManager`는 Rails/Docker의 Yarn 경로를 고정하기 위한 값이며, `bin/setup`과 개발 watch는 Bun을 사용한다. `package.json`을 바꾸면 두 lockfile을 함께 갱신한다.
+
 수동 빌드:
 
 ```bash
