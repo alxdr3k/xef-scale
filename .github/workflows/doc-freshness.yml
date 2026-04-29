@@ -52,18 +52,14 @@ jobs:
           touched_runtime_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/(context/current-state|02_HLD)\.md$|^docs/current/(RUNTIME|CODE_MAP)\.md$' || true)
           touched_data_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/current/DATA_MODEL\.md$' || true)
           touched_ai_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/current/(AI_PIPELINE|CATEGORIZATION)\.md$' || true)
-          touched_roadmap_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/04_IMPLEMENTATION_PLAN\.md$' || true)
-          touched_acceptance_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/06_ACCEPTANCE_TESTS\.md$' || true)
           touched_generated_routes=$(printf '%s\n' "$CHANGED" | grep -E '^docs/generated/routes\.md$' || true)
           touched_generated_schema=$(printf '%s\n' "$CHANGED" | grep -E '^docs/generated/schema\.md$' || true)
           touched_decisions=$(printf '%s\n' "$CHANGED" | grep -E '^docs/(decisions/|08_DECISION_REGISTER\.md)' || true)
 
           if [ -n "$touched_runtime_code" ] &&
              [ -z "$touched_runtime_doc" ] &&
-             [ -z "$touched_roadmap_doc" ] &&
-             [ -z "$touched_acceptance_doc" ] &&
              [ -z "$touched_decisions" ]; then
-            missing+=("app/ 변경 감지 → 구현 동작은 \`docs/current/RUNTIME.md\` / \`docs/current/CODE_MAP.md\`, active position은 \`docs/context/current-state.md\`, slice/evidence는 \`docs/04_IMPLEMENTATION_PLAN.md\`, gate 변경은 \`docs/06_ACCEPTANCE_TESTS.md\` 중 필요한 문서를 같은 PR에서 갱신 (또는 ADR 추가).")
+            missing+=("app/ 런타임 변경 감지 → 구현 동작은 \`docs/current/RUNTIME.md\` / \`docs/current/CODE_MAP.md\` / \`docs/context/current-state.md\` / \`docs/02_HLD.md\` 중 필요한 current 문서를 같은 PR에서 갱신 (또는 ADR 추가). Roadmap/acceptance 문서는 보조 evidence일 수 있지만 runtime doc 대체물은 아님.")
           fi
 
           if [ -n "$touched_ai_code" ] && [ -z "$touched_ai_doc" ] && [ -z "$touched_decisions" ]; then
