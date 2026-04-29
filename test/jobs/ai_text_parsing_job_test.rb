@@ -79,6 +79,29 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     assert tx.pending_review?
   end
 
+  test "create_transaction does not invoke gemini category fallback" do
+    job = AiTextParsingJob.new
+    tx_data = {
+      date: Date.current,
+      merchant: "새로운카페",
+      amount: 6900,
+      payment_type: "lump_sum",
+      institution: nil,
+      confidence: 0.75
+    }
+
+    original_new = GeminiCategoryService.method(:new)
+    GeminiCategoryService.define_singleton_method(:new) do
+      raise "text path must not call GeminiCategoryService"
+    end
+
+    assert_nothing_raised do
+      job.send(:create_transaction, @workspace, tx_data, @parsing_session)
+    end
+  ensure
+    GeminiCategoryService.define_singleton_method(:new, original_new) if original_new
+  end
+
   test "create_failure_notifications sends notifications to owner and write members" do
     job = AiTextParsingJob.new
 

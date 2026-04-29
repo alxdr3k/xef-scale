@@ -1,6 +1,6 @@
 # Testing
 
-xef-scale의 테스트·린트·보안 스캔 명령. 현재 CI(`.github/workflows/ci.yml`)에서 실제로 실행되는 명령만 기록한다. 새 명령을 도입하면 같은 PR에서 본 문서를 갱신.
+xef-scale의 테스트·린트·보안 스캔 명령. 현재 GitHub Actions CI(`.github/workflows/ci.yml`)에서 실행되는 명령을 기준으로 기록하고, 별도 로컬 helper는 구분해서 적는다. 새 명령을 도입하면 같은 PR에서 본 문서를 갱신.
 
 ## Rails 테스트 (Minitest)
 
@@ -8,7 +8,7 @@ xef-scale의 테스트·린트·보안 스캔 명령. 현재 CI(`.github/workflo
 bin/rails db:test:prepare test
 ```
 
-- `test/models/`, `test/controllers/`, `test/services/`, `test/jobs/`, `test/integration/`, `test/migrations/`, `test/benchmarks/` 등 일반 Minitest 스위트.
+- `test/models/`, `test/controllers/`, `test/helpers/`, `test/services/`, `test/jobs/`, `test/integration/`, `test/migrations/`, `test/benchmarks/` 등 일반 Minitest 스위트.
 - `test/controllers/api/`에 API v1 컨트롤러 요청 테스트 포함.
 - 픽스처: `test/fixtures/`.
 
@@ -18,7 +18,7 @@ bin/rails db:test:prepare test
 bin/rails db:test:prepare test:system
 ```
 
-- `test/system/`에 위치. CI에서 실패 시 스크린샷이 `tmp/screenshots`에 저장되어 아티팩트로 업로드된다.
+- CI는 `system-test` 잡을 실행하지만, 현재 `test/system/`에는 커밋된 Capybara 스펙이 없다. 향후 시스템 스펙 실패 시 스크린샷은 `tmp/screenshots`에 저장되어 아티팩트로 업로드된다.
 
 ## 린트
 
@@ -50,12 +50,14 @@ bunx playwright test
 ```
 
 - 설정: `playwright.config.ts` — `bin/rails server -p 3000`을 자동으로 띄운다.
-- 스펙: `e2e/*.spec.ts` (allowances, dashboard, notifications, review-workflow, reviews, rollback, transactions).
+- 스펙: `e2e/*.spec.ts` (allowances, dashboard, duplicate, notifications, parsing_session, review-workflow, reviews, rollback, transactions).
 - CI는 Node 20에서 `npm install` → `npm run build && npm run build:css` → `npx playwright install --with-deps chromium` → `RAILS_ENV=test bin/rails db:schema:load db:seed` → `npx playwright test` 순서로 실행한다.
 
 ## JS / CSS 빌드
 
 `bin/dev`로 개발 서버를 띄우면 Procfile.dev에 따라 Rails + esbuild watch + tailwind watch가 함께 기동된다.
+
+JS 의존성은 `package.json`이 단일 manifest이고, lockfile은 로컬 Bun 경로(`bun.lock`)와 Docker/jsbundling-rails Yarn 경로(`yarn.lock`)를 모두 유지한다. `packageManager`는 Rails/Docker의 Yarn 경로를 고정하기 위한 값이며, `bin/setup`과 개발 watch는 Bun을 사용한다. `package.json`을 바꾸면 두 lockfile을 함께 갱신한다.
 
 수동 빌드:
 
@@ -73,6 +75,12 @@ bun install
 bin/rails db:create db:migrate db:seed
 bin/dev
 ```
+
+`bin/setup`은 위 절차를 자동화하는 로컬 helper다. `--skip-server`를 주면 서버를 띄우지 않는다.
+
+## 로컬 CI helper
+
+`bin/ci`는 GitHub Actions workflow가 아니라 로컬 ActiveSupport CI helper다. 현재 `config/ci.rb`는 `bin/setup --skip-server`, `bin/rubocop`, `bin/bundler-audit`, `bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error`, `bin/rails test`, `RAILS_ENV=test bin/rails db:seed:replant`를 실행한다.
 
 `GEMINI_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RAILS_MASTER_KEY` 등 환경변수는 [OPERATIONS.md](OPERATIONS.md) 참조.
 

@@ -7,10 +7,11 @@ xef-scale에서 작업하는 AI 코딩 에이전트를 위한 간결한 안내. 
 일반적인 구현/수정 작업이라면:
 
 1. [docs/context/current-state.md](docs/context/current-state.md)
-2. [docs/current/CODE_MAP.md](docs/current/CODE_MAP.md)
-3. [docs/current/TESTING.md](docs/current/TESTING.md)
-4. 작업과 관련된 코드 (`app/`, `db/`, `config/routes.rb`)
-5. 아키텍처/제품 스코프를 바꾸는 경우에만 관련 ADR (`docs/decisions/`)
+2. [docs/04_IMPLEMENTATION_PLAN.md](docs/04_IMPLEMENTATION_PLAN.md) active milestone / track / phase / slice
+3. [docs/current/CODE_MAP.md](docs/current/CODE_MAP.md)
+4. [docs/current/TESTING.md](docs/current/TESTING.md)
+5. 작업과 관련된 코드 (`app/`, `db/`, `config/routes.rb`)
+6. 아키텍처/제품 스코프를 바꾸는 경우에만 관련 ADR (`docs/decisions/`)
 
 기본적으로 [docs/design-phase-a.md](docs/design-phase-a.md), [docs/design-phase-b.md](docs/design-phase-b.md), [docs/design/archive/](docs/design/archive/)는 **읽지 않는다**. 이들은 역사적 스냅샷이며 현재 권위가 아니다.
 
@@ -21,6 +22,7 @@ xef-scale에서 작업하는 AI 코딩 에이전트를 위한 간결한 안내. 
 | 구현된 동작 | 코드, 테스트, 마이그레이션, [db/schema.rb](db/schema.rb) |
 | 제품 스코프 | [docs/01_PRD.md](docs/01_PRD.md) |
 | 상위 설계 | [docs/02_HLD.md](docs/02_HLD.md) |
+| Roadmap / status ledger | [docs/04_IMPLEMENTATION_PLAN.md](docs/04_IMPLEMENTATION_PLAN.md) |
 | 현재 구현 요약 | [docs/context/current-state.md](docs/context/current-state.md) 및 `docs/current/` |
 | 수락된 결정의 이유 | [docs/decisions/](docs/decisions/) |
 | 테스트/린트/스캔 명령 | [docs/current/TESTING.md](docs/current/TESTING.md) |
@@ -32,6 +34,9 @@ xef-scale에서 작업하는 AI 코딩 에이전트를 위한 간결한 안내. 
 문서 정책의 전체 매트릭스와 source-of-truth 우선순위는 [docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)에 있다. 자주 쓰는 규칙만 요약:
 
 - **테스트를 함께 갱신**한다. CI 잡(`test`, `system-test`, `lint`, `scan_ruby`)은 [docs/current/TESTING.md](docs/current/TESTING.md) 참조.
+- roadmap position, slice status, gate status, evidence, next work가 바뀌면 [docs/04_IMPLEMENTATION_PLAN.md](docs/04_IMPLEMENTATION_PLAN.md) 갱신.
+- active milestone / track / phase / slice가 바뀌면 [docs/context/current-state.md](docs/context/current-state.md)에 짧게 반영.
+- acceptance gate 정의나 결과가 바뀌면 [docs/06_ACCEPTANCE_TESTS.md](docs/06_ACCEPTANCE_TESTS.md) 갱신.
 - 런타임 흐름이 바뀌면 [docs/current/RUNTIME.md](docs/current/RUNTIME.md) 갱신.
 - 스키마/마이그레이션이 바뀌면 [docs/current/DATA_MODEL.md](docs/current/DATA_MODEL.md) 갱신.
 - 모듈/파일 레이아웃이 바뀌면 [docs/current/CODE_MAP.md](docs/current/CODE_MAP.md) 갱신.

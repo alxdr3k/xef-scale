@@ -69,9 +69,12 @@ through its own process.
 Use this section for a short update that may be reflected in a knowledge-base
 project hub. Include only stable state changes, not raw journal entries.
 
-- Current phase:
-- Last milestone:
-- Next milestone:
+- Current milestone:
+- Active tracks:
+- Active phase:
+- Active slice:
+- Last accepted gate:
+- Next gate:
 - Important links:
 - One-line learning log candidate:
 

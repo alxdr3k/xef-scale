@@ -1,3 +1,8 @@
+# NOTE: Current deployment is GitHub Actions -> ops/kustomize, not Kamal.
+# This file is the Rails/Kamal scaffold only and is not the source of truth
+# for xef-scale production or staging deploys. Audit and replace placeholders
+# before using bin/kamal.
+#
 # Name of your application. Used to uniquely configure containers.
 service: expense_tracker_rails
 

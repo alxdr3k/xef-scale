@@ -1,6 +1,6 @@
 # 카테고리화 전략
 
-> Last verified against code: `7d71607` (2026-04-28).
+> Last verified against code: `8085821` (2026-04-29).
 > 카테고리/AI 로직이 바뀌면 같은 PR에서 본 SHA를 갱신한다. 정책: [docs/DOCUMENTATION.md](../DOCUMENTATION.md).
 >
 > 본 문서는 카테고리화 단계 자체의 결정 로직을 다룬다. 전체 AI 호출 정책(텍스트·Vision 파싱 포함)과 결정성-우선 원칙은 [AI_PIPELINE.md](AI_PIPELINE.md), 입력→커밋 흐름 안의 위치는 [RUNTIME.md](RUNTIME.md) 참조.
@@ -22,8 +22,9 @@ xef-scale은 거래를 자동으로 분류하기 위해 최대 3단계 카테고
 ## 3단계 매칭 흐름
 
 ```
-1단계: CategoryMapping (exact match)
+1단계: CategoryMapping
    │    ✓ 이전에 학습된 상점-카테고리 매핑
+   │    ✓ 우선순위: exact+amount → exact → contains+amount → contains
    │    ✓ source: import/gemini/manual
    │
    │    매핑 발견? → 해당 카테고리 사용 (종료)
@@ -50,16 +51,19 @@ xef-scale은 거래를 자동으로 분류하기 위해 최대 3단계 카테고
 SOURCES = %w[import gemini manual]
 
 # 필드
-merchant_pattern  # 정확한 상점명 (예: "배달의민족")
+merchant_pattern  # 상점명 또는 contains 패턴 (예: "배달의민족")
+description_pattern # 설명 기반 보조 패턴 (일부 헬퍼에서 사용)
+match_type        # exact 또는 contains
+amount            # 특정 금액에만 적용하는 선택 조건
 category_id       # 매핑된 카테고리
 source           # 생성 출처
 
 # 메서드
-CategoryMapping.find_for_merchant(workspace, merchant)
+CategoryMapping.find_for_merchant(workspace, merchant, amount: nil)
 ```
 
 **source 필드의 의미**:
-- `import`: 업로드/파싱 과정에서 학습된 매핑
+- `import`: `lib/tasks/import.rake`의 일괄 가져오기 태스크에서 생성한 매핑
 - `gemini`: Gemini AI가 분류한 결과
 - `manual`: 사용자가 직접 지정
 
@@ -131,3 +135,4 @@ Gemini 분류 결과는 CategoryMapping으로 저장됩니다:
 | `app/models/category_mapping.rb` | 매핑 모델 |
 | `app/models/category.rb` | keyword 매칭 |
 | `app/services/gemini_category_service.rb` | AI 분류 (3단계 전용) |
+| `app/controllers/transactions_controller.rb`, `app/controllers/reviews_controller.rb` | 사용자 수동 카테고리 변경 시 `source: "manual"` 매핑 생성 |

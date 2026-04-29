@@ -4,6 +4,8 @@
 
 Code, tests, migrations, and generated schema remain authoritative. These docs explain the implemented state and point to the relevant files.
 
+Roadmap / status inventory does not live here. Use [../04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md) for milestone, track, phase, slice, gate, evidence, and next-work tracking.
+
 | File | Purpose |
 |---|---|
 | [CODE_MAP.md](CODE_MAP.md) | where code lives |

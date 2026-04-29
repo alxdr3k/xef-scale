@@ -71,7 +71,7 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_nil DuplicateDetector.new(@workspace, new_tx).find_match
   end
 
-  test "create_transaction creates new transaction" do
+  test "create_transaction creates pending review image transaction" do
     job = FileParsingJob.new
     tx_data = {
       date: Date.current,
@@ -81,9 +81,14 @@ class FileParsingJobTest < ActiveJob::TestCase
       institution_identifier: nil
     }
 
+    tx = nil
     assert_difference "Transaction.count" do
-      job.send(:create_transaction_without_gemini, @workspace, tx_data, @parsing_session)
+      tx = job.send(:create_transaction_without_gemini, @workspace, tx_data, @parsing_session)
     end
+
+    assert tx.pending_review?
+    assert_equal "image_upload", tx.source_type
+    assert_equal @parsing_session, tx.parsing_session
   end
 
   test "create_transaction does not expose parser hint identifier as source institution" do
@@ -192,6 +197,38 @@ class FileParsingJobTest < ActiveJob::TestCase
     end
 
     assert_equal :fail, result, "success==0인 경우 fail 처리되어야 함"
+  end
+
+  test "gemini batch categorizes image transactions and stores mapping" do
+    job = FileParsingJob.new
+    merchant = "새로운카페"
+    category = categories(:food)
+    transaction = @workspace.transactions.create!(
+      date: Date.current,
+      merchant: merchant,
+      amount: 6900,
+      status: "pending_review",
+      source_type: "image_upload",
+      parsing_session: @parsing_session
+    )
+
+    test_case = self
+    fake_service = Object.new
+    fake_service.define_singleton_method(:suggest_categories_batch) do |merchants, _categories|
+      test_case.assert_equal [ merchant ], merchants
+      { merchant => category.name }
+    end
+
+    original_new = GeminiCategoryService.method(:new)
+    GeminiCategoryService.define_singleton_method(:new) { fake_service }
+
+    assert_difference -> { CategoryMapping.where(source: "gemini", merchant_pattern: merchant).count }, 1 do
+      assert_equal 1, job.send(:categorize_with_gemini_batch, @workspace, [ transaction ])
+    end
+
+    assert_equal category, transaction.reload.category
+  ensure
+    GeminiCategoryService.define_singleton_method(:new, original_new) if original_new
   end
 
   test "perform creates parsing session" do

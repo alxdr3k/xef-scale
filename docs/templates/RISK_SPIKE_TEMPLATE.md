@@ -4,7 +4,7 @@
 - Owner:
 - Time-box:
 - Start / End:
-- Status: open
+- Status: open / in_progress / completed / abandoned
 
 **Experiment**
 
@@ -13,4 +13,4 @@
 **Decision / Next Step**
 
 - Decision: DEC-### / ADR-####
-- Follow-up: TASK-### / Q-###
+- Follow-up: Slice `<TRACK-#A.#>` / Q-###

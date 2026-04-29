@@ -3,13 +3,6 @@ name: e2e-fix
 description: CI E2E 테스트 실패를 Codex(디버깅·수정) + Claude(로컬 테스트) 루프로 수정
 projects: [xef-scale]
 ---
-<!-- my-skill:generated
-skill: e2e-fix
-base-sha256: 950feb2e4572b847dfce8e66b8e56498a4291725035e08b220514fc9723e4de8
-overlay-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-output-sha256: 950feb2e4572b847dfce8e66b8e56498a4291725035e08b220514fc9723e4de8
-do-not-edit: edit .codex/skill-overrides/e2e-fix.md instead
--->
 
 CI E2E 테스트 실패를 Codex(디버깅·수정) + Claude(로컬 테스트) 루프로 고쳐줘.
 

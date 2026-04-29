@@ -4,6 +4,7 @@
 |---|---|
 | 문서 workflow | [00_PROJECT_DELIVERY_PLAYBOOK.md](00_PROJECT_DELIVERY_PLAYBOOK.md) |
 | 현재 구현 요약 | [context/current-state.md](context/current-state.md) |
+| Roadmap / status ledger | [04_IMPLEMENTATION_PLAN.md](04_IMPLEMENTATION_PLAN.md) |
 | 제품 스코프 | [01_PRD.md](01_PRD.md) |
 | 상위 설계 | [02_HLD.md](02_HLD.md) |
 | 현재 구현 docs | [current/](current/) |

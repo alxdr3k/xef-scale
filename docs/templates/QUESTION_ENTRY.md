@@ -4,7 +4,7 @@
 - Owner:
 - Status: open
 - Proposed Answer:
-- Blocks: REQ-### / TASK-###
+- Blocks: REQ-### / Slice `<TRACK-#A.#>`
 - Resolution: —
 
 **Context**

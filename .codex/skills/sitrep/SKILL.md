@@ -2,13 +2,6 @@
 name: sitrep
 description: 현재 프로젝트 상태, 개발 로드맵, 현재 위치를 문서에서 읽어 요약 보고
 ---
-<!-- my-skill:generated
-skill: sitrep
-base-sha256: ef014a17118620056455563c8f02fd191ae1faf1ec288d80a5cc8140401d2ed7
-overlay-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-output-sha256: ef014a17118620056455563c8f02fd191ae1faf1ec288d80a5cc8140401d2ed7
-do-not-edit: edit .codex/skill-overrides/sitrep.md instead
--->
 
 # Sitrep — Situation Report
 
@@ -22,10 +15,10 @@ do-not-edit: edit .codex/skill-overrides/sitrep.md instead
 2. `git status -sb` — 현재 워킹트리 상태
 3. `git branch --show-current` — 현재 브랜치
 4. `AGENTS.md`, README 등 repo-local guidance 중 존재하는 파일
-5. `docs/context/current-state.md`가 있으면 해당 파일
-6. `docs/04_IMPLEMENTATION_PLAN.md`가 있으면 current roadmap/status ledger 부분
-7. `docs/current/CODE_MAP.md`, `docs/current/TESTING.md`, `docs/ARCHITECTURE.md`, `docs/CODE_MAP.md`, `docs/TESTING.md` 등 존재하고 필요한 thin current docs
-8. 로드맵이 별도 파일에 있으면 해당 파일 (ROADMAP.md, docs/ROADMAP.md 등)
+5. `docs/context/current-state.md` — 압축된 현재 위치
+6. `docs/04_IMPLEMENTATION_PLAN.md` — canonical roadmap/status ledger
+7. `docs/current/CODE_MAP.md`, `docs/current/TESTING.md` 등 존재하고 필요한 thin current docs
+8. 위 파일이 없는 기존 프로젝트라면 별도 로드맵 파일 (ROADMAP.md, docs/ROADMAP.md 등)
 
 긴 P0 설계 문서 (PRD, HLD 등), archive, generated file은 기본으로 열지 않는다.
 현재 상태 판단에 꼭 필요할 때만 이유를 밝히고 필요한 부분만 읽는다.
@@ -42,12 +35,12 @@ do-not-edit: edit .codex/skill-overrides/sitrep.md instead
 - 워킹트리: clean / 변경 파일 N개
 
 ### 🗺 로드맵
-`docs/04_IMPLEMENTATION_PLAN.md`가 있으면 그 기준으로, 없으면 repo roadmap 문서 기준으로 roadmap / milestone / track / phase / task / slice를 요약한다.
-완료된 항목은 `✅`, 진행 중은 `🔄`, 미착수는 `⬜`로 표시한다.
+`04_IMPLEMENTATION_PLAN.md` 기준으로 milestone / track / phase / slice를 요약한다.
+완료된 slice 또는 milestone은 `✅`, 진행 중은 `🔄`, 미착수는 `⬜`로 표시한다.
 
 ### 📌 현재 단계
 현재 roadmap position을 한 줄로 명시한다.
-(예: "Phase 2/5 — 인증 모듈 구현 중" 또는 "`M1 / API / API-1A` — gate not_run")
+(예: "`P0-M1 / API / API-1A / API-1A.2` — gate `AC-003` not_run")
 
 ### ✅ 최근 완료
 git log와 문서를 기반으로 최근에 완료된 작업 목록 (최대 5개).

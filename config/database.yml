@@ -30,8 +30,9 @@ test:
     database: storage/test_queue.sqlite3
     migrations_paths: db/queue_migrate
 
-# Store production database in the storage/ directory, which by default
-# is mounted as a persistent Docker volume in config/deploy.yml.
+# Store production database in the storage/ directory. Current GitHub Actions
+# deploys rely on the ops repo for persistent storage; config/deploy.yml is only
+# the Kamal scaffold if that path is revived.
 production:
   primary:
     <<: *default

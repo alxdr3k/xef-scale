@@ -1,17 +1,9 @@
 # syntax=docker/dockerfile:1
 # check=error=true
 
-# Production Dockerfile for k3s/Kubernetes deployment
-#
-# Build with version tag (use git tag or commit SHA):
-#   VERSION=$(git describe --tags --always)
-#   docker build -t ghcr.io/alxdr3k/expense-tracker:${VERSION} .
-#
-# Push to registry:
-#   docker push ghcr.io/alxdr3k/expense-tracker:${VERSION}
-#
-# Run locally:
-#   docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value> -v storage:/rails/storage ghcr.io/alxdr3k/expense-tracker:${VERSION}
+# Production Dockerfile for GitHub Actions image builds.
+# Build, push, and deploy policy is documented in docs/current/OPERATIONS.md
+# and CLAUDE.md; release workflows tag and publish ghcr.io images.
 
 # Make sure RUBY_VERSION matches the Ruby version in .ruby-version
 ARG RUBY_VERSION=3.3.10

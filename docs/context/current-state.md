@@ -8,15 +8,22 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 
 자세한 스코프는 [01_PRD.md](../01_PRD.md).
 
+## Current Roadmap Position
+
+- current milestone: `P0-M2` — roadmap/status taxonomy and maintenance drift workflow adopted.
+- active track / phase / slice: `DOC` / `DOC-1B` / `DOC-1B.1`.
+- last accepted gate: none recorded yet; latest landed gate evidence is `DOC-1B.1` link/docs review.
+- next gate: publish / PR review for `DOC-1B.1`.
+- canonical ledger: [04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md).
+
 ## 현재 입력 경로 (전체 입력 표면)
 
-세 가지 경로뿐입니다.
+네 가지 경로뿐입니다.
 
 1. **직접 입력 (manual)** — 웹 폼에서 `TransactionsController#new/#create`가 즉시 `committed` 상태의 `Transaction`을 만든다. 파싱 세션·검토 흐름을 거치지 않는다.
 2. **금융 문자 붙여넣기 (text_paste)** — `ParsingSessionsController#text_parse` → `AiTextParsingJob` → `AiTextParser` (Gemini Flash). 결과는 `pending_review` 상태의 `Transaction`.
 3. **명세서 스크린샷 업로드 (image_upload)** — `ParsingSessionsController#create` → `FileParsingJob` → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision). 결과는 `pending_review` 상태의 `Transaction`.
-
-API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`)도 존재한다. API 키 + `write` 스코프로 인증하며 즉시 `committed` 상태로 저장한다.
+4. **API write (api)** — `Api::V1::TransactionsController#create` (`POST /api/v1/transactions`)가 API 키 + `write` 스코프로 인증하고 즉시 `committed` 상태의 `Transaction`을 만든다.
 
 ## 명시적으로 스코프 밖
 
