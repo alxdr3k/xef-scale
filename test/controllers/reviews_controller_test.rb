@@ -39,6 +39,137 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert tx.reload.committed?
   end
 
+  test "commit creates one budget warning notification per workspace member and month" do
+    workspace = Workspace.create!(name: "Budget Warning Workspace", owner: @user)
+    workspace.workspace_memberships.create!(user: users(:member), role: "member_read")
+    workspace.create_budget!(monthly_amount: 1000)
+    date = Date.new(2026, 3, 15)
+    session = workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    workspace.transactions.create!(
+      date: date,
+      amount: 800,
+      status: "pending_review",
+      parsing_session: session
+    )
+
+    assert_difference -> {
+      Notification.where(
+        workspace: workspace,
+        notification_type: "budget_warning",
+        target_year: date.year,
+        target_month: date.month
+      ).count
+    }, 2 do
+      post commit_workspace_parsing_session_path(workspace, session)
+    end
+
+    notified_users = Notification.where(
+      workspace: workspace,
+      notification_type: "budget_warning",
+      target_year: date.year,
+      target_month: date.month
+    ).pluck(:user_id)
+    assert_equal [ @user.id, users(:member).id ].sort, notified_users.sort
+
+    second_session = workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    workspace.transactions.create!(
+      date: date,
+      amount: 50,
+      status: "pending_review",
+      parsing_session: second_session
+    )
+
+    assert_no_difference -> {
+      Notification.where(
+        workspace: workspace,
+        notification_type: "budget_warning",
+        target_year: date.year,
+        target_month: date.month
+      ).count
+    } do
+      post commit_workspace_parsing_session_path(workspace, second_session)
+    end
+  end
+
+  test "commit creates budget exceeded notification at 100 percent" do
+    workspace = Workspace.create!(name: "Budget Exceeded Workspace", owner: @user)
+    workspace.create_budget!(monthly_amount: 1000)
+    date = Date.new(2026, 4, 15)
+    session = workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    workspace.transactions.create!(
+      date: date,
+      amount: 1000,
+      status: "pending_review",
+      parsing_session: session
+    )
+
+    assert_difference -> {
+      Notification.where(
+        workspace: workspace,
+        user: @user,
+        notification_type: "budget_exceeded",
+        target_year: date.year,
+        target_month: date.month
+      ).count
+    }, 1 do
+      post commit_workspace_parsing_session_path(workspace, session)
+    end
+  end
+
+  test "commit creates exceeded notification after prior warning" do
+    workspace = Workspace.create!(name: "Budget Escalation Workspace", owner: @user)
+    workspace.create_budget!(monthly_amount: 1000)
+    date = Date.new(2026, 5, 15)
+    warning_session = workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    workspace.transactions.create!(
+      date: date,
+      amount: 800,
+      status: "pending_review",
+      parsing_session: warning_session
+    )
+    post commit_workspace_parsing_session_path(workspace, warning_session)
+
+    exceeded_session = workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    workspace.transactions.create!(
+      date: date,
+      amount: 200,
+      status: "pending_review",
+      parsing_session: exceeded_session
+    )
+
+    assert_difference -> {
+      Notification.where(
+        workspace: workspace,
+        user: @user,
+        notification_type: "budget_exceeded",
+        target_year: date.year,
+        target_month: date.month
+      ).count
+    }, 1 do
+      post commit_workspace_parsing_session_path(workspace, exceeded_session)
+    end
+  end
+
   test "bulk_update is refused on finalized sessions" do
     tx = @workspace.transactions.create!(
       date: Date.current,

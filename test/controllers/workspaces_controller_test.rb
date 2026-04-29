@@ -75,6 +75,8 @@ class WorkspacesControllerTest < ActionDispatch::IntegrationTest
   test "settings displays workspace settings" do
     get settings_workspace_path(@workspace)
     assert_response :success
+    assert_select "h2", text: "월 예산"
+    assert_select "input[name='budget[monthly_amount]'][value=?]", @workspace.budget.monthly_amount.to_s
   end
 
   test "non-admin cannot access settings" do
@@ -102,6 +104,68 @@ class WorkspacesControllerTest < ActionDispatch::IntegrationTest
     patch workspace_path(@workspace), params: { workspace: { name: "Hacked" } }
     assert_redirected_to workspace_path(@workspace)
     assert_not_equal "Hacked", @workspace.reload.name
+  end
+
+  test "non-admin cannot update budget settings" do
+    sign_out @user
+    sign_in users(:member)
+
+    assert_no_difference "Budget.count" do
+      patch workspace_path(@workspace), params: {
+        settings_context: "budget",
+        budget: { monthly_amount: "" }
+      }
+    end
+
+    assert_redirected_to workspace_path(@workspace)
+    assert @workspace.reload.budget.present?
+  end
+
+  test "update budget settings creates monthly budget" do
+    @workspace.budget.destroy!
+
+    assert_difference "Budget.count", 1 do
+      patch workspace_path(@workspace), params: {
+        settings_context: "budget",
+        budget: { monthly_amount: "750000" }
+      }
+    end
+
+    assert_redirected_to settings_workspace_path(@workspace)
+    assert_equal 750_000, @workspace.reload.budget.monthly_amount
+  end
+
+  test "update budget settings accepts comma formatted amount" do
+    patch workspace_path(@workspace), params: {
+      settings_context: "budget",
+      budget: { monthly_amount: "850,000" }
+    }
+
+    assert_redirected_to settings_workspace_path(@workspace)
+    assert_equal 850_000, @workspace.reload.budget.monthly_amount
+  end
+
+  test "blank budget settings clears monthly budget" do
+    assert_difference "Budget.count", -1 do
+      patch workspace_path(@workspace), params: {
+        settings_context: "budget",
+        budget: { monthly_amount: "" }
+      }
+    end
+
+    assert_redirected_to settings_workspace_path(@workspace)
+    assert_nil @workspace.reload.budget
+  end
+
+  test "invalid budget settings renders settings" do
+    patch workspace_path(@workspace), params: {
+      settings_context: "budget",
+      budget: { monthly_amount: "0" }
+    }
+
+    assert_response :unprocessable_entity
+    assert_select "h2", text: "월 예산"
+    assert_select ".text-red-700"
   end
 
   test "destroy redirects non-admin" do
