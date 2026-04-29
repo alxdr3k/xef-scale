@@ -70,6 +70,24 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2", text: /최근 결제/
   end
 
+  test "recurring dashboard renders detected monthly patterns" do
+    [ Date.new(2026, 1, 12), Date.new(2026, 2, 12) ].each do |date|
+      @workspace.transactions.create!(
+        date: date,
+        amount: 17_000,
+        merchant: "테스트 구독",
+        status: "committed"
+      )
+    end
+
+    get recurring_dashboard_path
+
+    assert_response :success
+    assert_select "h1", text: "반복 결제"
+    assert_includes response.body, "테스트 구독"
+    assert_includes response.body, "2개월 연속"
+  end
+
   test "dashboard ignores out-of-range month param instead of 500ing" do
     get dashboard_path, params: { year: 2024, month: 13 }
     assert_response :success
