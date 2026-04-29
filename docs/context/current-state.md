@@ -11,8 +11,8 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 ## Current Roadmap Position
 
 - current milestone: `P1-M1` in progress — mobile web self-serve input observation and UX hardening.
-- active track / phase / slice: `UX` / `UX-1A` / next recommended external slice `UX-1A.1`; next local implementation candidate `INS-1A.3`.
-- last accepted gate: `INS-1A.2` recurring-payment detector/list UX audit passed with service/controller coverage.
+- active track / phase / slice: `UX` / `UX-1A` / next recommended slice `UX-1A.1` for the external observation session; no further local `P1-M1` leaf is unblocked before that evidence.
+- last accepted gate: `INS-1A.3` monthly dashboard hierarchy audit passed with controller/e2e coverage.
 - next gate: `ROAD-001` — observed non-engineer mobile web input → review → commit loop, with blockers recorded as slices.
 - canonical ledger: [04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md).
 
