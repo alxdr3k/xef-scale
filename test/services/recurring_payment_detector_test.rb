@@ -53,7 +53,9 @@ class RecurringPaymentDetectorTest < ActiveSupport::TestCase
     assert netflix.key?(:last_amount)
     assert netflix.key?(:last_date)
     assert netflix.key?(:total_spent)
+    assert netflix.key?(:longest_streak)
     assert netflix.key?(:consistent_amount)
+    assert netflix.key?(:consistent_day)
   end
 
   test "identifies consistent amount correctly" do
@@ -83,6 +85,99 @@ class RecurringPaymentDetectorTest < ActiveSupport::TestCase
 
     merchants = results.map { |r| r[:merchant] }
     assert_not_includes merchants, "한번만 가본 식당"
+  end
+
+  test "does not include non-consecutive repeated merchants" do
+    [ Date.new(2026, 1, 3), Date.new(2026, 3, 3) ].each do |date|
+      Transaction.create!(
+        workspace: @workspace,
+        merchant: "계절 쇼핑몰",
+        amount: 29_000,
+        date: date,
+        description: "비연속 구매",
+        status: "committed",
+        deleted: false
+      )
+    end
+
+    detector = RecurringPaymentDetector.new(@workspace)
+    results = detector.detect
+
+    merchants = results.map { |r| r[:merchant] }
+    assert_not_includes merchants, "계절 쇼핑몰"
+  end
+
+  test "does not include noisy repeated merchants without amount or day consistency" do
+    [
+      [ Date.new(2026, 1, 1), 5_000 ],
+      [ Date.new(2026, 2, 20), 9_000 ],
+      [ Date.new(2026, 3, 5), 4_000 ]
+    ].each do |date, amount|
+      Transaction.create!(
+        workspace: @workspace,
+        merchant: "랜덤 카페",
+        amount: amount,
+        date: date,
+        description: "우연 반복",
+        status: "committed",
+        deleted: false
+      )
+    end
+
+    detector = RecurringPaymentDetector.new(@workspace)
+    results = detector.detect
+
+    merchants = results.map { |r| r[:merchant] }
+    assert_not_includes merchants, "랜덤 카페"
+  end
+
+  test "does not include coupon transactions" do
+    2.times do |i|
+      Transaction.create!(
+        workspace: @workspace,
+        merchant: "쿠폰 반복",
+        amount: 10_000,
+        date: Date.new(2026, i + 1, 10),
+        description: "쿠폰",
+        status: "committed",
+        payment_type: "coupon",
+        deleted: false
+      )
+    end
+
+    detector = RecurringPaymentDetector.new(@workspace)
+    results = detector.detect
+
+    merchants = results.map { |r| r[:merchant] }
+    assert_not_includes merchants, "쿠폰 반복"
+  end
+
+  test "uses latest transaction category" do
+    Transaction.create!(
+      workspace: @workspace,
+      merchant: "카테고리 변경 구독",
+      amount: 12_000,
+      date: Date.new(2026, 1, 10),
+      category: categories(:shopping),
+      description: "old category",
+      status: "committed",
+      deleted: false
+    )
+    Transaction.create!(
+      workspace: @workspace,
+      merchant: "카테고리 변경 구독",
+      amount: 12_000,
+      date: Date.new(2026, 2, 10),
+      category: categories(:food),
+      description: "latest category",
+      status: "committed",
+      deleted: false
+    )
+
+    detector = RecurringPaymentDetector.new(@workspace)
+    result = detector.detect.find { |r| r[:merchant] == "카테고리 변경 구독" }
+
+    assert_equal "식비", result[:category]
   end
 
   test "does not include deleted transactions" do
