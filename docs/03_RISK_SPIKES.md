@@ -10,23 +10,6 @@
 
 ## Spikes
 
-### SPIKE-001: <title>
+No active risk spikes.
 
-- Hypothesis:
-- Owner:
-- Time-box:
-- Start / End:
-- Status: open / in_progress / completed / abandoned
-
-**Experiment**
-
-What will be tested.
-
-**Result**
-
-What was observed.
-
-**Decision / Next Step**
-
-- Decision:
-- Follow-up: Slice `<TRACK-#A.#>` / Q-###
+When a spike is opened, copy [templates/RISK_SPIKE_TEMPLATE.md](templates/RISK_SPIKE_TEMPLATE.md) into this section and assign the next `SPIKE-###` id.
