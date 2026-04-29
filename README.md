@@ -18,7 +18,7 @@ A Rails 8 application for tracking expenses from Korean financial statements. Us
 ## Technology Stack
 
 - **Ruby** 3.3+
-- **Rails** 8.1.2
+- **Rails** 8.1.x
 - **SQLite3** (database)
 - **Tailwind CSS** 4.x (styling)
 - **Hotwire** (Turbo + Stimulus)
@@ -38,7 +38,7 @@ A Rails 8 application for tracking expenses from Korean financial statements. Us
 1. Clone the repository:
    ```bash
    git clone <repository-url>
-   cd expense-tracker
+   cd xef-scale
    ```
 
 2. Install dependencies:
