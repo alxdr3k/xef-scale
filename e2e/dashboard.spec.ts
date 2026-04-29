@@ -143,6 +143,14 @@ test.describe('Monthly report (/dashboard/monthly)', () => {
     await expect(page.locator(':has-text("카테고리별 지출")').first()).toBeVisible();
   });
 
+  test('요약 카드 — 가족이 읽기 쉬운 핵심 신호 표시', async ({ page }) => {
+    await page.goto('/dashboard/monthly?year=2025&month=1');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText('가장 큰 카테고리')).toBeVisible();
+    await expect(page.getByText('가장 큰 결제')).toBeVisible();
+    await expect(page.getByText('분류 필요')).toBeVisible();
+  });
+
   test('최근 결제 — 전체 보기 링크가 transactions 페이지로 이동', async ({ page }) => {
     await page.goto('/dashboard/monthly?year=2025&month=1');
     await page.waitForLoadState('networkidle');

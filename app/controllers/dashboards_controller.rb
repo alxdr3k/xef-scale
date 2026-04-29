@@ -16,6 +16,9 @@ class DashboardsController < ApplicationController
     @total_spending = @transactions.excluding_coupon.sum(:amount)
     @category_breakdown = build_category_breakdown(@transactions.excluding_coupon, @total_spending)
     @recent_transactions = @transactions.limit(10)
+    @top_category = @category_breakdown.first
+    @largest_transaction = @transactions.excluding_coupon.reorder(amount: :desc).first
+    @uncategorized_count = @transactions.excluding_coupon.where(category_id: nil).count
     @budget = @workspace.budget
     @budget_progress = @budget&.progress_for_month(@year, @month)
     @daily_average_denominator = daily_average_denominator(@year, @month)

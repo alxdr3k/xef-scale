@@ -70,6 +70,40 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2", text: /최근 결제/
   end
 
+  test "monthly view displays readable summary cards" do
+    target = Date.new(2026, 6, 5)
+    @workspace.transactions.create!(
+      date: target,
+      amount: 30_000,
+      merchant: "동네식당",
+      category: categories(:food),
+      status: "committed"
+    )
+    @workspace.transactions.create!(
+      date: target + 1.day,
+      amount: 70_000,
+      merchant: "가족 쇼핑",
+      category: categories(:shopping),
+      status: "committed"
+    )
+    @workspace.transactions.create!(
+      date: target + 2.days,
+      amount: 10_000,
+      merchant: "확인 필요",
+      category: nil,
+      status: "committed"
+    )
+
+    get monthly_dashboard_path, params: { year: target.year, month: target.month }
+
+    assert_response :success
+    assert_includes response.body, "가장 큰 카테고리"
+    assert_includes response.body, "쇼핑"
+    assert_includes response.body, "가족 쇼핑"
+    assert_includes response.body, "분류 필요"
+    assert_includes response.body, "1건"
+  end
+
   test "recurring dashboard renders detected monthly patterns" do
     [ Date.new(2026, 1, 12), Date.new(2026, 2, 12) ].each do |date|
       @workspace.transactions.create!(
