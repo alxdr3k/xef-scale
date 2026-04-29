@@ -10,10 +10,10 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 
 ## Current Roadmap Position
 
-- current milestone: `P0-M2` — roadmap/status taxonomy and maintenance drift workflow adopted.
-- active track / phase / slice: `DOC` / `DOC-1B` / `DOC-1B.1`.
-- last accepted gate: none recorded yet; latest landed gate evidence is `DOC-1B.1` link/docs review.
-- next gate: publish / PR review for `DOC-1B.1`.
+- current milestone: none active; latest accepted milestone is `P0-M2` — roadmap/status taxonomy and maintenance drift workflow adopted via PR #114 (`58b49a4`).
+- active track / phase / slice: none selected; `DOC-1B.1` is complete.
+- last accepted gate: `DOC-1B.1` link/docs review passed with CI, Codex review, `git diff --check`, and markdown link check evidence.
+- next gate: select a new implementation slice; open questions remain in [07_QUESTIONS_REGISTER.md](../07_QUESTIONS_REGISTER.md).
 - canonical ledger: [04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md).
 
 ## 현재 입력 경로 (전체 입력 표면)

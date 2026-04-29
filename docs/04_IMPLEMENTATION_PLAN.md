@@ -52,24 +52,24 @@ Gate status:
 
 | Milestone | Product / user gate | Target date | Status | Gate | Evidence | Notes |
 |---|---|---|---|---|---|---|
-| `P0-M1` | Current product contract is traced to requirements, acceptance criteria, tests, and open gaps. | 2026-04-28 | `landed` | link review | `5cecb68`, `a434a35`, `c79e678` | Boilerplate structure and requirement traceability backfill landed on `dev`. |
-| `P0-M2` | Roadmap/status taxonomy and maintenance-drift workflow are adopted without moving xef-scale canonical implementation docs. | 2026-04-29 | `landed` | link review + docs review | this change set; `git diff --check`; markdown link check | Latest boilerplate `24851cf` and `24b47f1` migration. |
+| `P0-M1` | Current product contract is traced to requirements, acceptance criteria, tests, and open gaps. | 2026-04-28 | `accepted` | link review | `5cecb68`, `a434a35`, `c79e678`; PR #111, PR #112 | Boilerplate structure and requirement traceability backfill landed on `dev`. |
+| `P0-M2` | Roadmap/status taxonomy and maintenance-drift workflow are adopted without moving xef-scale canonical implementation docs. | 2026-04-29 | `accepted` | link review + docs review | PR #114, `58b49a4`; `git diff --check`; markdown link check; CI | Latest boilerplate `24851cf` and `24b47f1` migration is merged on `dev`. |
 
 ## Tracks
 
 | Track | Purpose | Active phase | Status | Notes |
 |---|---|---|---|---|
-| `DOC` | Documentation structure, roadmap ledger, generated docs, and agent guidance | `DOC-1B` | `landed` | Current migration track. |
-| `REQ` | Product requirements, acceptance criteria, and traceability backfill | `REQ-1A` | `landed` | Backfilled from current PRD and implemented behavior. |
+| `DOC` | Documentation structure, roadmap ledger, generated docs, and agent guidance | none | `accepted` | `DOC-1A.1` and `DOC-1B.1` are complete. |
+| `REQ` | Product requirements, acceptance criteria, and traceability backfill | none | `accepted` | Backfilled from current PRD and implemented behavior; expansion questions remain separate. |
 | `RUN` | Runtime/data/AI/operations current docs |  | `ready` | Update only when implementation changes. |
 
 ## Phases / Slices
 
 | Slice | Milestone | Track | Phase | Goal | Depends | Gate | Gate status | Status | Evidence | Next |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `DOC-1A.1` | `P0-M1` | `DOC` | `DOC-1A` | Adopt boilerplate document structure using xef-scale canonical paths. |  | link review | `passing` | `landed` | `5cecb68` | Keep wrappers thin; do not duplicate canonical docs. |
-| `REQ-1A.1` | `P0-M1` | `REQ` | `REQ-1A` | Backfill product requirements, acceptance criteria, and traceability for implemented behavior. | `DOC-1A.1` | AC/Test trace review | `passing` | `landed` | `a434a35`, `c79e678`, [06_ACCEPTANCE_TESTS.md](06_ACCEPTANCE_TESTS.md), [09_TRACEABILITY_MATRIX.md](09_TRACEABILITY_MATRIX.md) | Resolve open gaps in Q-001, Q-002, Q-003 as separate slices. |
-| `DOC-1B.1` | `P0-M2` | `DOC` | `DOC-1B` | Migrate to the updated roadmap/status taxonomy and maintenance drift workflow from boilerplate `24851cf` / `24b47f1`. | `DOC-1A.1` | link review + docs review | `passing` | `landed` | this change set; `git diff --check`; markdown link check | Publish through the standard review flow. |
+| `DOC-1A.1` | `P0-M1` | `DOC` | `DOC-1A` | Adopt boilerplate document structure using xef-scale canonical paths. |  | link review | `passing` | `accepted` | `5cecb68`; PR #111 | Keep wrappers thin; do not duplicate canonical docs. |
+| `REQ-1A.1` | `P0-M1` | `REQ` | `REQ-1A` | Backfill product requirements, acceptance criteria, and traceability for implemented behavior. | `DOC-1A.1` | AC/Test trace review | `passing` | `accepted` | `a434a35`, `c79e678`, [06_ACCEPTANCE_TESTS.md](06_ACCEPTANCE_TESTS.md), [09_TRACEABILITY_MATRIX.md](09_TRACEABILITY_MATRIX.md); PR #112 | Resolve open gaps in Q-001, Q-002, Q-003 as separate slices. |
+| `DOC-1B.1` | `P0-M2` | `DOC` | `DOC-1B` | Migrate to the updated roadmap/status taxonomy and maintenance drift workflow from boilerplate `24851cf` / `24b47f1`. | `DOC-1A.1` | link review + docs review | `passing` | `accepted` | PR #114, `58b49a4`; `git diff --check`; markdown link check; CI | Complete; select a new slice before further implementation. |
 
 ## Gates / Acceptance
 
