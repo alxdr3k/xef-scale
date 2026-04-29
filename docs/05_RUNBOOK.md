@@ -17,10 +17,6 @@
 
 Add durable incident playbooks here when they need acceptance criteria, traceability, or retrospective follow-up.
 
-### Incident: <name>
+No durable incident playbooks have been recorded yet.
 
-- Symptom:
-- Detection:
-- Mitigation:
-- Root-cause investigation:
-- Related:
+Use [templates/RUNBOOK_TEMPLATE.md](templates/RUNBOOK_TEMPLATE.md) when adding one.

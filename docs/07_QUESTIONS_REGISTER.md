@@ -17,7 +17,7 @@
 - Owner: product / engineering
 - Status: open
 - Proposed Answer: 현재 제품 계약은 "이미지 업로드 경로가 존재한다"까지로 두고, 비-신한 기관 정확도 보장은 별도 spike/ADR 후 확장한다.
-- Blocks: REQ-003 expansion
+- Blocks: `INP-1A.3`, `INP-1A.4`, `INP-1A.5`, REQ-003 expansion
 - Resolution:
 
 **Context**
@@ -34,7 +34,7 @@
 - Owner: product / engineering
 - Status: open
 - Proposed Answer: 현재는 텍스트 파싱에서 이미 AI를 호출하므로 카테고리화는 `CategoryMapping` + `Category#keyword`로 제한한다. 변경하려면 ADR이 필요하다.
-- Blocks: REQ-007 expansion
+- Blocks: `CAT-1A.2`, `CAT-1A.3`, REQ-007 expansion
 - Resolution:
 
 **Context**
@@ -51,7 +51,7 @@
 - Owner: product / engineering
 - Status: open
 - Proposed Answer: PRD에는 지표 이름만 유지하고, 실제 instrumentation/dashboard는 별도 작업으로 정의한다.
-- Blocks: Metrics section in `docs/01_PRD.md`
+- Blocks: `OBS-1A.4`, `OBS-1A.5`, Metrics section in `docs/01_PRD.md`
 - Resolution:
 
 **Context**
