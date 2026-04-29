@@ -10,8 +10,9 @@ xef-scale에서 작업하는 AI 코딩 에이전트를 위한 간결한 안내. 
 2. [docs/04_IMPLEMENTATION_PLAN.md](docs/04_IMPLEMENTATION_PLAN.md) active milestone / track / phase / slice
 3. [docs/current/CODE_MAP.md](docs/current/CODE_MAP.md)
 4. [docs/current/TESTING.md](docs/current/TESTING.md)
-5. 작업과 관련된 코드 (`app/`, `db/`, `config/routes.rb`)
-6. 아키텍처/제품 스코프를 바꾸는 경우에만 관련 ADR (`docs/decisions/`)
+5. [docs/11_CI_CD.md](docs/11_CI_CD.md) — CI/CD, release, deploy pipeline, required checks를 바꿀 때만
+6. 작업과 관련된 코드 (`app/`, `db/`, `config/routes.rb`)
+7. 아키텍처/제품 스코프를 바꾸는 경우에만 관련 ADR (`docs/decisions/`)
 
 기본적으로 [docs/design-phase-a.md](docs/design-phase-a.md), [docs/design-phase-b.md](docs/design-phase-b.md), [docs/design/archive/](docs/design/archive/)는 **읽지 않는다**. 이들은 역사적 스냅샷이며 현재 권위가 아니다.
 
@@ -27,6 +28,7 @@ xef-scale에서 작업하는 AI 코딩 에이전트를 위한 간결한 안내. 
 | 수락된 결정의 이유 | [docs/decisions/](docs/decisions/) |
 | 테스트/린트/스캔 명령 | [docs/current/TESTING.md](docs/current/TESTING.md) |
 | 운영/배포 | [docs/current/OPERATIONS.md](docs/current/OPERATIONS.md), [docs/05_RUNBOOK.md](docs/05_RUNBOOK.md) (Claude 전용 안전 규칙은 [CLAUDE.md](CLAUDE.md)) |
+| CI/CD guidance | [docs/11_CI_CD.md](docs/11_CI_CD.md) |
 | 디스커버리 / 역사 | [docs/discovery/](docs/discovery/), [docs/design/archive/](docs/design/archive/), `docs/design-phase-*.md` (역사) |
 
 ## 코드를 변경할 때
@@ -43,6 +45,7 @@ xef-scale에서 작업하는 AI 코딩 에이전트를 위한 간결한 안내. 
 - AI/파서/카테고리화 동작이 바뀌면 [docs/current/AI_PIPELINE.md](docs/current/AI_PIPELINE.md) 또는 [docs/current/CATEGORIZATION.md](docs/current/CATEGORIZATION.md) 갱신.
 - 입력 경로 / 지원 금융기관이 바뀌면 [docs/01_PRD.md](docs/01_PRD.md), [README.md](README.md), [docs/context/current-state.md](docs/context/current-state.md) 갱신.
 - 명령이 추가/변경되면 [docs/current/TESTING.md](docs/current/TESTING.md) 또는 [docs/current/OPERATIONS.md](docs/current/OPERATIONS.md) 갱신.
+- CI/CD workflow, required check, branch protection, release, deployment pipeline이 바뀌면 [docs/11_CI_CD.md](docs/11_CI_CD.md), [docs/current/TESTING.md](docs/current/TESTING.md), [docs/current/OPERATIONS.md](docs/current/OPERATIONS.md), [docs/05_RUNBOOK.md](docs/05_RUNBOOK.md) 중 영향 범위 갱신.
 - 아키텍처/제품 방향이 바뀌면 [docs/decisions/ADR-TEMPLATE.md](docs/decisions/ADR-TEMPLATE.md)로 ADR을 만든다 (이전 ADR/디자인 문서는 supersede).
 - 긴 역사적 디자인 문서(`docs/design-phase-*.md`, `docs/design/archive/`, `docs/discovery/`)를 *구현 변경에 맞춰* 다시 쓰지 않는다. 얇은 현재 문서만 패치한다.
 

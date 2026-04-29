@@ -12,7 +12,7 @@ xef-scale는 이미 운영에 가까운 구현 단계 Rails 앱입니다. 이 �
 2. **Generated docs** (`docs/generated/*`) — derived from code/schema. Fix the generator, not generated output.
 3. **Roadmap / status ledger** (`docs/04_IMPLEMENTATION_PLAN.md`) — milestone, track, phase, slice, gate, evidence, and next work.
 4. **Current implementation docs** (`docs/context/current-state.md`, `docs/current/*`) — thin implementation-state navigation docs.
-5. **Project delivery docs** (`docs/01_PRD.md`, `docs/02_HLD.md`, `docs/05_RUNBOOK.md`, `docs/06_ACCEPTANCE_TESTS.md`) — product scope, high-level design, operations, acceptance criteria.
+5. **Project delivery docs** (`docs/01_PRD.md`, `docs/02_HLD.md`, `docs/05_RUNBOOK.md`, `docs/06_ACCEPTANCE_TESTS.md`, `docs/11_CI_CD.md`) — product scope, high-level design, operations, acceptance criteria, CI/CD guidance.
 6. **Decision records** (`docs/08_DECISION_REGISTER.md`, `docs/decisions/ADR-*.md`) — accepted rationale. Supersede; do not rewrite history.
 7. **Agent instructions** (`AGENTS.md`, `CLAUDE.md`) — operating rules for coding agents.
 8. **Discovery and archive** (`docs/discovery/`, `docs/design/archive/`, `docs/design-phase-*.md`) — history, not current authority.
@@ -33,6 +33,7 @@ xef-scale는 이미 운영에 가까운 구현 단계 Rails 앱입니다. 이 �
 | Categorization | `docs/current/CATEGORIZATION.md` |
 | Testing commands | `docs/current/TESTING.md` |
 | Operations | `docs/current/OPERATIONS.md`, `docs/05_RUNBOOK.md` |
+| CI/CD guidance | `docs/11_CI_CD.md` |
 | Generated routes/schema | `docs/generated/*` |
 | ADRs | `docs/decisions/` |
 
@@ -55,6 +56,7 @@ The old flat paths (`PRD.md`, `docs/runtime.md`, `docs/code-map.md`, etc.) are r
 | Input surface / supported institution changes | update `docs/01_PRD.md`, `README.md`, `docs/context/current-state.md`, and relevant current docs |
 | Test/lint/build command changes | update `docs/current/TESTING.md` |
 | Operational/env/deployment changes | update `docs/current/OPERATIONS.md` or `docs/05_RUNBOOK.md`; Claude-only safety rules stay in `CLAUDE.md` |
+| CI/CD workflow, required check, release, branch protection changes | update `docs/current/TESTING.md`, `docs/current/OPERATIONS.md`, `docs/05_RUNBOOK.md`, `docs/06_ACCEPTANCE_TESTS.md`, and `docs/11_CI_CD.md` as applicable |
 | New open question | add row to `docs/07_QUESTIONS_REGISTER.md` |
 | Lightweight accepted decision | add entry to `docs/08_DECISION_REGISTER.md` |
 | Major accepted decision | add ADR under `docs/decisions/` |
@@ -74,6 +76,22 @@ When adopting updated boilerplate roadmap taxonomy in this existing project:
 6. Split ambiguous `done` / `pending` language into implementation status (`planned`, `landed`, `accepted`, etc.) and gate status (`defined`, `not_run`, `passing`, etc.).
 7. Keep the canonical inventory in `docs/04_IMPLEMENTATION_PLAN.md`; do not duplicate full roadmap inventory in `docs/context/current-state.md`, `docs/current/`, runtime docs, architecture docs, or agent instructions.
 8. Preserve source anchors when moving status: path, commit, PR, ADR, DEC, Q, AC, TEST, or issue ID. If unknown, write `anchor missing`.
+
+## CI/CD Migration
+
+When adopting updated CI/CD boilerplate in this existing project:
+
+1. Inventory active workflows (`ci.yml`, `release.yml`, `deploy-stg.yml`,
+   `deploy-prd.yml`), release scripts, deploy hosts, package registries, and
+   manual steps.
+2. Keep real validation commands in `docs/current/TESTING.md`.
+3. Keep deployment ownership, environments, secrets ownership, release triggers,
+   and rollback boundaries in `docs/current/OPERATIONS.md` and
+   `docs/05_RUNBOOK.md`.
+4. Use `docs/11_CI_CD.md` as guidance and `docs/templates/CI_CD_TEMPLATE.md`
+   as a worksheet when a single migration packet is useful.
+5. Preserve source anchors: workflow path, CI run, PR, release, commit SHA,
+   artifact digest, DEC, ADR, Q, or incident link.
 
 ## Enforcement
 

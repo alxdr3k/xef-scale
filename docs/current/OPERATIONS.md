@@ -131,13 +131,15 @@ kubectl apply -k ~/ws/xeflabs/ops/apps/xef-scale/overlays/prd
 
 ## CI
 
-`.github/workflows/ci.yml`은 PR마다 실행되는 5개 잡:
+`.github/workflows/ci.yml`은 PR과 `dev` direct push마다 실행되는 5개 잡:
 
 - `scan_ruby` — `bin/brakeman --no-pager` + `bin/bundler-audit`.
 - `lint` — `bin/rubocop -f github` (rubocop 캐시 활용).
 - `test` — `bin/rails db:test:prepare test`.
 - `system-test` — `bin/rails db:test:prepare test:system`. 실패 시 `tmp/screenshots`를 아티팩트로 업로드.
 - `e2e` — Node 20 + Playwright Chromium. `npm install`, asset build, `bin/rails db:schema:load db:seed`, `npx playwright test`를 실행하고 실패 시 `playwright-report/`를 업로드.
+
+CI/CD design guidance and migration checklist: [../11_CI_CD.md](../11_CI_CD.md).
 
 ## 트러블슈팅
 

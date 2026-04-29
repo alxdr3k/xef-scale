@@ -11,7 +11,9 @@ Roadmap / status inventory does not live here. Use [../04_IMPLEMENTATION_PLAN.md
 | [CODE_MAP.md](CODE_MAP.md) | where code lives |
 | [DATA_MODEL.md](DATA_MODEL.md) | current schema/model map |
 | [RUNTIME.md](RUNTIME.md) | actual request/job/event flow |
-| [TESTING.md](TESTING.md) | validation commands |
-| [OPERATIONS.md](OPERATIONS.md) | local run/env/debug/deploy notes |
+| [TESTING.md](TESTING.md) | validation commands and CI check mapping |
+| [OPERATIONS.md](OPERATIONS.md) | local run/env/debug/deploy/CD notes |
 | [AI_PIPELINE.md](AI_PIPELINE.md) | LLM call paths and model policy |
 | [CATEGORIZATION.md](CATEGORIZATION.md) | category matching and AI fallback behavior |
+
+CI/CD design guidance lives in [../11_CI_CD.md](../11_CI_CD.md).

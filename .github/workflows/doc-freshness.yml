@@ -55,6 +55,11 @@ jobs:
           touched_generated_routes=$(printf '%s\n' "$CHANGED" | grep -E '^docs/generated/routes\.md$' || true)
           touched_generated_schema=$(printf '%s\n' "$CHANGED" | grep -E '^docs/generated/schema\.md$' || true)
           touched_decisions=$(printf '%s\n' "$CHANGED" | grep -E '^docs/(decisions/|08_DECISION_REGISTER\.md)' || true)
+          touched_workflows=$(printf '%s\n' "$CHANGED" | grep -E '^\.github/workflows/.*\.ya?ml$' || true)
+          touched_ci_cd_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/11_CI_CD\.md$' || true)
+          touched_testing_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/current/TESTING\.md$' || true)
+          touched_operations_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/current/OPERATIONS\.md$|^docs/05_RUNBOOK\.md$' || true)
+          touched_acceptance_doc=$(printf '%s\n' "$CHANGED" | grep -E '^docs/06_ACCEPTANCE_TESTS\.md$' || true)
 
           if [ -n "$touched_runtime_code" ] &&
              [ -z "$touched_runtime_doc" ] &&
@@ -76,6 +81,15 @@ jobs:
 
           if { [ -n "$touched_migrations" ] || [ -n "$touched_schema" ]; } && { [ -z "$touched_data_doc" ] || [ -z "$touched_generated_schema" ]; } && [ -z "$touched_decisions" ]; then
             missing+=("DB 마이그레이션/스키마 변경 감지 → \`docs/current/DATA_MODEL.md\` 갱신 + \`bin/rake docs:generate:schema\` (또는 ADR 추가).")
+          fi
+
+          if [ -n "$touched_workflows" ] &&
+             [ -z "$touched_ci_cd_doc" ] &&
+             [ -z "$touched_testing_doc" ] &&
+             [ -z "$touched_operations_doc" ] &&
+             [ -z "$touched_acceptance_doc" ] &&
+             [ -z "$touched_decisions" ]; then
+            missing+=("GitHub Actions workflow 변경 감지 → \`docs/11_CI_CD.md\`, \`docs/current/TESTING.md\`, \`docs/current/OPERATIONS.md\`, \`docs/05_RUNBOOK.md\`, \`docs/06_ACCEPTANCE_TESTS.md\`, 또는 ADR을 갱신.")
           fi
 
           if [ ${#missing[@]} -eq 0 ]; then
@@ -122,7 +136,7 @@ jobs:
               marker,
               '### Doc freshness check',
               '',
-              '코드 변경이 roadmap/status, acceptance gate, canonical current docs, generated docs, 또는 ADR을 건드려야 할 수 있습니다.',
+              '변경이 roadmap/status, acceptance gate, canonical current docs, generated docs, CI/CD docs, 또는 ADR을 건드려야 할 수 있습니다.',
               missing,
               '',
               '정책: `docs/DOCUMENTATION.md`. 이 코멘트는 자동입니다. 의도한 변경이라면 PR template의 "No doc impact" 체크 + 사유로 답하세요.',

@@ -37,6 +37,22 @@ bin/bundler-audit
 
 CI에서 `scan_ruby` 잡으로 두 명령 모두 실행된다.
 
+## CI / required checks
+
+| Check | Local command | CI workflow / job | Required? | Notes |
+|---|---|---|---|---|
+| security scan | `bin/brakeman --no-pager`, `bin/bundler-audit` | `.github/workflows/ci.yml` / `scan_ruby` | yes | Bundler audit requires advisory DB access in CI. |
+| lint | `bin/rubocop` | `.github/workflows/ci.yml` / `lint` | yes | CI uses GitHub formatter. |
+| Rails tests | `bin/rails db:test:prepare test` | `.github/workflows/ci.yml` / `test` | yes | Main unit/integration gate. |
+| system tests | `bin/rails db:test:prepare test:system` | `.github/workflows/ci.yml` / `system-test` | yes | Currently no committed system specs. |
+| E2E | `bunx playwright test` | `.github/workflows/ci.yml` / `e2e` | yes | CI installs Chromium and builds assets. |
+
+The active CI workflow runs on pull requests and direct pushes to `dev`.
+Release and deployment workflows remain tied to `main` pushes or explicit
+manual dispatches.
+
+CI/CD design guidance lives in `docs/11_CI_CD.md`.
+
 ## E2E 테스트 (Playwright)
 
 E2E는 `e2e/` 디렉토리에 Playwright 스펙으로 존재하며 CI의 `e2e` 잡에서 실행된다.
