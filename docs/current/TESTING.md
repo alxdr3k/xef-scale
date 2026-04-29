@@ -80,7 +80,7 @@ bin/dev
 
 ## 로컬 CI helper
 
-`bin/ci`는 GitHub Actions workflow가 아니라 로컬 ActiveSupport CI helper다. 현재 `config/ci.rb`는 `bin/setup --skip-server`, `bin/rubocop`, `bin/bundler-audit`, `bun audit`, `bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error`, `bin/rails test`, `RAILS_ENV=test bin/rails db:seed:replant`를 실행한다.
+`bin/ci`는 GitHub Actions workflow가 아니라 로컬 ActiveSupport CI helper다. 현재 `config/ci.rb`는 `bin/setup --skip-server`, `bin/rubocop`, `bin/bundler-audit`, `bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error`, `bin/rails test`, `RAILS_ENV=test bin/rails db:seed:replant`를 실행한다.
 
 `GEMINI_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RAILS_MASTER_KEY` 등 환경변수는 [OPERATIONS.md](OPERATIONS.md) 참조.
 
