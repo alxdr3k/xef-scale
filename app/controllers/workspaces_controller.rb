@@ -37,6 +37,11 @@ class WorkspacesController < ApplicationController
   end
 
   def update
+    if budget_settings_update?
+      update_budget_settings
+      return
+    end
+
     if @workspace.update(workspace_params)
       redirect_to @workspace, notice: "워크스페이스가 업데이트되었습니다."
     else
@@ -50,11 +55,35 @@ class WorkspacesController < ApplicationController
   end
 
   def settings
-    @memberships = @workspace.workspace_memberships.includes(:user)
-    @invitations = @workspace.workspace_invitations.available.includes(:invited_by)
+    load_settings_context
   end
 
   private
+
+  def budget_settings_update?
+    params[:settings_context] == "budget"
+  end
+
+  def update_budget_settings
+    @budget = @workspace.budget || @workspace.build_budget
+    amount = params.dig(:budget, :monthly_amount).to_s.delete(",").strip
+
+    if amount.blank?
+      @budget.destroy! if @budget.persisted?
+      redirect_to settings_workspace_path(@workspace), notice: "월 예산이 해제되었습니다."
+    elsif @budget.update(monthly_amount: amount)
+      redirect_to settings_workspace_path(@workspace), notice: "월 예산이 저장되었습니다."
+    else
+      load_settings_context
+      render :settings, status: :unprocessable_entity
+    end
+  end
+
+  def load_settings_context
+    @memberships = @workspace.workspace_memberships.includes(:user)
+    @invitations = @workspace.workspace_invitations.available.includes(:invited_by)
+    @budget ||= @workspace.budget || @workspace.build_budget
+  end
 
   def workspace_params
     attrs = params.require(:workspace).permit(
