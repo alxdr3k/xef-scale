@@ -47,17 +47,30 @@ class BudgetTest < ActiveSupport::TestCase
   end
 
   test "exceeded? returns true when spending meets or exceeds budget" do
-    # With no committed transactions, spending should be 0
-    year = 2020
-    month = 1
-    assert_not @budget.exceeded?(year, month)
+    workspace = Workspace.create!(name: "Budget Thresholds", owner: users(:admin))
+    budget = workspace.create_budget!(monthly_amount: 1000)
+    date = Date.new(2026, 1, 15)
+
+    workspace.transactions.create!(date: date, amount: 999, status: "committed")
+    assert_not budget.exceeded?(date.year, date.month)
+
+    workspace.transactions.create!(date: date, amount: 1, status: "committed")
+    assert budget.exceeded?(date.year, date.month)
   end
 
   test "warning? returns true between 80% and 100%" do
-    year = 2020
-    month = 1
-    # No spending in 2020 — should not trigger warning
-    assert_not @budget.warning?(year, month)
+    workspace = Workspace.create!(name: "Budget Warnings", owner: users(:admin))
+    budget = workspace.create_budget!(monthly_amount: 1000)
+    date = Date.new(2026, 2, 15)
+
+    workspace.transactions.create!(date: date, amount: 799, status: "committed")
+    assert_not budget.warning?(date.year, date.month)
+
+    workspace.transactions.create!(date: date, amount: 1, status: "committed")
+    assert budget.warning?(date.year, date.month)
+
+    workspace.transactions.create!(date: date, amount: 200, status: "committed")
+    assert_not budget.warning?(date.year, date.month)
   end
 
   test "belongs to workspace" do
