@@ -1,6 +1,16 @@
 <div class="max-w-4xl mx-auto">
-  <h1 class="text-2xl font-bold text-gray-900 mb-6">워크스페이스 설정</h1>
-  <p class="text-gray-600 mb-8"><%= @workspace.name %></p>
+  <div class="mb-8 sm:flex sm:items-start sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 mb-2">워크스페이스 설정</h1>
+      <p class="text-gray-600"><%= @workspace.name %></p>
+    </div>
+    <div class="mt-4 flex flex-wrap gap-2 sm:mt-0">
+      <%= link_to "워크스페이스 목록", workspaces_path,
+          class: "inline-flex items-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+      <%= link_to "계정 설정", user_settings_path,
+          class: "inline-flex items-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+    </div>
+  </div>
 
   <!-- Basic Settings -->
   <div class="bg-white shadow rounded-lg p-6 mb-8">

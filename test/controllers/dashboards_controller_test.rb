@@ -39,6 +39,31 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "mobile bottom nav links primary mobile destinations" do
+    get dashboard_path
+
+    assert_response :success
+    assert_select "nav.mobile-bottom-nav" do
+      assert_select "a[href=?]", dashboard_path
+      assert_select "a[href=?]", workspace_transactions_path(@workspace)
+      assert_select "a[href=?]", workspace_parsing_sessions_path(@workspace)
+      assert_select "a[href=?]", settings_workspace_path(@workspace)
+    end
+  end
+
+  test "mobile bottom nav uses account settings for non-admin members" do
+    sign_out @user
+    sign_in users(:member)
+
+    get dashboard_path
+
+    assert_response :success
+    assert_select "nav.mobile-bottom-nav" do
+      assert_select "a[href=?]", user_settings_path
+      assert_select "a[href=?]", settings_workspace_path(@workspace), count: 0
+    end
+  end
+
   test "monthly view displays recent transactions section" do
     get monthly_dashboard_path
     assert_response :success
