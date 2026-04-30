@@ -149,3 +149,4 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 - **`docs/current/CATEGORIZATION.md`의 "텍스트 경로는 1-2단계만"** — 코드와 일치하지만, 향후 Gemini 카테고리 폴백을 텍스트 경로에도 적용할지 여부는 미결정.
 - **MCP server 등록 방법** — `mcp-server.json`은 정의 파일이지만 실제 등록 방식(`.mcp.json`과의 관계 포함)은 본 PR에서 검증하지 않음.
 - **ActiveStorage blob 보존/삭제 정책** — 파싱 완료/실패/discard 후 원본 이미지 blob의 정리 정책 미검증.
+- **DB 백업/복구 프로세스** — `DatabaseBackupService`는 `storage/development.sqlite3` 단순 복사 기반의 development/import 전용 헬퍼다. production DB set, ActiveStorage blob, 외부 보관, 검증, 복구 리허설은 아직 구현된 신뢰 가능한 프로세스가 아니다.

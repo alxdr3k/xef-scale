@@ -89,7 +89,7 @@ app/
     ├── image_statement_parser.rb     # Screenshot parser wrapper
     ├── gemini_vision_parser_service.rb # Gemini Vision API client
     ├── gemini_category_service.rb    # Gemini-based category suggestions
-    ├── database_backup_service.rb    # SQLite backup helper
+    ├── database_backup_service.rb    # Dev/import-only SQLite backup helper
     └── recurring_payment_detector.rb # Subscription/recurring-charge detection
 
 test/

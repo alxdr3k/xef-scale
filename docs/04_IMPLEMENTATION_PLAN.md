@@ -59,7 +59,7 @@ Gate status:
 | `P1-M1` | Founder/wife can use the mobile web flow end-to-end without engineering help and the team has observation evidence. | next | `in_progress` | `ROAD-001` | `UX-1A.2` mobile nav reachability patch; `INS-1A.1` budget setting/progress/alert audit; `INS-1A.2` recurring-payment audit; `INS-1A.3` monthly dashboard hierarchy | First post-ledger execution milestone; human observation remains the main gate. |
 | `P1-M2` | AI parsing quality, non-Shinhan image risk, text-category policy, and metrics are measured enough to make product decisions. | after P1-M1 | `planned` | `ROAD-002` |  | Resolves or narrows Q-001, Q-002, Q-003. |
 | `P1-M3` | Data OS API/MCP surface is reliable enough for BYOAI clients and operationally bounded. | after P1-M2 | `planned` | `ROAD-003` |  | Builds on existing API read/write. |
-| `P1-M4` | Operational reliability/privacy gaps for jobs, blobs, imports, and deploy references are closed or explicitly accepted. | after P1-M2 | `planned` | `ROAD-004` |  | Turns current `needs audit` items into decisions/tests. |
+| `P1-M4` | Operational reliability/privacy gaps for jobs, blobs, backups, imports, and deploy references are closed or explicitly accepted. | after P1-M2 | `planned` | `ROAD-004` |  | Turns current `needs audit` items into decisions/tests. |
 | `P2-M1` | Monetization and tier policy are decided and implemented behind explicit billing/entitlement boundaries. | after P1 | `planned` | `ROAD-005` |  | Requires Q-004, Q-006. |
 | `P2-M2` | BYOAI/AI analytics can answer deeper trend/family questions through structured app-owned data. | after P1-M3 | `planned` | `ROAD-006` |  | Keep xef-scale as memory/data layer; avoid replacing user AI. |
 | `P3-M1` | Native / OS integration direction is decided after platform constraints are rechecked. | later | `deferred` | `ROAD-007` |  | Requires Q-005 and platform spike. |
@@ -78,7 +78,7 @@ Gate status:
 | `API` | API keys, REST API, MCP/data OS integration | `API-1A` | `planned` | API read/write exists; client hardening remains. |
 | `INS` | Dashboard, budget, recurring payments, insights | `INS-1A` | `in_progress` | Budget, recurring-payment, and monthly dashboard hierarchy audits accepted; insight ownership decision remains later. |
 | `OBS` | Metrics, evals, analytics instrumentation | `OBS-1A` | `ready` | Enables P1 decisions. |
-| `OPS` | Privacy, job/deploy reliability, retention, import reconciliation | `OPS-1A` | `planned` | Converts `needs audit` into decisions. |
+| `OPS` | Privacy, job/deploy reliability, retention, backup/restore, import reconciliation | `OPS-1A` | `planned` | Converts `needs audit` into decisions. |
 | `BIZ` | Pricing, entitlement, billing, retention limits, ads | `BIZ-2A` | `planned` | Phase C business model. |
 | `NTV` | Native apps, share extension, Android SMS, OS integrations | `NTV-3A` | `deferred` | Not Phase B; revisit after evidence. |
 | `DROP` | Explicitly rejected or superseded paths | none | `dropped` | Prevents stale historical designs from re-entering silently. |
@@ -90,7 +90,7 @@ Gate status:
 | `ROAD-001` | Observed non-engineer user completes the mobile web input → review → commit loop, or blockers are recorded as slices. | `defined` |
 | `ROAD-002` | Real sample evals exist for text, image, and categorization; Q-001/Q-002/Q-003 have decision records or scoped follow-up slices. | `defined` |
 | `ROAD-003` | API/MCP client workflows have tests/docs, rate boundaries, and key-management UX that non-code clients can follow. | `defined` |
-| `ROAD-004` | Blob retention, worker process, import/source type, deploy placeholder, and AI quota monitoring are decided or tested. | `defined` |
+| `ROAD-004` | Blob retention, worker process, DB backup/restore, import/source type, deploy placeholder, and AI quota monitoring are decided or tested. | `defined` |
 | `ROAD-005` | Free/paid/BYOAI tier policy, billing provider, entitlement gates, retention limits, and ad policy are implemented or explicitly dropped. | `defined` |
 | `ROAD-006` | Analytics/BYOAI endpoints support trend, budget, recurring, and family-member questions without sending raw private inputs unnecessarily. | `defined` |
 | `ROAD-007` | Native platform constraints are rechecked and Android/iOS/share-extension strategy is accepted, deferred, or dropped. | `defined` |
@@ -147,6 +147,10 @@ Gate status:
 | `OPS-1A.3` | `P1-M4` | `OPS` | `OPS-1A` | Add Gemini usage/quota/rate-limit monitoring or an explicit no-monitoring decision. | `OBS-1A.4` | operations docs + tests if code | `defined` | `planned` | [current/OPERATIONS.md](current/OPERATIONS.md) |  |
 | `OPS-1A.4` | `P1-M4` | `OPS` | `OPS-1A` | Reconcile `Transaction.source_type = import` with import rake tasks or mark it reserved with tests/docs. |  | data-model review | `defined` | `planned` | [current/DATA_MODEL.md](current/DATA_MODEL.md) `needs audit` |  |
 | `OPS-1A.5` | `P1-M4` | `OPS` | `OPS-1A` | Decide whether `config/deploy.yml` / Kamal placeholders stay, move, or get deleted. |  | operations decision | `defined` | `planned` | [current/CODE_MAP.md](current/CODE_MAP.md) `needs audit` |  |
+| `OPS-1A.6` | `P1-M4` | `OPS` | `OPS-1A` | Demote and guard the current `DatabaseBackupService` as development/import-only, with tests and docs for that limited contract. | `DEC-001` | unit tests + operations docs | `defined` | `ready` | [08_DECISION_REGISTER.md](08_DECISION_REGISTER.md#dec-001-current-databasebackupservice는-devimport-전용-헬퍼이며-운영-백업-계약이-아니다), [current/OPERATIONS.md](current/OPERATIONS.md#db-백업--복구-상태) | No backward compatibility required for old backup filenames or restore behavior. |
+| `OPS-1A.7` | `P1-M4` | `OPS` | `OPS-1A` | Implement a verified environment-aware SQLite backup/restore primitive for configured DB roles, using SQLite-safe backup/checkpoint and integrity checks. | `OPS-1A.6` | restore smoke test + docs | `defined` | `planned` | `DEC-001`, [config/database.yml](../config/database.yml) | Keep storage/schedule policy separate from Q-008; unblock after `OPS-1A.6`. |
+| `OPS-1A.8` | `P1-M4` | `OPS` | `OPS-1A` | Decide STG/PRD DB backup RPO/RTO, off-server storage, retention, encryption/access, and queue/cache/cable restore scope. | `DEC-001` | Q-008 decision / ADR | `defined` | `blocked` | Q-008 | Needs user/ops policy decision. |
+| `OPS-1A.9` | `P1-M4` | `OPS` | `OPS-1A` | Wire the accepted STG/PRD backup schedule, durable storage, monitoring, and restore drill into ops/runbook. | `OPS-1A.8` | restore drill evidence + runbook | `defined` | `blocked` | Q-008 | Blocked on Q-008. |
 | `BIZ-2A.1` | `P2-M1` | `BIZ` | `BIZ-2A` | Decide free / paid own-AI / BYOAI tier boundaries, workspace limits, data retention, ads, and API access. | P1 evidence | Q-006 decision | `defined` | `planned` | design-phase-b revenue model |  |
 | `BIZ-2A.2` | `P2-M1` | `BIZ` | `BIZ-2A` | Spike billing provider choice: Stripe, Toss Payments, PortOne/Iamport, or manual invite-only billing. | `BIZ-2A.1` | Q-004 decision | `defined` | `planned` | design-phase-b Open Question 3 |  |
 | `BIZ-2A.3` | `P2-M1` | `BIZ` | `BIZ-2A` | Implement billing subscription records, entitlement gates, and admin/support flows. | `BIZ-2A.2` | billing tests + operations docs | `defined` | `blocked` |  | Blocked on Q-004/Q-006. |
@@ -184,7 +188,7 @@ Gate status:
 
 - Human observation: founder/wife mobile web session for P1-M1.
 - Sample data: redacted Korean SMS, app screenshots, Shinhan and non-Shinhan statements for P1-M2/P3-M2.
-- Product decisions: Q-001 through Q-007 in [07_QUESTIONS_REGISTER.md](07_QUESTIONS_REGISTER.md).
+- Product decisions: Q-001 through Q-008 in [07_QUESTIONS_REGISTER.md](07_QUESTIONS_REGISTER.md).
 - Billing provider and legal/privacy copy for P2.
 - Platform policy review for P3 native/OS integrations.
 
@@ -198,6 +202,7 @@ Known risks:
 - Metrics and billing decisions can overfit before real usage exists.
 - Native app scope can balloon; keep P3 deferred until P1/P2 evidence exists.
 - ActiveStorage retention and Gemini usage monitoring affect privacy/cost posture and should not remain `needs audit` indefinitely.
+- Current DB backup helper is not a reliable STG/PRD backup/restore process; keep `OPS-1A.6` through `OPS-1A.9` visible until resolved.
 
 ## Capacity / Timeline
 
