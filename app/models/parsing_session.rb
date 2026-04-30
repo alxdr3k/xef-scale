@@ -211,7 +211,7 @@ class ParsingSession < ApplicationRecord
     true
   end
 
-  def auto_commit_ready_transactions!(user: nil)
+  def auto_commit_ready_transactions!(user: nil, has_import_exceptions: false)
     committed_transactions = []
 
     with_lock do
@@ -220,7 +220,7 @@ class ParsingSession < ApplicationRecord
         committed_transactions << tx
       end
 
-      mark_auto_committed!(user) if auto_commit_complete?
+      mark_auto_committed!(user) if auto_commit_complete?(has_import_exceptions: has_import_exceptions)
     end
 
     committed_transactions
@@ -277,7 +277,9 @@ class ParsingSession < ApplicationRecord
                 .select { |tx| import_required_fields_complete?(tx) }
   end
 
-  def auto_commit_complete?
+  def auto_commit_complete?(has_import_exceptions: false)
+    return false if has_import_exceptions
+
     transactions.pending_review.where(deleted: false).none? && !has_unresolved_duplicates?
   end
 

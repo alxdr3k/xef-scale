@@ -305,6 +305,31 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert session.reload.review_pending?
   end
 
+  test "auto_commit_ready_transactions keeps review open when import exceptions exist" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "processing",
+      review_status: "pending_review"
+    )
+    tx = workspace.transactions.create!(
+      date: Date.new(2027, 5, 10),
+      merchant: "일부 성공",
+      amount: 31_000,
+      status: "pending_review",
+      parsing_session: session
+    )
+
+    committed = session.auto_commit_ready_transactions!(
+      user: users(:admin),
+      has_import_exceptions: true
+    )
+
+    assert_equal [ tx.id ], committed.map(&:id)
+    assert tx.reload.committed?
+    assert session.reload.review_pending?
+  end
+
   # --- Deferred duplicate-decision application ---
 
   # A fresh session + original + new pending_review transaction with a resolved

@@ -43,7 +43,9 @@ class AiTextParsingJob < ApplicationJob
         parsing_session.fail!
         create_failure_notifications(parsing_session)
       else
-        committed_transactions = parsing_session.auto_commit_ready_transactions!
+        committed_transactions = parsing_session.auto_commit_ready_transactions!(
+          has_import_exceptions: stats[:error].positive?
+        )
         parsing_session.complete!(stats)
         create_success_side_effects(parsing_session, workspace, committed_transactions)
       end

@@ -82,7 +82,10 @@ class FileParsingJob < ApplicationJob
         processed_file.mark_failed!
         create_failure_notifications(parsing_session)
       else
-        committed_transactions = parsing_session.auto_commit_ready_transactions!(user: user)
+        committed_transactions = parsing_session.auto_commit_ready_transactions!(
+          user: user,
+          has_import_exceptions: stats[:error].positive?
+        )
         parsing_session.complete!(stats)
         processed_file.mark_completed!
         create_success_side_effects(parsing_session, workspace, committed_transactions)
