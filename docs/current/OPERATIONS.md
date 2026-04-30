@@ -75,9 +75,11 @@ bin/rails db:reset    # 개발 전용
 
 ### DB 백업 / 복구 상태
 
-현재 `DatabaseBackupService`는 운영 백업 프로세스가 아니다. 이 서비스는 development/test 환경에서만 초기화되고, 현재 primary DB 파일을 `storage/backups/` 아래로 단순 파일 복사한다. 앱 코드의 호출 지점은 `import:backup` / `import:post_backup`뿐이다. production의 `primary`, `cache`, `queue`, `cable` SQLite 파일, ActiveStorage blob, 외부 보관, 보존 정책, 스케줄, 무결성 검증, 복구 리허설은 포함하지 않는다.
+현재 `DatabaseBackupService`는 운영 백업 프로세스가 아니다. 이 서비스는 development/test 환경에서만 초기화되고, 현재 primary DB 파일을 `storage/backups/` 아래로 단순 파일 복사한다. 앱 코드의 호출 지점은 `import:backup` / `import:post_backup`뿐이다.
 
-따라서 현 상태의 import 백업은 로컬 개발/import 작업 전후 안전망으로만 취급한다. 신뢰 가능한 STG/PRD 백업은 [DEC-001](../08_DECISION_REGISTER.md#dec-001-current-databasebackupservice는-devimport-전용-헬퍼이며-운영-백업-계약이-아니다) 및 [Q-008](../07_QUESTIONS_REGISTER.md#q-008-운영-db-백업복구의-rporto보관-정책은-무엇인가)을 따라 별도 slice에서 구현해야 한다.
+`SqliteBackupService`는 configured environment/role(`primary`, `queue`, `cache`, `cable` 등) 단위의 낮은 레벨 SQLite backup/restore primitive다. 이 서비스는 Active Record DB config에서 SQLite role을 해석하고, best-effort backup source WAL checkpoint, SQLite online backup API, `PRAGMA integrity_check`, restore 시 기존 target DB handle로 직접 복원을 수행한다. Restore는 기본적으로 거부되며, 호출자는 앱/워커의 DB 접근을 quiesce하고 연결을 drain한 뒤 `quiesced: true`를 명시해야 한다.
+
+그래도 이는 신뢰 가능한 STG/PRD 운영 백업 프로세스가 아니다. production의 모든 DB role을 언제 백업할지, 외부 보관 위치, 보존 정책, 암호화/access, ActiveStorage blob 포함 여부, worker quiescing, 복구 리허설은 포함하지 않는다. 따라서 import 백업은 로컬 개발/import 작업 전후 안전망으로만 취급하고, 신뢰 가능한 STG/PRD 백업은 [DEC-001](../08_DECISION_REGISTER.md#dec-001-current-databasebackupservice는-devimport-전용-헬퍼이며-운영-백업-계약이-아니다) 및 [Q-008](../07_QUESTIONS_REGISTER.md#q-008-운영-db-백업복구의-rporto보관-정책은-무엇인가)을 따라 별도 slice에서 구현해야 한다.
 
 ## 백그라운드 잡
 
@@ -162,6 +164,6 @@ CI/CD design guidance and migration checklist: [../11_CI_CD.md](../11_CI_CD.md).
 - 워커 프로세스 정의 — k8s manifest / Kamal Procfile에서 어떻게 띄우는지 확인 필요.
 - 컨테이너 부팅 시 자동 `db:seed` 실행 여부 (k8s manifest / Kamal 정의에서 확인).
 - ActiveStorage blob 보존/삭제 정책 — 파싱 완료 후 원본 이미지 삭제 여부 미검증.
-- DB 백업/복구 프로세스 — 현재 `DatabaseBackupService`는 development/test 환경의 current primary DB 파일 복사 전용이며 운영 백업으로 신뢰할 수 없음.
+- DB 백업/복구 프로세스 — `SqliteBackupService` primitive는 있으나 STG/PRD 스케줄, off-server 보관, 보존 정책, 복구 리허설이 없어 운영 백업으로 신뢰할 수 없음.
 - Gemini API quota / rate limit 모니터링.
 - 배포 SSH 호스트(`ssh.xeflabs.com`) / Cloudflare Access 운영 정책.
