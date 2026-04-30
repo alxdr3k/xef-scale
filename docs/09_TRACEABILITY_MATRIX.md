@@ -7,11 +7,11 @@ Question ↔ Decision ↔ Requirement ↔ Gate/Test ↔ Milestone/Track/Phase/Sl
 | TRACE-ID | Question | Decision / ADR | Requirement | Gate / Test | Milestone | Track | Phase | Slice | Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | TRACE-001 |  | Implemented behavior | REQ-001 | AC-001 / TEST-001 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | Manual web input creates committed transactions. |
-| TRACE-002 |  | Implemented behavior | REQ-002 | AC-002 / TEST-002 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | Text paste creates pending review transactions. |
-| TRACE-003 | Q-001 | Implemented behavior; expansion open | REQ-003 | AC-003 / TEST-003 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | Image upload/session behavior and pending review transaction creation are covered; multi-institution accuracy remains open. |
+| TRACE-002 |  | Implemented behavior superseded by [ADR-0001](decisions/ADR-0001-auto-post-imports.md) | REQ-002 | AC-002 / TEST-002 | P0-M1 → P1-M1 | REQ | REQ-1A → REQ-1B | REQ-1B.1, INP-1B.1 | Text paste currently creates pending review transactions; P1 target is committed auto-post. |
+| TRACE-003 | Q-001 | Implemented behavior superseded by [ADR-0001](decisions/ADR-0001-auto-post-imports.md); expansion open | REQ-003 | AC-003 / TEST-003 | P0-M1 → P1-M1 | REQ | REQ-1A → REQ-1B | REQ-1B.1, INP-1B.1, INP-1B.3 | Image upload currently creates pending review transactions and notes for incomplete rows; P1 target is committed auto-post plus repair queue. |
 | TRACE-004 |  | Implemented behavior | REQ-004 | AC-004 / TEST-004 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | API read/write scopes and tenant boundaries are covered. |
-| TRACE-005 |  | Implemented behavior | REQ-005 | AC-005 / TEST-005 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | Review commit/rollback/discard. |
-| TRACE-006 |  | Implemented behavior | REQ-006 | AC-006 / TEST-005, TEST-006 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | Commit blocked by unresolved duplicates. |
+| TRACE-005 |  | [ADR-0001](decisions/ADR-0001-auto-post-imports.md) | REQ-005 | AC-005 / TEST-005 | P1-M1 | REQ/UX/INP | REQ-1B / UX-1B / INP-1B | UX-1B.2, UX-1B.3, UX-1B.4, INP-1B.4 | Mandatory review commit/rollback/discard is superseded by focused repair and import-level undo/recovery. |
+| TRACE-006 |  | [ADR-0001](decisions/ADR-0001-auto-post-imports.md) | REQ-006 | AC-006 / TEST-005, TEST-006 | P1-M1 | REQ/INP | REQ-1B / INP-1B | INP-1B.2 | Commit blocking by unresolved duplicates is superseded by automatic duplicate policy and duplicate repair issues. |
 | TRACE-007 | Q-002 | Implemented behavior; expansion open | REQ-007 | AC-007 / TEST-007 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | Mapping/keyword behavior, image Gemini fallback, and text no-fallback boundary are covered; future text-path Gemini fallback remains a product decision. |
 | TRACE-008 |  | Implemented behavior | REQ-008, NFR-003 | AC-008 / TEST-008 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | Workspace role and data isolation. |
 | TRACE-009 |  | Implemented behavior | REQ-009 | AC-009 / TEST-009 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | Listing/filter/export behavior. |
@@ -33,5 +33,5 @@ Question ↔ Decision ↔ Requirement ↔ Gate/Test ↔ Milestone/Track/Phase/Sl
 
 - TRACE-013: 초기 지표는 이름만 있고 측정 위치/대시보드 계약이 없다. [Q-003](07_QUESTIONS_REGISTER.md#q-003-초기-지표를-어디에서-어떻게-측정할-것인가)을 따른다.
 - TRACE-014: 운영 DB 백업/복구 정책은 아직 열려 있다. [Q-008](07_QUESTIONS_REGISTER.md#q-008-운영-db-백업복구의-rporto보관-정책은-무엇인가)을 따른다.
-- TRACE-015: ADR은 accepted지만 PRD/AC/current docs와 코드는 아직 mandatory review 계약을 설명한다. `REQ-1B.1`부터 새 계약으로 갱신한다.
+- TRACE-015: ADR과 PRD/AC docs now describe the target contract, but code and detailed current runtime behavior still use mandatory review until `INP-1B`/`UX-1B` land.
 - Historical design docs는 전량 backfill하지 않았다. 현재 제품 계약으로 확실한 구현 표면만 추적했다.
