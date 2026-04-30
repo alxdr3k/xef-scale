@@ -13,6 +13,22 @@ class ParsingSession < ApplicationRecord
   STATUSES = %w[pending processing completed failed].freeze
   REVIEW_STATUSES = %w[pending_review committed rolled_back discarded].freeze
   SOURCE_TYPES = %w[file_upload text_paste].freeze
+  INCOMPLETE_PARSE_NOTE_START_MARKER = "[[xef:incomplete_parse_rows]]".freeze
+  INCOMPLETE_PARSE_NOTE_END_MARKER = "[[/xef:incomplete_parse_rows]]".freeze
+  INCOMPLETE_PARSE_NOTE_BLOCK_PATTERN = /
+    #{Regexp.escape(INCOMPLETE_PARSE_NOTE_START_MARKER)}
+    \s*
+    (.*?)
+    \s*
+    #{Regexp.escape(INCOMPLETE_PARSE_NOTE_END_MARKER)}
+  /mx
+  INCOMPLETE_PARSE_NOTE_STORAGE_PATTERN = /
+    #{Regexp.escape(INCOMPLETE_PARSE_NOTE_START_MARKER)}
+    \s*
+    .*?
+    \s*
+    #{Regexp.escape(INCOMPLETE_PARSE_NOTE_END_MARKER)}
+  /mx
 
   validates :status, inclusion: { in: STATUSES }
   validates :review_status, inclusion: { in: REVIEW_STATUSES }, allow_nil: true
@@ -112,6 +128,39 @@ class ParsingSession < ApplicationRecord
     completed? && review_pending?
   end
 
+  def self.incomplete_parse_note_block(note)
+    [
+      INCOMPLETE_PARSE_NOTE_START_MARKER,
+      note.to_s.strip,
+      INCOMPLETE_PARSE_NOTE_END_MARKER
+    ].join("\n")
+  end
+
+  def incomplete_parse_note?
+    file_upload? && incomplete_parse_note_blocks.any?
+  end
+
+  def incomplete_parse_note_text
+    return nil unless file_upload?
+
+    incomplete_parse_note_blocks.join("\n\n").presence
+  end
+
+  def user_visible_notes
+    return notes.to_s.strip.presence unless file_upload?
+
+    notes.to_s.gsub(INCOMPLETE_PARSE_NOTE_STORAGE_PATTERN, "").strip.presence
+  end
+
+  def notes_with_user_visible_text(user_notes)
+    return user_notes.to_s.strip unless file_upload?
+
+    [
+      user_notes.to_s.strip.presence,
+      *incomplete_parse_note_storage_blocks
+    ].compact.join("\n\n")
+  end
+
   def commit_all!(user)
     return false unless can_commit?
 
@@ -185,6 +234,14 @@ class ParsingSession < ApplicationRecord
   }
 
   private
+
+  def incomplete_parse_note_blocks
+    notes.to_s.scan(INCOMPLETE_PARSE_NOTE_BLOCK_PATTERN).flatten.map(&:strip).select(&:present?)
+  end
+
+  def incomplete_parse_note_storage_blocks
+    notes.to_s.scan(INCOMPLETE_PARSE_NOTE_STORAGE_PATTERN).map(&:strip)
+  end
 
   # Apply deferred duplicate-resolution decisions at commit time. Keeping the
   # side effects here (instead of in DuplicateConfirmation) ensures that

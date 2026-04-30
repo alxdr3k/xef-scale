@@ -185,6 +185,24 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "재처리를 시작했습니다.", flash[:notice]
   end
 
+  test "inline_update preserves parser incomplete note block" do
+    note = "자동 반영 제외 1건\n1. 누락: 날짜 - 네이버페이 / 12,000원"
+    @parsing_session.update!(
+      source_type: "file_upload",
+      notes: "이전 메모\n\n#{ParsingSession.incomplete_parse_note_block(note)}"
+    )
+
+    patch inline_update_workspace_parsing_session_path(@workspace, @parsing_session),
+          params: { field: "notes", value: "새 사용자 메모" },
+          as: :turbo_stream
+
+    assert_response :success
+    @parsing_session.reload
+    assert_equal "새 사용자 메모", @parsing_session.user_visible_notes
+    assert_equal note, @parsing_session.incomplete_parse_note_text
+    assert_includes @parsing_session.notes, ParsingSession::INCOMPLETE_PARSE_NOTE_START_MARKER
+  end
+
   # destroy action tests
   test "destroy rejects non-failed/non-discarded session" do
     delete workspace_parsing_session_path(@workspace, @parsing_session)

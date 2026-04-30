@@ -19,17 +19,17 @@
           <span class="text-gray-400">파일 정보 없음</span>
         <% end %>
       </span>
-      <% if parsing_session.notes.present? %>
+      <% if parsing_session.user_visible_notes.present? %>
         <span data-action="click->note-panel#open:stop"
               data-note-panel-url-param="<%= inline_update_workspace_parsing_session_path(workspace, parsing_session) %>"
-              data-note-panel-original-param="<%= parsing_session.notes || '' %>"
+              data-note-panel-original-param="<%= parsing_session.user_visible_notes %>"
               data-note-panel-merchant-param="<%= parsing_session.processed_file&.original_filename || '텍스트 붙여넣기' %>"
               data-note-panel-date-param="<%= parsing_session.created_at.strftime('%Y.%m.%d') %>"
               data-note-panel-amount-param="<%= "성공 #{parsing_session.success_count}건" %>"
               data-note-panel-row-id-param="<%= dom_id(parsing_session) %>"
               data-note-panel-trigger
               class="cursor-pointer hover:bg-amber-100 ml-1.5 align-middle inline-block">
-          <%= render 'shared/notes_badge', notes: parsing_session.notes %>
+          <%= render 'shared/notes_badge', notes: parsing_session.user_visible_notes %>
         </span>
       <% else %>
         <span data-action="click->note-panel#open:stop"

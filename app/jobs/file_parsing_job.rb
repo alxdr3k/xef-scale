@@ -171,10 +171,12 @@ class FileParsingJob < ApplicationJob
       lines << "... 외 #{incomplete_transactions.size - lines.size}건"
     end
 
-    <<~TEXT.strip
+    note = <<~TEXT.strip
       자동 반영 제외 #{incomplete_transactions.size}건: 날짜, 가맹점, 금액 중 필수 정보가 부족해 결제 내역으로 만들지 않았습니다.
       #{lines.join("\n")}
     TEXT
+
+    ParsingSession.incomplete_parse_note_block(note)
   end
 
   def missing_field_label(tx)
