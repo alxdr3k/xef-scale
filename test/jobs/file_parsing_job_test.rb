@@ -203,7 +203,8 @@ class FileParsingJobTest < ActiveJob::TestCase
     processed_file = @workspace.processed_files.create!(
       filename: "partial.png",
       original_filename: "partial.png",
-      status: "pending"
+      status: "pending",
+      uploaded_by: users(:admin)
     )
     parsed = {
       transactions: [
@@ -225,6 +226,10 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_equal 2, parsing_session.total_count
     assert_equal 1, parsing_session.success_count
     assert_equal 1, parsing_session.error_count
+    tx = parsing_session.transactions.first
+    assert tx.committed?
+    assert_equal users(:admin), tx.committed_by
+    assert parsing_session.review_committed?
     assert parsing_session.incomplete_parse_note?
     assert_match "자동 반영 제외 1건", parsing_session.notes
     assert_match "네이버페이", parsing_session.notes

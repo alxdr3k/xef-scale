@@ -4,7 +4,7 @@
 
 xef-scale은 한국 금융기관의 지출 내역을 **직접 입력**, **금융 문자 붙여넣기**, **명세서 스크린샷 업로드**, **API write** 네 경로로 받는 Rails 기반 지출 추적 앱입니다. 텍스트/이미지 파싱에는 Gemini를 쓰지만, Gemini 카테고리 폴백은 현재 이미지 경로에만 적용합니다. Excel/PDF/CSV/HTML 명세서는 지원하지 않습니다.
 
-P1 목표 흐름은 [ADR-0001](decisions/ADR-0001-auto-post-imports.md)에 따라 "파싱 결과 전체 검토"가 아니라 "정상 결과 자동 등록 + 예외 repair"다. 현재 코드가 아직 review 기반인 세부는 [current/RUNTIME.md](current/RUNTIME.md)에 남기고, 전환 작업은 [04_IMPLEMENTATION_PLAN.md](04_IMPLEMENTATION_PLAN.md)의 `INP-1B` / `UX-1B` slice로 추적한다.
+P1 목표 흐름은 [ADR-0001](decisions/ADR-0001-auto-post-imports.md)에 따라 "파싱 결과 전체 검토"가 아니라 "정상 결과 자동 등록 + 예외 repair"다. 현재 코드는 non-duplicate complete row auto-post까지 구현했다. Duplicate/repair/undo/review 제거 세부는 [current/RUNTIME.md](current/RUNTIME.md)에 남기고, 전환 작업은 [04_IMPLEMENTATION_PLAN.md](04_IMPLEMENTATION_PLAN.md)의 `INP-1B` / `UX-1B` slice로 추적한다.
 
 ## P1 목표 데이터 흐름
 

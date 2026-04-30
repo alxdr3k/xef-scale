@@ -43,8 +43,9 @@ class AiTextParsingJob < ApplicationJob
         parsing_session.fail!
         create_failure_notifications(parsing_session)
       else
+        committed_transactions = parsing_session.auto_commit_ready_transactions!
         parsing_session.complete!(stats)
-        create_completion_notifications(parsing_session)
+        create_success_side_effects(parsing_session, workspace, committed_transactions)
       end
 
     rescue AiTextParser::ApiError, AiTextParser::ParseError => e
@@ -99,6 +100,13 @@ class AiTextParsingJob < ApplicationJob
     return mapping.category if mapping
 
     workspace.categories.find { |c| c.matches?(merchant) }
+  end
+
+  def create_success_side_effects(parsing_session, workspace, committed_transactions)
+    BudgetAlertService.create_for_transactions!(workspace, committed_transactions)
+    create_completion_notifications(parsing_session)
+  rescue StandardError => e
+    Rails.logger.error "[AiTextParsingJob] Post-commit side effects failed: #{e.message}"
   end
 
   def create_failure_notifications(parsing_session)

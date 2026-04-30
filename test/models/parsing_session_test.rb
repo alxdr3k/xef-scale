@@ -209,6 +209,82 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert session.review_pending?
   end
 
+  test "auto_commit_ready_transactions commits non-duplicate pending rows" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "processing",
+      review_status: "pending_review"
+    )
+    tx = workspace.transactions.create!(
+      date: Date.new(2027, 1, 10),
+      merchant: "자동커밋 테스트",
+      amount: 12_345,
+      status: "pending_review",
+      parsing_session: session
+    )
+
+    committed = session.auto_commit_ready_transactions!(user: users(:admin))
+
+    assert_equal [ tx.id ], committed.map(&:id)
+    assert tx.reload.committed?
+    assert_equal users(:admin), tx.committed_by
+    assert session.reload.review_committed?
+  end
+
+  test "auto_commit_ready_transactions leaves duplicate candidates pending" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "processing",
+      review_status: "pending_review"
+    )
+    original = workspace.transactions.create!(
+      date: Date.new(2027, 2, 10),
+      merchant: "중복 원본",
+      amount: 54_321,
+      status: "committed"
+    )
+    new_tx = workspace.transactions.create!(
+      date: Date.new(2027, 2, 10),
+      merchant: "중복 원본",
+      amount: 54_321,
+      status: "pending_review",
+      parsing_session: session
+    )
+    session.duplicate_confirmations.create!(
+      original_transaction: original,
+      new_transaction: new_tx,
+      status: "pending"
+    )
+
+    assert_empty session.auto_commit_ready_transactions!(user: users(:admin))
+    assert new_tx.reload.pending_review?
+    assert session.reload.review_pending?
+  end
+
+  test "auto_commit_ready_transactions leaves same-session exact duplicates pending" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "processing",
+      review_status: "pending_review"
+    )
+    2.times do
+      workspace.transactions.create!(
+        date: Date.new(2027, 3, 10),
+        merchant: "세션내 중복",
+        amount: 22_000,
+        status: "pending_review",
+        parsing_session: session
+      )
+    end
+
+    assert_empty session.auto_commit_ready_transactions!(user: users(:admin))
+    assert_equal 2, session.transactions.pending_review.count
+    assert session.reload.review_pending?
+  end
+
   # --- Deferred duplicate-decision application ---
 
   # A fresh session + original + new pending_review transaction with a resolved

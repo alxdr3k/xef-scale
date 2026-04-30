@@ -66,15 +66,17 @@ User ──< WorkspaceMembership >── Workspace
         │
         │── api write ────────────────────► committed (즉시)
         │
-        │── parsing job (text/image) ────► 현재: pending_review
+        │── parsing job (text/image) ────► pending_review staging
                                               │
-                                              ├──► committed   (review.commit, ParsingSession.commit_all!)
+                                              ├──► committed   (auto-post finalizer, or legacy review commit)
+                                              │
+                                              ├──► pending_review (duplicate candidate bridge)
                                               │
                                               ├──► rolled_back (review.rollback 또는 keep_original 결정)
                                               │
                                               └──► (discard) destroy
 
-P1 target ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): complete parsed rows는 parsing job/finalizer에서 즉시 `committed`가 되고, 날짜/가맹점/금액 누락 또는 ambiguous duplicate 같은 예외만 별도 repair record로 저장된다. 이 repair model은 아직 스키마에 없으며 `INP-1B.3`에서 추가한다.
+Current P1 transition ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): complete parsed rows are staged as `pending_review` during duplicate detection and then `ParsingSession#auto_commit_ready_transactions!` immediately promotes rows with no pending duplicate confirmation and no same-session exact duplicate group to `committed`. Duplicate candidates still use the legacy review bridge until `INP-1B.2`; date/merchant/amount-missing image rows still use `ParsingSession#notes` until `INP-1B.3` adds a durable repair model.
 ```
 
 추가 축:
@@ -111,10 +113,11 @@ P1 target ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): complete par
 - `can_commit?` = `completed? && review_pending? && !has_unresolved_duplicates?`
 - `can_rollback?` = `completed? && review_committed?`
 - `can_discard?` = `completed? && review_pending?`
+- `auto_commit_ready_transactions!` = duplicate 후보 또는 같은 세션 exact duplicate group이 아닌 `pending_review` 거래를 즉시 `committed`로 바꾸고, 남은 pending row가 없으면 세션 `review_status`도 `committed`로 전환.
 
 `DuplicateConfirmation.status` ∈ {`pending`, `keep_both`, `keep_original`, `keep_new`}.
 
-P1 target에서는 `review_status`가 사용자-facing gate가 아니며, `ParsingSession`은 import batch 감사·통계·undo/recovery 컨테이너로 남는다. 중복은 commit 시점 차단 대신 import finalizer/repair queue 정책으로 처리된다.
+P1 target에서는 `review_status`가 사용자-facing gate가 아니며, `ParsingSession`은 import batch 감사·통계·undo/recovery 컨테이너로 남는다. 현재는 non-duplicate complete row만 auto-post되고, 중복은 아직 legacy review에 남는다.
 
 ## 인덱스 / 유니크 제약 (참고)
 
@@ -127,7 +130,7 @@ P1 target에서는 `review_status`가 사용자-facing gate가 아니며, `Parsi
 
 ## 확인된 부수 사실
 
-- `Notification.create_parsing_complete!` / `create_parsing_failed!` / `create_budget_alert!` — `app/models/notification.rb`에 클래스 메서드로 정의되어 있다.
+- `Notification.create_parsing_complete!` / `create_parsing_failed!` / `create_budget_alert!` — `app/models/notification.rb`에 클래스 메서드로 정의되어 있다. 예산 알림 호출 조정은 `BudgetAlertService`가 담당한다.
 - `CategoryMapping(source: "import")`의 단일 생성 지점은 `lib/tasks/import.rake`(Step 2: 카테고리 매핑 import). 다른 호출 경로는 없다.
 - `Workspace.ai_consent_acknowledged_at`을 갱신하는 UI는 `app/views/workspaces/settings.html.erb` + `WorkspacesController#update`이며, true로 캐스팅된 `consent` 파라미터가 들어왔을 때만 시각을 기록한다.
 - `ParsingSession#processed_file`이 `optional: true`인 이유: `source_type: "text_paste"` 세션은 파일이 없기 때문 (`source_type: "file_upload"` 세션만 `processed_file` 보유).
