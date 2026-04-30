@@ -167,6 +167,26 @@ class RecurringPaymentDetectorTest < ActiveSupport::TestCase
     assert_includes merchants, "건너뛴 구독"
   end
 
+  test "does not allow multiple skipped months across the tolerant streak" do
+    [ Date.new(2026, 1, 8), Date.new(2026, 2, 8), Date.new(2026, 4, 8), Date.new(2026, 6, 8) ].each do |date|
+      Transaction.create!(
+        workspace: @workspace,
+        merchant: "두 번 건너뛴 구독",
+        amount: 8_900,
+        date: date,
+        description: "격월에 가까운 구독",
+        status: "committed",
+        deleted: false
+      )
+    end
+
+    detector = RecurringPaymentDetector.new(@workspace, as_of: Date.new(2026, 6, 30))
+    results = detector.detect
+
+    merchants = results.map { |r| r[:merchant] }
+    assert_not_includes merchants, "두 번 건너뛴 구독"
+  end
+
   test "does not include noisy repeated merchants without amount or day consistency" do
     [
       [ Date.new(2026, 1, 1), 5_000 ],

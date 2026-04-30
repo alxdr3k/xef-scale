@@ -109,8 +109,11 @@ class RecurringPaymentDetector
   end
 
   def trailing_tolerant_streak(keys)
-    keys.reverse_each.each_with_object({ current: 0, previous: nil }) do |key, streak|
-      break streak if streak[:previous] && key < streak[:previous] - ACTIVE_MONTH_WINDOW
+    keys.reverse_each.each_with_object({ current: 0, previous: nil, skipped_months: 0 }) do |key, streak|
+      if streak[:previous]
+        streak[:skipped_months] += streak[:previous] - key - 1
+        break streak if streak[:skipped_months] > ALLOWED_SKIPPED_MONTHS
+      end
 
       streak[:current] += 1
       streak[:previous] = key
