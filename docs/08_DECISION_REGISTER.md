@@ -18,7 +18,7 @@
 
 **Context**
 
-`DatabaseBackupService`는 `storage/development.sqlite3`를 `storage/backups/`로 단순 복사한다. production은 `primary`, `cache`, `queue`, `cable` SQLite DB를 별도 파일로 사용하고, 현재 서비스는 SQLite online backup, WAL/checkpoint, `PRAGMA integrity_check`, 외부 보관, 보존 정책, 스케줄, 복구 리허설을 제공하지 않는다.
+결정 당시 `DatabaseBackupService`는 `storage/development.sqlite3`를 `storage/backups/`로 단순 복사했다. production은 `primary`, `cache`, `queue`, `cable` SQLite DB를 별도 파일로 사용하고, 이 서비스는 SQLite online backup, WAL/checkpoint, `PRAGMA integrity_check`, 외부 보관, 보존 정책, 스케줄, 복구 리허설을 제공하지 않았다.
 
 **Decision**
 

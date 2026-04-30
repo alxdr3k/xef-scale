@@ -9,7 +9,7 @@ namespace :import do
     #D3D3D3
   ].freeze
 
-  desc "Step 0: Import 전 데이터베이스 백업"
+  desc "Step 0: Import 전 development 데이터베이스 snapshot 생성"
   task backup: :environment do
     puts "=" * 50
     puts "Step 0: 데이터베이스 백업 시작..."
@@ -277,7 +277,7 @@ namespace :import do
     end
   end
 
-  desc "Step 4: Import 후 데이터베이스 백업"
+  desc "Step 4: Import 후 development 데이터베이스 snapshot 생성"
   task post_backup: :environment do
     puts "=" * 50
     puts "Step 4: Import 후 백업 시작..."
