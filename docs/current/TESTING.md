@@ -2,6 +2,16 @@
 
 xef-scale의 테스트·린트·보안 스캔 명령. 현재 GitHub Actions CI(`.github/workflows/ci.yml`)에서 실행되는 명령을 기준으로 기록하고, 별도 로컬 helper는 구분해서 적는다. 새 명령을 도입하면 같은 PR에서 본 문서를 갱신.
 
+## Testing policy
+
+- Behavior changes need verification evidence.
+- Prefer test-first for bug fixes and clear behavior changes when a concise
+  failing test can express the target behavior.
+- Otherwise add or update tests in the same slice as the implementation.
+- Bug fixes should leave regression coverage unless impractical.
+- If automated coverage is not practical, record the manual check, eval, or
+  reason.
+
 ## Rails 테스트 (Minitest)
 
 ```bash
