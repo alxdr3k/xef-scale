@@ -20,6 +20,7 @@ Question ↔ Decision ↔ Requirement ↔ Gate/Test ↔ Milestone/Track/Phase/Sl
 | TRACE-012 |  | Implemented behavior | NFR-001 | AC-012 / TEST-012 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | API key digest/revocation checks. |
 | TRACE-013 | Q-003 | Open question | Metrics section |  | P0-M1 | REQ | REQ-1A | REQ-1A.1 | Metric names exist; instrumentation contract is not yet defined. |
 | TRACE-014 | Q-008 | DEC-001 | Operational reliability | ROAD-004 | P1-M4 | OPS | OPS-1A | OPS-1A.6..OPS-1A.9 | Current backup helper is dev/import-only; reliable STG/PRD backup/restore remains open. |
+| TRACE-015 |  | [ADR-0001](decisions/ADR-0001-auto-post-imports.md) | REQ-002, REQ-003, REQ-005, REQ-006 | ROAD-001 | P1-M1 | REQ/INP/UX | REQ-1B / INP-1B / UX-1B | REQ-1B.1, INP-1B.1..INP-1B.4, UX-1B.1..UX-1B.6 | Mandatory import review is superseded by auto-posted normal rows and focused repair for exceptions. |
 
 ## Invariants
 
@@ -32,4 +33,5 @@ Question ↔ Decision ↔ Requirement ↔ Gate/Test ↔ Milestone/Track/Phase/Sl
 
 - TRACE-013: 초기 지표는 이름만 있고 측정 위치/대시보드 계약이 없다. [Q-003](07_QUESTIONS_REGISTER.md#q-003-초기-지표를-어디에서-어떻게-측정할-것인가)을 따른다.
 - TRACE-014: 운영 DB 백업/복구 정책은 아직 열려 있다. [Q-008](07_QUESTIONS_REGISTER.md#q-008-운영-db-백업복구의-rporto보관-정책은-무엇인가)을 따른다.
+- TRACE-015: ADR은 accepted지만 PRD/AC/current docs와 코드는 아직 mandatory review 계약을 설명한다. `REQ-1B.1`부터 새 계약으로 갱신한다.
 - Historical design docs는 전량 backfill하지 않았다. 현재 제품 계약으로 확실한 구현 표면만 추적했다.

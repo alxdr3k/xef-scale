@@ -15,7 +15,7 @@ xef-scale의 수락된 구현·아키텍처 결정 기록(ADR).
 
 ## 현재 ADR
 
-(없음 — 본 PR은 ADR을 새로 만들지 않는다. 미래 결정이 추가되면 여기에 한 줄 인덱스)
+- [ADR-0001: Auto-post imports and repair only exceptions](ADR-0001-auto-post-imports.md)
 
 ## 역사적 결정에 대한 메모
 
