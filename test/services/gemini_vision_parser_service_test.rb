@@ -68,7 +68,7 @@ class GeminiVisionParserServiceTest < ActiveSupport::TestCase
     assert_equal [], result[:transactions]
   end
 
-  test "parse_response skips entries missing required fields" do
+  test "parse_response separates incomplete entries missing required fields" do
     service = GeminiVisionParserService.new("test_key")
 
     body = {
@@ -84,6 +84,9 @@ class GeminiVisionParserServiceTest < ActiveSupport::TestCase
     result = service.send(:parse_response, build_gemini_response(body))
     assert_equal 1, result[:transactions].size
     assert_equal "OK가게", result[:transactions].first[:merchant]
+    assert_equal 3, result[:incomplete_transactions].size
+    assert_equal [ "date" ], result[:incomplete_transactions].first[:missing_fields]
+    assert_equal "가맹점", result[:incomplete_transactions].first[:merchant]
   end
 
   private

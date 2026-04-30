@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const port = process.env.PLAYWRIGHT_PORT || '3000';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${port}`;
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 30000,
@@ -10,7 +13,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? [ [ 'list', { printSteps: true } ], [ 'html', { open: 'never' } ] ] : 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -23,9 +26,9 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'RAILS_ENV=test bin/rails server -p 3000',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    command: `RAILS_ENV=test bin/rails server -p ${port}`,
+    url: baseURL,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === '1',
     timeout: 120 * 1000,
   },
 });

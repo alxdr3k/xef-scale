@@ -12,6 +12,13 @@ export async function loginAsAdmin(page: Page) {
   await loginAsUser(page, 'test@example.com');
 }
 
+export async function setAiConsent(page: Page, acknowledged: boolean) {
+  const response = await page.request.post('/test_ai_consent', {
+    form: { acknowledged: acknowledged ? 'true' : 'false', workspace_name: '개인 가계부' },
+  });
+  expect(response.ok()).toBeTruthy();
+}
+
 // Legacy login function (kept for compatibility) — delegates to test_login bypass
 export async function login(page: Page, email: string = 'test@example.com', _password: string = 'password123') {
   await loginAsUser(page, email);

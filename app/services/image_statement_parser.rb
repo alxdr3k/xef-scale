@@ -14,9 +14,12 @@ class ImageStatementParser
 
   class UnsupportedFormatError < StandardError; end
 
+  attr_reader :incomplete_transactions
+
   def initialize(processed_file, institution_identifier: nil)
     @processed_file = processed_file
     @institution_identifier = institution_identifier.presence || DEFAULT_INSTITUTION
+    @incomplete_transactions = []
   end
 
   def parse
@@ -46,6 +49,7 @@ class ImageStatementParser
     else
       Array(result)
     end
+    @incomplete_transactions = normalize_incomplete_transactions(result)
 
     raw.filter_map do |tx|
       date = parse_date(tx[:date] || tx["date"])
@@ -62,6 +66,46 @@ class ImageStatementParser
         source_institution_raw: (tx[:source_institution_raw] || tx["source_institution_raw"] || tx[:institution] || tx["institution"]).to_s.strip.presence,
         institution_identifier: @institution_identifier
       }
+    end
+  end
+
+  def normalize_incomplete_transactions(result)
+    raw = if result.is_a?(Hash)
+      result[:incomplete_transactions] || result["incomplete_transactions"] || []
+    else
+      []
+    end
+
+    raw.filter_map do |tx|
+      next unless tx.is_a?(Hash)
+
+      merchant = (tx[:merchant] || tx["merchant"]).to_s.strip.presence
+      amount = tx[:amount] || tx["amount"]
+      parsed_amount = amount.present? ? amount.to_i.abs : nil
+      date_value = tx[:date] || tx["date"]
+      missing_fields = Array(tx[:missing_fields] || tx["missing_fields"]).map(&:to_s)
+      missing_fields = infer_missing_fields(date_value, merchant, parsed_amount) if missing_fields.empty?
+
+      next if merchant.blank? && parsed_amount.blank?
+
+      {
+        date: parse_date(date_value),
+        merchant: merchant,
+        amount: parsed_amount,
+        payment_type: tx[:payment_type] || tx["payment_type"] || "lump_sum",
+        installment_month: tx[:installment_month] || tx["installment_month"],
+        installment_total: tx[:installment_total] || tx["installment_total"],
+        missing_fields: missing_fields,
+        institution_identifier: @institution_identifier
+      }
+    end
+  end
+
+  def infer_missing_fields(date_value, merchant, amount)
+    [].tap do |fields|
+      fields << "date" if parse_date(date_value).blank?
+      fields << "merchant" if merchant.blank?
+      fields << "amount" if amount.blank? || amount.zero?
     end
   end
 

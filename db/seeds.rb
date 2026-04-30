@@ -16,7 +16,6 @@ if Rails.env.development? || Rails.env.test?
 
   # Create a workspace for the test user
   workspace = user.owned_workspaces.find_or_create_by!(name: '개인 가계부')
-  workspace.update!(ai_consent_acknowledged_at: Time.current) if workspace.ai_consent_acknowledged_at.nil?
   puts "Created workspace: #{workspace.name}"
 
   # Create some sample transactions

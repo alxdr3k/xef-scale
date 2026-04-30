@@ -199,6 +199,64 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_equal :fail, result, "success==0인 경우 fail 처리되어야 함"
   end
 
+  test "perform records incomplete parsed rows as errors and session notes" do
+    processed_file = @workspace.processed_files.create!(
+      filename: "partial.png",
+      original_filename: "partial.png",
+      status: "pending"
+    )
+    parsed = {
+      transactions: [
+        { date: Date.new(2026, 3, 25), merchant: "정상 결제", description: "", amount: 1_000 }
+      ],
+      incomplete_transactions: [
+        { date: nil, merchant: "네이버페이", amount: 12_000, missing_fields: [ "date" ] }
+      ]
+    }
+    job = FileParsingJob.new
+    job.define_singleton_method(:parse_file) { |_processed_file| parsed }
+
+    assert_difference -> { @workspace.transactions.count }, 1 do
+      job.perform(processed_file.id)
+    end
+
+    parsing_session = processed_file.reload.parsing_session
+    assert parsing_session.completed?
+    assert_equal 2, parsing_session.total_count
+    assert_equal 1, parsing_session.success_count
+    assert_equal 1, parsing_session.error_count
+    assert_match "자동 반영 제외 1건", parsing_session.notes
+    assert_match "네이버페이", parsing_session.notes
+    assert_match "누락: 날짜", parsing_session.notes
+  end
+
+  test "perform fails with counts and notes when every parsed row is incomplete" do
+    processed_file = @workspace.processed_files.create!(
+      filename: "incomplete_only.png",
+      original_filename: "incomplete_only.png",
+      status: "pending"
+    )
+    parsed = {
+      transactions: [],
+      incomplete_transactions: [
+        { date: nil, merchant: "마차이짬뽕 성수점", amount: 61_000, missing_fields: [ "date" ] }
+      ]
+    }
+    job = FileParsingJob.new
+    job.define_singleton_method(:parse_file) { |_processed_file| parsed }
+
+    assert_no_difference -> { @workspace.transactions.count } do
+      job.perform(processed_file.id)
+    end
+
+    parsing_session = processed_file.reload.parsing_session
+    assert parsing_session.failed?
+    assert_equal 1, parsing_session.total_count
+    assert_equal 0, parsing_session.success_count
+    assert_equal 1, parsing_session.error_count
+    assert_match "마차이짬뽕 성수점", parsing_session.notes
+  end
+
   test "gemini batch categorizes image transactions and stores mapping" do
     job = FileParsingJob.new
     merchant = "새로운카페"

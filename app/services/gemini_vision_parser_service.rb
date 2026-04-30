@@ -14,7 +14,7 @@ class GeminiVisionParserService
   class ApiError < StandardError; end
   class AllModelsFailedError < StandardError; end
 
-  EMPTY_RESULT = { payment_date: nil, transactions: [] }.freeze
+  EMPTY_RESULT = { payment_date: nil, transactions: [], incomplete_transactions: [] }.freeze
 
   RESPONSE_SCHEMA = {
     type: "OBJECT",
@@ -31,8 +31,7 @@ class GeminiVisionParserService
             payment_type: { type: "STRING", enum: %w[lump_sum installment coupon], description: "일시불/할부/소비쿠폰" },
             installment_month: { type: "INTEGER", description: "할부 현재 회차 (할부인 경우만)" },
             installment_total: { type: "INTEGER", description: "할부 총 기간 (할부인 경우만)" }
-          },
-          required: %w[date merchant amount payment_type]
+          }
         }
       }
     },
@@ -54,6 +53,10 @@ class GeminiVisionParserService
     5. installment_month: 할부인 경우 "기간/회차" 열에서 현재 회차 (예: "3/12" → 3)
     6. installment_total: 할부인 경우 총 기간 (예: "3/12" → 12)
     7. 합계, 소계 행은 제외
+    8. 날짜, 가맹점, 금액 중 일부가 화면에 보이지 않는 거래도 버리지 말고 보이는 필드만 채워주세요.
+       - 같은 날짜 그룹 안에 있음이 화면에서 명확할 때만 date를 채웁니다.
+       - 날짜 헤더가 잘려 보이지 않거나 추정해야 하면 date는 비워둡니다.
+       - 금액이나 가맹점이 보이지 않으면 해당 필드도 비워둡니다.
 
     모든 거래를 빠짐없이 추출해주세요.
   PROMPT
@@ -75,8 +78,8 @@ class GeminiVisionParserService
         response = call_gemini_api(model, image_data, mime_type)
         result = parse_response(response)
 
-        if result[:transactions].present?
-          Rails.logger.info "[GeminiVisionParser] Success with #{model}: #{result[:transactions].size} transactions"
+        if result[:transactions].present? || result[:incomplete_transactions].present?
+          Rails.logger.info "[GeminiVisionParser] Success with #{model}: #{result[:transactions].size} complete, #{result[:incomplete_transactions].size} incomplete transactions"
           return result
         end
       rescue ApiError => e
@@ -151,25 +154,46 @@ class GeminiVisionParserService
       []
     end
 
-    transactions = raw_transactions.filter_map do |item|
-      next unless item.is_a?(Hash)
-      next unless item["date"].present? && item["merchant"].present? && item["amount"].present?
+    transactions = []
+    incomplete_transactions = []
 
-      {
+    raw_transactions.each do |item|
+      next unless item.is_a?(Hash)
+
+      normalized = {
         date: item["date"],
-        merchant: item["merchant"].strip,
-        amount: item["amount"].to_i.abs,
+        merchant: item["merchant"].to_s.strip.presence,
+        amount: item["amount"].present? ? item["amount"].to_i.abs : nil,
         payment_type: item["payment_type"] || "lump_sum",
         installment_month: item["installment_month"]&.to_i,
         installment_total: item["installment_total"]&.to_i
       }
+
+      missing_fields = missing_transaction_fields(normalized)
+      if missing_fields.empty?
+        transactions << normalized
+      elsif salvageable_incomplete_transaction?(normalized)
+        incomplete_transactions << normalized.merge(missing_fields: missing_fields)
+      end
     end
 
     payment_date = data.is_a?(Hash) ? data["payment_date"] : nil
 
-    { payment_date: payment_date, transactions: transactions }
+    { payment_date: payment_date, transactions: transactions, incomplete_transactions: incomplete_transactions }
   rescue JSON::ParserError => e
     Rails.logger.error "[GeminiVisionParser] JSON parse error: #{e.message}"
     EMPTY_RESULT.dup
+  end
+
+  def missing_transaction_fields(item)
+    [].tap do |fields|
+      fields << "date" if item[:date].blank?
+      fields << "merchant" if item[:merchant].blank?
+      fields << "amount" if item[:amount].blank? || item[:amount].zero?
+    end
+  end
+
+  def salvageable_incomplete_transaction?(item)
+    item[:merchant].present? || item[:amount].present?
   end
 end
