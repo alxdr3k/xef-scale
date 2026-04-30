@@ -257,6 +257,7 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_equal 0, parsing_session.success_count
     assert_equal 1, parsing_session.error_count
     assert_match "마차이짬뽕 성수점", parsing_session.notes
+    assert_match "마차이짬뽕 성수점", parsing_session.user_visible_notes
   end
 
   test "gemini batch categorizes image transactions and stores mapping" do

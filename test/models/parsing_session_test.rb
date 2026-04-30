@@ -186,6 +186,17 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert_equal "새 메모\n\n#{block}", session.notes_with_user_visible_text("새 메모")
   end
 
+  test "failed file upload exposes parser note when no review screen is available" do
+    session = parsing_sessions(:failed_session)
+    note = "자동 반영 제외 1건\n1. 누락: 날짜 - 네이버페이 / 12,000원"
+    block = ParsingSession.incomplete_parse_note_block(note)
+    session.update!(source_type: "file_upload", notes: block)
+
+    assert session.incomplete_parse_note?
+    assert_equal note, session.user_visible_notes
+    assert_equal block, session.notes_with_user_visible_text(note)
+  end
+
   test "commit_all! is blocked while duplicates remain unresolved" do
     session = parsing_sessions(:completed_session)
     session.update!(review_status: "pending_review")

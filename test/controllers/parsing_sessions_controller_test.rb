@@ -19,6 +19,20 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "index shows failed incomplete parser note without internal markers" do
+    note = "자동 반영 제외 1건\n1. 누락: 날짜 - 네이버페이 / 12,000원"
+    parsing_sessions(:failed_session).update!(
+      source_type: "file_upload",
+      notes: ParsingSession.incomplete_parse_note_block(note)
+    )
+
+    get workspace_parsing_sessions_path(@workspace)
+
+    assert_response :success
+    assert_includes response.body, "네이버페이"
+    assert_not_includes response.body, ParsingSession::INCOMPLETE_PARSE_NOTE_START_MARKER
+  end
+
   test "index hides AI input panels while consent is required" do
     @workspace.update!(ai_consent_acknowledged_at: nil)
 

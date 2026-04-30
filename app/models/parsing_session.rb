@@ -149,14 +149,18 @@ class ParsingSession < ApplicationRecord
   def user_visible_notes
     return notes.to_s.strip.presence unless file_upload?
 
-    notes.to_s.gsub(INCOMPLETE_PARSE_NOTE_STORAGE_PATTERN, "").strip.presence
+    visible_notes = notes.to_s.gsub(INCOMPLETE_PARSE_NOTE_STORAGE_PATTERN, "").strip.presence
+    visible_notes || failed_incomplete_parse_note_text
   end
 
   def notes_with_user_visible_text(user_notes)
     return user_notes.to_s.strip unless file_upload?
 
+    visible_notes = user_notes.to_s.strip
+    visible_notes = nil if visible_notes == failed_incomplete_parse_note_text
+
     [
-      user_notes.to_s.strip.presence,
+      visible_notes.presence,
       *incomplete_parse_note_storage_blocks
     ].compact.join("\n\n")
   end
@@ -241,6 +245,12 @@ class ParsingSession < ApplicationRecord
 
   def incomplete_parse_note_storage_blocks
     notes.to_s.scan(INCOMPLETE_PARSE_NOTE_STORAGE_PATTERN).map(&:strip)
+  end
+
+  def failed_incomplete_parse_note_text
+    return nil unless failed?
+
+    incomplete_parse_note_text
   end
 
   # Apply deferred duplicate-resolution decisions at commit time. Keeping the
