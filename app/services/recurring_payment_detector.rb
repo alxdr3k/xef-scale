@@ -1,9 +1,12 @@
 class RecurringPaymentDetector
   MIN_OCCURRENCES = 2
   CONSISTENT_DAY_WINDOW = 7
+  ALLOWED_SKIPPED_MONTHS = 1
+  ACTIVE_MONTH_WINDOW = ALLOWED_SKIPPED_MONTHS + 1
 
-  def initialize(workspace)
+  def initialize(workspace, as_of: Date.current)
     @workspace = workspace
+    @as_of = as_of.to_date
   end
 
   def detect
@@ -33,8 +36,10 @@ class RecurringPaymentDetector
 
     results.filter_map do |row|
       transactions = transactions_by_merchant.fetch(row.merchant, [])
-      longest_streak = longest_consecutive_streak(month_keys(transactions))
+      keys = month_keys(transactions)
+      longest_streak = longest_consecutive_streak(keys)
       next if longest_streak < MIN_OCCURRENCES
+      next unless recently_recurring?(keys)
 
       avg = row.avg_amount.round
       amount_consistent = consistent_amount?(avg, row.min_amount, row.max_amount)
@@ -74,12 +79,42 @@ class RecurringPaymentDetector
     transactions.map { |tx| tx.date.year * 12 + tx.date.month }.uniq.sort
   end
 
+  def month_key(date)
+    date.year * 12 + date.month
+  end
+
+  def recently_recurring?(keys)
+    return false if keys.empty?
+    return false if month_key(@as_of) - keys.last > ACTIVE_MONTH_WINDOW
+
+    trailing_consecutive_streak(keys) >= MIN_OCCURRENCES ||
+      trailing_tolerant_streak(keys) >= MIN_OCCURRENCES + ALLOWED_SKIPPED_MONTHS
+  end
+
   def longest_consecutive_streak(keys)
     keys.each_with_object({ current: 0, best: 0, previous: nil }) do |key, streak|
       streak[:current] = key == streak[:previous].to_i + 1 ? streak[:current] + 1 : 1
       streak[:best] = [ streak[:best], streak[:current] ].max
       streak[:previous] = key
     end[:best]
+  end
+
+  def trailing_consecutive_streak(keys)
+    keys.reverse_each.each_with_object({ current: 0, previous: nil }) do |key, streak|
+      break streak if streak[:previous] && key != streak[:previous] - 1
+
+      streak[:current] += 1
+      streak[:previous] = key
+    end[:current]
+  end
+
+  def trailing_tolerant_streak(keys)
+    keys.reverse_each.each_with_object({ current: 0, previous: nil }) do |key, streak|
+      break streak if streak[:previous] && key < streak[:previous] - ACTIVE_MONTH_WINDOW
+
+      streak[:current] += 1
+      streak[:previous] = key
+    end[:current]
   end
 
   def consistent_amount?(average, min_amount, max_amount)

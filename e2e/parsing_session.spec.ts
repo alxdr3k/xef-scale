@@ -1,5 +1,9 @@
-import { test, expect } from '@playwright/test';
-import { loginAsAdmin } from './helpers';
+import { test, expect, type Page } from '@playwright/test';
+import { loginAsAdmin, navigateToParsingSessions } from './helpers';
+
+async function aiConsentRequired(page: Page) {
+  return await page.locator('text=외부 AI 사용 안내').isVisible().catch(() => false);
+}
 
 // Parsing sessions page = "결제 추가" (/workspaces/:id/parsing_sessions)
 // Two input methods:
@@ -13,8 +17,7 @@ import { loginAsAdmin } from './helpers';
 test.describe('Parsing sessions (결제 추가 페이지)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('/workspaces/1/parsing_sessions');
-    await page.waitForLoadState('networkidle');
+    await navigateToParsingSessions(page);
   });
 
   // --- Page structure ---
@@ -25,12 +28,22 @@ test.describe('Parsing sessions (결제 추가 페이지)', () => {
   });
 
   test('문자 붙여넣기 카드가 표시된다', async ({ page }) => {
+    if (await aiConsentRequired(page)) {
+      await expect(page.locator('textarea#text')).toHaveCount(0);
+      return;
+    }
+
     await expect(page.locator('h3:has-text("문자 붙여넣기")')).toBeVisible();
     await expect(page.locator('textarea#text')).toBeVisible();
     await expect(page.getByRole('button', { name: 'AI 파싱' })).toBeVisible();
   });
 
   test('스크린샷 업로드 카드가 표시된다', async ({ page }) => {
+    if (await aiConsentRequired(page)) {
+      await expect(page.locator('input[type="file"]')).toHaveCount(0);
+      return;
+    }
+
     await expect(page.locator('h3:has-text("스크린샷 업로드")')).toBeVisible();
     await expect(page.locator('input[type="file"]')).toBeVisible();
     await expect(page.getByRole('button', { name: '스크린샷 업로드' })).toBeVisible();
@@ -58,6 +71,11 @@ test.describe('Parsing sessions (결제 추가 페이지)', () => {
   // --- Text paste flow ---
 
   test('빈 텍스트로 AI 파싱 제출 시 페이지가 응답한다', async ({ page }) => {
+    if (await aiConsentRequired(page)) {
+      await expect(page.locator('textarea#text')).toHaveCount(0);
+      return;
+    }
+
     // Submit with empty textarea — server should respond (validation or redirect)
     const submitBtn = page.getByRole('button', { name: 'AI 파싱' });
     await submitBtn.click();
@@ -67,12 +85,22 @@ test.describe('Parsing sessions (결제 추가 페이지)', () => {
   });
 
   test('텍스트 붙여넣기 textarea에 입력할 수 있다', async ({ page }) => {
+    if (await aiConsentRequired(page)) {
+      await expect(page.locator('textarea#text')).toHaveCount(0);
+      return;
+    }
+
     const sampleText = '[Web발신]\n신한체크 승인 홍*동\n50,000원 일시불\n03/15 14:30 스타벅스강남점';
     await page.locator('textarea#text').fill(sampleText);
     await expect(page.locator('textarea#text')).toHaveValue(sampleText);
   });
 
   test('텍스트 파싱 제출 후 입력 기록에 세션이 생성된다', async ({ page }) => {
+    if (await aiConsentRequired(page)) {
+      await expect(page.locator('textarea#text')).toHaveCount(0);
+      return;
+    }
+
     const sampleText = '[Web발신]\n신한체크 승인 홍*동\n50,000원 일시불\n03/15 14:30 스타벅스강남점';
     await page.locator('textarea#text').fill(sampleText);
     await page.getByRole('button', { name: 'AI 파싱' }).click();
@@ -100,6 +128,15 @@ test.describe('Parsing sessions (결제 추가 페이지)', () => {
       await expect(thead.locator('th:has-text("결과")')).toBeVisible();
       await expect(thead.locator('th:has-text("시간")')).toBeVisible();
     }
+  });
+
+  test('좁은 화면에서는 입력 기록을 카드 레이아웃으로 표시한다', async ({ page }) => {
+    await page.setViewportSize({ width: 640, height: 900 });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('[data-testid="parsing-session-cards"]')).toBeVisible();
+    await expect(page.locator('[data-testid="parsing-session-table"]')).toBeHidden();
   });
 
   test('입력 기록 없을 때 빈 상태 메시지가 표시된다', async ({ page }) => {
@@ -134,6 +171,11 @@ test.describe('Parsing sessions (결제 추가 페이지)', () => {
   test('온보딩 오버레이는 data-onboarding-target="overlay"로 마운트된다', async ({ page }) => {
     // The overlay is hidden by default and managed by the onboarding Stimulus controller
     const overlay = page.locator('[data-onboarding-target="overlay"]');
+    if (await aiConsentRequired(page)) {
+      await expect(overlay).toHaveCount(0);
+      return;
+    }
+
     await expect(overlay).toBeAttached();
   });
 });

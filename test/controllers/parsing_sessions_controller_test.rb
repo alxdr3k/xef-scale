@@ -19,6 +19,26 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "index hides AI input panels while consent is required" do
+    @workspace.update!(ai_consent_acknowledged_at: nil)
+
+    get workspace_parsing_sessions_path(@workspace)
+
+    assert_response :success
+    assert_select "textarea#text", count: 0
+    assert_select "input[type='file']", count: 0
+    assert_select "a", text: /워크스페이스 설정에서 동의 또는 비활성화/
+    assert_select "h2", text: "입력 기록"
+  end
+
+  test "index shows AI input panels after consent is acknowledged" do
+    get workspace_parsing_sessions_path(@workspace)
+
+    assert_response :success
+    assert_select "textarea#text", count: 1
+    assert_select "input[type='file']", count: 1
+  end
+
   test "show redirects to review for completed session" do
     get workspace_parsing_session_path(@workspace, @parsing_session)
     assert_redirected_to review_workspace_parsing_session_path(@workspace, @parsing_session)

@@ -11,8 +11,8 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 ## Current Roadmap Position
 
 - current milestone: `P1-M1` in progress — mobile web self-serve input observation and UX hardening.
-- active track / phase / slice: `UX` / `UX-1A` / next recommended slice `UX-1A.1` for the external observation session; no further local `P1-M1` leaf is unblocked before that evidence.
-- last accepted gate: `INS-1A.3` monthly dashboard hierarchy audit passed with controller/e2e coverage.
+- active track / phase / slice: `UX` / `UX-1A` / next recommended slice `UX-1A.1` for the external observation session; ad-hoc feedback is recorded as short leaf slices when it is concrete and locally decidable.
+- last accepted gates: `INS-1A.3` monthly dashboard hierarchy audit; `UX-1A.7`, `UX-1A.8`, and `INS-1A.5` feedback regressions are covered by controller/service/e2e checks.
 - next gate: `ROAD-001` — observed non-engineer mobile web input → review → commit loop, with blockers recorded as slices.
 - canonical ledger: [04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md).
 
@@ -66,7 +66,7 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 | `GeminiVisionParserService` | 이미지 파싱 잡 | `gemini-2.5-flash` (단일 모델) |
 | `GeminiCategoryService` | 이미지 경로의 미분류 거래 일괄 분류 | `gemini-3-flash-preview` → `gemini-2.5-flash-preview-09-2025` → `gemini-2.5-flash` → `gemini-2.5-flash-lite-preview-09-2025` → `gemini-2.5-flash-lite` |
 
-워크스페이스별 토글: `Workspace.ai_text_parsing_enabled`, `ai_image_parsing_enabled`, `ai_category_suggestions_enabled`. 모두 기본값 true. 첫 사용 시 `Workspace.ai_consent_acknowledged_at`이 nil이면 동의 화면으로 리다이렉트.
+워크스페이스별 토글: `Workspace.ai_text_parsing_enabled`, `ai_image_parsing_enabled`, `ai_category_suggestions_enabled`. 모두 기본값 true. `Workspace.ai_consent_acknowledged_at`이 nil이면 결제 추가 화면은 텍스트/파일 입력 패널을 숨기고 설정 페이지 동의 CTA만 보여준다. 서버 액션도 같은 조건에서 설정 페이지로 리다이렉트한다.
 
 `GEMINI_API_KEY` 환경변수가 비어 있으면 모든 AI 서비스가 `ArgumentError`로 실패한다.
 
