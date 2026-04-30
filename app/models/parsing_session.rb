@@ -274,6 +274,7 @@ class ParsingSession < ApplicationRecord
                 .where(deleted: false)
                 .where.not(id: duplicate_confirmations.pending.select(:new_transaction_id))
                 .reject { |tx| same_session_duplicate_keys.include?(auto_commit_dedup_key(tx)) }
+                .select { |tx| import_required_fields_complete?(tx) }
   end
 
   def auto_commit_complete?
@@ -303,6 +304,13 @@ class ParsingSession < ApplicationRecord
       transaction.merchant.to_s.strip.gsub(/\s+/, "").downcase,
       transaction.installment_month
     ]
+  end
+
+  def import_required_fields_complete?(transaction)
+    transaction.date.present? &&
+      transaction.merchant.to_s.strip.present? &&
+      transaction.amount.present? &&
+      transaction.amount.to_i != 0
   end
 
   # Apply deferred duplicate-resolution decisions at commit time. Keeping the

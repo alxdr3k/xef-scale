@@ -235,6 +235,45 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     assert_equal "/workspaces/#{@workspace.id}/transactions", notification.action_url
   end
 
+  test "perform leaves parsed text rows with blank merchant pending review" do
+    fake_result = {
+      transactions: [
+        {
+          date: Date.new(2027, 3, 15),
+          merchant: " ",
+          amount: 12_000,
+          institution: "신한카드",
+          payment_type: "lump_sum",
+          installment_month: nil,
+          installment_total: nil,
+          confidence: 0.91
+        }
+      ],
+      raw_text: @parsing_session.notes,
+      model_used: "gemini-test"
+    }
+
+    original_new = AiTextParser.method(:new)
+    original_parse = AiTextParser.instance_method(:parse)
+    AiTextParser.define_singleton_method(:new) { |*| allocate }
+    AiTextParser.define_method(:parse) { |_text| fake_result }
+
+    begin
+      AiTextParsingJob.new.perform(@parsing_session.id)
+    ensure
+      AiTextParser.define_singleton_method(:new, original_new)
+      AiTextParser.define_method(:parse, original_parse)
+    end
+
+    tx = @workspace.transactions.order(:created_at).last
+    assert tx.pending_review?
+    assert @parsing_session.reload.review_pending?
+
+    notification = Notification.where(notifiable: @parsing_session, notification_type: "parsing_complete").last
+    assert_includes notification.message, "검토해주세요"
+    assert_equal "/workspaces/#{@workspace.id}/parsing_sessions/#{@parsing_session.id}/review", notification.action_url
+  end
+
   test "perform still sends completion notification when budget alert side effect fails" do
     fake_result = {
       transactions: [

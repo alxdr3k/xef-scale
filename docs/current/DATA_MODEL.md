@@ -76,7 +76,7 @@ User ──< WorkspaceMembership >── Workspace
                                               │
                                               └──► (discard) destroy
 
-Current P1 transition ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): complete parsed rows are staged as `pending_review` during duplicate detection and then `ParsingSession#auto_commit_ready_transactions!` immediately promotes rows with no pending duplicate confirmation and no same-session exact duplicate group to `committed`. Duplicate candidates still use the legacy review bridge until `INP-1B.2`; date/merchant/amount-missing image rows still use `ParsingSession#notes` until `INP-1B.3` adds a durable repair model.
+Current P1 transition ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): complete parsed rows are staged as `pending_review` during duplicate detection and then `ParsingSession#auto_commit_ready_transactions!` immediately promotes rows with date/merchant/amount present, no pending duplicate confirmation, and no same-session exact duplicate group to `committed`. Duplicate candidates still use the legacy review bridge until `INP-1B.2`; date/merchant/amount-missing rows still use the legacy bridge or `ParsingSession#notes` until `INP-1B.3` adds a durable repair model.
 ```
 
 추가 축:
@@ -113,7 +113,7 @@ Current P1 transition ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): 
 - `can_commit?` = `completed? && review_pending? && !has_unresolved_duplicates?`
 - `can_rollback?` = `completed? && review_committed?`
 - `can_discard?` = `completed? && review_pending?`
-- `auto_commit_ready_transactions!` = duplicate 후보 또는 같은 세션 exact duplicate group이 아닌 `pending_review` 거래를 즉시 `committed`로 바꾸고, 남은 pending row가 없으면 세션 `review_status`도 `committed`로 전환.
+- `auto_commit_ready_transactions!` = 날짜/가맹점/금액이 모두 있고 duplicate 후보 또는 같은 세션 exact duplicate group이 아닌 `pending_review` 거래를 즉시 `committed`로 바꾸고, 남은 pending row가 없으면 세션 `review_status`도 `committed`로 전환.
 
 `DuplicateConfirmation.status` ∈ {`pending`, `keep_both`, `keep_original`, `keep_new`}.
 

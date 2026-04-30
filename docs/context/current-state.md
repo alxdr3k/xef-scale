@@ -42,7 +42,7 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 3. `AiTextParsingJob`이 `AiTextParser`로 Gemini Flash 호출. 응답을 `Transaction`(`source_type: "text_paste"`, initially `status: "pending_review"`)으로 정규화하여 저장한다. 금융기관/앱명은 `transactions.source_metadata` 안의 import hint로만 저장하며 핵심 도메인 필드로 승격하지 않는다.
 4. 각 거래에 대해 카테고리 매칭: `CategoryMapping.find_for_merchant` → `Category#matches?` (`Category.keyword`). **텍스트 경로는 Gemini 카테고리 폴백을 호출하지 않는다.**
 5. `DuplicateDetector`가 동일 워크스페이스의 기존 거래와 비교해 `DuplicateConfirmation`을 만든다.
-6. `ParsingSession#auto_commit_ready_transactions!`가 duplicate 후보와 같은 세션 exact duplicate group에 속하지 않는 pending row를 즉시 `committed`로 전환하고, 해당 월 예산 알림을 `BudgetAlertService`로 발송한다. 미해결 duplicate 후보만 legacy review에 남는다.
+6. `ParsingSession#auto_commit_ready_transactions!`가 날짜/가맹점/금액이 모두 있고 duplicate 후보와 같은 세션 exact duplicate group에 속하지 않는 pending row를 즉시 `committed`로 전환하고, 해당 월 예산 알림을 `BudgetAlertService`로 발송한다. 필수값 누락 또는 미해결 duplicate 후보만 legacy review에 남는다.
 
 ### 이미지 업로드 → 자동 커밋 / incomplete·duplicate 예외
 
