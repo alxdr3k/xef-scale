@@ -4,7 +4,9 @@
 
 xef-scale은 한국 금융기관의 지출 내역을 **직접 입력**, **금융 문자 붙여넣기**, **명세서 스크린샷 업로드**, **API write** 네 경로로 받는 Rails 기반 지출 추적 앱입니다. 텍스트/이미지 파싱에는 Gemini를 쓰지만, Gemini 카테고리 폴백은 현재 이미지 경로에만 적용합니다. Excel/PDF/CSV/HTML 명세서는 지원하지 않습니다.
 
-## 핵심 데이터 흐름
+P1 목표 흐름은 [ADR-0001](decisions/ADR-0001-auto-post-imports.md)에 따라 "파싱 결과 전체 검토"가 아니라 "정상 결과 자동 등록 + 예외 repair"다. 현재 코드가 아직 review 기반인 세부는 [current/RUNTIME.md](current/RUNTIME.md)에 남기고, 전환 작업은 [04_IMPLEMENTATION_PLAN.md](04_IMPLEMENTATION_PLAN.md)의 `INP-1B` / `UX-1B` slice로 추적한다.
+
+## P1 목표 데이터 흐름
 
 ```
 사용자 (Google OAuth2)
@@ -26,20 +28,16 @@ Workspace (멀티테넌트 단위)
            └─► ImageStatementParser ─► GeminiVisionParserService (Gemini Vision)
     │
     ▼
-Transaction 생성 (pending_review)
+Import finalization
     │
     ├─► CategoryMapping 매칭 (exact/contains + amount 우선순위)
     ├─► Category.keyword 매칭 (partial match)
     └─► GeminiCategoryService (이미지 경로의 미분류 잔여분만)
     │
     ▼
-중복 감지 → DuplicateConfirmation
-    │
-    ▼
-사용자 리뷰 (ParsingSession)
-    │
-    ├─► commit! → status: committed  (pending duplicates 없어야 함)
-    └─► rollback! → status: rolled_back
+    ├─► Complete rows → Transaction (committed)
+    ├─► 필수값 누락 / 애매한 중복 → repair queue
+    └─► Import batch → import-level undo/recovery
 ```
 
 ## 핵심 모델
@@ -50,7 +48,7 @@ Transaction 생성 (pending_review)
 | **Transaction** | 파싱된 거래 기록. 날짜, 금액, 상점, 카테고리 |
 | **Category** | 거래 분류 (식비, 교통 등). keyword 필드로 부분 매칭 지원 |
 | **CategoryMapping** | 상점명 → 카테고리 매핑 규칙. source: import/gemini/manual |
-| **ParsingSession** | 텍스트/파일 파싱 세션. 상태 관리 및 통계 추적 |
+| **ParsingSession** | 텍스트/파일 파싱 세션. 상태 관리, 통계, import batch 감사/undo 컨테이너 |
 | **ProcessedFile** | 업로드된 파일 (ActiveStorage) |
 | **FinancialInstitution** | 금융기관 정보. 이미지 파서는 현재 신한카드 명세서 스크린샷을 타깃으로 함 |
 
@@ -82,12 +80,12 @@ Workspace ──┬── Category ──── CategoryMapping
 ## Transaction 상태 머신
 
 ```
-pending_review ──► committed (확정)
-       │
-       └─────────► rolled_back (롤백)
+manual/api/import complete row ──► committed
+repair item completed ───────────► committed
+import undo/recovery ─────────────► rolled_back 또는 deleted
 ```
 
-- `commit!(user)`: 거래 확정, 감사 추적
+- `commit!(user)`: 거래 확정, 감사 추적. P1 auto-post 흐름에서는 파싱 job/finalizer가 직접 호출한다.
 - `rollback!`: 거래 롤백
 
 ## 기술 스택

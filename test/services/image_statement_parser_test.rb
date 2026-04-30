@@ -59,6 +59,26 @@ class ImageStatementParserTest < ActiveSupport::TestCase
     assert_equal 1, result.size
   end
 
+  test "captures incomplete transactions from parser result wrapper" do
+    parser = ImageStatementParser.new(@processed_file, institution_identifier: "shinhan_card")
+    raw = {
+      transactions: [ { date: "2026.01.15", merchant: "완성", amount: 1000 } ],
+      incomplete_transactions: [
+        { date: nil, merchant: "네이버페이", amount: 12_000, missing_fields: [ "date" ] }
+      ]
+    }
+
+    result = parser.send(:normalize, raw)
+
+    assert_equal 1, result.size
+    assert_equal 1, parser.incomplete_transactions.size
+    incomplete = parser.incomplete_transactions.first
+    assert_nil incomplete[:date]
+    assert_equal "네이버페이", incomplete[:merchant]
+    assert_equal 12_000, incomplete[:amount]
+    assert_equal [ "date" ], incomplete[:missing_fields]
+  end
+
   test "normalizes parser provided source institution separately from institution identifier hint" do
     parser = ImageStatementParser.new(@processed_file, institution_identifier: "shinhan_card")
     raw = [

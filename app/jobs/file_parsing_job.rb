@@ -25,19 +25,21 @@ class FileParsingJob < ApplicationJob
     end
 
     begin
-      result = parse_file(processed_file)
+      result, incomplete_result = extract_parse_result(parse_file(processed_file))
 
       user = processed_file.uploaded_by
 
       excluded = user&.excluded_merchants || []
       if excluded.any?
         result = result.reject { |tx| excluded.any? { |pattern| tx[:merchant]&.include?(pattern) } }
+        incomplete_result = incomplete_result.reject { |tx| excluded.any? { |pattern| tx[:merchant]&.include?(pattern) } }
       end
 
       workspace = processed_file.workspace
 
-      stats = { total: result.size, success: 0, duplicate: 0, error: 0, gemini: 0 }
+      stats = { total: result.size + incomplete_result.size, success: 0, duplicate: 0, error: incomplete_result.size, gemini: 0 }
       uncategorized_transactions = []
+      record_incomplete_parse_note(parsing_session, incomplete_result) if incomplete_result.any?
 
       result.each do |tx_data|
         begin
@@ -70,6 +72,12 @@ class FileParsingJob < ApplicationJob
       end
 
       if stats[:total].zero? || stats[:success].zero?
+        parsing_session.update!(
+          total_count: stats[:total],
+          success_count: stats[:success],
+          duplicate_count: stats[:duplicate],
+          error_count: stats[:error]
+        )
         parsing_session.fail!
         processed_file.mark_failed!
         create_failure_notifications(parsing_session)
@@ -98,7 +106,20 @@ class FileParsingJob < ApplicationJob
   private
 
   def parse_file(processed_file)
-    ImageStatementParser.new(processed_file, institution_identifier: @institution_identifier).parse
+    parser = ImageStatementParser.new(processed_file, institution_identifier: @institution_identifier)
+    transactions = parser.parse
+    { transactions: transactions, incomplete_transactions: parser.incomplete_transactions }
+  end
+
+  def extract_parse_result(parsed)
+    if parsed.is_a?(Hash)
+      [
+        Array(parsed[:transactions] || parsed["transactions"]),
+        Array(parsed[:incomplete_transactions] || parsed["incomplete_transactions"])
+      ]
+    else
+      [ Array(parsed), [] ]
+    end
   end
 
   def create_transaction_without_gemini(workspace, tx_data, parsing_session)
@@ -134,6 +155,51 @@ class FileParsingJob < ApplicationJob
     meta["source_institution_raw"] = raw_institution if raw_institution
     meta["parser_confidence"] = tx_data[:confidence].to_f if tx_data[:confidence].present?
     meta
+  end
+
+  def record_incomplete_parse_note(parsing_session, incomplete_transactions)
+    note = build_incomplete_parse_note(incomplete_transactions)
+    existing = parsing_session.notes.to_s.strip.presence
+    parsing_session.update!(notes: [ existing, note ].compact.join("\n\n"))
+  end
+
+  def build_incomplete_parse_note(incomplete_transactions)
+    lines = incomplete_transactions.first(5).each_with_index.map do |tx, index|
+      "#{index + 1}. #{missing_field_label(tx)} - #{incomplete_transaction_label(tx)}"
+    end
+    if incomplete_transactions.size > lines.size
+      lines << "... 외 #{incomplete_transactions.size - lines.size}건"
+    end
+
+    note = <<~TEXT.strip
+      자동 반영 제외 #{incomplete_transactions.size}건: 날짜, 가맹점, 금액 중 필수 정보가 부족해 결제 내역으로 만들지 않았습니다.
+      #{lines.join("\n")}
+    TEXT
+
+    ParsingSession.incomplete_parse_note_block(note)
+  end
+
+  def missing_field_label(tx)
+    labels = {
+      "date" => "날짜",
+      "merchant" => "가맹점",
+      "amount" => "금액"
+    }
+    missing = Array(tx[:missing_fields] || tx["missing_fields"]).map { |field| labels.fetch(field.to_s, field.to_s) }
+    "누락: #{missing.presence&.join(', ') || '필수 정보'}"
+  end
+
+  def incomplete_transaction_label(tx)
+    parts = []
+    parts << (tx[:date]&.strftime("%Y.%m.%d") || tx["date"].presence)
+    parts << (tx[:merchant].presence || tx["merchant"].presence || "가맹점 없음")
+    amount = tx[:amount] || tx["amount"]
+    parts << (amount.present? ? "#{format_amount(amount)}원" : "금액 없음")
+    parts.compact.join(" / ")
+  end
+
+  def format_amount(amount)
+    amount.to_i.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
   end
 
   def match_category_without_gemini(workspace, merchant, amount: nil)

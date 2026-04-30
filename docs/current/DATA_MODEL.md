@@ -66,13 +66,15 @@ User ──< WorkspaceMembership >── Workspace
         │
         │── api write ────────────────────► committed (즉시)
         │
-        │── parsing job (text/image) ────► pending_review
+        │── parsing job (text/image) ────► 현재: pending_review
                                               │
                                               ├──► committed   (review.commit, ParsingSession.commit_all!)
                                               │
                                               ├──► rolled_back (review.rollback 또는 keep_original 결정)
                                               │
                                               └──► (discard) destroy
+
+P1 target ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): complete parsed rows는 parsing job/finalizer에서 즉시 `committed`가 되고, 날짜/가맹점/금액 누락 또는 ambiguous duplicate 같은 예외만 별도 repair record로 저장된다. 이 repair model은 아직 스키마에 없으며 `INP-1B.3`에서 추가한다.
 ```
 
 추가 축:
@@ -98,6 +100,8 @@ User ──< WorkspaceMembership >── Workspace
 
 ## 검토/중복 상태 머신
 
+현재 코드 기준:
+
 `ParsingSession`:
 - `status` ∈ {`pending`, `processing`, `completed`, `failed`}
 - `review_status` ∈ {`pending_review`, `committed`, `rolled_back`, `discarded`}
@@ -109,6 +113,8 @@ User ──< WorkspaceMembership >── Workspace
 - `can_discard?` = `completed? && review_pending?`
 
 `DuplicateConfirmation.status` ∈ {`pending`, `keep_both`, `keep_original`, `keep_new`}.
+
+P1 target에서는 `review_status`가 사용자-facing gate가 아니며, `ParsingSession`은 import batch 감사·통계·undo/recovery 컨테이너로 남는다. 중복은 commit 시점 차단 대신 import finalizer/repair queue 정책으로 처리된다.
 
 ## 인덱스 / 유니크 제약 (참고)
 

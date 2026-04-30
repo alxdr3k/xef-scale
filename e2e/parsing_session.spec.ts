@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdmin } from './helpers';
+import { loginAsAdmin, navigateToParsingSessions, setAiConsent } from './helpers';
 
 // Parsing sessions page = "결제 추가" (/workspaces/:id/parsing_sessions)
 // Two input methods:
@@ -11,10 +11,12 @@ import { loginAsAdmin } from './helpers';
 // Bulk select toolbar for discarding sessions
 
 test.describe('Parsing sessions (결제 추가 페이지)', () => {
+  test.describe.configure({ mode: 'serial' });
+
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('/workspaces/1/parsing_sessions');
-    await page.waitForLoadState('networkidle');
+    await setAiConsent(page, true);
+    await navigateToParsingSessions(page);
   });
 
   // --- Page structure ---
@@ -42,16 +44,20 @@ test.describe('Parsing sessions (결제 추가 페이지)', () => {
 
   // --- AI consent banner ---
 
-  test('AI 동의 배너는 조건부로만 표시된다 (구조 확인)', async ({ page }) => {
-    // The banner may or may not be shown depending on workspace consent state.
-    // We verify its conditional structure by checking the page doesn't crash.
-    const aiConsentBanner = page.locator('text=외부 AI 사용 안내');
-    const isVisible = await aiConsentBanner.isVisible().catch(() => false);
-    // If visible, verify the settings link is present
-    if (isVisible) {
-      await expect(page.locator('a:has-text("워크스페이스 설정에서 동의 또는 비활성화")')).toBeVisible();
-    }
-    // Either way, page must have the heading
+  test('AI 동의 전에는 입력 패널 대신 동의 안내만 표시된다', async ({ page }) => {
+    await setAiConsent(page, false);
+    await navigateToParsingSessions(page);
+
+    await expect(page.locator('text=외부 AI 사용 안내')).toBeVisible();
+    await expect(page.locator('a:has-text("워크스페이스 설정에서 동의 또는 비활성화")')).toBeVisible();
+    await expect(page.locator('textarea#text')).toHaveCount(0);
+    await expect(page.locator('input[type="file"]')).toHaveCount(0);
+    await expect(page.locator('[data-onboarding-target="overlay"]')).toHaveCount(0);
+    await expect(page.locator('h2:has-text("입력 기록")')).toBeVisible();
+  });
+
+  test('AI 동의 후에는 동의 안내가 숨겨진다', async ({ page }) => {
+    await expect(page.locator('text=외부 AI 사용 안내')).toHaveCount(0);
     await expect(page.getByRole('heading', { name: '결제 추가' })).toBeVisible();
   });
 
@@ -100,6 +106,15 @@ test.describe('Parsing sessions (결제 추가 페이지)', () => {
       await expect(thead.locator('th:has-text("결과")')).toBeVisible();
       await expect(thead.locator('th:has-text("시간")')).toBeVisible();
     }
+  });
+
+  test('좁은 화면에서는 입력 기록을 카드 레이아웃으로 표시한다', async ({ page }) => {
+    await page.setViewportSize({ width: 640, height: 900 });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('[data-testid="parsing-session-cards"]')).toBeVisible();
+    await expect(page.locator('[data-testid="parsing-session-table"]')).toBeHidden();
   });
 
   test('입력 기록 없을 때 빈 상태 메시지가 표시된다', async ({ page }) => {

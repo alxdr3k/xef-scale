@@ -107,6 +107,86 @@ class RecurringPaymentDetectorTest < ActiveSupport::TestCase
     assert_not_includes merchants, "계절 쇼핑몰"
   end
 
+  test "does not include stale historic recurring merchants" do
+    [ Date.new(2025, 9, 10), Date.new(2025, 10, 10) ].each do |date|
+      Transaction.create!(
+        workspace: @workspace,
+        merchant: "끊긴 구독",
+        amount: 19_000,
+        date: date,
+        description: "과거 반복",
+        status: "committed",
+        deleted: false
+      )
+    end
+
+    detector = RecurringPaymentDetector.new(@workspace, as_of: Date.new(2026, 4, 30))
+    results = detector.detect
+
+    merchants = results.map { |r| r[:merchant] }
+    assert_not_includes merchants, "끊긴 구독"
+  end
+
+  test "does not revive a stale streak with one isolated recent transaction" do
+    [ Date.new(2025, 1, 10), Date.new(2025, 2, 10), Date.new(2026, 4, 10) ].each do |date|
+      Transaction.create!(
+        workspace: @workspace,
+        merchant: "다시 산 서비스",
+        amount: 12_000,
+        date: date,
+        description: "과거 반복 후 단발",
+        status: "committed",
+        deleted: false
+      )
+    end
+
+    detector = RecurringPaymentDetector.new(@workspace, as_of: Date.new(2026, 4, 30))
+    results = detector.detect
+
+    merchants = results.map { |r| r[:merchant] }
+    assert_not_includes merchants, "다시 산 서비스"
+  end
+
+  test "keeps recently active recurring merchants after one skipped month" do
+    [ Date.new(2026, 1, 8), Date.new(2026, 2, 8), Date.new(2026, 4, 8) ].each do |date|
+      Transaction.create!(
+        workspace: @workspace,
+        merchant: "건너뛴 구독",
+        amount: 8_900,
+        date: date,
+        description: "월 구독",
+        status: "committed",
+        deleted: false
+      )
+    end
+
+    detector = RecurringPaymentDetector.new(@workspace, as_of: Date.new(2026, 4, 30))
+    results = detector.detect
+
+    merchants = results.map { |r| r[:merchant] }
+    assert_includes merchants, "건너뛴 구독"
+  end
+
+  test "does not allow multiple skipped months across the tolerant streak" do
+    [ Date.new(2026, 1, 8), Date.new(2026, 2, 8), Date.new(2026, 4, 8), Date.new(2026, 6, 8) ].each do |date|
+      Transaction.create!(
+        workspace: @workspace,
+        merchant: "두 번 건너뛴 구독",
+        amount: 8_900,
+        date: date,
+        description: "격월에 가까운 구독",
+        status: "committed",
+        deleted: false
+      )
+    end
+
+    detector = RecurringPaymentDetector.new(@workspace, as_of: Date.new(2026, 6, 30))
+    results = detector.detect
+
+    merchants = results.map { |r| r[:merchant] }
+    assert_not_includes merchants, "두 번 건너뛴 구독"
+  end
+
   test "does not include noisy repeated merchants without amount or day consistency" do
     [
       [ Date.new(2026, 1, 1), 5_000 ],

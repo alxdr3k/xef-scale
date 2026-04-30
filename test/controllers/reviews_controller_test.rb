@@ -312,6 +312,39 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "금융기관 미확인"
   end
 
+  test "show does not render incomplete parse banner for ordinary file upload notes" do
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review",
+      notes: "사용자가 남긴 업로드 메모"
+    )
+
+    get review_workspace_parsing_session_path(@workspace, session)
+
+    assert_response :success
+    assert_select "p", text: "자동 반영되지 않은 항목이 있습니다", count: 0
+    assert_not_includes response.body, "사용자가 남긴 업로드 메모"
+  end
+
+  test "show renders incomplete parse banner only from parser note block" do
+    note = "자동 반영 제외 1건\n1. 누락: 날짜 - 네이버페이 / 12,000원"
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review",
+      notes: "사용자 메모\n\n#{ParsingSession.incomplete_parse_note_block(note)}"
+    )
+
+    get review_workspace_parsing_session_path(@workspace, session)
+
+    assert_response :success
+    assert_select "p", text: "자동 반영되지 않은 항목이 있습니다", count: 1
+    assert_includes response.body, "네이버페이"
+    assert_not_includes response.body, ParsingSession::INCOMPLETE_PARSE_NOTE_START_MARKER
+    assert_not_includes response.body, "사용자 메모"
+  end
+
   test "bulk_resolve_duplicates is refused on finalized sessions" do
     dc = @parsing_session.duplicate_confirmations.create!(
       original_transaction: transactions(:food_transaction),

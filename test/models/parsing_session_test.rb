@@ -165,6 +165,38 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert session.can_commit?
   end
 
+  test "plain file upload notes are not treated as incomplete parse notes" do
+    session = parsing_sessions(:completed_session)
+    session.update!(source_type: "file_upload", notes: "사용자 메모")
+
+    assert_not session.incomplete_parse_note?
+    assert_nil session.incomplete_parse_note_text
+    assert_equal "사용자 메모", session.user_visible_notes
+  end
+
+  test "incomplete parse note block is extracted separately from user notes" do
+    session = parsing_sessions(:completed_session)
+    note = "자동 반영 제외 1건\n1. 누락: 날짜 - 네이버페이 / 12,000원"
+    block = ParsingSession.incomplete_parse_note_block(note)
+    session.update!(source_type: "file_upload", notes: "사용자 메모\n\n#{block}")
+
+    assert session.incomplete_parse_note?
+    assert_equal note, session.incomplete_parse_note_text
+    assert_equal "사용자 메모", session.user_visible_notes
+    assert_equal "새 메모\n\n#{block}", session.notes_with_user_visible_text("새 메모")
+  end
+
+  test "failed file upload exposes parser note when no review screen is available" do
+    session = parsing_sessions(:failed_session)
+    note = "자동 반영 제외 1건\n1. 누락: 날짜 - 네이버페이 / 12,000원"
+    block = ParsingSession.incomplete_parse_note_block(note)
+    session.update!(source_type: "file_upload", notes: block)
+
+    assert session.incomplete_parse_note?
+    assert_equal note, session.user_visible_notes
+    assert_equal block, session.notes_with_user_visible_text(note)
+  end
+
   test "commit_all! is blocked while duplicates remain unresolved" do
     session = parsing_sessions(:completed_session)
     session.update!(review_status: "pending_review")

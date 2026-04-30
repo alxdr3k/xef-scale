@@ -152,7 +152,7 @@ class ParsingSessionsController < ApplicationController
       return
     end
 
-    if @parsing_session.update(notes: value)
+    if @parsing_session.update(notes: @parsing_session.notes_with_user_visible_text(value))
       respond_to do |format|
         format.turbo_stream
       end

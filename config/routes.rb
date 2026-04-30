@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   if Rails.env.development? || Rails.env.test?
     get "test_login", to: "test_sessions#create"
   end
+  post "test_ai_consent", to: "test_sessions#ai_consent" if Rails.env.test?
 
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check

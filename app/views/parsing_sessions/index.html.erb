@@ -1,8 +1,10 @@
-<div class="max-w-4xl mx-auto" data-controller="bulk-select note-panel onboarding" data-onboarding-page-value="upload" data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick">
+<% ai_consent_required = @workspace.ai_consent_required? %>
+
+<div class="max-w-4xl mx-auto" data-controller="bulk-select note-panel<%= ' onboarding' unless ai_consent_required %>" data-onboarding-page-value="upload" data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick">
   <h1 class="text-2xl font-bold text-gray-900 mb-2">결제 추가</h1>
   <p class="text-gray-600 mb-6">금융 문자를 붙여넣거나 명세서 스크린샷을 올려 결제를 등록하세요.</p>
 
-  <% if @workspace.ai_consent_required? %>
+  <% if ai_consent_required %>
     <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-900">
       <p class="font-medium mb-1">외부 AI 사용 안내</p>
       <p>붙여넣는 SMS 본문과 업로드한 명세서 이미지는 외부 AI(Google Gemini)로 전송되어 결제로 변환됩니다.</p>
@@ -13,72 +15,74 @@
     </div>
   <% end %>
 
-  <!-- Onboarding Overlay -->
-  <div data-onboarding-target="overlay" class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
-    <div class="flex justify-between items-start">
-      <div>
-        <p class="text-sm font-medium text-indigo-900">처음이신가요?</p>
-        <p class="text-sm text-indigo-700 mt-1">은행이나 카드사에서 받은 문자 메시지를 아래에 붙여넣으면 AI가 자동으로 결제를 인식합니다.</p>
-        <p class="text-xs text-indigo-500 mt-1">여러 문자를 한 번에 붙여넣을 수 있어요.</p>
+  <% unless ai_consent_required %>
+    <!-- Onboarding Overlay -->
+    <div data-onboarding-target="overlay" class="hidden bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-6">
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-sm font-medium text-indigo-900">처음이신가요?</p>
+          <p class="text-sm text-indigo-700 mt-1">은행이나 카드사에서 받은 문자 메시지를 아래에 붙여넣으면 AI가 자동으로 결제를 인식합니다.</p>
+          <p class="text-xs text-indigo-500 mt-1">여러 문자를 한 번에 붙여넣을 수 있어요.</p>
+        </div>
+        <button data-action="click->onboarding#dismiss" class="text-indigo-400 hover:text-indigo-600 ml-4 flex-shrink-0">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
       </div>
-      <button data-action="click->onboarding#dismiss" class="text-indigo-400 hover:text-indigo-600 ml-4 flex-shrink-0">
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-      </button>
     </div>
-  </div>
 
-  <!-- Input Methods: Stacked Cards -->
-  <div class="space-y-4 mb-8">
-    <!-- Card 1: 문자 붙여넣기 (활성) -->
-    <div class="bg-white rounded-lg shadow">
-      <div class="p-6">
-        <%= form_with url: text_parse_workspace_parsing_sessions_path(@workspace), method: :post, local: true, class: 'space-y-4' do %>
-          <div>
+    <!-- Input Methods: Stacked Cards -->
+    <div class="space-y-4 mb-8">
+      <!-- Card 1: 문자 붙여넣기 (활성) -->
+      <div class="bg-white rounded-lg shadow">
+        <div class="p-6">
+          <%= form_with url: text_parse_workspace_parsing_sessions_path(@workspace), method: :post, local: true, class: 'space-y-4' do %>
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                </svg>
+                <h3 class="text-sm font-medium text-gray-900">문자 붙여넣기</h3>
+              </div>
+              <textarea name="text" id="text" rows="5"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        placeholder="[Web발신]&#10;신한체크 승인 홍*동&#10;50,000원 일시불&#10;03/15 14:30 스타벅스강남점&#10;&#10;여러 문자를 한번에 붙여넣을 수 있습니다."></textarea>
+            </div>
+            <div class="text-sm text-gray-500">
+              카드 승인 문자, 은행 출금 알림 등을 붙여넣으세요. 여러 건을 한번에 붙여넣어도 됩니다.
+            </div>
+            <div class="flex justify-end">
+              <%= submit_tag 'AI 파싱', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Card 2: 스크린샷 업로드 -->
+      <div class="bg-white rounded-lg shadow">
+        <div class="p-6">
+          <%= form_with url: workspace_parsing_sessions_path(@workspace), method: :post, multipart: true, local: true, class: 'space-y-4' do |f| %>
             <div class="flex items-center gap-2 mb-2">
               <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 0 1 1.037-.443 48.282 48.282 0 0 0 5.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
               </svg>
-              <h3 class="text-sm font-medium text-gray-900">문자 붙여넣기</h3>
+              <h3 class="text-sm font-medium text-gray-900">스크린샷 업로드</h3>
             </div>
-            <textarea name="text" id="text" rows="5"
-                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
-                      placeholder="[Web발신]&#10;신한체크 승인 홍*동&#10;50,000원 일시불&#10;03/15 14:30 스타벅스강남점&#10;&#10;여러 문자를 한번에 붙여넣을 수 있습니다."></textarea>
-          </div>
-          <div class="text-sm text-gray-500">
-            카드 승인 문자, 은행 출금 알림 등을 붙여넣으세요. 여러 건을 한번에 붙여넣어도 됩니다.
-          </div>
-          <div class="flex justify-end">
-            <%= submit_tag 'AI 파싱', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
-          </div>
-        <% end %>
+            <input type="hidden" name="institution_identifier" value="shinhan_card">
+            <%= f.file_field :files, multiple: true, accept: "image/jpeg,image/png,image/webp,image/heic",
+                  class: 'block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100' %>
+            <div class="text-sm text-gray-500">
+              신한카드 이용대금 명세서 스크린샷(JPG, PNG, WEBP, HEIC)을 올리면 AI가 결제를 인식합니다.
+              확정 전까지 결제 내역에는 반영되지 않습니다.
+            </div>
+            <div class="flex justify-end">
+              <%= submit_tag '스크린샷 업로드', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
+            </div>
+          <% end %>
+        </div>
       </div>
     </div>
-
-    <!-- Card 2: 스크린샷 업로드 -->
-    <div class="bg-white rounded-lg shadow">
-      <div class="p-6">
-        <%= form_with url: workspace_parsing_sessions_path(@workspace), method: :post, multipart: true, local: true, class: 'space-y-4' do |f| %>
-          <div class="flex items-center gap-2 mb-2">
-            <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-            </svg>
-            <h3 class="text-sm font-medium text-gray-900">스크린샷 업로드</h3>
-          </div>
-          <input type="hidden" name="institution_identifier" value="shinhan_card">
-          <%= f.file_field :files, multiple: true, accept: "image/jpeg,image/png,image/webp,image/heic",
-                class: 'block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100' %>
-          <div class="text-sm text-gray-500">
-            신한카드 이용대금 명세서 스크린샷(JPG, PNG, WEBP, HEIC)을 올리면 AI가 결제를 인식합니다.
-            확정 전까지 결제 내역에는 반영되지 않습니다.
-          </div>
-          <div class="flex justify-end">
-            <%= submit_tag '스크린샷 업로드', class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  </div>
+  <% end %>
 
   <!-- 입력 기록 -->
   <div class="bg-white rounded-lg shadow">
@@ -132,7 +136,7 @@
     </div>
 
     <!-- Mobile: Card Layout -->
-    <div class="sm:hidden divide-y divide-gray-200">
+    <div class="lg:hidden divide-y divide-gray-200" data-testid="parsing-session-cards">
       <%# Pending files (mobile) %>
       <% @pending_files.each do |processed_file| %>
         <div id="pending_file_card_<%= processed_file.id %>" class="px-4 py-3 bg-blue-50">
@@ -163,16 +167,16 @@
     </div>
 
     <!-- Desktop: Table Layout -->
-    <div class="hidden sm:block overflow-x-auto">
-      <table class="w-full table-fixed divide-y divide-gray-200">
+    <div class="hidden lg:block overflow-x-auto" data-testid="parsing-session-table">
+      <table class="w-full min-w-[56rem] table-fixed divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
             <th class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-12">#</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">입력 내용</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">상태</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-44">결과</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">시간</th>
-            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24"></th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">시간</th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-28"></th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">

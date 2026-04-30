@@ -21,6 +21,13 @@
     </div>
   </div>
 
+  <% if @parsing_session.incomplete_parse_note? %>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-900">
+      <p class="font-medium mb-2">자동 반영되지 않은 항목이 있습니다</p>
+      <p class="whitespace-pre-line"><%= @parsing_session.incomplete_parse_note_text %></p>
+    </div>
+  <% end %>
+
   <!-- Summary Cards -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
     <div class="bg-white rounded-lg shadow p-4">
