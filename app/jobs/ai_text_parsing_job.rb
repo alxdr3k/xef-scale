@@ -103,10 +103,20 @@ class AiTextParsingJob < ApplicationJob
   end
 
   def create_success_side_effects(parsing_session, workspace, committed_transactions)
+    create_budget_alerts(workspace, committed_transactions)
+    create_completion_notifications_safely(parsing_session)
+  end
+
+  def create_budget_alerts(workspace, committed_transactions)
     BudgetAlertService.create_for_transactions!(workspace, committed_transactions)
+  rescue StandardError => e
+    Rails.logger.error "[AiTextParsingJob] Budget alert side effect failed: #{e.message}"
+  end
+
+  def create_completion_notifications_safely(parsing_session)
     create_completion_notifications(parsing_session)
   rescue StandardError => e
-    Rails.logger.error "[AiTextParsingJob] Post-commit side effects failed: #{e.message}"
+    Rails.logger.error "[AiTextParsingJob] Completion notification side effect failed: #{e.message}"
   end
 
   def create_failure_notifications(parsing_session)

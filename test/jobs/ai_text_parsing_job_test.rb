@@ -235,7 +235,7 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     assert_equal "/workspaces/#{@workspace.id}/transactions", notification.action_url
   end
 
-  test "perform keeps auto committed import successful when post commit side effects fail" do
+  test "perform still sends completion notification when budget alert side effect fails" do
     fake_result = {
       transactions: [
         {
@@ -273,5 +273,8 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     assert @parsing_session.reload.completed?
     assert @parsing_session.review_committed?
     assert @workspace.transactions.order(:created_at).last.committed?
+
+    notification = Notification.where(notifiable: @parsing_session, notification_type: "parsing_complete").last
+    assert_includes notification.message, "장부에 등록되었습니다"
   end
 end
