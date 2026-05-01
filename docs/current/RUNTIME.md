@@ -111,7 +111,7 @@ Duplicate 후보로 남은 row는 아직 §3.3 legacy review를 사용한다. `I
      - `review_status: "committed"`로 갱신.
    - 예산 알림 검사 (`BudgetAlertService.create_for_transactions!`): 월 예산이 있고 해당 월 지출이 80% 이상이면 `budget_warning`, 100% 이상이면 `budget_exceeded`.
 5. `ReviewsController#rollback` — 이미 커밋된 세션을 되돌림. `keep_new`로 soft delete된 원본은 `restore!`로 복구.
-6. `ReviewsController#discard` — 미커밋 세션을 폐기. `pending_review` 거래를 모두 destroy.
+6. `ReviewsController#discard` — pending import 세션을 폐기. 같은 세션에서 이미 auto-committed 된 거래는 `rolled_back`으로 되돌리고, 남은 `pending_review` 거래는 destroy한다.
 
 ## 4. API read/write 경로
 

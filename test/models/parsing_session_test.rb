@@ -381,6 +381,35 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert original.committed?
   end
 
+  test "discard_all! rolls back auto-committed rows from pending import" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    auto_committed = workspace.transactions.create!(
+      date: Date.new(2027, 6, 1),
+      merchant: "자동 반영 row",
+      amount: 10_000,
+      status: "committed",
+      parsing_session: session
+    )
+    pending = workspace.transactions.create!(
+      date: Date.new(2027, 6, 2),
+      merchant: "검토 필요 row",
+      amount: 20_000,
+      status: "pending_review",
+      parsing_session: session
+    )
+
+    assert session.discard_all!
+
+    assert auto_committed.reload.rolled_back?
+    assert_not Transaction.exists?(pending.id)
+    assert session.reload.review_discarded?
+  end
+
   test "commit_all! with keep_new soft-deletes original and commits new" do
     session, original, new_tx = build_session_with_duplicate(decision: "keep_new")
 

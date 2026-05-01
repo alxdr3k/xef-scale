@@ -1,6 +1,8 @@
 require "test_helper"
 
 class DashboardsControllerTest < ActionDispatch::IntegrationTest
+  include ActiveSupport::Testing::TimeHelpers
+
   setup do
     @user = users(:admin)
     @workspace = workspaces(:main_workspace)
@@ -105,21 +107,23 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "recurring dashboard renders detected monthly patterns" do
-    [ Date.new(2026, 1, 12), Date.new(2026, 2, 12) ].each do |date|
-      @workspace.transactions.create!(
-        date: date,
-        amount: 17_000,
-        merchant: "테스트 구독",
-        status: "committed"
-      )
+    travel_to Date.new(2026, 4, 30) do
+      [ Date.new(2026, 1, 12), Date.new(2026, 2, 12) ].each do |date|
+        @workspace.transactions.create!(
+          date: date,
+          amount: 17_000,
+          merchant: "테스트 구독",
+          status: "committed"
+        )
+      end
+
+      get recurring_dashboard_path
+
+      assert_response :success
+      assert_select "h1", text: "반복 결제"
+      assert_includes response.body, "테스트 구독"
+      assert_includes response.body, "2개월 연속"
     end
-
-    get recurring_dashboard_path
-
-    assert_response :success
-    assert_select "h1", text: "반복 결제"
-    assert_includes response.body, "테스트 구독"
-    assert_includes response.body, "2개월 연속"
   end
 
   test "dashboard ignores out-of-range month param instead of 500ing" do

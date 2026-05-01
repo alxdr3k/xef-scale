@@ -74,7 +74,7 @@ User ──< WorkspaceMembership >── Workspace
                                               │
                                               ├──► rolled_back (review.rollback 또는 keep_original 결정)
                                               │
-                                              └──► (discard) destroy
+                                              └──► (discard) rolled_back for auto-posted rows, destroy for remaining pending rows
 
 Current P1 transition ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): complete parsed rows are staged as `pending_review` during duplicate detection and then `ParsingSession#auto_commit_ready_transactions!` immediately promotes rows with date/merchant/amount present, no pending duplicate confirmation, and no same-session exact duplicate group to `committed`. The session only flips to `review_status: committed` when no import exceptions remain. Duplicate candidates still use the legacy review bridge until `INP-1B.2`; date/merchant/amount-missing rows still use the legacy bridge or `ParsingSession#notes` until `INP-1B.3` adds a durable repair model.
 ```

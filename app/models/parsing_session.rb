@@ -203,8 +203,7 @@ class ParsingSession < ApplicationRecord
     return false unless can_discard?
 
     ActiveRecord::Base.transaction do
-      # Originals are not touched until commit_all!, so discarding only needs
-      # to throw away the imported pending_review rows.
+      transactions.committed.find_each(&:rollback!)
       transactions.pending_review.destroy_all
       update!(review_status: "discarded")
     end
