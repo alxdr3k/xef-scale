@@ -32,7 +32,7 @@ class RecurringPaymentDetectorTest < ActiveSupport::TestCase
   end
 
   test "detects recurring merchants" do
-    detector = RecurringPaymentDetector.new(@workspace)
+    detector = RecurringPaymentDetector.new(@workspace, as_of: Date.new(2026, 4, 30))
     results = detector.detect
 
     merchants = results.map { |r| r[:merchant] }
@@ -41,7 +41,7 @@ class RecurringPaymentDetectorTest < ActiveSupport::TestCase
   end
 
   test "returns correct fields for each result" do
-    detector = RecurringPaymentDetector.new(@workspace)
+    detector = RecurringPaymentDetector.new(@workspace, as_of: Date.new(2026, 4, 30))
     results = detector.detect
 
     netflix = results.find { |r| r[:merchant] == "넷플릭스" }
@@ -254,7 +254,7 @@ class RecurringPaymentDetectorTest < ActiveSupport::TestCase
       deleted: false
     )
 
-    detector = RecurringPaymentDetector.new(@workspace)
+    detector = RecurringPaymentDetector.new(@workspace, as_of: Date.new(2026, 4, 30))
     result = detector.detect.find { |r| r[:merchant] == "카테고리 변경 구독" }
 
     assert_equal "식비", result[:category]

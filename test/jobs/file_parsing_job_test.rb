@@ -203,7 +203,8 @@ class FileParsingJobTest < ActiveJob::TestCase
     processed_file = @workspace.processed_files.create!(
       filename: "partial.png",
       original_filename: "partial.png",
-      status: "pending"
+      status: "pending",
+      uploaded_by: users(:admin)
     )
     parsed = {
       transactions: [
@@ -225,11 +226,19 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_equal 2, parsing_session.total_count
     assert_equal 1, parsing_session.success_count
     assert_equal 1, parsing_session.error_count
+    tx = parsing_session.transactions.first
+    assert tx.committed?
+    assert_equal users(:admin), tx.committed_by
+    assert parsing_session.review_pending?
     assert parsing_session.incomplete_parse_note?
     assert_match "자동 반영 제외 1건", parsing_session.notes
     assert_match "네이버페이", parsing_session.notes
     assert_match "누락: 날짜", parsing_session.notes
     assert_match "자동 반영 제외 1건", parsing_session.incomplete_parse_note_text
+
+    notification = Notification.where(notifiable: parsing_session, notification_type: "parsing_complete").last
+    assert_includes notification.message, "검토해주세요"
+    assert_equal "/workspaces/#{@workspace.id}/parsing_sessions/#{parsing_session.id}/review", notification.action_url
   end
 
   test "perform fails with counts and notes when every parsed row is incomplete" do

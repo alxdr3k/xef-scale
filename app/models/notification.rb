@@ -34,13 +34,24 @@ class Notification < ApplicationRecord
   end
 
   def self.create_parsing_complete!(parsing_session, user)
+    action_url = if parsing_session.review_pending?
+      "/workspaces/#{parsing_session.workspace_id}/parsing_sessions/#{parsing_session.id}/review"
+    else
+      "/workspaces/#{parsing_session.workspace_id}/transactions"
+    end
+    message = if parsing_session.review_pending?
+      "#{parsing_session.processed_file&.filename || '텍스트 붙여넣기'}에서 #{parsing_session.success_count}건의 거래가 발견되었습니다. 검토해주세요."
+    else
+      "#{parsing_session.processed_file&.filename || '텍스트 붙여넣기'}에서 #{parsing_session.success_count}건의 거래가 장부에 등록되었습니다."
+    end
+
     create!(
       user: user,
       workspace: parsing_session.workspace,
       notification_type: "parsing_complete",
       title: "파일 파싱 완료",
-      message: "#{parsing_session.processed_file&.filename || '텍스트 붙여넣기'}에서 #{parsing_session.success_count}건의 거래가 발견되었습니다. 검토해주세요.",
-      action_url: "/workspaces/#{parsing_session.workspace_id}/parsing_sessions/#{parsing_session.id}/review",
+      message: message,
+      action_url: action_url,
       notifiable: parsing_session
     )
   end

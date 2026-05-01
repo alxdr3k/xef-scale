@@ -11,10 +11,10 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 ## Current Roadmap Position
 
 - current milestone: `P1-M1` in progress — mobile web self-serve input observation and UX hardening.
-- active track / phase / slice: `INP` / `INP-1B` / next recommended slices `INP-1B.1` and `INP-1B.3` for the no-review import transition; ad-hoc feedback is recorded as short leaf slices when it is concrete and locally decidable.
+- active track / phase / slice: `INP` / `INP-1B` / next recommended slices `INP-1B.2` and `INP-1B.3` for duplicate repair policy and durable incomplete-row repair records; ad-hoc feedback is recorded as short leaf slices when it is concrete and locally decidable.
 - last accepted gates: `INS-1A.3` monthly dashboard hierarchy audit; `UX-1A.7`, `UX-1A.8`, `INS-1A.5`, `INP-1A.6`, and `REQ-1B.1` feedback/contract updates are covered by controller/service/job/e2e checks or product-contract doc review.
 - next gate: `ROAD-001` — observed non-engineer mobile web input → auto-posted ledger → exception repair loop, with blockers recorded as slices.
-- planned direction: [ADR-0001](../decisions/ADR-0001-auto-post-imports.md) replaces mandatory import review with auto-post + repair-only exceptions. Current code still uses the review flow until `INP-1B`/`UX-1B` slices land.
+- planned direction: [ADR-0001](../decisions/ADR-0001-auto-post-imports.md) replaces mandatory import review with auto-post + repair-only exceptions. Current code now auto-commits non-duplicate complete rows; duplicate candidates and incomplete image rows still use the legacy review/notes bridge until `INP-1B.2`/`INP-1B.3` land.
 - canonical ledger: [04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md).
 
 ## 현재 입력 경로 (전체 입력 표면)
@@ -22,8 +22,8 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 네 가지 경로뿐입니다.
 
 1. **직접 입력 (manual)** — 웹 폼에서 `TransactionsController#new/#create`가 즉시 `committed` 상태의 `Transaction`을 만든다. 파싱 세션·검토 흐름을 거치지 않는다.
-2. **금융 문자 붙여넣기 (text_paste)** — 현재 코드: `ParsingSessionsController#text_parse` → `AiTextParsingJob` → `AiTextParser` (Gemini Flash). 결과는 `pending_review` 상태의 `Transaction`. P1 target: complete row는 즉시 `committed`.
-3. **명세서 스크린샷 업로드 (image_upload)** — 현재 코드: `ParsingSessionsController#create` → `FileParsingJob` → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision). 결과는 `pending_review` 상태의 `Transaction`; incomplete row는 notes에 기록. P1 target: complete row는 즉시 `committed`, incomplete row는 repair queue.
+2. **금융 문자 붙여넣기 (text_paste)** — 현재 코드: `ParsingSessionsController#text_parse` → `AiTextParsingJob` → `AiTextParser` (Gemini Flash). complete row는 먼저 `pending_review`로 정규화한 뒤 duplicate 후보가 없으면 같은 잡에서 즉시 `committed`로 전환한다. Duplicate 후보는 아직 legacy review에 남는다.
+3. **명세서 스크린샷 업로드 (image_upload)** — 현재 코드: `ParsingSessionsController#create` → `FileParsingJob` → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision). complete row는 duplicate 후보가 없으면 같은 잡에서 즉시 `committed`; incomplete row는 아직 `ParsingSession#notes`에 기록한다. P1 target: incomplete row를 repair queue로 이동.
 4. **API write (api)** — `Api::V1::TransactionsController#create` (`POST /api/v1/transactions`)가 API 키 + `write` 스코프로 인증하고 즉시 `committed` 상태의 `Transaction`을 만든다.
 
 ## 명시적으로 스코프 밖
@@ -35,23 +35,23 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 
 ## 구현된 파이프라인
 
-### 텍스트 붙여넣기 → 현재 검토 → 커밋
+### 텍스트 붙여넣기 → 자동 커밋 / duplicate 예외
 
 1. 사용자가 `parsing_sessions/index`에서 텍스트 붙여넣기 폼에 SMS/문자 텍스트 입력 (≤ 10,000자).
 2. `ParsingSession`이 `source_type: "text_paste"`, `status: "pending"`, `review_status: "pending_review"`로 생성됨. 원문은 `notes` 컬럼에 저장.
-3. `AiTextParsingJob`이 `AiTextParser`로 Gemini Flash 호출. 응답을 `Transaction`(`source_type: "text_paste"`, `status: "pending_review"`)으로 정규화하여 저장한다. 금융기관/앱명은 `transactions.source_metadata` 안의 import hint로만 저장하며 핵심 도메인 필드로 승격하지 않는다.
+3. `AiTextParsingJob`이 `AiTextParser`로 Gemini Flash 호출. 응답을 `Transaction`(`source_type: "text_paste"`, initially `status: "pending_review"`)으로 정규화하여 저장한다. 금융기관/앱명은 `transactions.source_metadata` 안의 import hint로만 저장하며 핵심 도메인 필드로 승격하지 않는다.
 4. 각 거래에 대해 카테고리 매칭: `CategoryMapping.find_for_merchant` → `Category#matches?` (`Category.keyword`). **텍스트 경로는 Gemini 카테고리 폴백을 호출하지 않는다.**
 5. `DuplicateDetector`가 동일 워크스페이스의 기존 거래와 비교해 `DuplicateConfirmation`을 만든다.
-6. 사용자는 `reviews/show`에서 거래를 확인하고 중복을 해결한 뒤 `commit` 한다. 미해결 중복이 있으면 `ReviewsController#commit`이 거부한다.
+6. `ParsingSession#auto_commit_ready_transactions!`가 날짜/가맹점/금액이 모두 있고 duplicate 후보와 같은 세션 exact duplicate group에 속하지 않는 pending row를 즉시 `committed`로 전환하고, 해당 월 예산 알림을 `BudgetAlertService`로 발송한다. 필수값 누락, incomplete image row, 미해결 duplicate 후보가 있으면 세션은 legacy review에 남는다.
 
-### 이미지 업로드 → 현재 검토 → 커밋
+### 이미지 업로드 → 자동 커밋 / incomplete·duplicate 예외
 
 1. 사용자가 JPG/PNG/WEBP/HEIC 이미지를 업로드. `ProcessedFile`이 ActiveStorage로 저장되고 모델 레벨에서 확장자/콘텐츠 타입/매직바이트 검증을 통과해야 한다 (≤ 20MB).
 2. `FileParsingJob`이 `ImageStatementParser`(기본 `institution_identifier: "shinhan_card"`) → `GeminiVisionParserService`로 Gemini Vision 호출. 현재 프롬프트는 **신한카드 이용대금 명세서**에 맞춰져 있다.
-3. 파싱 결과는 `Transaction`(`source_type: "image_upload"`, `status: "pending_review"`)으로 저장한다. 스크린샷 경로도 `source_metadata`를 사용하지만, `institution_identifier` 같은 parser hint를 기본 UI에 노출하지 않는다.
+3. complete 파싱 결과는 `Transaction`(`source_type: "image_upload"`, initially `status: "pending_review"`)으로 저장한 뒤 duplicate 후보가 없으면 같은 잡에서 즉시 `committed`로 전환한다. 스크린샷 경로도 `source_metadata`를 사용하지만, `institution_identifier` 같은 parser hint를 기본 UI에 노출하지 않는다.
 4. 카테고리 매칭은 3단계: `CategoryMapping` → `Category#matches?` → 미분류 잔여분에 대해 `GeminiCategoryService.suggest_categories_batch`로 일괄 추천 (워크스페이스의 `ai_category_suggestions_enabled?`가 true일 때).
 5. Gemini 분류 결과는 `CategoryMapping(source: "gemini")`로 저장되어 다음 동일 가맹점에서는 1단계에서 재사용된다.
-6. 중복 감지 → `DuplicateConfirmation` → 사용자 검토 → 커밋. 흐름은 텍스트 경로와 동일.
+6. 중복 감지 → duplicate 후보 없는 row 자동 `committed`. Duplicate 후보는 legacy review에 남고, incomplete row는 durable repair model이 생기기 전까지 `ParsingSession#notes`에 내부 마커 블록으로 기록한다.
 
 ### 직접 입력
 
@@ -110,7 +110,7 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 | `WorkspaceInvitation` | 토큰 기반 초대 (`/join/:token`) |
 | `Transaction` | 거래 — `pending_review` / `committed` / `rolled_back`, `source_type` 5종, `payment_type` 3종, `source_metadata` import hint |
 | `Category` / `CategoryMapping` | 카테고리 + 학습된 매핑 (4단계 우선순위) |
-| `ParsingSession` | 현재 파싱 작업 컨테이너와 검토 상태 머신. P1 target에서는 import batch 감사·통계·undo/recovery 컨테이너로 남는다. |
+| `ParsingSession` | 현재 파싱 작업 컨테이너와 import batch 상태 머신. Non-duplicate complete row 자동 커밋을 수행하며, duplicate 후보와 향후 repair/undo 컨테이너로 남는다. |
 | `ProcessedFile` | 업로드된 이미지 파일 — 이미지 외 거부 |
 | `DuplicateConfirmation` | 중복 후보 + 결정 (`pending` / `keep_both` / `keep_original` / `keep_new`) |
 | `Notification` | 인앱 알림 (파싱 완료/실패 등) |

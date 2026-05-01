@@ -203,12 +203,26 @@ class ParsingSession < ApplicationRecord
     return false unless can_discard?
 
     ActiveRecord::Base.transaction do
-      # Originals are not touched until commit_all!, so discarding only needs
-      # to throw away the imported pending_review rows.
+      transactions.committed.find_each(&:rollback!)
       transactions.pending_review.destroy_all
       update!(review_status: "discarded")
     end
     true
+  end
+
+  def auto_commit_ready_transactions!(user: nil, has_import_exceptions: false)
+    committed_transactions = []
+
+    with_lock do
+      ready_transactions_for_auto_commit.each do |tx|
+        tx.commit!(user)
+        committed_transactions << tx
+      end
+
+      mark_auto_committed!(user) if auto_commit_complete?(has_import_exceptions: has_import_exceptions)
+    end
+
+    committed_transactions
   end
 
   def reviewable_transactions
@@ -251,6 +265,53 @@ class ParsingSession < ApplicationRecord
     return nil unless failed?
 
     incomplete_parse_note_text
+  end
+
+  def ready_transactions_for_auto_commit
+    same_session_duplicate_keys = pending_same_session_duplicate_keys
+    transactions.pending_review
+                .where(deleted: false)
+                .where.not(id: duplicate_confirmations.pending.select(:new_transaction_id))
+                .reject { |tx| same_session_duplicate_keys.include?(auto_commit_dedup_key(tx)) }
+                .select { |tx| import_required_fields_complete?(tx) }
+  end
+
+  def auto_commit_complete?(has_import_exceptions: false)
+    return false if has_import_exceptions
+
+    transactions.pending_review.where(deleted: false).none? && !has_unresolved_duplicates?
+  end
+
+  def mark_auto_committed!(user)
+    update!(
+      review_status: "committed",
+      committed_at: Time.current,
+      committed_by: user
+    )
+  end
+
+  def pending_same_session_duplicate_keys
+    transactions.pending_review
+                .where(deleted: false)
+                .group_by { |tx| auto_commit_dedup_key(tx) }
+                .select { |_key, rows| rows.size > 1 }
+                .keys
+  end
+
+  def auto_commit_dedup_key(transaction)
+    [
+      transaction.date,
+      transaction.amount,
+      transaction.merchant.to_s.strip.gsub(/\s+/, "").downcase,
+      transaction.installment_month
+    ]
+  end
+
+  def import_required_fields_complete?(transaction)
+    transaction.date.present? &&
+      transaction.merchant.to_s.strip.present? &&
+      transaction.amount.present? &&
+      transaction.amount.to_i != 0
   end
 
   # Apply deferred duplicate-resolution decisions at commit time. Keeping the

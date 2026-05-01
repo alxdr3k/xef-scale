@@ -30,7 +30,10 @@ class ReviewsController < ApplicationController
     end
 
     if @parsing_session.commit_all!(current_user)
-      check_budget_alerts
+      BudgetAlertService.create_for_transactions!(
+        @workspace,
+        @parsing_session.transactions.where(status: "committed")
+      )
       summary = @parsing_session.commit_summary
       parts = [ "#{summary[:committed]}건의 거래가 확정되었습니다." ]
       parts << "#{summary[:excluded]}건은 제외되었습니다." if summary[:excluded].positive?
@@ -276,48 +279,6 @@ class ReviewsController < ApplicationController
         redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
                     alert: "이미 종료된 세션은 수정할 수 없습니다."
       end
-    end
-  end
-
-  def check_budget_alerts
-    budget = @workspace.budget
-    return unless budget
-
-    # 이번 커밋으로 확정된 거래의 월들을 수집
-    committed_transactions = @parsing_session.transactions.where(status: "committed")
-    affected_months = committed_transactions
-      .pluck(:date)
-      .map { |d| [ d.year, d.month ] }
-      .uniq
-
-    # fallback: 커밋된 거래가 없으면 현재 월만 확인
-    affected_months = [ [ Date.current.year, Date.current.month ] ] if affected_months.empty?
-
-    affected_months.each do |year, month|
-      check_budget_alert_for_month(year, month)
-    end
-  end
-
-  def check_budget_alert_for_month(year, month)
-    budget = @workspace.budget
-    return unless budget
-
-    progress = budget.progress_for_month(year, month)
-    alert_type = if progress[:percentage] >= 100
-      "budget_exceeded"
-    elsif progress[:percentage] >= 80
-      "budget_warning"
-    end
-    return unless alert_type
-
-    @workspace.members.find_each do |member|
-      already_alerted = Notification.where(
-        workspace: @workspace, user: member, notification_type: alert_type,
-        target_year: year, target_month: month
-      ).exists?
-
-      next if already_alerted
-      Notification.create_budget_alert!(@workspace, member, alert_type, progress, year: year, month: month)
     end
   end
 

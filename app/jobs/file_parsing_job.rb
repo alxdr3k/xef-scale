@@ -82,9 +82,13 @@ class FileParsingJob < ApplicationJob
         processed_file.mark_failed!
         create_failure_notifications(parsing_session)
       else
+        committed_transactions = parsing_session.auto_commit_ready_transactions!(
+          user: user,
+          has_import_exceptions: stats[:error].positive?
+        )
         parsing_session.complete!(stats)
         processed_file.mark_completed!
-        create_completion_notifications(parsing_session)
+        create_success_side_effects(parsing_session, workspace, committed_transactions)
       end
 
     rescue => e
@@ -259,6 +263,23 @@ class FileParsingJob < ApplicationJob
   rescue StandardError => e
     Rails.logger.error "[FileParsingJob] Gemini API 오류: #{e.message}"
     0
+  end
+
+  def create_success_side_effects(parsing_session, workspace, committed_transactions)
+    create_budget_alerts(workspace, committed_transactions)
+    create_completion_notifications_safely(parsing_session)
+  end
+
+  def create_budget_alerts(workspace, committed_transactions)
+    BudgetAlertService.create_for_transactions!(workspace, committed_transactions)
+  rescue StandardError => e
+    Rails.logger.error "[FileParsingJob] Budget alert side effect failed: #{e.message}"
+  end
+
+  def create_completion_notifications_safely(parsing_session)
+    create_completion_notifications(parsing_session)
+  rescue StandardError => e
+    Rails.logger.error "[FileParsingJob] Completion notification side effect failed: #{e.message}"
   end
 
   def create_failure_notifications(parsing_session)
