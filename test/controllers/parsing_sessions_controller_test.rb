@@ -106,6 +106,52 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기"
   end
 
+  test "month scoped index includes exact duplicate only sessions by created month" do
+    target = Time.zone.local(Date.current.year, Date.current.month, 15, 12, 0, 0)
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "committed",
+      total_count: 1,
+      success_count: 0,
+      duplicate_count: 1,
+      error_count: 0,
+      created_at: target
+    )
+
+    get workspace_parsing_sessions_path(@workspace),
+        params: { year: target.year, month: target.month }
+
+    assert_response :success
+    assert_includes response.body, "##{session.id}"
+  end
+
+  test "month scoped index includes undated import issue sessions by created month" do
+    target = Time.zone.local(Date.current.year, Date.current.month, 16, 12, 0, 0)
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review",
+      created_at: target
+    )
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      date: nil,
+      merchant: "날짜 없는 누락 항목",
+      amount: 12_000,
+      missing_fields: [ "date" ]
+    )
+
+    get workspace_parsing_sessions_path(@workspace),
+        params: { year: target.year, month: target.month }
+
+    assert_response :success
+    assert_includes response.body, "수정하기"
+    assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기"
+  end
+
   test "show renders failed import issue details" do
     session = parsing_sessions(:failed_session)
     session.import_issues.create!(
