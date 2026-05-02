@@ -245,8 +245,15 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_equal "네이버페이", issue.raw_payload["merchant"]
 
     notification = Notification.where(notifiable: parsing_session, notification_type: "parsing_complete").last
-    assert_includes notification.message, "검토해주세요"
-    assert_equal "/workspaces/#{@workspace.id}/parsing_sessions/#{parsing_session.id}/review", notification.action_url
+    assert_includes notification.message, "장부에 등록되었습니다"
+    assert_equal "/workspaces/#{@workspace.id}/transactions", notification.action_url
+
+    repair_notifications = Notification.where(notifiable: parsing_session, notification_type: "import_repair_needed")
+    assert_equal 2, repair_notifications.count
+    repair_notification = repair_notifications.find_by!(user: users(:admin))
+    assert_includes repair_notification.message, "필수 정보가 부족한 항목 1건"
+    assert_equal "/workspaces/#{@workspace.id}/transactions?repair=required&import_session_id=#{parsing_session.id}",
+                 repair_notification.action_url
   end
 
   test "perform fails with counts and import issues when every parsed row is incomplete" do
@@ -277,6 +284,11 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_equal 1, parsing_session.error_count
     assert_nil parsing_session.notes
     assert_equal "마차이짬뽕 성수점", parsing_session.import_issues.first.merchant
+
+    repair_notifications = Notification.where(notifiable: parsing_session, notification_type: "import_repair_needed")
+    assert_equal 2, repair_notifications.count
+    assert_equal "/workspaces/#{@workspace.id}/transactions?repair=required&import_session_id=#{parsing_session.id}",
+                 repair_notifications.find_by!(user: users(:admin)).action_url
   end
 
   test "gemini batch categorizes image transactions and stores mapping" do

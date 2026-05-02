@@ -81,6 +81,7 @@ class FileParsingJob < ApplicationJob
         parsing_session.fail!
         processed_file.mark_failed!
         create_failure_notifications(parsing_session)
+        create_import_repair_notifications_safely(parsing_session)
       else
         committed_transactions = parsing_session.auto_commit_ready_transactions!(
           user: user,
@@ -96,7 +97,10 @@ class FileParsingJob < ApplicationJob
       Rails.logger.error e.backtrace.join("\n")
       parsing_session.fail!
       processed_file.mark_failed!
-      create_failure_notifications(parsing_session) if parsing_session
+      if parsing_session
+        create_failure_notifications(parsing_session)
+        create_import_repair_notifications_safely(parsing_session)
+      end
     ensure
       if parsing_session&.processing?
         parsing_session.fail! rescue nil
@@ -255,6 +259,7 @@ class FileParsingJob < ApplicationJob
   def create_success_side_effects(parsing_session, workspace, committed_transactions)
     create_budget_alerts(workspace, committed_transactions)
     create_completion_notifications_safely(parsing_session)
+    create_import_repair_notifications_safely(parsing_session)
   end
 
   def create_budget_alerts(workspace, committed_transactions)
@@ -267,6 +272,28 @@ class FileParsingJob < ApplicationJob
     create_completion_notifications(parsing_session)
   rescue StandardError => e
     Rails.logger.error "[FileParsingJob] Completion notification side effect failed: #{e.message}"
+  end
+
+  def create_import_repair_notifications_safely(parsing_session)
+    create_import_repair_notifications(parsing_session)
+  rescue StandardError => e
+    Rails.logger.error "[FileParsingJob] Import repair notification side effect failed: #{e.message}"
+  end
+
+  def create_import_repair_notifications(parsing_session)
+    return unless parsing_session.open_import_issues.exists?
+
+    workspace = parsing_session.workspace
+
+    if workspace.owner
+      Notification.create_import_repair_needed!(parsing_session, workspace.owner)
+    end
+
+    workspace.workspace_memberships.where(role: %w[co_owner member_write]).find_each do |membership|
+      next if membership.user_id == workspace.owner_id
+
+      Notification.create_import_repair_needed!(parsing_session, membership.user)
+    end
   end
 
   def create_failure_notifications(parsing_session)

@@ -91,13 +91,13 @@ Duplicate 후보로 남은 row는 아직 §3.3 legacy review를 사용한다. `I
    - `GeminiCategoryService.new.suggest_categories_batch(merchants, workspace.categories)` — 5모델 폴백.
    - 매칭된 카테고리는 `Transaction#update!(category:)`로 갱신, `CategoryMapping(source: "gemini", merchant_pattern: merchant, match_type: "exact", amount: nil)`을 학습.
 7. 통계 hash로 분기:
-   - `stats[:total] > 0`이고 저장 성공이 1건 이상이면 `ParsingSession#auto_commit_ready_transactions!(user: processed_file.uploaded_by)`로 duplicate 후보 없는 row를 자동 `committed` 전환하고, `parsing_session.complete!(stats)` + `processed_file.mark_completed!` 후 best-effort로 `BudgetAlertService.create_for_transactions!` + `create_completion_notifications`.
-   - `stats[:total].zero?` 또는 `stats[:success].zero?` → count를 세션에 저장한 뒤 `parsing_session.fail!` + `processed_file.mark_failed!` + `create_failure_notifications`. 이때 incomplete row가 있었다면 `ImportIssue`는 유지된다.
-   - 그 외 예외(Vision 호출/저장 등) → 잡 상단의 `rescue => e`가 `parsing_session.fail!` + `processed_file.mark_failed!` + `create_failure_notifications(parsing_session) if parsing_session`를 실행한다.
+   - `stats[:total] > 0`이고 저장 성공이 1건 이상이면 `ParsingSession#auto_commit_ready_transactions!(user: processed_file.uploaded_by)`로 duplicate 후보 없는 row를 자동 `committed` 전환하고, `parsing_session.complete!(stats)` + `processed_file.mark_completed!` 후 best-effort로 `BudgetAlertService.create_for_transactions!` + `create_completion_notifications` + `create_import_repair_notifications`를 실행한다. Open `ImportIssue`가 있으면 owner / `co_owner` / `member_write`에게 `import_repair_needed` 알림이 생성되고, 열려 있는 세션에는 warning toast가 broadcast된다.
+   - `stats[:total].zero?` 또는 `stats[:success].zero?` → count를 세션에 저장한 뒤 `parsing_session.fail!` + `processed_file.mark_failed!` + `create_failure_notifications`. 이때 incomplete row가 있었다면 `ImportIssue`는 유지되고 같은 repair 알림도 발송된다.
+   - 그 외 예외(Vision 호출/저장 등) → 잡 상단의 `rescue => e`가 `parsing_session.fail!` + `processed_file.mark_failed!` + `create_failure_notifications(parsing_session) if parsing_session`를 실행한다. 예외 전 open `ImportIssue`가 생성돼 있었다면 repair 알림도 best-effort로 발송된다.
 
 ### 3.3 Legacy review → 커밋 (duplicate 후보 / 전환기 예외)
 
-1. 사용자가 `/workspaces/:id/parsing_sessions/:id/review` 페이지를 열어 거래·중복 후보를 확인. 전환기 동안 open `ImportIssue`가 있으면 같은 화면 상단에 자동 반영되지 않은 항목 요약을 보여준다. focused repair entry point는 `UX-1B.2`/`UX-1B.3`에서 별도로 만든다.
+1. 사용자가 `/workspaces/:id/parsing_sessions/:id/review` 페이지를 열어 거래·중복 후보를 확인. 전환기 동안 open `ImportIssue`가 있으면 같은 화면 상단에 자동 반영되지 않은 항목 요약을 보여준다. Focused repair entry point는 결제 내역의 `repair=required` 모드에 있으며, inline editing/promotion은 `UX-1B.3`/`INP-1B.4`에서 완성한다.
 2. 인라인 편집/카테고리 변경/롤백/소프트 삭제는 `ReviewsController#update_transaction`, `ReviewsController#bulk_update`, 거래 컨트롤러의 인라인 액션으로 가능.
 3. 중복 결정:
    - `DuplicateConfirmationsController#update` — 단일.
@@ -144,7 +144,7 @@ Duplicate 후보로 남은 row는 아직 §3.3 legacy review를 사용한다. `I
 | Gemini 텍스트 모델 전체 실패 | `AiTextParser#parse`가 `{ transactions: [], model_used: nil }` 반환 → `AiTextParsingJob`이 0건으로 처리해 `parsing_session.fail!` + `create_failure_notifications`. 잡은 정상 종료. |
 | Gemini Vision 실패 (예외 raise) | `GeminiVisionParserService`가 개별 모델 실패를 로깅하고 모든 모델 실패 시 `AllModelsFailedError` raise → `FileParsingJob`의 `rescue => e`가 잡아 `parsing_session.fail!` + `processed_file.mark_failed!` + `create_failure_notifications(parsing_session) if parsing_session`. 잡은 정상 종료. |
 | Vision은 성공했지만 추출 거래 0건 | `FileParsingJob`이 `stats[:total].zero?` 분기로 진입 → `parsing_session.fail!` + `processed_file.mark_failed!` + `create_failure_notifications`로 owner / `co_owner` / `member_write` 멤버에게 `Notification.create_parsing_failed!` 발송. |
-| Vision은 성공했고 incomplete row만 있음 | `ImportIssue`를 저장한 뒤 `stats[:success].zero?` 분기로 진입 → 세션/파일은 failed, 실패 알림은 발송, repair record는 유지. 입력 기록은 "수정 필요" count와 상세보기 링크를 보여주고, 실패 세션 상세 화면은 open `ImportIssue` 요약을 보여준다. |
+| Vision은 성공했고 incomplete row만 있음 | `ImportIssue`를 저장한 뒤 `stats[:success].zero?` 분기로 진입 → 세션/파일은 failed, 실패 알림과 `import_repair_needed` 알림은 발송, repair record는 유지. 입력 기록은 "수정 필요" count와 상세보기 링크를 보여주고, 실패 세션 상세 화면과 결제 내역 repair filter는 open `ImportIssue` 요약을 보여준다. |
 | 이미지 외 파일 업로드 | `ProcessedFile` 모델 검증 실패. 컨트롤러는 success/failed 카운트만 표시. |
 | 매직 바이트 불일치 | 같이 거부됨. |
 | 중복 미해결 상태에서 커밋 시도 | `ReviewsController#commit`이 alert로 거부. |
@@ -158,10 +158,11 @@ Duplicate 후보로 남은 row는 아직 §3.3 legacy review를 사용한다. `I
 - **예산 progress** — `DashboardsController#monthly`가 `Budget#progress_for_month`를 호출해 월별 총 지출 대비 예산 비율을 표시한다. 계산은 active(committed, non-deleted) + non-coupon 거래만 포함한다.
 - **월별 대시보드 요약** — `DashboardsController#monthly`는 총 지출 hero 외에 가장 큰 카테고리, 가장 큰 결제, 미분류 건수를 계산해 모바일에서도 먼저 읽을 수 있는 요약 카드로 표시한다.
 - **반복 결제 탐지** — `DashboardsController#recurring`이 `RecurringPaymentDetector#detect`를 호출한다. detector는 active(committed, non-deleted) + non-coupon 거래 중 같은 가맹점이 2개월 이상 월간 연속성을 보이고, 금액이 20% 이내로 안정적이거나 결제일 변동 폭이 7일 이내인 경우만 반복 결제로 표시한다. 최근 구간의 마지막 결제가 기준 월에서 2개월보다 오래됐으면 과거에 반복됐더라도 제외한다. 한 달 누락은 허용하지만, 오래된 반복 구간에 최근 단발 결제 하나가 붙은 경우는 반복 결제로 보지 않는다.
-- **파싱 완료 알림** — 잡이 `parsing_session.complete!`을 호출한 뒤 `Notification.create_parsing_complete!`이 발송된다. `AiTextParsingJob`은 stats > 0일 때, `FileParsingJob`은 stats > 0일 때. 세션이 자동 `committed` 되었으면 알림 action은 결제 내역(`/transactions`)으로, duplicate 후보나 import exception 때문에 `pending_review`이면 현재는 legacy review로 향한다. `UX-1B.2`가 이 action을 repair-focused surface로 바꾼다. 검토 단계의 `ReviewsController#commit` / `ParsingSession#commit_all!`는 알림을 만들지 않는다. 수신자는 워크스페이스 owner + 멤버 (`co_owner` / `member_write` / `member_read`).
+- **파싱 완료 알림** — 잡이 `parsing_session.complete!`을 호출한 뒤 `Notification.create_parsing_complete!`이 발송된다. `AiTextParsingJob`은 stats > 0일 때, `FileParsingJob`은 stats > 0일 때. 남은 `pending_review` 거래가 있으면 알림 action은 legacy review로 향하고, 자동 등록할 row가 모두 처리됐으면 결제 내역(`/transactions`)으로 향한다. 검토 단계의 `ReviewsController#commit` / `ParsingSession#commit_all!`는 알림을 만들지 않는다. 수신자는 워크스페이스 owner + 멤버 (`co_owner` / `member_write` / `member_read`).
 - **파싱 실패 알림** — `AiTextParsingJob`과 `FileParsingJob`은 결과/성공이 0건인 실패 분기와 잡 내부 예외 분기에서 `create_failure_notifications`를 호출해 owner + `co_owner` / `member_write` 멤버에게 `Notification.create_parsing_failed!`을 발송한다. `FileParsingJob`의 예외 경로는 `parsing_session`이 만들어진 뒤에만 알림을 보낼 수 있다.
+- **가져오기 수정 필요 알림** — `FileParsingJob`은 open `ImportIssue`가 있는 이미지 세션에 대해 `Notification.create_import_repair_needed!`를 best-effort로 호출한다. 수신자는 owner + `co_owner` / `member_write`이며, `action_url`은 `/workspaces/:id/transactions?repair=required&import_session_id=:session_id`로 해당 업로드의 누락 항목만 보여준다. 생성 시 사용자 Turbo stream의 `flash` target으로 warning toast도 broadcast된다. 결제 내역 기본 화면에는 전체 open repair count banner가 표시되고, `repair=required` 모드에서는 repair item만 보인다.
 - **예산 알림** — 자동 커밋된 import 거래와 legacy review commit 거래 모두 `BudgetAlertService.create_for_transactions!`를 통해 영향을 받은 거래 월별로 `Notification.create_budget_alert!`을 호출한다. 80% 이상 100% 미만은 `budget_warning`, 100% 이상은 `budget_exceeded`이며, `workspace_id/user_id/notification_type/target_year/target_month` 조합으로 같은 사용자·월·타입의 중복 알림을 막는다.
 - `ParsingSession`은 `Turbo::Broadcastable`로 상태 변경 시 워크스페이스 채널에 turbo-stream broadcast.
 - `ProcessedFile`은 `completed`/`failed` 상태가 되면 pending 리스트에서 제거되도록 broadcast remove.
 
-알림 클래스 메서드는 `app/models/notification.rb`의 `Notification.create_parsing_complete!`, `Notification.create_parsing_failed!`, `Notification.create_budget_alert!`로 정의돼 있다.
+알림 클래스 메서드는 `app/models/notification.rb`의 `Notification.create_parsing_complete!`, `Notification.create_parsing_failed!`, `Notification.create_import_repair_needed!`, `Notification.create_budget_alert!`로 정의돼 있다.

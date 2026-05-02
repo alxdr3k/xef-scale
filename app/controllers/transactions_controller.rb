@@ -9,6 +9,12 @@ class TransactionsController < ApplicationController
   def index
     @year = sanitize_year(params[:year]) || Date.current.year
     @month = sanitize_month(params[:month])
+    @repair_filter = params[:repair] == "required"
+    @open_import_issues = @workspace.import_issues.open
+                                    .includes(:parsing_session, :processed_file)
+                                    .order(created_at: :desc)
+    @open_import_issues_count = @open_import_issues.count
+    @repair_import_issues = apply_import_issue_filters(@open_import_issues)
 
     transactions = @workspace.transactions.active.excluding_allowance.includes(:category, parsing_session: :processed_file)
     transactions = apply_index_filters(transactions, year: @year, month: @month)
@@ -438,6 +444,15 @@ class TransactionsController < ApplicationController
     scope = scope.search(params[:q]) if params[:q].present?
     scope = scope.where(category_id: nil) if params[:filter] == "uncategorized"
     scope
+  end
+
+  def apply_import_issue_filters(scope)
+    return scope unless params[:import_session_id].present?
+
+    session_id = Integer(params[:import_session_id], exception: false)
+    return scope.none unless session_id
+
+    scope.where(parsing_session_id: session_id)
   end
 
   def sanitize_year(value)

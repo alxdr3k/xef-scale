@@ -11,10 +11,10 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 ## Current Roadmap Position
 
 - current milestone: `P1-M1` in progress — mobile web self-serve input observation and UX hardening.
-- active track / phase / slice: `INP` / `INP-1B` / next recommended slices `INP-1B.2` and `UX-1B.2` for duplicate repair policy and missing-required-field repair surfacing; ad-hoc feedback is recorded as short leaf slices when it is concrete and locally decidable.
-- last accepted gates: `INS-1A.3` monthly dashboard hierarchy audit; `UX-1A.7`, `UX-1A.8`, `INS-1A.5`, `INP-1A.6`, `REQ-1B.1`, and `INP-1B.3` feedback/contract updates are covered by controller/model/service/job/e2e checks or product-contract doc review.
+- active track / phase / slice: `INP` / `INP-1B` / next recommended slices `INP-1B.2` and `UX-1B.3` for duplicate repair policy and focused missing-required-field repair editing; ad-hoc feedback is recorded as short leaf slices when it is concrete and locally decidable.
+- last accepted gates: `INS-1A.3` monthly dashboard hierarchy audit; `UX-1A.7`, `UX-1A.8`, `INS-1A.5`, `INP-1A.6`, `REQ-1B.1`, `INP-1B.3`, and `UX-1B.2` feedback/contract updates are covered by controller/model/service/job/e2e checks or product-contract doc review.
 - next gate: `ROAD-001` — observed non-engineer mobile web input → auto-posted ledger → exception repair loop, with blockers recorded as slices.
-- planned direction: [ADR-0001](../decisions/ADR-0001-auto-post-imports.md) replaces mandatory import review with auto-post + repair-only exceptions. Current code auto-commits non-duplicate complete rows and persists incomplete image rows as `ImportIssue` repair records. Duplicate candidates still use the legacy review bridge until `INP-1B.2` lands; user-facing repair surfacing/editing remains `UX-1B.2`/`UX-1B.3`.
+- planned direction: [ADR-0001](../decisions/ADR-0001-auto-post-imports.md) replaces mandatory import review with auto-post + repair-only exceptions. Current code auto-commits non-duplicate complete rows, persists incomplete image rows as `ImportIssue` repair records, and surfaces those records via post-parse toast, notification list/dropdown, and the transaction page repair banner/filter. Duplicate candidates still use the legacy review bridge until `INP-1B.2` lands; inline repair editing/promotion remains `UX-1B.3`/`INP-1B.4`.
 - canonical ledger: [04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md).
 
 ## 현재 입력 경로 (전체 입력 표면)
@@ -23,7 +23,7 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 
 1. **직접 입력 (manual)** — 웹 폼에서 `TransactionsController#new/#create`가 즉시 `committed` 상태의 `Transaction`을 만든다. 파싱 세션·검토 흐름을 거치지 않는다.
 2. **금융 문자 붙여넣기 (text_paste)** — 현재 코드: `ParsingSessionsController#text_parse` → `AiTextParsingJob` → `AiTextParser` (Gemini Flash). complete row는 먼저 `pending_review`로 정규화한 뒤 duplicate 후보가 없으면 같은 잡에서 즉시 `committed`로 전환한다. Duplicate 후보는 아직 legacy review에 남는다.
-3. **명세서 스크린샷 업로드 (image_upload)** — 현재 코드: `ParsingSessionsController#create` → `FileParsingJob` → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision). complete row는 duplicate 후보가 없으면 같은 잡에서 즉시 `committed`; incomplete row는 `ImportIssue(status: open)` repair record로 저장한다. P1 target: repair entry point와 focused repair UI를 완성한다.
+3. **명세서 스크린샷 업로드 (image_upload)** — 현재 코드: `ParsingSessionsController#create` → `FileParsingJob` → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision). complete row는 duplicate 후보가 없으면 같은 잡에서 즉시 `committed`; incomplete row는 `ImportIssue(status: open)` repair record로 저장하고 toast/notification/거래 내역 repair filter로 노출한다. P1 target: focused repair UI와 promotion을 완성한다.
 4. **API write (api)** — `Api::V1::TransactionsController#create` (`POST /api/v1/transactions`)가 API 키 + `write` 스코프로 인증하고 즉시 `committed` 상태의 `Transaction`을 만든다.
 
 ## 명시적으로 스코프 밖

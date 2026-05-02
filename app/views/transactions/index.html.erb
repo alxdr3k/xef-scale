@@ -11,6 +11,37 @@
         class: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700' %>
   </div>
 
+  <% if @open_import_issues_count.positive? %>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-900">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="font-semibold">수정이 필요한 가져오기 항목 <%= @open_import_issues_count %>건</p>
+          <p class="mt-1">이미지 파싱 중 날짜, 가맹점, 금액 중 일부가 부족해 아직 결제 내역에 반영되지 않은 항목입니다.</p>
+        </div>
+        <% if @repair_filter %>
+          <%= link_to "전체 결제 내역 보기", workspace_transactions_path(@workspace),
+              class: "inline-flex justify-center rounded-md border border-amber-300 bg-white px-3 py-2 font-medium text-amber-800 hover:bg-amber-100" %>
+        <% else %>
+          <%= link_to "수정 필요 항목 보기", workspace_transactions_path(@workspace, repair: "required"),
+              class: "inline-flex justify-center rounded-md bg-amber-600 px-3 py-2 font-medium text-white hover:bg-amber-700" %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @repair_filter %>
+    <% if @repair_import_issues.any? %>
+      <%= render "shared/import_issues_notice",
+          import_issues: @repair_import_issues,
+          limit: nil,
+          title: "수정 필요한 항목만 표시 중",
+          description: "알림에서 들어온 업로드의 누락 항목입니다. 다음 단계에서 이 화면에서 바로 필수값을 채워 결제 내역으로 반영합니다." %>
+    <% else %>
+      <div class="bg-white rounded-lg shadow p-12 text-center text-gray-500">
+        수정이 필요한 가져오기 항목이 없습니다.
+      </div>
+    <% end %>
+  <% else %>
   <!-- Filters -->
   <div class="bg-white rounded-lg shadow p-4 mb-6">
     <%= form_with url: workspace_transactions_path(@workspace), method: :get, local: true,
@@ -186,6 +217,7 @@
     <div class="mt-6">
       <%== pagy_nav(@pagy, params: request.query_parameters) %>
     </div>
+  <% end %>
   <% end %>
 
   <!-- Slideover for category creation -->

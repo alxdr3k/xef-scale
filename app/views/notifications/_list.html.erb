@@ -19,6 +19,8 @@
                 <% case notification.notification_type %>
                 <% when 'parsing_complete' %>
                   <span class="text-2xl">📄</span>
+                <% when 'import_repair_needed' %>
+                  <span class="text-2xl">⚠️</span>
                 <% when 'commit_complete' %>
                   <span class="text-2xl">✅</span>
                 <% when 'rollback_complete' %>
