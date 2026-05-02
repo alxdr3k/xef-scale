@@ -7,6 +7,13 @@ class ImportIssueResolutionService
     def promoted?
       status == :promoted
     end
+
+    # True only when a new Transaction was actually committed to the ledger.
+    # success? can be true even when no transaction was created (e.g. :ambiguous_duplicate
+    # keeps the issue open for a duplicate decision).
+    def transaction_committed?
+      status == :promoted
+    end
   end
 
   def initialize(import_issue, user:)
@@ -73,7 +80,11 @@ class ImportIssueResolutionService
       )
     end
 
-    BudgetAlertService.create_for_transactions!(@workspace, [ candidate ])
+    begin
+      BudgetAlertService.create_for_transactions!(@workspace, [ candidate ])
+    rescue StandardError => e
+      Rails.logger.error "[ImportIssueResolution] Budget alert failed: #{e.message}"
+    end
     resolve_repair_notifications!
     Result.new(status: :promoted, message: "결제 내역에 반영했습니다.", transaction: candidate)
   rescue ActiveRecord::RecordInvalid => e
