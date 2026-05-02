@@ -5,9 +5,9 @@ projects: [xef-scale]
 ---
 <!-- my-skill:generated
 skill: e2e-fix
-base-sha256: 950feb2e4572b847dfce8e66b8e56498a4291725035e08b220514fc9723e4de8
+base-sha256: 19e5bb4200d84bf4ed0d9407cde14a0f81838b82eb30b66e6f2604807da1b7f9
 overlay-sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-output-sha256: 950feb2e4572b847dfce8e66b8e56498a4291725035e08b220514fc9723e4de8
+output-sha256: 19e5bb4200d84bf4ed0d9407cde14a0f81838b82eb30b66e6f2604807da1b7f9
 do-not-edit: edit .codex/skill-overrides/e2e-fix.md instead
 -->
 
@@ -24,11 +24,11 @@ CI E2E 테스트 실패를 Codex(디버깅·수정) + Claude(로컬 테스트) �
 ### 1단계: CI 실패 로그 수집
 
 ```bash
-# 최신 실패 run ID 확인
-gh run list --repo <owner>/<repo> --limit 5 --json databaseId,conclusion,headBranch,name
+# 최신 실패 run ID 확인 (repo는 자동 감지 — 필요 시 --repo owner/repo 명시)
+gh run list --limit 5 --json databaseId,conclusion,headBranch,name
 
 # 실패 로그 추출
-gh run view <run-id> --repo <owner>/<repo> --log-failed 2>&1 | tail -150
+gh run view <run-id> --log-failed 2>&1 | tail -150
 ```
 
 ### 2단계: Codex에게 수정 위임
@@ -61,7 +61,7 @@ npx playwright test --reporter=line
 
 | 결과 | 다음 행동 |
 |------|-----------|
-| 전부 pass | push → PR 생성 → `/codex-loop` |
+| 전부 pass | 현재 브랜치가 feature/fix인지 확인 (main이면 먼저 새 브랜치를 따고 commit 이동) → push → PR 생성 → `/codex-loop` |
 | 실패 있음 | 실패 로그 정리 → 2단계로 돌아가 Codex에게 피드백 |
 
 ## Codex 위임 시 주의
