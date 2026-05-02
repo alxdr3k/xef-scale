@@ -10,6 +10,8 @@
               <% case notification.notification_type %>
               <% when 'parsing_complete' %>
                 <span class="text-xl">📄</span>
+              <% when 'import_repair_needed' %>
+                <span class="text-xl">⚠️</span>
               <% else %>
                 <span class="text-xl">🔔</span>
               <% end %>
@@ -30,7 +32,11 @@
         <div class="block px-4 py-3 <%= notification.unread? ? 'bg-blue-50' : '' %>">
           <div class="flex items-start">
             <div class="flex-shrink-0">
-              <span class="text-xl">🔔</span>
+              <% if notification.notification_type == "import_repair_needed" %>
+                <span class="text-xl">⚠️</span>
+              <% else %>
+                <span class="text-xl">🔔</span>
+              <% end %>
             </div>
             <div class="ml-3 flex-1">
               <p class="text-sm font-medium text-gray-900"><%= notification.title %></p>

@@ -81,6 +81,56 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "KB국민카드"
   end
 
+  test "index surfaces open import issues and links to repair filter" do
+    parsing_session = parsing_sessions(:completed_session)
+    @workspace.import_issues.create!(
+      parsing_session: parsing_session,
+      processed_file: parsing_session.processed_file,
+      source_type: "image_upload",
+      merchant: "네이버페이",
+      amount: 12_000,
+      missing_fields: [ "date" ],
+      raw_payload: { "merchant" => "네이버페이" }
+    )
+
+    get workspace_transactions_path(@workspace)
+
+    assert_response :success
+    assert_includes response.body, "수정이 필요한 가져오기 항목 1건"
+    assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required")}']", text: "수정 필요 항목 보기"
+  end
+
+  test "repair filter focuses import issues for the selected parsing session" do
+    parsing_session = parsing_sessions(:completed_session)
+    other_session = parsing_sessions(:failed_session)
+    @workspace.import_issues.create!(
+      parsing_session: parsing_session,
+      processed_file: parsing_session.processed_file,
+      source_type: "image_upload",
+      merchant: "네이버페이",
+      amount: 12_000,
+      missing_fields: [ "date" ],
+      raw_payload: { "merchant" => "네이버페이" }
+    )
+    @workspace.import_issues.create!(
+      parsing_session: other_session,
+      processed_file: other_session.processed_file,
+      source_type: "image_upload",
+      merchant: "마차이짬뽕",
+      amount: 61_000,
+      missing_fields: [ "date" ],
+      raw_payload: { "merchant" => "마차이짬뽕" }
+    )
+
+    get workspace_transactions_path(@workspace, repair: "required", import_session_id: parsing_session.id)
+
+    assert_response :success
+    assert_includes response.body, "수정 필요한 항목만 표시 중"
+    assert_includes response.body, "네이버페이"
+    assert_not_includes response.body, "마차이짬뽕"
+    assert_select "table", count: 0
+  end
+
   test "export ignores out-of-range month instead of crashing" do
     get export_workspace_transactions_path(@workspace, format: :csv, year: Date.current.year, month: 13)
     assert_response :success
