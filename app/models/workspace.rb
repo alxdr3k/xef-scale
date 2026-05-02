@@ -36,6 +36,15 @@ class Workspace < ApplicationRecord
            .where(workspace_memberships: { workspace_id: id, role: %w[owner co_owner] })
   end
 
+  def notification_recipients(roles:)
+    return User.none if owner_id.nil?
+
+    member_ids = workspace_memberships.where(role: roles)
+                                      .where.not(user_id: owner_id)
+                                      .pluck(:user_id)
+    User.where(id: ([ owner_id ] + member_ids).uniq)
+  end
+
   private
 
   def add_owner_as_member

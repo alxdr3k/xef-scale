@@ -296,29 +296,15 @@ class FileParsingJob < ApplicationJob
 
   def create_failure_notifications(parsing_session)
     workspace = parsing_session.workspace
-
-    if workspace.owner
-      Notification.create_parsing_failed!(parsing_session, workspace.owner)
-    end
-
-    workspace.workspace_memberships.where(role: %w[co_owner member_write]).find_each do |membership|
-      next if membership.user_id == workspace.owner_id
-
-      Notification.create_parsing_failed!(parsing_session, membership.user)
+    workspace.notification_recipients(roles: %w[co_owner member_write]).each do |user|
+      Notification.create_parsing_failed!(parsing_session, user)
     end
   end
 
   def create_completion_notifications(parsing_session)
     workspace = parsing_session.workspace
-
-    if workspace.owner
-      Notification.create_parsing_complete!(parsing_session, workspace.owner)
-    end
-
-    workspace.workspace_memberships.where(role: %w[co_owner member_write member_read]).find_each do |membership|
-      next if membership.user_id == workspace.owner_id
-
-      Notification.create_parsing_complete!(parsing_session, membership.user)
+    workspace.notification_recipients(roles: %w[co_owner member_write member_read]).each do |user|
+      Notification.create_parsing_complete!(parsing_session, user)
     end
   end
 end

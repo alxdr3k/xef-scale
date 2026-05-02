@@ -7,13 +7,17 @@ class ImportIssuesController < ApplicationController
 
   def update
     service = ImportIssueResolutionService.new(@import_issue, user: current_user)
-    result = case params[:resolution_action].to_s
+    action = params[:resolution_action].to_s
+    result = case action
     when "dismiss"
       service.dismiss!
     when "create_new"
       service.promote_as_new!
-    else
+    when "", "update_fields"
       service.update_missing_fields!(import_issue_params)
+    else
+      Rails.logger.warn "[ImportIssues#update] Unknown resolution_action: #{action.inspect}"
+      return redirect_to repair_return_path, alert: "알 수 없는 처리 방식입니다."
     end
 
     if result.success?
