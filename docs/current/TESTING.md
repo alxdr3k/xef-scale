@@ -79,7 +79,7 @@ PLAYWRIGHT_PORT=3010 bunx playwright test
 ```
 
 - 설정: `playwright.config.ts` — 기본 `3000`, 또는 `PLAYWRIGHT_PORT` 포트로 `RAILS_ENV=test bin/rails server`를 자동으로 띄운다. 기존 서버 재사용은 `PLAYWRIGHT_REUSE_SERVER=1`을 명시한 경우에만 한다.
-- 스펙: `e2e/*.spec.ts` (allowances, dashboard, duplicate, import_repair, notifications, parsing_session, review-workflow, reviews, rollback, transactions).
+- 스펙: `e2e/*.spec.ts` (allowances, dashboard, duplicate, import_repair, import_undo, notifications, parsing_session, review-workflow, reviews, rollback, transactions).
 - CI는 Node 20에서 `npm install` → `npm run build && npm run build:css` → `npx playwright install --with-deps chromium` → `RAILS_ENV=test bin/rails db:schema:load db:seed` → `npx playwright test` 순서로 실행한다.
 
 ## JS / CSS 빌드

@@ -75,20 +75,29 @@
   </td>
   <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
     <% if parsing_session.completed? %>
-      <% if parsing_session.pending_review_transactions? %>
-        <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
-            class: 'text-indigo-600 hover:text-indigo-900 font-medium' %>
-      <% elsif parsing_session.open_import_issues.any? %>
-        <%= link_to '수정하기',
-            workspace_transactions_path(workspace, repair: "required", import_session_id: parsing_session.id),
-            class: 'text-indigo-600 hover:text-indigo-900 font-medium' %>
-      <% elsif parsing_session.review_pending? %>
-        <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
-            class: 'text-indigo-600 hover:text-indigo-900 font-medium' %>
-      <% else %>
-        <%= link_to '상세보기', review_workspace_parsing_session_path(workspace, parsing_session),
-            class: 'text-gray-600 hover:text-gray-900' %>
-      <% end %>
+      <div class="flex items-center justify-end gap-2">
+        <% if parsing_session.pending_review_transactions? %>
+          <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
+              class: 'text-indigo-600 hover:text-indigo-900 font-medium' %>
+        <% elsif parsing_session.open_import_issues.any? %>
+          <%= link_to '수정하기',
+              workspace_transactions_path(workspace, repair: "required", import_session_id: parsing_session.id),
+              class: 'text-indigo-600 hover:text-indigo-900 font-medium' %>
+        <% elsif parsing_session.review_pending? %>
+          <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
+              class: 'text-indigo-600 hover:text-indigo-900 font-medium' %>
+        <% else %>
+          <%= link_to '상세보기', review_workspace_parsing_session_path(workspace, parsing_session),
+              class: 'text-gray-600 hover:text-gray-900' %>
+        <% end %>
+        <% if parsing_session.can_undo_import? %>
+          <%= button_to '되돌리기',
+              undo_workspace_parsing_session_path(workspace, parsing_session),
+              method: :post,
+              form: { data: { turbo_confirm: "이번 가져오기를 되돌리시겠습니까? 이미 반영된 거래는 결제 내역에서 제외됩니다." } },
+              class: 'text-red-600 hover:text-red-900 font-medium bg-transparent border-0 cursor-pointer p-0' %>
+        <% end %>
+      </div>
     <% elsif parsing_session.has_duplicates? && parsing_session.pending_duplicates.any? %>
       <%= link_to '중복 확인', workspace_parsing_session_path(workspace, parsing_session),
           class: 'text-indigo-600 hover:text-indigo-900' %>

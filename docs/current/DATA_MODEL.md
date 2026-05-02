@@ -134,10 +134,12 @@ Current P1 transition ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): 
 - `can_rollback?` = `completed? && review_committed?`
 - `can_discard?` = `completed? && review_pending?`
 - `auto_commit_ready_transactions!` = 날짜/가맹점/금액이 모두 있고 import duplicate policy에서 repair issue로 전환되지 않은 `pending_review` 거래를 즉시 `committed`로 바꾸고, 남은 pending row와 import exception이 없으면 세션 `review_status`도 `committed`로 전환.
+- `can_undo_import?` = completed import이면서 아직 rolled_back/discarded가 아니고, committed row / pending row / open `ImportIssue` 중 되돌릴 항목이 있음.
+- `undo_import!` = input history의 import-level undo. 같은 세션의 committed row를 `rolled_back`, pending row를 destroy, open `ImportIssue`를 `dismissed`로 닫고 repair notification을 read 처리한다. committed row가 하나라도 되돌아가면 `review_status: rolled_back`, repair/pending-only면 `discarded`가 된다.
 
 `DuplicateConfirmation.status` ∈ {`pending`, `keep_both`, `keep_original`, `keep_new`}.
 
-P1 target에서는 `review_status`가 사용자-facing gate가 아니며, `ParsingSession`은 import batch 감사·통계·undo/recovery 컨테이너로 남는다. 현재는 complete row가 auto-post되고, incomplete image row와 ambiguous duplicate는 `ImportIssue`로 남는다. `DuplicateConfirmation`은 legacy review와 오래된 pending duplicate 데이터용으로 남아 있다.
+P1 target에서는 `review_status`가 사용자-facing gate가 아니며, `ParsingSession`은 import batch 감사·통계·undo/recovery 컨테이너로 남는다. 현재는 complete row가 auto-post되고, incomplete image row와 ambiguous duplicate는 `ImportIssue`로 남으며, 입력 기록에서 import-level undo를 실행할 수 있다. `DuplicateConfirmation`은 legacy review와 오래된 pending duplicate 데이터용으로 남아 있다.
 
 ## 인덱스 / 유니크 제약 (참고)
 

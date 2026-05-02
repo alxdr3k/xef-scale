@@ -11,10 +11,10 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 ## Current Roadmap Position
 
 - current milestone: `P1-M1` in progress — mobile web self-serve input observation and UX hardening.
-- active track / phase / slice: `INP` / `UX-1B` / next recommended slices `UX-1B.4` and `UX-1B.1` for import-level undo/recovery and remaining no-review UX cleanup; ad-hoc feedback is recorded as short leaf slices when it is concrete and locally decidable.
-- last accepted gates: `INS-1A.3` monthly dashboard hierarchy audit; `UX-1A.7`, `UX-1A.8`, `INS-1A.5`, `INP-1A.6`, `REQ-1B.1`, `INP-1B.2`, `INP-1B.3`, `UX-1B.2`, `UX-1B.3`, and `INP-1B.4` feedback/contract updates are covered by controller/model/service/job/e2e checks or product-contract doc review.
+- active track / phase / slice: `INP` / `UX-1B` / next recommended slices `UX-1B.1` and `UX-1B.5` for remaining no-review UX cleanup and review route removal; ad-hoc feedback is recorded as short leaf slices when it is concrete and locally decidable.
+- last accepted gates: `INS-1A.3` monthly dashboard hierarchy audit; `UX-1A.7`, `UX-1A.8`, `INS-1A.5`, `INP-1A.6`, `REQ-1B.1`, `INP-1B.2`, `INP-1B.3`, `UX-1B.2`, `UX-1B.3`, `INP-1B.4`, and `UX-1B.4` feedback/contract updates are covered by controller/model/service/job/e2e checks or product-contract doc review.
 - next gate: `ROAD-001` — observed non-engineer mobile web input → auto-posted ledger → exception repair loop, with blockers recorded as slices.
-- planned direction: [ADR-0001](../decisions/ADR-0001-auto-post-imports.md) replaces mandatory import review with auto-post + repair-only exceptions. Current code auto-commits complete rows, skips exact import duplicates, stores ambiguous duplicates and incomplete image rows as `ImportIssue` repair records, surfaces open repair records via post-parse toast, notification list/dropdown, and the transaction page repair banner/filter, and lets writers resolve repair rows from the transaction repair mode. Import-level undo/recovery and remaining review touchpoint removal remain `UX-1B.4`/`UX-1B.1`/`UX-1B.5`.
+- planned direction: [ADR-0001](../decisions/ADR-0001-auto-post-imports.md) replaces mandatory import review with auto-post + repair-only exceptions. Current code auto-commits complete rows, skips exact import duplicates, stores ambiguous duplicates and incomplete image rows as `ImportIssue` repair records, surfaces open repair records via post-parse toast, notification list/dropdown, and the transaction page repair banner/filter, lets writers resolve repair rows from the transaction repair mode, and lets writers undo an import from input history. Remaining review touchpoint removal stays in `UX-1B.1`/`UX-1B.5`.
 - canonical ledger: [04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md).
 
 ## 현재 입력 경로 (전체 입력 표면)
@@ -110,7 +110,7 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 | `WorkspaceInvitation` | 토큰 기반 초대 (`/join/:token`) |
 | `Transaction` | 거래 — `pending_review` / `committed` / `rolled_back`, `source_type` 5종, `payment_type` 3종, `source_metadata` import hint |
 | `Category` / `CategoryMapping` | 카테고리 + 학습된 매핑 (4단계 우선순위) |
-| `ParsingSession` | 현재 파싱 작업 컨테이너와 import batch 상태 머신. Complete row 자동 커밋, exact duplicate skip, repair issue 추적, 향후 undo/recovery 컨테이너 역할을 맡는다. |
+| `ParsingSession` | 현재 파싱 작업 컨테이너와 import batch 상태 머신. Complete row 자동 커밋, exact duplicate skip, repair issue 추적, import-level undo/recovery 컨테이너 역할을 맡는다. |
 | `ProcessedFile` | 업로드된 이미지 파일 — 이미지 외 거부 |
 | `ImportIssue` | 필수값 누락 또는 ambiguous duplicate 때문에 장부에 바로 넣을 수 없는 import repair record. Focused repair UI의 데이터 소스가 된다. |
 | `DuplicateConfirmation` | Legacy review 중복 후보 + 결정 (`pending` / `keep_both` / `keep_original` / `keep_new`). 새 text/image import duplicate policy는 이 레코드를 만들지 않는다. |
