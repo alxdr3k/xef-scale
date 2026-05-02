@@ -130,7 +130,7 @@ class ParsingSessionsController < ApplicationController
     AiTextParsingJob.perform_later(parsing_session.id)
 
     redirect_to workspace_parsing_sessions_path(@workspace),
-                notice: "AI 파싱 중입니다. 완료되면 검토 후 거래내역에 반영할 수 있습니다."
+                notice: "AI 파싱 중입니다. 완료되면 자동으로 결제 내역에 반영됩니다. 수정이 필요한 항목은 알림으로 안내됩니다."
   end
 
   def create

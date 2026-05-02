@@ -47,6 +47,35 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "index filters committed transactions by import session" do
+    parsing_session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "committed"
+    )
+    parsing_session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "가져오기 필터 결제",
+      amount: 12_000,
+      status: "committed"
+    )
+    @workspace.transactions.create!(
+      date: Date.current,
+      merchant: "다른 결제",
+      amount: 8_000,
+      status: "committed"
+    )
+
+    get workspace_transactions_path(@workspace, import_session_id: parsing_session.id)
+
+    assert_response :success
+    assert_includes response.body, "가져오기 ##{parsing_session.id} 결과만 표시 중"
+    assert_includes response.body, "가져오기 필터 결제"
+    assert_not_includes response.body, "다른 결제"
+    assert_select "input[type='hidden'][name='import_session_id'][value='#{parsing_session.id}']"
+  end
+
   test "index ignores out-of-range month instead of crashing" do
     get workspace_transactions_path(@workspace, year: Date.current.year, month: 13)
     assert_response :success

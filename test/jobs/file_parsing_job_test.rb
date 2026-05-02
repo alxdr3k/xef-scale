@@ -246,7 +246,7 @@ class FileParsingJobTest < ActiveJob::TestCase
 
     notification = Notification.where(notifiable: parsing_session, notification_type: "parsing_complete").last
     assert_includes notification.message, "장부에 등록되었습니다"
-    assert_equal "/workspaces/#{@workspace.id}/transactions", notification.action_url
+    assert_equal "/workspaces/#{@workspace.id}/transactions?import_session_id=#{parsing_session.id}", notification.action_url
 
     repair_notifications = Notification.where(notifiable: parsing_session, notification_type: "import_repair_needed")
     assert_equal 2, repair_notifications.count
