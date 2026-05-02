@@ -98,7 +98,7 @@ class ImportDuplicatePolicyTest < ActiveSupport::TestCase
     assert Transaction.exists?(staged.id)
   end
 
-  test "ambiguous duplicate create and destroy are atomic: issue persists even when policy runs" do
+  test "ambiguous duplicate creates ImportIssue and removes staged transaction together" do
     existing = committed(merchant: "스타벅스 강남", amount: 5_000)
     staged = staged_tx(date: existing.date, merchant: "스타벅스 강남역", amount: 5_000)
 

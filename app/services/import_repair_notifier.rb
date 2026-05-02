@@ -13,6 +13,8 @@ class ImportRepairNotifier
 
     recipients.each do |user|
       Notification.create_import_repair_needed!(@parsing_session, user)
+    rescue StandardError => e
+      Rails.logger.error "[ImportRepairNotifier] Failed to notify user #{user.id}: #{e.message}"
     end
   end
 

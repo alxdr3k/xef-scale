@@ -298,6 +298,8 @@ class FileParsingJob < ApplicationJob
     workspace = parsing_session.workspace
     workspace.notification_recipients(roles: %w[co_owner member_write]).each do |user|
       Notification.create_parsing_failed!(parsing_session, user)
+    rescue StandardError => e
+      Rails.logger.error "[FileParsingJob] Failed to notify user #{user.id}: #{e.message}"
     end
   end
 
@@ -305,6 +307,8 @@ class FileParsingJob < ApplicationJob
     workspace = parsing_session.workspace
     workspace.notification_recipients(roles: %w[co_owner member_write member_read]).each do |user|
       Notification.create_parsing_complete!(parsing_session, user)
+    rescue StandardError => e
+      Rails.logger.error "[FileParsingJob] Failed to notify user #{user.id}: #{e.message}"
     end
   end
 end
