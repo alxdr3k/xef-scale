@@ -37,13 +37,10 @@ class ParsingSessionsController < ApplicationController
       repair_duplicate_issues = @workspace.import_issues.open.ambiguous_duplicates
       repair_duplicate_issues = repair_duplicate_issues.where(date: month_range) if month_range
       repair_duplicate_session_ids = repair_duplicate_issues.select(:parsing_session_id)
-      exact_duplicate_session_ids = @workspace.parsing_sessions.where("duplicate_count > 0")
-      exact_duplicate_session_ids = exact_duplicate_session_ids.where(created_at: month_time_range) if month_time_range
 
       @parsing_sessions = @parsing_sessions
                             .where(id: legacy_duplicate_session_ids)
                             .or(@parsing_sessions.where(id: repair_duplicate_session_ids))
-                            .or(@parsing_sessions.where(id: exact_duplicate_session_ids.select(:id)))
                             .distinct
     end
 

@@ -106,7 +106,7 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기"
   end
 
-  test "month scoped index includes exact duplicate only sessions by created month" do
+  test "month scoped index includes exact duplicate only sessions by created month outside duplicate filter" do
     target = Time.zone.local(Date.current.year, Date.current.month, 15, 12, 0, 0)
     session = @workspace.parsing_sessions.create!(
       source_type: "text_paste",
@@ -124,6 +124,12 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "##{session.id}"
+
+    get workspace_parsing_sessions_path(@workspace),
+        params: { filter: "has_duplicates", year: target.year, month: target.month }
+
+    assert_response :success
+    assert_not_includes response.body, "##{session.id}"
   end
 
   test "month scoped index includes undated import issue sessions by created month" do
