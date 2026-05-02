@@ -200,6 +200,7 @@ class FileParsingJob < ApplicationJob
 
   def parsing_failed_without_import_outcome?(stats, parsing_session)
     return true if stats[:total].zero?
+    return true if stats[:success].zero? && stats[:error].positive? && !parsing_session.open_import_issues.exists?
 
     stats[:success].zero? &&
       stats[:duplicate].zero? &&

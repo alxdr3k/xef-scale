@@ -341,6 +341,63 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     assert_includes repair_notifications.find_by!(user: users(:admin)).message, "중복 확인이 필요한 항목 1건"
   end
 
+  test "perform fails when exact duplicates and creation errors leave no repair artifacts" do
+    existing = @workspace.transactions.create!(
+      date: Date.new(2027, 2, 15),
+      merchant: "네이버페이",
+      amount: 12_000,
+      status: "committed"
+    )
+    fake_result = {
+      transactions: [
+        {
+          date: existing.date,
+          merchant: existing.merchant,
+          amount: existing.amount,
+          institution: "신한카드",
+          payment_type: "lump_sum",
+          installment_month: nil,
+          installment_total: nil,
+          confidence: 0.91
+        },
+        {
+          date: Date.new(2027, 2, 16),
+          merchant: "저장 실패",
+          amount: nil,
+          institution: "신한카드",
+          payment_type: "lump_sum",
+          installment_month: nil,
+          installment_total: nil,
+          confidence: 0.91
+        }
+      ],
+      raw_text: @parsing_session.notes,
+      model_used: "gemini-test"
+    }
+
+    original_new = AiTextParser.method(:new)
+    original_parse = AiTextParser.instance_method(:parse)
+    AiTextParser.define_singleton_method(:new) { |*| allocate }
+    AiTextParser.define_method(:parse) { |_text| fake_result }
+
+    begin
+      assert_no_difference -> { @workspace.transactions.count } do
+        assert_no_difference -> { @workspace.import_issues.count } do
+          AiTextParsingJob.new.perform(@parsing_session.id)
+        end
+      end
+    ensure
+      AiTextParser.define_singleton_method(:new, original_new)
+      AiTextParser.define_method(:parse, original_parse)
+    end
+
+    assert @parsing_session.reload.failed?
+    assert_equal 2, @parsing_session.total_count
+    assert_equal 0, @parsing_session.success_count
+    assert_equal 1, @parsing_session.duplicate_count
+    assert_equal 1, @parsing_session.error_count
+  end
+
   test "perform leaves parsed text rows with blank merchant pending review" do
     fake_result = {
       transactions: [

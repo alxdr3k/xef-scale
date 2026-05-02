@@ -41,6 +41,12 @@ class AiTextParsingJob < ApplicationJob
       has_import_exceptions = stats[:error].positive? || parsing_session.open_import_issues.exists?
 
       if parsing_failed_without_import_outcome?(stats, parsing_session)
+        parsing_session.update!(
+          total_count: stats[:total],
+          success_count: stats[:success],
+          duplicate_count: stats[:duplicate],
+          error_count: stats[:error]
+        )
         parsing_session.fail!
         create_failure_notifications(parsing_session)
       else
@@ -107,6 +113,7 @@ class AiTextParsingJob < ApplicationJob
 
   def parsing_failed_without_import_outcome?(stats, parsing_session)
     return true if stats[:total].zero?
+    return true if stats[:success].zero? && stats[:error].positive? && !parsing_session.open_import_issues.exists?
 
     stats[:success].zero? &&
       stats[:duplicate].zero? &&

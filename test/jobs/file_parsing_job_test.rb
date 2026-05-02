@@ -380,6 +380,44 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_includes repair_notifications.find_by!(user: users(:admin)).message, "중복 확인이 필요한 항목 1건"
   end
 
+  test "perform fails when exact duplicates and creation errors leave no repair artifacts" do
+    existing = @workspace.transactions.create!(
+      date: Date.new(2026, 3, 25),
+      merchant: "네이버페이",
+      amount: 12_000,
+      status: "committed"
+    )
+    processed_file = @workspace.processed_files.create!(
+      filename: "duplicate_and_error.png",
+      original_filename: "duplicate_and_error.png",
+      status: "pending",
+      uploaded_by: users(:admin)
+    )
+    parsed = {
+      transactions: [
+        { date: existing.date, merchant: existing.merchant, amount: existing.amount },
+        { date: Date.new(2026, 3, 26), merchant: "저장 실패", amount: nil }
+      ],
+      incomplete_transactions: []
+    }
+    job = FileParsingJob.new
+    job.define_singleton_method(:parse_file) { |_processed_file| parsed }
+
+    assert_no_difference -> { @workspace.transactions.count } do
+      assert_no_difference -> { @workspace.import_issues.count } do
+        job.perform(processed_file.id)
+      end
+    end
+
+    parsing_session = processed_file.reload.parsing_session
+    assert parsing_session.failed?
+    assert processed_file.failed?
+    assert_equal 2, parsing_session.total_count
+    assert_equal 0, parsing_session.success_count
+    assert_equal 1, parsing_session.duplicate_count
+    assert_equal 1, parsing_session.error_count
+  end
+
   test "gemini batch categorizes image transactions and stores mapping" do
     job = FileParsingJob.new
     merchant = "새로운카페"
