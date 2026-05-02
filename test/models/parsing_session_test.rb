@@ -410,6 +410,147 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert session.reload.review_discarded?
   end
 
+  test "can_undo_import? is true for completed imports with committed rows or repair issues" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "committed"
+    )
+
+    assert_not session.can_undo_import?
+
+    workspace.transactions.create!(
+      date: Date.new(2027, 6, 3),
+      merchant: "되돌릴 자동 반영 row",
+      amount: 10_000,
+      status: "committed",
+      parsing_session: session
+    )
+
+    assert session.reload.can_undo_import?
+
+    repair_only = workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    repair_only.import_issues.create!(
+      workspace: workspace,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      merchant: "수정 필요 undo row",
+      amount: 10_000,
+      missing_fields: [ "date" ]
+    )
+
+    assert repair_only.reload.can_undo_import?
+  end
+
+  test "undo_import! rolls back committed rows, discards pending rows, closes repair issues and reads notifications" do
+    workspace = workspaces(:main_workspace)
+    user = users(:admin)
+    session = workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    auto_committed = workspace.transactions.create!(
+      date: Date.new(2027, 6, 4),
+      merchant: "자동 반영 취소 row",
+      amount: 10_000,
+      status: "committed",
+      parsing_session: session
+    )
+    pending = workspace.transactions.create!(
+      date: Date.new(2027, 6, 5),
+      merchant: "미반영 폐기 row",
+      amount: 20_000,
+      status: "pending_review",
+      parsing_session: session
+    )
+    issue = session.import_issues.create!(
+      workspace: workspace,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      date: nil,
+      merchant: "수정 필요 닫기 row",
+      amount: 30_000,
+      missing_fields: [ "date" ]
+    )
+    notification = Notification.create!(
+      user: user,
+      workspace: workspace,
+      notification_type: "import_repair_needed",
+      title: "수정 필요한 결제",
+      notifiable: session
+    )
+
+    result = session.undo_import!(user)
+
+    assert result.any_changes?
+    assert_equal 1, result.rolled_back_count
+    assert_equal 1, result.discarded_pending_count
+    assert_equal 1, result.dismissed_issue_count
+    assert auto_committed.reload.rolled_back?
+    assert_not Transaction.exists?(pending.id)
+    assert issue.reload.dismissed?
+    assert_equal "import_undone", issue.raw_payload.dig("repair_resolution", "resolution")
+    assert notification.reload.read?
+    assert session.reload.review_rolled_back?
+    assert_equal user, session.rolled_back_by
+  end
+
+  test "undo_import! discards repair-only imports without ledger changes" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    issue = session.import_issues.create!(
+      workspace: workspace,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      merchant: "repair only row",
+      amount: 30_000,
+      missing_fields: [ "date" ]
+    )
+
+    result = session.undo_import!(users(:admin))
+
+    assert_equal 0, result.rolled_back_count
+    assert_equal 1, result.dismissed_issue_count
+    assert issue.reload.dismissed?
+    assert session.reload.review_discarded?
+  end
+
+  test "undo_import! does not restore keep_new originals before commit side effects apply" do
+    session, original, new_tx = build_session_with_duplicate(decision: "keep_new")
+    original.soft_delete!
+
+    result = session.undo_import!(users(:admin))
+
+    assert_equal 0, result.rolled_back_count
+    assert_equal 1, result.discarded_pending_count
+    assert_not Transaction.exists?(new_tx.id)
+    assert original.reload.deleted?
+    assert session.reload.review_discarded?
+  end
+
+  test "undo_import! restores keep_new originals after commit side effects apply" do
+    session, original, new_tx = build_session_with_duplicate(decision: "keep_new")
+
+    assert session.commit_all!(users(:admin))
+
+    result = session.undo_import!(users(:admin))
+
+    assert_equal 1, result.rolled_back_count
+    assert_not original.reload.deleted?
+    assert new_tx.reload.rolled_back?
+    assert session.reload.review_rolled_back?
+  end
+
   test "commit_all! with keep_new soft-deletes original and commits new" do
     session, original, new_tx = build_session_with_duplicate(decision: "keep_new")
 

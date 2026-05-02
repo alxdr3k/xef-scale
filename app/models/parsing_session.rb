@@ -16,6 +16,13 @@ class ParsingSession < ApplicationRecord
   STATUSES = %w[pending processing completed failed].freeze
   REVIEW_STATUSES = %w[pending_review committed rolled_back discarded].freeze
   SOURCE_TYPES = %w[file_upload text_paste].freeze
+  UndoResult = Struct.new(:rolled_back_count, :discarded_pending_count, :dismissed_issue_count, keyword_init: true) do
+    def any_changes?
+      rolled_back_count.to_i.positive? ||
+        discarded_pending_count.to_i.positive? ||
+        dismissed_issue_count.to_i.positive?
+    end
+  end
   INCOMPLETE_PARSE_NOTE_START_MARKER = "[[xef:incomplete_parse_rows]]".freeze
   INCOMPLETE_PARSE_NOTE_END_MARKER = "[[/xef:incomplete_parse_rows]]".freeze
   INCOMPLETE_PARSE_NOTE_BLOCK_PATTERN = /
@@ -131,6 +138,13 @@ class ParsingSession < ApplicationRecord
     completed? && review_pending?
   end
 
+  def can_undo_import?
+    completed? &&
+      !review_rolled_back? &&
+      !review_discarded? &&
+      (transactions.committed.exists? || transactions.pending_review.exists? || open_import_issues.exists?)
+  end
+
   def self.incomplete_parse_note_block(note)
     [
       INCOMPLETE_PARSE_NOTE_START_MARKER,
@@ -211,6 +225,47 @@ class ParsingSession < ApplicationRecord
       update!(review_status: "discarded")
     end
     true
+  end
+
+  def undo_import!(user)
+    return false unless can_undo_import?
+
+    result = UndoResult.new(
+      rolled_back_count: 0,
+      discarded_pending_count: 0,
+      dismissed_issue_count: 0
+    )
+
+    with_lock do
+      return false unless can_undo_import?
+
+      restore_duplicate_decisions = review_committed?
+
+      transactions.committed.find_each do |transaction|
+        transaction.rollback!
+        result.rolled_back_count += 1
+      end
+
+      transactions.pending_review.find_each do |transaction|
+        transaction.destroy!
+        result.discarded_pending_count += 1
+      end
+
+      undo_duplicate_decisions! if restore_duplicate_decisions
+
+      open_import_issues.find_each do |issue|
+        issue.update!(
+          status: "dismissed",
+          raw_payload: import_issue_payload_with_resolution(issue, user, "import_undone")
+        )
+        result.dismissed_issue_count += 1
+      end
+
+      mark_import_repair_notifications_read!
+      update_import_undo_status!(user, result)
+    end
+
+    result
   end
 
   def auto_commit_ready_transactions!(user: nil, has_import_exceptions: false)
@@ -319,6 +374,35 @@ class ParsingSession < ApplicationRecord
       transaction.merchant.to_s.strip.present? &&
       transaction.amount.present? &&
       transaction.amount.to_i != 0
+  end
+
+  def update_import_undo_status!(user, result)
+    if result.rolled_back_count.to_i.positive?
+      update!(
+        review_status: "rolled_back",
+        rolled_back_at: Time.current,
+        rolled_back_by: user
+      )
+    else
+      update!(review_status: "discarded")
+    end
+  end
+
+  def import_issue_payload_with_resolution(issue, user, resolution)
+    (issue.raw_payload || {}).to_h.merge(
+      "repair_resolution" => {
+        resolution: resolution,
+        resolved_by_id: user&.id,
+        resolved_at: Time.current.iso8601
+      }
+    )
+  end
+
+  def mark_import_repair_notifications_read!
+    notifications.where(
+      notification_type: "import_repair_needed",
+      read_at: nil
+    ).update_all(read_at: Time.current, updated_at: Time.current)
   end
 
   # Apply deferred duplicate-resolution decisions at commit time. Keeping the

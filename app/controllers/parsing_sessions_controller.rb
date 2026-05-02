@@ -2,8 +2,8 @@ class ParsingSessionsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :require_workspace_write_access, only: [ :create, :text_parse, :bulk_discard, :inline_update, :retry, :destroy ]
-  before_action :set_parsing_session, only: [ :inline_update, :retry, :destroy ]
+  before_action :require_workspace_write_access, only: [ :create, :text_parse, :bulk_discard, :inline_update, :retry, :destroy, :undo ]
+  before_action :set_parsing_session, only: [ :inline_update, :retry, :destroy, :undo ]
 
   def index
     @parsing_sessions = @workspace.parsing_sessions
@@ -276,6 +276,16 @@ class ParsingSessionsController < ApplicationController
     redirect_to workspace_parsing_sessions_path(@workspace), notice: "세션이 삭제되었습니다."
   end
 
+  def undo
+    result = @parsing_session.undo_import!(current_user)
+
+    if result
+      redirect_to workspace_parsing_sessions_path(@workspace), notice: import_undo_notice(result)
+    else
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: "되돌릴 수 있는 가져오기가 아닙니다."
+    end
+  end
+
   def bulk_discard
     session_ids = params[:session_ids].to_s.split(",").map(&:to_i).reject(&:zero?)
 
@@ -308,6 +318,14 @@ class ParsingSessionsController < ApplicationController
     shown = failed_files.first(limit)
     rest  = failed_files.size - shown.size
     rest > 0 ? "#{shown.join(" / ")} 외 #{rest}개" : shown.join(" / ")
+  end
+
+  def import_undo_notice(result)
+    parts = []
+    parts << "#{result.rolled_back_count}건의 거래를 되돌렸습니다." if result.rolled_back_count.positive?
+    parts << "#{result.discarded_pending_count}건의 미반영 거래를 폐기했습니다." if result.discarded_pending_count.positive?
+    parts << "#{result.dismissed_issue_count}건의 수정 필요 항목을 닫았습니다." if result.dismissed_issue_count.positive?
+    parts.presence&.join(" ") || "가져오기를 되돌렸습니다."
   end
 
   # Hard gate: we will not send SMS text or screenshots to an external model

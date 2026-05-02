@@ -136,6 +136,26 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기", count: 0
   end
 
+  test "index shows undo action for auto-posted committed imports" do
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "committed"
+    )
+    session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "되돌리기 노출 row",
+      amount: 12_000,
+      status: "committed"
+    )
+
+    get workspace_parsing_sessions_path(@workspace)
+
+    assert_response :success
+    assert_select "form[action='#{undo_workspace_parsing_session_path(@workspace, session)}'] button", text: "되돌리기"
+  end
+
   test "month scoped index includes exact duplicate only sessions by created month outside duplicate filter" do
     target = Time.zone.local(Date.current.year, Date.current.month, 15, 12, 0, 0)
     session = @workspace.parsing_sessions.create!(
@@ -416,5 +436,59 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_redirected_to workspace_parsing_sessions_path(@workspace)
     assert_equal "세션이 삭제되었습니다.", flash[:notice]
+  end
+
+  test "undo rolls back committed import transactions and dismisses open repair issues" do
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    committed = session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "undo committed row",
+      amount: 12_000,
+      status: "committed"
+    )
+    issue = session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      merchant: "undo repair row",
+      amount: 8_000,
+      missing_fields: [ "date" ]
+    )
+
+    post undo_workspace_parsing_session_path(@workspace, session)
+
+    assert_redirected_to workspace_parsing_sessions_path(@workspace)
+    assert_match(/1건의 거래를 되돌렸습니다/, flash[:notice])
+    assert committed.reload.rolled_back?
+    assert issue.reload.dismissed?
+    assert session.reload.review_rolled_back?
+  end
+
+  test "reader cannot undo import sessions" do
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "committed"
+    )
+    tx = session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "reader protected undo row",
+      amount: 12_000,
+      status: "committed"
+    )
+
+    sign_out @user
+    sign_in users(:reader)
+
+    post undo_workspace_parsing_session_path(@workspace, session)
+
+    assert_redirected_to workspace_path(@workspace)
+    assert tx.reload.committed?
   end
 end

@@ -41,7 +41,7 @@
     <span class="text-xs text-gray-400 whitespace-nowrap flex-shrink-0"><%= time_ago_in_words(parsing_session.created_at) %> 전</span>
   </div>
   <% if parsing_session.completed? %>
-    <div class="mt-2">
+    <div class="mt-2 flex flex-wrap items-center gap-3">
       <% if parsing_session.pending_review_transactions? %>
         <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
             class: 'text-xs text-indigo-600 hover:text-indigo-900 font-medium' %>
@@ -55,6 +55,13 @@
       <% else %>
         <%= link_to '상세보기', review_workspace_parsing_session_path(workspace, parsing_session),
             class: 'text-xs text-gray-600 hover:text-gray-900' %>
+      <% end %>
+      <% if parsing_session.can_undo_import? %>
+        <%= button_to '되돌리기',
+            undo_workspace_parsing_session_path(workspace, parsing_session),
+            method: :post,
+            form: { data: { turbo_confirm: "이번 가져오기를 되돌리시겠습니까? 이미 반영된 거래는 결제 내역에서 제외됩니다." } },
+            class: 'text-xs text-red-600 hover:text-red-900 font-medium bg-transparent border-0 cursor-pointer p-0' %>
       <% end %>
     </div>
   <% elsif parsing_session.has_duplicates? && parsing_session.pending_duplicates.any? %>

@@ -72,6 +72,7 @@ Rails.application.routes.draw do
       member do
         patch :inline_update
         post :retry
+        post :undo
         get :review, to: "reviews#show"
         post :commit, to: "reviews#commit"
         post :rollback, to: "reviews#rollback"
