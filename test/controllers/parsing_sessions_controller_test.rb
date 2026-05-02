@@ -81,6 +81,31 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기"
   end
 
+  test "month scoped needs review includes repair-only import issue sessions" do
+    target = Date.current.beginning_of_month + 3.days
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      date: target,
+      merchant: "날짜 있는 누락 항목",
+      amount: 12_000,
+      missing_fields: [ "merchant" ]
+    )
+
+    get workspace_parsing_sessions_path(@workspace),
+        params: { filter: "needs_review", year: target.year, month: target.month }
+
+    assert_response :success
+    assert_includes response.body, "수정하기"
+    assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기"
+  end
+
   test "show renders failed import issue details" do
     session = parsing_sessions(:failed_session)
     session.import_issues.create!(

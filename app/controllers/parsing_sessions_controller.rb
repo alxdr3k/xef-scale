@@ -16,9 +16,6 @@ class ParsingSessionsController < ApplicationController
       month = params[:month].to_i
       if year.between?(2000, 2100) && month.between?(1, 12)
         month_range = Date.new(year, month).beginning_of_month..Date.new(year, month).end_of_month
-        unless params[:filter] == "has_duplicates"
-          @parsing_sessions = @parsing_sessions.joins(:transactions).where(transactions: { date: month_range }).distinct
-        end
       end
     end
 
@@ -42,6 +39,20 @@ class ParsingSessionsController < ApplicationController
       @parsing_sessions = @parsing_sessions
                             .where(id: legacy_duplicate_session_ids)
                             .or(@parsing_sessions.where(id: repair_duplicate_session_ids))
+                            .distinct
+    end
+
+    if month_range && params[:filter] != "has_duplicates"
+      transaction_session_ids = @workspace.transactions
+                                              .where(date: month_range)
+                                              .where.not(parsing_session_id: nil)
+                                              .select(:parsing_session_id)
+      issue_session_ids = @workspace.import_issues
+                                    .where(date: month_range)
+                                    .select(:parsing_session_id)
+      @parsing_sessions = @parsing_sessions
+                            .where(id: transaction_session_ids)
+                            .or(@parsing_sessions.where(id: issue_session_ids))
                             .distinct
     end
 
