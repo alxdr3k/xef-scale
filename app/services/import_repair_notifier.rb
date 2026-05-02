@@ -19,15 +19,6 @@ class ImportRepairNotifier
   private
 
   def recipients
-    users = []
-    users << @workspace.owner if @workspace.owner
-
-    @workspace.workspace_memberships.where(role: %w[co_owner member_write]).find_each do |membership|
-      next if membership.user_id == @workspace.owner_id
-
-      users << membership.user
-    end
-
-    users.compact
+    @workspace.notification_recipients(roles: %w[co_owner member_write])
   end
 end
