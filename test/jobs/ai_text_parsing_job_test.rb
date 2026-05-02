@@ -434,7 +434,7 @@ class AiTextParsingJobTest < ActiveJob::TestCase
 
     notification = Notification.where(notifiable: @parsing_session, notification_type: "parsing_complete").last
     assert_includes notification.message, "자동 반영되지 않은 항목 1건"
-    assert_equal "/workspaces/#{@workspace.id}/transactions?import_session_id=#{@parsing_session.id}", notification.action_url
+    assert_equal "/workspaces/#{@workspace.id}/parsing_sessions/#{@parsing_session.id}/review", notification.action_url
   end
 
   test "perform still sends completion notification when budget alert side effect fails" do

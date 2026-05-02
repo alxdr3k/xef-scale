@@ -7,10 +7,10 @@ class TransactionsController < ApplicationController
   before_action :require_workspace_write_access, only: [ :new, :create, :edit, :update, :destroy, :quick_update_category, :inline_update, :bulk_update, :restore ]
 
   def index
-    @year = sanitize_year(params[:year]) || Date.current.year
+    @import_session_filter_requested = params[:import_session_id].present?
+    @year = sanitize_year(params[:year]) || (@import_session_filter_requested ? nil : Date.current.year)
     @month = sanitize_month(params[:month])
     @repair_filter = params[:repair] == "required"
-    @import_session_filter_requested = params[:import_session_id].present?
     @import_session_filter = import_session_filter
     @open_import_issues = @workspace.import_issues.open
                                     .includes(:parsing_session, :processed_file, :duplicate_transaction)
@@ -19,8 +19,7 @@ class TransactionsController < ApplicationController
     @repair_import_issues = apply_import_issue_filters(@open_import_issues)
 
     transactions = @workspace.transactions.active.excluding_allowance.includes(:category, parsing_session: :processed_file)
-    year_filter = (@import_session_filter_requested && params[:year].blank?) ? nil : @year
-    transactions = apply_index_filters(transactions, year: year_filter, month: @month)
+    transactions = apply_index_filters(transactions, year: @year, month: @month)
     transactions = transactions.order(date: :desc, created_at: :desc)
 
     @pagy, @transactions = pagy(transactions, limit: 50)
