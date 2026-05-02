@@ -7,8 +7,8 @@ Question ↔ Decision ↔ Requirement ↔ Gate/Test ↔ Milestone/Track/Phase/Sl
 | TRACE-ID | Question | Decision / ADR | Requirement | Gate / Test | Milestone | Track | Phase | Slice | Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | TRACE-001 |  | Implemented behavior | REQ-001 | AC-001 / TEST-001 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | Manual web input creates committed transactions. |
-| TRACE-002 |  | [ADR-0001](decisions/ADR-0001-auto-post-imports.md) | REQ-002 | AC-002 / TEST-002 | P1-M1 | REQ/INP | REQ-1B / INP-1B | REQ-1B.1, INP-1B.1 | Text paste complete rows auto-post to committed unless they become duplicate candidates. |
-| TRACE-003 | Q-001 | [ADR-0001](decisions/ADR-0001-auto-post-imports.md); expansion open | REQ-003 | AC-003 / TEST-003 | P1-M1 | REQ/INP | REQ-1B / INP-1B | REQ-1B.1, INP-1B.1, INP-1B.3 | Image upload complete rows auto-post to committed unless duplicate candidates; incomplete rows are durable `ImportIssue` repair records. |
+| TRACE-002 |  | [ADR-0001](decisions/ADR-0001-auto-post-imports.md) | REQ-002 | AC-002 / TEST-002 | P1-M1 | REQ/INP | REQ-1B / INP-1B | REQ-1B.1, INP-1B.1, INP-1B.2 | Text paste complete rows auto-post to committed after exact duplicates are skipped and ambiguous duplicates become repair issues. |
+| TRACE-003 | Q-001 | [ADR-0001](decisions/ADR-0001-auto-post-imports.md); expansion open | REQ-003 | AC-003 / TEST-003 | P1-M1 | REQ/INP | REQ-1B / INP-1B | REQ-1B.1, INP-1B.1, INP-1B.2, INP-1B.3 | Image upload complete rows auto-post to committed after duplicate policy; incomplete rows are durable `ImportIssue` repair records. |
 | TRACE-004 |  | Implemented behavior | REQ-004 | AC-004 / TEST-004 | P0-M1 | REQ | REQ-1A | REQ-1A.1 | API read/write scopes and tenant boundaries are covered. |
 | TRACE-005 |  | [ADR-0001](decisions/ADR-0001-auto-post-imports.md) | REQ-005 | AC-005 / TEST-005 | P1-M1 | REQ/UX/INP | REQ-1B / UX-1B / INP-1B | UX-1B.2, UX-1B.3, UX-1B.4, INP-1B.4 | Repair entry surfacing landed via toast, notification, and transaction repair filter. Inline repair editing/promotion and import-level undo/recovery remain. |
 | TRACE-006 |  | [ADR-0001](decisions/ADR-0001-auto-post-imports.md) | REQ-006 | AC-006 / TEST-005, TEST-006 | P1-M1 | REQ/INP | REQ-1B / INP-1B | INP-1B.2 | Commit blocking by unresolved duplicates is superseded by automatic duplicate policy and duplicate repair issues. |
@@ -33,5 +33,5 @@ Question ↔ Decision ↔ Requirement ↔ Gate/Test ↔ Milestone/Track/Phase/Sl
 
 - TRACE-013: 초기 지표는 이름만 있고 측정 위치/대시보드 계약이 없다. [Q-003](07_QUESTIONS_REGISTER.md#q-003-초기-지표를-어디에서-어떻게-측정할-것인가)을 따른다.
 - TRACE-014: 운영 DB 백업/복구 정책은 아직 열려 있다. [Q-008](07_QUESTIONS_REGISTER.md#q-008-운영-db-백업복구의-rporto보관-정책은-무엇인가)을 따른다.
-- TRACE-015: ADR과 PRD/AC docs now describe the target contract. Complete-row auto-post, incomplete-row persistence, and missing-row repair surfacing have landed; duplicate policy, repair editing/promotion, undo/recovery, and review-route removal remain in `INP-1B`/`UX-1B`.
+- TRACE-015: ADR과 PRD/AC docs now describe the target contract. Complete-row auto-post, duplicate policy, incomplete-row persistence, and repair surfacing have landed; repair editing/promotion, undo/recovery, and review-route removal remain in `INP-1B`/`UX-1B`.
 - Historical design docs는 전량 backfill하지 않았다. 현재 제품 계약으로 확실한 구현 표면만 추적했다.

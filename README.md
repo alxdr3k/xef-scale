@@ -107,22 +107,23 @@ test/
 - **Category**: Transaction categorization with keyword matching
 - **ProcessedFile**: Uploaded statement screenshots (image files only)
 - **ParsingSession**: Parsing job tracking (source: text paste or image upload)
+- **ImportIssue**: Repair queue item for incomplete rows or ambiguous duplicate imports
 - **WorkspaceInvitation**: Team member invitations
 
 ## Input paths
 
-Four entry points. Text and image paths share the same parse → review → commit pipeline; direct entry and API write skip it.
+Four entry points. Text and image paths now auto-post complete rows and send only import exceptions to repair; direct entry and API write skip parsing sessions.
 
 1. **Direct entry** → form in the transactions UI creates a committed transaction immediately (no review session)
-2. **Text paste** → `AiTextParser` (Gemini Flash) → `pending_review` transactions
-3. **Screenshot upload (JPG/PNG/WEBP/HEIC)** → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision) → `pending_review` transactions
+2. **Text paste** → `AiTextParser` (Gemini Flash) → exact duplicates skipped, ambiguous duplicates repaired, complete rows committed
+3. **Screenshot upload (JPG/PNG/WEBP/HEIC)** → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision) → incomplete rows repaired, exact duplicates skipped, complete rows committed
 4. **API write** → `POST /api/v1/transactions` with a `write` scoped API key creates a committed transaction immediately
 
 For the parsing paths (2 and 3):
 
 5. Auto-categorization runs via `CategoryMapping` + `Category` keyword match; only the screenshot path sends remaining uncategorized merchants to `GeminiCategoryService`
-6. Duplicate detection creates `DuplicateConfirmation` records for review
-7. User reviews the session and commits — pending duplicates must be resolved first
+6. Duplicate policy skips exact duplicates and stores ambiguous duplicates as `ImportIssue` repair records
+7. Open repair records are surfaced through toast, notifications, and the transaction repair filter; inline repair promotion is tracked in the roadmap
 
 Excel, PDF, CSV, and HTML statements are **not** supported. Only direct entry, SMS/text paste, image screenshots, and API write are in scope.
 

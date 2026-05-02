@@ -11,10 +11,10 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 ## Current Roadmap Position
 
 - current milestone: `P1-M1` in progress — mobile web self-serve input observation and UX hardening.
-- active track / phase / slice: `INP` / `INP-1B` / next recommended slices `INP-1B.2` and `UX-1B.3` for duplicate repair policy and focused missing-required-field repair editing; ad-hoc feedback is recorded as short leaf slices when it is concrete and locally decidable.
-- last accepted gates: `INS-1A.3` monthly dashboard hierarchy audit; `UX-1A.7`, `UX-1A.8`, `INS-1A.5`, `INP-1A.6`, `REQ-1B.1`, `INP-1B.3`, and `UX-1B.2` feedback/contract updates are covered by controller/model/service/job/e2e checks or product-contract doc review.
+- active track / phase / slice: `INP` / `UX-1B` / next recommended slices `UX-1B.3` and `INP-1B.4` for focused repair editing and promotion; ad-hoc feedback is recorded as short leaf slices when it is concrete and locally decidable.
+- last accepted gates: `INS-1A.3` monthly dashboard hierarchy audit; `UX-1A.7`, `UX-1A.8`, `INS-1A.5`, `INP-1A.6`, `REQ-1B.1`, `INP-1B.2`, `INP-1B.3`, and `UX-1B.2` feedback/contract updates are covered by controller/model/service/job/e2e checks or product-contract doc review.
 - next gate: `ROAD-001` — observed non-engineer mobile web input → auto-posted ledger → exception repair loop, with blockers recorded as slices.
-- planned direction: [ADR-0001](../decisions/ADR-0001-auto-post-imports.md) replaces mandatory import review with auto-post + repair-only exceptions. Current code auto-commits non-duplicate complete rows, persists incomplete image rows as `ImportIssue` repair records, and surfaces those records via post-parse toast, notification list/dropdown, and the transaction page repair banner/filter. Duplicate candidates still use the legacy review bridge until `INP-1B.2` lands; inline repair editing/promotion remains `UX-1B.3`/`INP-1B.4`.
+- planned direction: [ADR-0001](../decisions/ADR-0001-auto-post-imports.md) replaces mandatory import review with auto-post + repair-only exceptions. Current code auto-commits complete rows, skips exact import duplicates, stores ambiguous duplicates and incomplete image rows as `ImportIssue` repair records, and surfaces open repair records via post-parse toast, notification list/dropdown, and the transaction page repair banner/filter. Inline repair editing/promotion remains `UX-1B.3`/`INP-1B.4`.
 - canonical ledger: [04_IMPLEMENTATION_PLAN.md](../04_IMPLEMENTATION_PLAN.md).
 
 ## 현재 입력 경로 (전체 입력 표면)
@@ -22,8 +22,8 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 네 가지 경로뿐입니다.
 
 1. **직접 입력 (manual)** — 웹 폼에서 `TransactionsController#new/#create`가 즉시 `committed` 상태의 `Transaction`을 만든다. 파싱 세션·검토 흐름을 거치지 않는다.
-2. **금융 문자 붙여넣기 (text_paste)** — 현재 코드: `ParsingSessionsController#text_parse` → `AiTextParsingJob` → `AiTextParser` (Gemini Flash). complete row는 먼저 `pending_review`로 정규화한 뒤 duplicate 후보가 없으면 같은 잡에서 즉시 `committed`로 전환한다. Duplicate 후보는 아직 legacy review에 남는다.
-3. **명세서 스크린샷 업로드 (image_upload)** — 현재 코드: `ParsingSessionsController#create` → `FileParsingJob` → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision). complete row는 duplicate 후보가 없으면 같은 잡에서 즉시 `committed`; incomplete row는 `ImportIssue(status: open)` repair record로 저장하고 toast/notification/거래 내역 repair filter로 노출한다. P1 target: focused repair UI와 promotion을 완성한다.
+2. **금융 문자 붙여넣기 (text_paste)** — 현재 코드: `ParsingSessionsController#text_parse` → `AiTextParsingJob` → `AiTextParser` (Gemini Flash). complete row는 먼저 `pending_review`로 정규화한 뒤 import duplicate policy를 적용한다. Exact duplicate는 새 거래를 만들지 않고 건너뛰며, ambiguous duplicate는 `ImportIssue(issue_type: "ambiguous_duplicate")`로 저장한다. 나머지는 같은 잡에서 즉시 `committed`로 전환한다.
+3. **명세서 스크린샷 업로드 (image_upload)** — 현재 코드: `ParsingSessionsController#create` → `FileParsingJob` → `ImageStatementParser` → `GeminiVisionParserService` (Gemini Vision). complete row는 text path와 같은 duplicate policy를 거쳐 즉시 `committed`; incomplete row와 ambiguous duplicate는 `ImportIssue(status: open)` repair record로 저장하고 toast/notification/거래 내역 repair filter로 노출한다. P1 target: focused repair UI와 promotion을 완성한다.
 4. **API write (api)** — `Api::V1::TransactionsController#create` (`POST /api/v1/transactions`)가 API 키 + `write` 스코프로 인증하고 즉시 `committed` 상태의 `Transaction`을 만든다.
 
 ## 명시적으로 스코프 밖
@@ -41,17 +41,17 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 2. `ParsingSession`이 `source_type: "text_paste"`, `status: "pending"`, `review_status: "pending_review"`로 생성됨. 원문은 `notes` 컬럼에 저장.
 3. `AiTextParsingJob`이 `AiTextParser`로 Gemini Flash 호출. 응답을 `Transaction`(`source_type: "text_paste"`, initially `status: "pending_review"`)으로 정규화하여 저장한다. 금융기관/앱명은 `transactions.source_metadata` 안의 import hint로만 저장하며 핵심 도메인 필드로 승격하지 않는다.
 4. 각 거래에 대해 카테고리 매칭: `CategoryMapping.find_for_merchant` → `Category#matches?` (`Category.keyword`). **텍스트 경로는 Gemini 카테고리 폴백을 호출하지 않는다.**
-5. `DuplicateDetector`가 동일 워크스페이스의 기존 거래와 비교해 `DuplicateConfirmation`을 만든다.
-6. `ParsingSession#auto_commit_ready_transactions!`가 날짜/가맹점/금액이 모두 있고 duplicate 후보와 같은 세션 exact duplicate group에 속하지 않는 pending row를 즉시 `committed`로 전환하고, 해당 월 예산 알림을 `BudgetAlertService`로 발송한다. 미해결 duplicate 후보가 있으면 세션은 legacy review에 남는다.
+5. `ImportDuplicatePolicy`가 같은 세션 exact duplicate와 `DuplicateDetector` match를 평가한다. Exact duplicate는 생성한 staging row를 삭제해 건너뛰고, ambiguous duplicate는 기존 거래 FK와 원본 payload를 담은 `ImportIssue(issue_type: "ambiguous_duplicate")`로 전환한다.
+6. `ParsingSession#auto_commit_ready_transactions!`가 날짜/가맹점/금액이 모두 있고 repair issue가 아닌 pending row를 즉시 `committed`로 전환하고, 해당 월 예산 알림을 `BudgetAlertService`로 발송한다.
 
 ### 이미지 업로드 → 자동 커밋 / incomplete·duplicate 예외
 
 1. 사용자가 JPG/PNG/WEBP/HEIC 이미지를 업로드. `ProcessedFile`이 ActiveStorage로 저장되고 모델 레벨에서 확장자/콘텐츠 타입/매직바이트 검증을 통과해야 한다 (≤ 20MB).
 2. `FileParsingJob`이 `ImageStatementParser`(기본 `institution_identifier: "shinhan_card"`) → `GeminiVisionParserService`로 Gemini Vision 호출. 현재 프롬프트는 **신한카드 이용대금 명세서**에 맞춰져 있다.
-3. complete 파싱 결과는 `Transaction`(`source_type: "image_upload"`, initially `status: "pending_review"`)으로 저장한 뒤 duplicate 후보가 없으면 같은 잡에서 즉시 `committed`로 전환한다. 스크린샷 경로도 `source_metadata`를 사용하지만, `institution_identifier` 같은 parser hint를 기본 UI에 노출하지 않는다.
+3. complete 파싱 결과는 `Transaction`(`source_type: "image_upload"`, initially `status: "pending_review"`)으로 저장한 뒤 import duplicate policy를 통과하면 같은 잡에서 즉시 `committed`로 전환한다. 스크린샷 경로도 `source_metadata`를 사용하지만, `institution_identifier` 같은 parser hint를 기본 UI에 노출하지 않는다.
 4. 카테고리 매칭은 3단계: `CategoryMapping` → `Category#matches?` → 미분류 잔여분에 대해 `GeminiCategoryService.suggest_categories_batch`로 일괄 추천 (워크스페이스의 `ai_category_suggestions_enabled?`가 true일 때).
 5. Gemini 분류 결과는 `CategoryMapping(source: "gemini")`로 저장되어 다음 동일 가맹점에서는 1단계에서 재사용된다.
-6. 중복 감지 → duplicate 후보 없는 row 자동 `committed`. Duplicate 후보는 legacy review에 남고, incomplete row는 `ImportIssue`에 보이는 값, `missing_fields`, 원본 session/file, status와 함께 저장한다.
+6. 중복 감지 → exact duplicate는 skip, ambiguous duplicate는 `ImportIssue(issue_type: "ambiguous_duplicate")`, 그 외 complete row는 자동 `committed`. Incomplete row는 `ImportIssue(issue_type: "missing_required_fields")`에 보이는 값, `missing_fields`, 원본 session/file, status와 함께 저장한다.
 
 ### 직접 입력
 
@@ -110,10 +110,10 @@ xef-scale의 현재 구현을 한 페이지로 요약합니다. 미래의 구현
 | `WorkspaceInvitation` | 토큰 기반 초대 (`/join/:token`) |
 | `Transaction` | 거래 — `pending_review` / `committed` / `rolled_back`, `source_type` 5종, `payment_type` 3종, `source_metadata` import hint |
 | `Category` / `CategoryMapping` | 카테고리 + 학습된 매핑 (4단계 우선순위) |
-| `ParsingSession` | 현재 파싱 작업 컨테이너와 import batch 상태 머신. Non-duplicate complete row 자동 커밋을 수행하며, duplicate 후보와 향후 repair/undo 컨테이너로 남는다. |
+| `ParsingSession` | 현재 파싱 작업 컨테이너와 import batch 상태 머신. Complete row 자동 커밋, exact duplicate skip, repair issue 추적, 향후 undo/recovery 컨테이너 역할을 맡는다. |
 | `ProcessedFile` | 업로드된 이미지 파일 — 이미지 외 거부 |
-| `ImportIssue` | 필수값이 부족해 장부에 넣을 수 없는 import repair record. 현재 image incomplete row를 저장하며 focused repair UI의 데이터 소스가 된다. |
-| `DuplicateConfirmation` | 중복 후보 + 결정 (`pending` / `keep_both` / `keep_original` / `keep_new`) |
+| `ImportIssue` | 필수값 누락 또는 ambiguous duplicate 때문에 장부에 바로 넣을 수 없는 import repair record. Focused repair UI의 데이터 소스가 된다. |
+| `DuplicateConfirmation` | Legacy review 중복 후보 + 결정 (`pending` / `keep_both` / `keep_original` / `keep_new`). 새 text/image import duplicate policy는 이 레코드를 만들지 않는다. |
 | `Notification` | 인앱 알림 (파싱 완료/실패 등) |
 | `Comment` | 거래별 댓글 |
 | `AllowanceTransaction` | 거래를 사용자 용돈으로 마킹 |

@@ -256,7 +256,7 @@ class FileParsingJobTest < ActiveJob::TestCase
                  repair_notification.action_url
   end
 
-  test "perform fails with counts and import issues when every parsed row is incomplete" do
+  test "perform completes with repair issues when every parsed row is incomplete" do
     processed_file = @workspace.processed_files.create!(
       filename: "incomplete_only.png",
       original_filename: "incomplete_only.png",
@@ -278,7 +278,8 @@ class FileParsingJobTest < ActiveJob::TestCase
     end
 
     parsing_session = processed_file.reload.parsing_session
-    assert parsing_session.failed?
+    assert parsing_session.completed?
+    assert processed_file.completed?
     assert_equal 1, parsing_session.total_count
     assert_equal 0, parsing_session.success_count
     assert_equal 1, parsing_session.error_count
@@ -289,6 +290,94 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_equal 2, repair_notifications.count
     assert_equal "/workspaces/#{@workspace.id}/transactions?repair=required&import_session_id=#{parsing_session.id}",
                  repair_notifications.find_by!(user: users(:admin)).action_url
+  end
+
+  test "perform skips exact duplicate image rows without creating review confirmations" do
+    existing = @workspace.transactions.create!(
+      date: Date.new(2026, 3, 25),
+      merchant: "네이버페이",
+      amount: 12_000,
+      status: "committed"
+    )
+    processed_file = @workspace.processed_files.create!(
+      filename: "exact_duplicate.png",
+      original_filename: "exact_duplicate.png",
+      status: "pending",
+      uploaded_by: users(:admin)
+    )
+    parsed = {
+      transactions: [
+        { date: existing.date, merchant: " 네이버페이 ", amount: existing.amount }
+      ],
+      incomplete_transactions: []
+    }
+    job = FileParsingJob.new
+    job.define_singleton_method(:parse_file) { |_processed_file| parsed }
+
+    assert_no_difference -> { @workspace.transactions.count } do
+      assert_no_difference -> { DuplicateConfirmation.count } do
+        job.perform(processed_file.id)
+      end
+    end
+
+    parsing_session = processed_file.reload.parsing_session
+    assert parsing_session.completed?
+    assert parsing_session.review_committed?
+    assert_equal 1, parsing_session.total_count
+    assert_equal 0, parsing_session.success_count
+    assert_equal 1, parsing_session.duplicate_count
+    assert_equal 0, parsing_session.error_count
+    assert_empty parsing_session.import_issues
+  end
+
+  test "perform stores ambiguous duplicate image rows as import issues" do
+    existing = @workspace.transactions.create!(
+      date: Date.new(2026, 3, 25),
+      merchant: "스타벅스강남점",
+      amount: 5_000,
+      status: "committed"
+    )
+    processed_file = @workspace.processed_files.create!(
+      filename: "ambiguous_duplicate.png",
+      original_filename: "ambiguous_duplicate.png",
+      status: "pending",
+      uploaded_by: users(:admin)
+    )
+    parsed = {
+      transactions: [
+        { date: existing.date, merchant: "스타벅스 강남", amount: existing.amount }
+      ],
+      incomplete_transactions: []
+    }
+    job = FileParsingJob.new
+    job.define_singleton_method(:parse_file) { |_processed_file| parsed }
+
+    assert_no_difference -> { @workspace.transactions.count } do
+      assert_difference -> { @workspace.import_issues.count }, 1 do
+        assert_no_difference -> { DuplicateConfirmation.count } do
+          job.perform(processed_file.id)
+        end
+      end
+    end
+
+    parsing_session = processed_file.reload.parsing_session
+    assert parsing_session.completed?
+    assert parsing_session.review_pending?
+    assert_equal 1, parsing_session.total_count
+    assert_equal 0, parsing_session.success_count
+    assert_equal 1, parsing_session.duplicate_count
+
+    issue = parsing_session.import_issues.first
+    assert issue.ambiguous_duplicate?
+    assert_equal "image_upload", issue.source_type
+    assert_equal existing, issue.duplicate_transaction
+    assert_equal "스타벅스 강남", issue.merchant
+    assert_equal [], issue.missing_fields
+    assert_equal existing.id, issue.raw_payload.dig("duplicate_match", "transaction_id")
+
+    repair_notifications = Notification.where(notifiable: parsing_session, notification_type: "import_repair_needed")
+    assert_equal 2, repair_notifications.count
+    assert_includes repair_notifications.find_by!(user: users(:admin)).message, "중복 확인이 필요한 항목 1건"
   end
 
   test "gemini batch categorizes image transactions and stores mapping" do

@@ -14,22 +14,21 @@ class AiTextParsingJob < ApplicationJob
       result = parser.parse(parsing_session.notes)
 
       stats = { total: 0, success: 0, duplicate: 0, error: 0 }
+      duplicate_policy = ImportDuplicatePolicy.new(
+        workspace: workspace,
+        parsing_session: parsing_session,
+        source_type: "text_paste"
+      )
 
       result[:transactions].each do |tx_data|
         stats[:total] += 1
         begin
           transaction = create_transaction(workspace, tx_data, parsing_session)
 
-          match = DuplicateDetector.new(workspace, transaction).find_match
-          if match
-            parsing_session.duplicate_confirmations.create!(
-              original_transaction: match.transaction,
-              new_transaction: transaction,
-              status: "pending",
-              match_confidence: match.confidence,
-              match_score: match.score
-            )
+          duplicate_result = duplicate_policy.apply(transaction, raw_payload: tx_data)
+          unless duplicate_result.no_duplicate?
             stats[:duplicate] += 1
+            next
           end
 
           stats[:success] += 1
@@ -39,12 +38,14 @@ class AiTextParsingJob < ApplicationJob
         end
       end
 
-      if stats[:total].zero? || stats[:success].zero?
+      has_import_exceptions = stats[:error].positive? || parsing_session.open_import_issues.exists?
+
+      if parsing_failed_without_import_outcome?(stats, parsing_session)
         parsing_session.fail!
         create_failure_notifications(parsing_session)
       else
         committed_transactions = parsing_session.auto_commit_ready_transactions!(
-          has_import_exceptions: stats[:error].positive?
+          has_import_exceptions: has_import_exceptions
         )
         parsing_session.complete!(stats)
         create_success_side_effects(parsing_session, workspace, committed_transactions)
@@ -104,9 +105,18 @@ class AiTextParsingJob < ApplicationJob
     workspace.categories.find { |c| c.matches?(merchant) }
   end
 
+  def parsing_failed_without_import_outcome?(stats, parsing_session)
+    return true if stats[:total].zero?
+
+    stats[:success].zero? &&
+      stats[:duplicate].zero? &&
+      !parsing_session.open_import_issues.exists?
+  end
+
   def create_success_side_effects(parsing_session, workspace, committed_transactions)
     create_budget_alerts(workspace, committed_transactions)
     create_completion_notifications_safely(parsing_session)
+    create_import_repair_notifications_safely(parsing_session)
   end
 
   def create_budget_alerts(workspace, committed_transactions)
@@ -119,6 +129,16 @@ class AiTextParsingJob < ApplicationJob
     create_completion_notifications(parsing_session)
   rescue StandardError => e
     Rails.logger.error "[AiTextParsingJob] Completion notification side effect failed: #{e.message}"
+  end
+
+  def create_import_repair_notifications_safely(parsing_session)
+    create_import_repair_notifications(parsing_session)
+  rescue StandardError => e
+    Rails.logger.error "[AiTextParsingJob] Import repair notification side effect failed: #{e.message}"
+  end
+
+  def create_import_repair_notifications(parsing_session)
+    ImportRepairNotifier.call(parsing_session)
   end
 
   def create_failure_notifications(parsing_session)
