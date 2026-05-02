@@ -55,8 +55,10 @@ class ImportDuplicatePolicy
       transaction.destroy!
       Result.new(action: :skipped_exact_duplicate, match: match)
     else
-      create_ambiguous_duplicate_issue!(transaction, match, raw_payload: raw_payload)
-      transaction.destroy!
+      ActiveRecord::Base.transaction do
+        create_ambiguous_duplicate_issue!(transaction, match, raw_payload: raw_payload)
+        transaction.destroy!
+      end
       Result.new(action: :repair_issue, match: match)
     end
   end
@@ -64,6 +66,8 @@ class ImportDuplicatePolicy
   private
 
   def same_session_exact_duplicate(transaction)
+    # Scoped to pending_review: at call time all same-session staging rows are still
+    # pending_review (auto_commit_ready_transactions! runs after all rows are processed).
     @parsing_session.transactions
                     .pending_review
                     .where(deleted: false)
