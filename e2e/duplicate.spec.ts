@@ -11,7 +11,8 @@ import { loginAsAdmin } from './helpers';
 test.describe('Duplicate modal (중복 결제 검사)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('/workspaces/1/transactions');
+    await page.getByRole('link', { name: '결제 내역' }).click();
+    await page.waitForURL(/\/workspaces\/\d+\/transactions/);
     await page.waitForLoadState('networkidle');
   });
 

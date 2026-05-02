@@ -1,0 +1,103 @@
+<% import_issues = Array(local_assigns.fetch(:import_issues)) %>
+<% workspace = local_assigns.fetch(:workspace) %>
+<% field_labels = { "date" => "날짜", "merchant" => "가맹점", "amount" => "금액" } %>
+
+<div class="bg-white rounded-lg shadow divide-y divide-gray-200">
+  <div class="px-4 py-4 sm:px-6">
+    <h2 class="text-base font-semibold text-gray-900">수정 필요한 항목만 표시 중</h2>
+    <p class="mt-1 text-sm text-gray-600">
+      빠진 필수값을 채우면 결제 내역에 바로 반영됩니다. 중복 확인 항목은 기존 결제를 유지하거나 새 결제로 등록할 수 있습니다.
+    </p>
+  </div>
+
+  <% import_issues.each do |issue| %>
+    <% missing_fields = Array(issue.missing_fields).map(&:to_s) %>
+    <% if issue.ambiguous_duplicate? %>
+      <% duplicate = issue.duplicate_transaction %>
+      <div id="<%= dom_id(issue) %>" class="px-4 py-4 sm:px-6">
+        <div class="grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-center">
+          <div>
+            <p class="text-xs font-medium text-amber-700">중복 확인 필요</p>
+            <p class="mt-1 text-sm font-semibold text-gray-900"><%= issue.merchant.presence || "가맹점 없음" %></p>
+            <p class="text-sm text-gray-600">
+              <%= issue.date&.strftime("%Y.%m.%d") || "날짜 없음" %>
+              · <%= issue.amount.present? ? "#{number_with_delimiter(issue.amount)}원" : "금액 없음" %>
+            </p>
+          </div>
+
+          <div class="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+            <p class="text-xs font-medium text-gray-500">기존 결제</p>
+            <p class="mt-1 font-medium"><%= duplicate&.merchant || "가맹점 없음" %></p>
+            <p>
+              <%= duplicate&.date&.strftime("%Y.%m.%d") || "날짜 없음" %>
+              · <%= duplicate&.amount.present? ? "#{number_with_delimiter(duplicate.amount)}원" : "금액 없음" %>
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2 lg:justify-end">
+            <%= button_to "기존 유지",
+                workspace_import_issue_path(workspace, issue),
+                method: :patch,
+                params: { resolution_action: "dismiss" },
+                class: "rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+            <%= button_to "새 거래 등록",
+                workspace_import_issue_path(workspace, issue),
+                method: :patch,
+                params: { resolution_action: "create_new" },
+                class: "rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700" %>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <%= form_with url: workspace_import_issue_path(workspace, issue),
+          method: :patch,
+          scope: :import_issue,
+          local: true,
+          id: dom_id(issue),
+          class: "grid gap-3 px-4 py-4 sm:px-6 lg:grid-cols-[10rem_minmax(12rem,1fr)_9rem_auto] lg:items-end" do |f| %>
+        <div>
+          <label class="block text-xs font-medium text-gray-500" for="<%= dom_id(issue, :date) %>">날짜</label>
+          <%= f.date_field :date,
+              value: issue.date,
+              id: dom_id(issue, :date),
+              class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 #{'border-amber-400 bg-amber-50' if missing_fields.include?('date')}" %>
+          <% if missing_fields.include?("date") %>
+            <p class="mt-1 text-xs text-amber-700"><%= field_labels["date"] %> 필요</p>
+          <% end %>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-500" for="<%= dom_id(issue, :merchant) %>">가맹점</label>
+          <%= f.text_field :merchant,
+              value: issue.merchant,
+              id: dom_id(issue, :merchant),
+              class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 #{'border-amber-400 bg-amber-50' if missing_fields.include?('merchant')}" %>
+          <% if missing_fields.include?("merchant") %>
+            <p class="mt-1 text-xs text-amber-700"><%= field_labels["merchant"] %> 필요</p>
+          <% end %>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-500" for="<%= dom_id(issue, :amount) %>">금액</label>
+          <%= f.number_field :amount,
+              value: issue.amount,
+              id: dom_id(issue, :amount),
+              class: "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 #{'border-amber-400 bg-amber-50' if missing_fields.include?('amount')}" %>
+          <% if missing_fields.include?("amount") %>
+            <p class="mt-1 text-xs text-amber-700"><%= field_labels["amount"] %> 필요</p>
+          <% end %>
+        </div>
+
+        <div class="flex flex-wrap gap-2 lg:justify-end">
+          <%= f.submit "반영",
+              class: "rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700" %>
+          <%= button_tag "제외",
+              type: "submit",
+              name: "resolution_action",
+              value: "dismiss",
+              class: "rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" %>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

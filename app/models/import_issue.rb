@@ -50,6 +50,14 @@ class ImportIssue < ApplicationRecord
     issue_type == "ambiguous_duplicate"
   end
 
+  def image_upload?
+    source_type == "image_upload"
+  end
+
+  def text_paste?
+    source_type == "text_paste"
+  end
+
   private
 
   def normalize_missing_fields
@@ -57,7 +65,7 @@ class ImportIssue < ApplicationRecord
   end
 
   def missing_fields_present
-    return unless missing_required_fields?
+    return unless missing_required_fields? && open?
     return if Array(missing_fields).any?
 
     errors.add(:missing_fields, "must include at least one missing field")
