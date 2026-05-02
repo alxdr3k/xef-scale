@@ -8,6 +8,7 @@ class ParsingSession < ApplicationRecord
   belongs_to :rolled_back_by, class_name: "User", optional: true
   has_many :duplicate_confirmations, dependent: :destroy
   has_many :transactions, dependent: :nullify
+  has_many :review_pending_transactions, -> { pending_review.where(deleted: false) }, class_name: "Transaction"
   has_many :notifications, as: :notifiable, dependent: :destroy
   has_many :import_issues, dependent: :destroy
   has_many :open_import_issues, -> { open.order(:created_at) }, class_name: "ImportIssue"
@@ -233,6 +234,10 @@ class ParsingSession < ApplicationRecord
 
   def pending_transaction_count
     transactions.pending_review.count
+  end
+
+  def pending_review_transactions?
+    review_pending_transactions.loaded? ? review_pending_transactions.any? : review_pending_transactions.exists?
   end
 
   # Snapshot of what this import actually did to the ledger after commit.

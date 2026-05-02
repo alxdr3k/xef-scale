@@ -75,7 +75,10 @@
   </td>
   <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
     <% if parsing_session.completed? %>
-      <% if parsing_session.open_import_issues.any? %>
+      <% if parsing_session.pending_review_transactions? %>
+        <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
+            class: 'text-indigo-600 hover:text-indigo-900 font-medium' %>
+      <% elsif parsing_session.open_import_issues.any? %>
         <%= link_to '수정하기',
             workspace_transactions_path(workspace, repair: "required", import_session_id: parsing_session.id),
             class: 'text-indigo-600 hover:text-indigo-900 font-medium' %>

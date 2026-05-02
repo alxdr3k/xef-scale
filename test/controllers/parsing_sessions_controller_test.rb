@@ -106,6 +106,36 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기"
   end
 
+  test "index links mixed import issue and pending row sessions to review first" do
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "검토 필요 행",
+      amount: 12_000,
+      status: "pending_review"
+    )
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      date: nil,
+      merchant: "수정 필요 행",
+      amount: 8_000,
+      missing_fields: [ "date" ]
+    )
+
+    get workspace_parsing_sessions_path(@workspace)
+
+    assert_response :success
+    assert_select "a[href='#{review_workspace_parsing_session_path(@workspace, session)}']", text: "검토하기", minimum: 1
+    assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기", count: 0
+  end
+
   test "month scoped index includes exact duplicate only sessions by created month outside duplicate filter" do
     target = Time.zone.local(Date.current.year, Date.current.month, 15, 12, 0, 0)
     session = @workspace.parsing_sessions.create!(
