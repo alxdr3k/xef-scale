@@ -65,6 +65,8 @@
       <% if parsing_session.error_count.to_i > 0 %>
         · 오류 <%= parsing_session.error_count %>건
       <% end %>
+    <% elsif parsing_session.failed? && parsing_session.open_import_issues.any? %>
+      수정 필요 <%= parsing_session.open_import_issues.size %>건
     <% end %>
   </td>
   <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -84,6 +86,10 @@
           class: 'text-indigo-600 hover:text-indigo-900' %>
     <% elsif parsing_session.failed? %>
       <div class="flex items-center justify-end gap-2">
+        <% if parsing_session.open_import_issues.any? %>
+          <%= link_to '상세보기', workspace_parsing_session_path(workspace, parsing_session),
+              class: 'text-gray-600 hover:text-gray-900 text-sm' %>
+        <% end %>
         <%= button_to '재시도', retry_workspace_parsing_session_path(workspace, parsing_session),
             method: :post,
             class: 'text-indigo-600 hover:text-indigo-900 font-medium text-sm bg-transparent border-0 cursor-pointer p-0' %>

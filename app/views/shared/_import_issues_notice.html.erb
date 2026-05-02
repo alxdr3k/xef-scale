@@ -1,0 +1,22 @@
+<% import_issues = Array(local_assigns.fetch(:import_issues)) %>
+<% if import_issues.any? %>
+  <% field_labels = { "date" => "날짜", "merchant" => "가맹점", "amount" => "금액" } %>
+  <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-900">
+    <p class="font-medium mb-2">자동 반영되지 않은 항목이 있습니다</p>
+    <p class="mb-3">날짜, 가맹점, 금액 중 필수 정보가 부족해 결제 내역에 넣지 않은 항목입니다.</p>
+    <ul class="space-y-1">
+      <% import_issues.first(5).each_with_index do |issue, index| %>
+        <% missing = issue.missing_fields.map { |field| field_labels.fetch(field.to_s, field.to_s) }.join(", ") %>
+        <% visible = [
+          issue.date&.strftime("%Y.%m.%d"),
+          issue.merchant.presence || "가맹점 없음",
+          issue.amount.present? ? "#{number_with_delimiter(issue.amount)}원" : "금액 없음"
+        ].compact.join(" / ") %>
+        <li><%= index + 1 %>. 누락: <%= missing.presence || "필수 정보" %> - <%= visible %></li>
+      <% end %>
+      <% if import_issues.size > 5 %>
+        <li>... 외 <%= import_issues.size - 5 %>건</li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

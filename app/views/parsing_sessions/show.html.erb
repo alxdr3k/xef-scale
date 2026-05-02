@@ -24,6 +24,8 @@
     </div>
   </div>
 
+  <%= render "shared/import_issues_notice", import_issues: @import_issues %>
+
   <!-- Duplicate Confirmations -->
   <% if @duplicate_confirmations.any? %>
     <div class="bg-white rounded-lg shadow overflow-hidden">

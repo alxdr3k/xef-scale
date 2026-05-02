@@ -13,6 +13,7 @@ class ReviewsController < ApplicationController
     @pagy, @transactions = pagy(@transactions, limit: 50)
     @categories = @workspace.categories.order(:name)
     @read_only = @parsing_session.review_committed? || @parsing_session.review_rolled_back? || @parsing_session.review_discarded?
+    @import_issues = @parsing_session.open_import_issues.to_a
     @duplicate_confirmations = @parsing_session.duplicate_confirmations
                                                .pending
                                                .includes(

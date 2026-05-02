@@ -21,7 +21,9 @@
     </div>
   </div>
 
-  <% if @parsing_session.incomplete_parse_note? %>
+  <% if @import_issues.any? %>
+    <%= render "shared/import_issues_notice", import_issues: @import_issues %>
+  <% elsif @parsing_session.incomplete_parse_note? %>
     <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-900">
       <p class="font-medium mb-2">자동 반영되지 않은 항목이 있습니다</p>
       <p class="whitespace-pre-line"><%= @parsing_session.incomplete_parse_note_text %></p>

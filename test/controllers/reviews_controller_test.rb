@@ -345,6 +345,30 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "사용자 메모"
   end
 
+  test "show renders import issue banner from durable repair records" do
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      merchant: "네이버페이",
+      amount: 12_000,
+      missing_fields: [ "date" ],
+      raw_payload: { "merchant" => "네이버페이" }
+    )
+
+    get review_workspace_parsing_session_path(@workspace, session)
+
+    assert_response :success
+    assert_select "p", text: "자동 반영되지 않은 항목이 있습니다", count: 1
+    assert_includes response.body, "누락: 날짜"
+    assert_includes response.body, "네이버페이"
+    assert_includes response.body, "12,000원"
+  end
+
   test "bulk_resolve_duplicates is refused on finalized sessions" do
     dc = @parsing_session.duplicate_confirmations.create!(
       original_transaction: transactions(:food_transaction),

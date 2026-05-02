@@ -7,7 +7,7 @@ class ParsingSessionsController < ApplicationController
 
   def index
     @parsing_sessions = @workspace.parsing_sessions
-                                  .includes(:processed_file, :duplicate_confirmations)
+                                  .includes(:processed_file, :duplicate_confirmations, :open_import_issues)
                                   .order(created_at: :desc)
 
     month_range = nil
@@ -57,6 +57,7 @@ class ParsingSessionsController < ApplicationController
     @duplicate_confirmations = @parsing_session.duplicate_confirmations
                                                .includes(:original_transaction, :new_transaction)
                                                .order(:created_at)
+    @import_issues = @parsing_session.open_import_issues.to_a
   end
 
   def text_parse

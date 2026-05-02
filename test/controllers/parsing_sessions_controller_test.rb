@@ -33,6 +33,43 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, ParsingSession::INCOMPLETE_PARSE_NOTE_START_MARKER
   end
 
+  test "index links failed sessions with import issues" do
+    session = parsing_sessions(:failed_session)
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      merchant: "마차이짬뽕 성수점",
+      amount: 61_000,
+      missing_fields: [ "date" ]
+    )
+
+    get workspace_parsing_sessions_path(@workspace)
+
+    assert_response :success
+    assert_includes response.body, "수정 필요 1건"
+    assert_select "a", text: "상세보기", minimum: 1
+  end
+
+  test "show renders failed import issue details" do
+    session = parsing_sessions(:failed_session)
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      merchant: "네이버페이",
+      amount: 12_000,
+      missing_fields: [ "date" ],
+      raw_payload: { "merchant" => "네이버페이" }
+    )
+
+    get workspace_parsing_session_path(@workspace, session)
+
+    assert_response :success
+    assert_select "p", text: "자동 반영되지 않은 항목이 있습니다", count: 1
+    assert_includes response.body, "누락: 날짜"
+    assert_includes response.body, "네이버페이"
+    assert_includes response.body, "12,000원"
+  end
+
   test "index hides AI input panels while consent is required" do
     @workspace.update!(ai_consent_acknowledged_at: nil)
 
