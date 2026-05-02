@@ -28,6 +28,7 @@ class ImportIssue < ApplicationRecord
   scope :open, -> { where(status: "open") }
   scope :resolved, -> { where(status: "resolved") }
   scope :dismissed, -> { where(status: "dismissed") }
+  scope :ambiguous_duplicates, -> { where(issue_type: "ambiguous_duplicate") }
 
   def open?
     status == "open"

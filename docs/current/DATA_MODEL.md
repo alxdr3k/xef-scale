@@ -108,6 +108,7 @@ Current P1 transition ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): 
 - `raw_payload`는 repair UI/감사를 위한 원본 파서 payload 사본이며, ledger 계산에는 쓰지 않는다.
 - `resolved_transaction_id`는 향후 repair promotion이 완료됐을 때 생성된 `Transaction`을 연결하기 위한 optional FK다.
 - Open issue는 `Notification(import_repair_needed)`의 `action_url`과 결제 내역 `repair=required` 모드의 데이터 소스다. 현재 repair mode는 missing/duplicate repair item을 보여주는 entry point이며, 필수값 입력·중복 판단·`resolved_transaction_id` 연결은 `UX-1B.3`/`INP-1B.4`에서 완성한다.
+- 입력 기록의 `has_duplicates` 필터와 달력 중복 배지는 pending `DuplicateConfirmation`과 open ambiguous duplicate `ImportIssue`를 함께 센다.
 
 ## 카테고리 학습 루프
 

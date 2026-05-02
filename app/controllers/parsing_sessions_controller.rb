@@ -29,9 +29,17 @@ class ParsingSessionsController < ApplicationController
         month_tx_ids = @workspace.transactions.where(date: month_range).select(:id)
         dc_where[:new_transaction_id] = month_tx_ids
       end
+      legacy_duplicate_session_ids = @workspace.parsing_sessions
+                                               .joins(:duplicate_confirmations)
+                                               .where(duplicate_confirmations: dc_where)
+                                               .select(:id)
+      repair_duplicate_issues = @workspace.import_issues.open.ambiguous_duplicates
+      repair_duplicate_issues = repair_duplicate_issues.where(date: month_range) if month_range
+      repair_duplicate_session_ids = repair_duplicate_issues.select(:parsing_session_id)
+
       @parsing_sessions = @parsing_sessions
-                            .joins(:duplicate_confirmations)
-                            .where(duplicate_confirmations: dc_where)
+                            .where(id: legacy_duplicate_session_ids)
+                            .or(@parsing_sessions.where(id: repair_duplicate_session_ids))
                             .distinct
     end
 

@@ -26,7 +26,8 @@
     <span class="text-xs text-gray-500 min-w-0 truncate">
       <% if parsing_session.completed? %>
         성공 <%= parsing_session.success_count %>건
-        <% pending_dup_count = parsing_session.duplicate_confirmations.select { |dc| dc.status == "pending" }.size %>
+        <% pending_dup_count = parsing_session.duplicate_confirmations.select { |dc| dc.status == "pending" }.size +
+                               parsing_session.open_import_issues.select(&:ambiguous_duplicate?).size %>
         <% if pending_dup_count > 0 %>
           · 중복 <%= pending_dup_count %>건
         <% end %>
@@ -41,7 +42,11 @@
   </div>
   <% if parsing_session.completed? %>
     <div class="mt-2">
-      <% if parsing_session.review_pending? %>
+      <% if parsing_session.open_import_issues.any? %>
+        <%= link_to '수정하기',
+            workspace_transactions_path(workspace, repair: "required", import_session_id: parsing_session.id),
+            class: 'text-xs text-indigo-600 hover:text-indigo-900 font-medium' %>
+      <% elsif parsing_session.review_pending? %>
         <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
             class: 'text-xs text-indigo-600 hover:text-indigo-900 font-medium' %>
       <% else %>

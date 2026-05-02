@@ -117,15 +117,23 @@ class DashboardsController < ApplicationController
     # :original_transaction). Without the alias Rails may silently rename
     # the :new_transaction join and break the `transactions.date`
     # reference.
-    @duplicate_per_day = DuplicateConfirmation
-                           .joins(:parsing_session)
-                           .joins("INNER JOIN transactions AS new_transactions ON new_transactions.id = duplicate_confirmations.new_transaction_id")
-                           .where(parsing_sessions: { workspace_id: @workspace.id })
-                           .where(status: "pending")
-                           .where("new_transactions.date BETWEEN ? AND ?", start_date, end_date)
-                           .group("new_transactions.date")
-                           .count
-                           .transform_keys { |d| d.is_a?(String) ? Date.parse(d) : d }
+    legacy_duplicate_per_day = DuplicateConfirmation
+                                 .joins(:parsing_session)
+                                 .joins("INNER JOIN transactions AS new_transactions ON new_transactions.id = duplicate_confirmations.new_transaction_id")
+                                 .where(parsing_sessions: { workspace_id: @workspace.id })
+                                 .where(status: "pending")
+                                 .where("new_transactions.date BETWEEN ? AND ?", start_date, end_date)
+                                 .group("new_transactions.date")
+                                 .count
+                                 .transform_keys { |d| d.is_a?(String) ? Date.parse(d) : d }
+    repair_duplicate_per_day = @workspace.import_issues
+                                         .open
+                                         .ambiguous_duplicates
+                                         .where(date: start_date..end_date)
+                                         .group(:date)
+                                         .count
+                                         .transform_keys { |d| d.is_a?(String) ? Date.parse(d) : d }
+    @duplicate_per_day = legacy_duplicate_per_day.merge(repair_duplicate_per_day) { |_date, legacy, repair| legacy + repair }
 
     @uncategorized_per_day = @workspace.transactions
                                        .active

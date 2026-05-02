@@ -50,6 +50,36 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a", text: "상세보기", minimum: 1
   end
 
+  test "index duplicate filter includes ambiguous duplicate import issues" do
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    duplicate = @workspace.transactions.create!(
+      date: Date.current,
+      merchant: "스타벅스강남점",
+      amount: 5_000,
+      status: "committed"
+    )
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "text_paste",
+      issue_type: "ambiguous_duplicate",
+      duplicate_transaction: duplicate,
+      date: duplicate.date,
+      merchant: "스타벅스 강남",
+      amount: duplicate.amount,
+      missing_fields: []
+    )
+
+    get workspace_parsing_sessions_path(@workspace), params: { filter: "has_duplicates" }
+
+    assert_response :success
+    assert_includes response.body, "중복 1건"
+    assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기"
+  end
+
   test "show renders failed import issue details" do
     session = parsing_sessions(:failed_session)
     session.import_issues.create!(
