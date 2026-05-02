@@ -19,7 +19,8 @@ class TransactionsController < ApplicationController
     @repair_import_issues = apply_import_issue_filters(@open_import_issues)
 
     transactions = @workspace.transactions.active.excluding_allowance.includes(:category, parsing_session: :processed_file)
-    transactions = apply_index_filters(transactions, year: @year, month: @month)
+    year_filter = (@import_session_filter_requested && params[:year].blank?) ? nil : @year
+    transactions = apply_index_filters(transactions, year: year_filter, month: @month)
     transactions = transactions.order(date: :desc, created_at: :desc)
 
     @pagy, @transactions = pagy(transactions, limit: 50)
