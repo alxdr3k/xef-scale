@@ -48,7 +48,9 @@ class Notification < ApplicationRecord
     pending_row_count = has_reviewable_rows ? parsing_session.transactions.pending_review.where(deleted: false).count : 0
     open_issue_count = parsing_session.open_import_issues.count
 
-    action_url = if parsing_session.success_count.to_i.zero? && open_issue_count.positive?
+    action_url = if has_reviewable_rows
+      "/workspaces/#{parsing_session.workspace_id}/parsing_sessions/#{parsing_session.id}/review"
+    elsif parsing_session.success_count.to_i.zero? && open_issue_count.positive?
       "/workspaces/#{parsing_session.workspace_id}/transactions?repair=required&import_session_id=#{parsing_session.id}"
     elsif parsing_session.success_count.to_i.positive?
       "/workspaces/#{parsing_session.workspace_id}/transactions?import_session_id=#{parsing_session.id}"
