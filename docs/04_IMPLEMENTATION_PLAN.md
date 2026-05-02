@@ -20,7 +20,7 @@
 | Milestone | 제품 / 사용자 관점의 delivery gate | `P1-M1` | "사용자가 어떤 상태를 얻는가"를 기준으로 정의 |
 | Track | 기술 영역 또는 큰 구현 흐름 | `INP` | docs, requirements, input, API, operations 등 |
 | Phase | track 안의 구현 단계 | `INP-1A` | 같은 track 안에서 순서가 있는 단계 |
-| Slice / Task | 커밋 가능한 구현 단위 | `INP-1A.2` | PR / commit / issue와 연결 가능한 크기 |
+| Slice | 커밋 가능한 구현/검증 단위 | `INP-1A.2` | PR / commit / issue와 연결 가능한 크기 |
 | Gate | 검증 / acceptance 기준 | `AC-012` / `ROAD-001` | 제품 AC는 [06_ACCEPTANCE_TESTS.md](06_ACCEPTANCE_TESTS.md), roadmap gate는 아래 표 |
 | Evidence | 완료를 뒷받침하는 근거 | PR, code, tests, current docs | 본문 복제 대신 링크 / ID로 남김 |
 
@@ -51,7 +51,7 @@ Gate status:
 
 ## Feedback Intake
 
-실사용 피드백은 큰 제품 로드맵 밖에서 들어와도 버리지 않는다. 재현 가능한 버그, UX 회귀, 오판정처럼 바로 결정 가능한 항목은 가장 가까운 track/phase의 짧은 leaf slice로 기록하고 같은 PR에서 코드·테스트·current 문서까지 반영한다. 더 큰 제품 방향, 운영 정책, 비용/보안 trade-off가 필요한 항목만 questions register 또는 ADR로 승격한다. 사용자 관찰에서 나온 항목은 `UX-1B.6`/`ROAD-001` evidence로도 남긴다.
+실사용 피드백은 큰 제품 로드맵 밖에서 들어와도 버리지 않는다. 재현 가능한 버그, UX 회귀, 오판정처럼 바로 결정 가능한 항목은 가장 가까운 track/phase의 짧은 slice로 기록하고 같은 PR에서 코드·테스트·current 문서까지 반영한다. 더 큰 제품 방향, 운영 정책, 비용/보안 trade-off가 필요한 항목만 questions register 또는 ADR로 승격한다. 세부 피드백 스레드는 issue/PR에 두고, 이 문서에는 actionable slice, gate, evidence, next step만 남긴다.
 
 ## Milestones
 
