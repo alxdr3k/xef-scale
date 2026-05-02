@@ -73,7 +73,8 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
       missing_fields: []
     )
 
-    get workspace_parsing_sessions_path(@workspace), params: { filter: "has_duplicates" }
+    get workspace_parsing_sessions_path(@workspace),
+        params: { filter: "has_duplicates", year: duplicate.date.year, month: duplicate.date.month }
 
     assert_response :success
     assert_includes response.body, "중복 1건"
