@@ -129,19 +129,25 @@ test.describe('Parsing sessions (결제 추가 페이지)', () => {
     expect(emptyVisible || historyVisible).toBe(true);
   });
 
-  test('완료된 세션에 검토하기 링크가 표시된다', async ({ page }) => {
-    const reviewLink = page.locator('a:has-text("검토하기")').first();
-    const detailLink = page.locator('a:has-text("상세보기")').first();
+  test('완료된 세션은 검토하기 대신 결제 내역 또는 수정 action을 표시한다', async ({ page }) => {
+    const history = page.locator('[data-testid="parsing-session-table"], [data-testid="parsing-session-cards"]');
+    await expect(history.locator('a', { hasText: '검토하기' })).toHaveCount(0);
 
-    const hasReview = await reviewLink.isVisible({ timeout: 2000 }).catch(() => false);
+    const ledgerLink = history.locator('a[href*="import_session_id"]', { hasText: '결제 내역' }).first();
+    const repairLink = history.locator('a[href*="repair=required"]', { hasText: '수정하기' }).first();
+    const detailLink = history.locator('a[href*="review"]', { hasText: '상세보기' }).first();
+
+    const hasLedger = await ledgerLink.isVisible({ timeout: 2000 }).catch(() => false);
+    const hasRepair = await repairLink.isVisible({ timeout: 2000 }).catch(() => false);
     const hasDetail = await detailLink.isVisible({ timeout: 2000 }).catch(() => false);
 
-    if (hasReview) {
-      await expect(reviewLink).toHaveAttribute('href', /review/);
+    if (hasLedger) {
+      await expect(ledgerLink).toHaveAttribute('href', /transactions.*import_session_id/);
+    } else if (hasRepair) {
+      await expect(repairLink).toHaveAttribute('href', /transactions.*repair=required/);
     } else if (hasDetail) {
       await expect(detailLink).toHaveAttribute('href', /review/);
     }
-    // Both may be absent if no sessions exist — that's acceptable
   });
 
   // --- Onboarding overlay ---

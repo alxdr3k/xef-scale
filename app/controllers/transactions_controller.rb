@@ -7,9 +7,11 @@ class TransactionsController < ApplicationController
   before_action :require_workspace_write_access, only: [ :new, :create, :edit, :update, :destroy, :quick_update_category, :inline_update, :bulk_update, :restore ]
 
   def index
-    @year = sanitize_year(params[:year]) || Date.current.year
+    @import_session_filter_requested = params[:import_session_id].present?
+    @year = sanitize_year(params[:year]) || (@import_session_filter_requested ? nil : Date.current.year)
     @month = sanitize_month(params[:month])
     @repair_filter = params[:repair] == "required"
+    @import_session_filter = import_session_filter
     @open_import_issues = @workspace.import_issues.open
                                     .includes(:parsing_session, :processed_file, :duplicate_transaction)
                                     .order(created_at: :desc)
@@ -443,16 +445,25 @@ class TransactionsController < ApplicationController
     scope = scope.by_category(params[:category_id]) if params[:category_id].present?
     scope = scope.search(params[:q]) if params[:q].present?
     scope = scope.where(category_id: nil) if params[:filter] == "uncategorized"
+    scope = scope.where(parsing_session_id: @import_session_filter.id) if @import_session_filter
+    scope = scope.none if @import_session_filter_requested && !@import_session_filter
     scope
   end
 
   def apply_import_issue_filters(scope)
-    return scope unless params[:import_session_id].present?
+    return scope unless @import_session_filter_requested
+    return scope.none unless @import_session_filter
+
+    scope.where(parsing_session_id: @import_session_filter.id)
+  end
+
+  def import_session_filter
+    return nil unless params[:import_session_id].present?
 
     session_id = Integer(params[:import_session_id], exception: false)
-    return scope.none unless session_id
+    return nil unless session_id
 
-    scope.where(parsing_session_id: session_id)
+    @workspace.parsing_sessions.find_by(id: session_id)
   end
 
   def sanitize_year(value)

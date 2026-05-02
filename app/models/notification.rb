@@ -45,15 +45,20 @@ class Notification < ApplicationRecord
   def self.create_parsing_complete!(parsing_session, user)
     has_reviewable_rows = parsing_session.review_pending? &&
                           parsing_session.transactions.pending_review.where(deleted: false).exists?
+    pending_row_count = has_reviewable_rows ? parsing_session.transactions.pending_review.where(deleted: false).count : 0
     open_issue_count = parsing_session.open_import_issues.count
 
     action_url = if has_reviewable_rows
       "/workspaces/#{parsing_session.workspace_id}/parsing_sessions/#{parsing_session.id}/review"
+    elsif parsing_session.success_count.to_i.zero? && open_issue_count.positive?
+      "/workspaces/#{parsing_session.workspace_id}/transactions?repair=required&import_session_id=#{parsing_session.id}"
+    elsif parsing_session.success_count.to_i.positive?
+      "/workspaces/#{parsing_session.workspace_id}/transactions?import_session_id=#{parsing_session.id}"
     else
       "/workspaces/#{parsing_session.workspace_id}/transactions"
     end
     message = if has_reviewable_rows
-      "#{parsing_session.processed_file&.filename || '텍스트 붙여넣기'}에서 #{parsing_session.success_count}건의 거래가 발견되었습니다. 검토해주세요."
+      "#{parsing_session.processed_file&.filename || '텍스트 붙여넣기'}에서 자동 반영되지 않은 항목 #{pending_row_count}건이 있습니다."
     elsif parsing_session.success_count.to_i.zero? && open_issue_count.positive?
       "#{parsing_session.processed_file&.filename || '텍스트 붙여넣기'}에서 수정이 필요한 항목 #{open_issue_count}건을 찾았습니다."
     elsif parsing_session.success_count.to_i.zero? && parsing_session.duplicate_count.to_i.positive?
