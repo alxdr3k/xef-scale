@@ -11,7 +11,7 @@ class TransactionsController < ApplicationController
     @month = sanitize_month(params[:month])
     @repair_filter = params[:repair] == "required"
     @open_import_issues = @workspace.import_issues.open
-                                    .includes(:parsing_session, :processed_file)
+                                    .includes(:parsing_session, :processed_file, :duplicate_transaction)
                                     .order(created_at: :desc)
     @open_import_issues_count = @open_import_issues.count
     @repair_import_issues = apply_import_issue_filters(@open_import_issues)

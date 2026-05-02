@@ -235,6 +235,169 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     assert_equal "/workspaces/#{@workspace.id}/transactions", notification.action_url
   end
 
+  test "perform skips exact duplicate text rows without review confirmations" do
+    existing = @workspace.transactions.create!(
+      date: Date.new(2027, 2, 15),
+      merchant: "네이버페이",
+      amount: 12_000,
+      status: "committed"
+    )
+    fake_result = {
+      transactions: [
+        {
+          date: existing.date,
+          merchant: "네이버페이",
+          amount: existing.amount,
+          institution: "신한카드",
+          payment_type: "lump_sum",
+          installment_month: nil,
+          installment_total: nil,
+          confidence: 0.91
+        }
+      ],
+      raw_text: @parsing_session.notes,
+      model_used: "gemini-test"
+    }
+
+    original_new = AiTextParser.method(:new)
+    original_parse = AiTextParser.instance_method(:parse)
+    AiTextParser.define_singleton_method(:new) { |*| allocate }
+    AiTextParser.define_method(:parse) { |_text| fake_result }
+
+    begin
+      assert_no_difference -> { @workspace.transactions.count } do
+        assert_no_difference -> { DuplicateConfirmation.count } do
+          AiTextParsingJob.new.perform(@parsing_session.id)
+        end
+      end
+    ensure
+      AiTextParser.define_singleton_method(:new, original_new)
+      AiTextParser.define_method(:parse, original_parse)
+    end
+
+    assert @parsing_session.reload.completed?
+    assert @parsing_session.review_committed?
+    assert_equal 1, @parsing_session.duplicate_count
+    assert_equal 0, @parsing_session.success_count
+    assert_empty @parsing_session.import_issues
+  end
+
+  test "perform stores ambiguous duplicate text rows as import issues" do
+    existing = @workspace.transactions.create!(
+      date: Date.new(2027, 2, 15),
+      merchant: "스타벅스강남점",
+      amount: 5_000,
+      status: "committed"
+    )
+    fake_result = {
+      transactions: [
+        {
+          date: existing.date,
+          merchant: "스타벅스 강남",
+          amount: existing.amount,
+          institution: "신한카드",
+          payment_type: "lump_sum",
+          installment_month: nil,
+          installment_total: nil,
+          confidence: 0.91
+        }
+      ],
+      raw_text: @parsing_session.notes,
+      model_used: "gemini-test"
+    }
+
+    original_new = AiTextParser.method(:new)
+    original_parse = AiTextParser.instance_method(:parse)
+    AiTextParser.define_singleton_method(:new) { |*| allocate }
+    AiTextParser.define_method(:parse) { |_text| fake_result }
+
+    begin
+      assert_no_difference -> { @workspace.transactions.count } do
+        assert_difference -> { @workspace.import_issues.count }, 1 do
+          assert_no_difference -> { DuplicateConfirmation.count } do
+            AiTextParsingJob.new.perform(@parsing_session.id)
+          end
+        end
+      end
+    ensure
+      AiTextParser.define_singleton_method(:new, original_new)
+      AiTextParser.define_method(:parse, original_parse)
+    end
+
+    assert @parsing_session.reload.completed?
+    assert @parsing_session.review_pending?
+    assert_equal 1, @parsing_session.duplicate_count
+    assert_equal 0, @parsing_session.success_count
+
+    issue = @parsing_session.import_issues.first
+    assert issue.ambiguous_duplicate?
+    assert_equal "text_paste", issue.source_type
+    assert_equal existing, issue.duplicate_transaction
+    assert_equal [], issue.missing_fields
+    assert_equal existing.id, issue.raw_payload.dig("duplicate_match", "transaction_id")
+
+    repair_notifications = Notification.where(notifiable: @parsing_session, notification_type: "import_repair_needed")
+    assert_equal 2, repair_notifications.count
+    assert_includes repair_notifications.find_by!(user: users(:admin)).message, "중복 확인이 필요한 항목 1건"
+  end
+
+  test "perform fails when exact duplicates and creation errors leave no repair artifacts" do
+    existing = @workspace.transactions.create!(
+      date: Date.new(2027, 2, 15),
+      merchant: "네이버페이",
+      amount: 12_000,
+      status: "committed"
+    )
+    fake_result = {
+      transactions: [
+        {
+          date: existing.date,
+          merchant: existing.merchant,
+          amount: existing.amount,
+          institution: "신한카드",
+          payment_type: "lump_sum",
+          installment_month: nil,
+          installment_total: nil,
+          confidence: 0.91
+        },
+        {
+          date: Date.new(2027, 2, 16),
+          merchant: "저장 실패",
+          amount: nil,
+          institution: "신한카드",
+          payment_type: "lump_sum",
+          installment_month: nil,
+          installment_total: nil,
+          confidence: 0.91
+        }
+      ],
+      raw_text: @parsing_session.notes,
+      model_used: "gemini-test"
+    }
+
+    original_new = AiTextParser.method(:new)
+    original_parse = AiTextParser.instance_method(:parse)
+    AiTextParser.define_singleton_method(:new) { |*| allocate }
+    AiTextParser.define_method(:parse) { |_text| fake_result }
+
+    begin
+      assert_no_difference -> { @workspace.transactions.count } do
+        assert_no_difference -> { @workspace.import_issues.count } do
+          AiTextParsingJob.new.perform(@parsing_session.id)
+        end
+      end
+    ensure
+      AiTextParser.define_singleton_method(:new, original_new)
+      AiTextParser.define_method(:parse, original_parse)
+    end
+
+    assert @parsing_session.reload.failed?
+    assert_equal 2, @parsing_session.total_count
+    assert_equal 0, @parsing_session.success_count
+    assert_equal 1, @parsing_session.duplicate_count
+    assert_equal 1, @parsing_session.error_count
+  end
+
   test "perform leaves parsed text rows with blank merchant pending review" do
     fake_result = {
       transactions: [

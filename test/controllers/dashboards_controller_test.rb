@@ -266,6 +266,37 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_nil duplicate_per_day[target]
   end
 
+  test "calendar dashboard counts ambiguous duplicate import issues per day" do
+    target = Date.current.beginning_of_month + 6.days
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    duplicate = @workspace.transactions.create!(
+      date: target,
+      amount: 5_000,
+      merchant: "스타벅스강남점",
+      status: "committed"
+    )
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "text_paste",
+      issue_type: "ambiguous_duplicate",
+      duplicate_transaction: duplicate,
+      date: target,
+      merchant: "스타벅스 강남",
+      amount: 5_000,
+      missing_fields: []
+    )
+
+    get calendar_dashboard_path, params: { year: target.year, month: target.month }
+
+    assert_response :success
+    duplicate_per_day = controller.instance_variable_get(:@duplicate_per_day)
+    assert_equal 1, duplicate_per_day[target]
+  end
+
   test "monthly dashboard daily average is hidden for future months" do
     future = Date.current.next_month.next_month
 

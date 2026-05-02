@@ -50,6 +50,144 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a", text: "상세보기", minimum: 1
   end
 
+  test "index duplicate filter includes ambiguous duplicate import issues" do
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    duplicate = @workspace.transactions.create!(
+      date: Date.current,
+      merchant: "스타벅스강남점",
+      amount: 5_000,
+      status: "committed"
+    )
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "text_paste",
+      issue_type: "ambiguous_duplicate",
+      duplicate_transaction: duplicate,
+      date: duplicate.date,
+      merchant: "스타벅스 강남",
+      amount: duplicate.amount,
+      missing_fields: []
+    )
+
+    get workspace_parsing_sessions_path(@workspace),
+        params: { filter: "has_duplicates", year: duplicate.date.year, month: duplicate.date.month }
+
+    assert_response :success
+    assert_includes response.body, "중복 1건"
+    assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기"
+  end
+
+  test "month scoped needs review includes repair-only import issue sessions" do
+    target = Date.current.beginning_of_month + 3.days
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      date: target,
+      merchant: "날짜 있는 누락 항목",
+      amount: 12_000,
+      missing_fields: [ "merchant" ]
+    )
+
+    get workspace_parsing_sessions_path(@workspace),
+        params: { filter: "needs_review", year: target.year, month: target.month }
+
+    assert_response :success
+    assert_includes response.body, "수정하기"
+    assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기"
+  end
+
+  test "index links mixed import issue and pending row sessions to review first" do
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "검토 필요 행",
+      amount: 12_000,
+      status: "pending_review"
+    )
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      date: nil,
+      merchant: "수정 필요 행",
+      amount: 8_000,
+      missing_fields: [ "date" ]
+    )
+
+    get workspace_parsing_sessions_path(@workspace)
+
+    assert_response :success
+    assert_select "a[href='#{review_workspace_parsing_session_path(@workspace, session)}']", text: "검토하기", minimum: 1
+    assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기", count: 0
+  end
+
+  test "month scoped index includes exact duplicate only sessions by created month outside duplicate filter" do
+    target = Time.zone.local(Date.current.year, Date.current.month, 15, 12, 0, 0)
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "committed",
+      total_count: 1,
+      success_count: 0,
+      duplicate_count: 1,
+      error_count: 0,
+      created_at: target
+    )
+
+    get workspace_parsing_sessions_path(@workspace),
+        params: { year: target.year, month: target.month }
+
+    assert_response :success
+    assert_includes response.body, "##{session.id}"
+
+    get workspace_parsing_sessions_path(@workspace),
+        params: { filter: "has_duplicates", year: target.year, month: target.month }
+
+    assert_response :success
+    assert_not_includes response.body, "##{session.id}"
+  end
+
+  test "month scoped index includes undated import issue sessions by created month" do
+    target = Time.zone.local(Date.current.year, Date.current.month, 16, 12, 0, 0)
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review",
+      created_at: target
+    )
+    session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      date: nil,
+      merchant: "날짜 없는 누락 항목",
+      amount: 12_000,
+      missing_fields: [ "date" ]
+    )
+
+    get workspace_parsing_sessions_path(@workspace),
+        params: { year: target.year, month: target.month }
+
+    assert_response :success
+    assert_includes response.body, "수정하기"
+    assert_select "a[href='#{workspace_transactions_path(@workspace, repair: "required", import_session_id: session.id)}']", text: "수정하기"
+  end
+
   test "show renders failed import issue details" do
     session = parsing_sessions(:failed_session)
     session.import_issues.create!(

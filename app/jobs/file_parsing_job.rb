@@ -40,25 +40,24 @@ class FileParsingJob < ApplicationJob
       stats = { total: result.size + incomplete_result.size, success: 0, duplicate: 0, error: incomplete_result.size, gemini: 0 }
       uncategorized_transactions = []
       record_import_issues(parsing_session, processed_file, incomplete_result) if incomplete_result.any?
+      duplicate_policy = ImportDuplicatePolicy.new(
+        workspace: workspace,
+        parsing_session: parsing_session,
+        source_type: "image_upload",
+        processed_file: processed_file
+      )
 
       result.each do |tx_data|
         begin
           transaction = create_transaction_without_gemini(workspace, tx_data, parsing_session)
 
-          uncategorized_transactions << transaction if transaction.category_id.nil?
-
-          match = DuplicateDetector.new(workspace, transaction).find_match
-          if match
-            parsing_session.duplicate_confirmations.create!(
-              original_transaction: match.transaction,
-              new_transaction: transaction,
-              status: "pending",
-              match_confidence: match.confidence,
-              match_score: match.score
-            )
+          duplicate_result = duplicate_policy.apply(transaction, raw_payload: tx_data)
+          unless duplicate_result.no_duplicate?
             stats[:duplicate] += 1
+            next
           end
 
+          uncategorized_transactions << transaction if transaction.category_id.nil?
           stats[:success] += 1
         rescue StandardError => e
           Rails.logger.error "Failed to create transaction: #{e.message}"
@@ -71,7 +70,9 @@ class FileParsingJob < ApplicationJob
         stats[:gemini] = gemini_count
       end
 
-      if stats[:total].zero? || stats[:success].zero?
+      has_import_exceptions = stats[:error].positive? || parsing_session.open_import_issues.exists?
+
+      if parsing_failed_without_import_outcome?(stats, parsing_session)
         parsing_session.update!(
           total_count: stats[:total],
           success_count: stats[:success],
@@ -85,7 +86,7 @@ class FileParsingJob < ApplicationJob
       else
         committed_transactions = parsing_session.auto_commit_ready_transactions!(
           user: user,
-          has_import_exceptions: stats[:error].positive?
+          has_import_exceptions: has_import_exceptions
         )
         parsing_session.complete!(stats)
         processed_file.mark_completed!
@@ -197,6 +198,15 @@ class FileParsingJob < ApplicationJob
     end
   end
 
+  def parsing_failed_without_import_outcome?(stats, parsing_session)
+    return true if stats[:total].zero?
+    return true if stats[:success].zero? && stats[:error].positive? && !parsing_session.open_import_issues.exists?
+
+    stats[:success].zero? &&
+      stats[:duplicate].zero? &&
+      !parsing_session.open_import_issues.exists?
+  end
+
   def match_category_without_gemini(workspace, merchant, amount: nil)
     return nil if merchant.blank?
 
@@ -281,19 +291,7 @@ class FileParsingJob < ApplicationJob
   end
 
   def create_import_repair_notifications(parsing_session)
-    return unless parsing_session.open_import_issues.exists?
-
-    workspace = parsing_session.workspace
-
-    if workspace.owner
-      Notification.create_import_repair_needed!(parsing_session, workspace.owner)
-    end
-
-    workspace.workspace_memberships.where(role: %w[co_owner member_write]).find_each do |membership|
-      next if membership.user_id == workspace.owner_id
-
-      Notification.create_import_repair_needed!(parsing_session, membership.user)
-    end
+    ImportRepairNotifier.call(parsing_session)
   end
 
   def create_failure_notifications(parsing_session)

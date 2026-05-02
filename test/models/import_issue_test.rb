@@ -42,6 +42,39 @@ class ImportIssueTest < ActiveSupport::TestCase
     assert_includes issue.errors[:missing_fields].join, "at least one"
   end
 
+  test "ambiguous duplicate is valid without missing fields when duplicate transaction is present" do
+    duplicate = @workspace.transactions.create!(
+      date: Date.current,
+      merchant: "스타벅스강남점",
+      amount: 5_000,
+      status: "committed"
+    )
+    issue = @workspace.import_issues.build(
+      parsing_session: @session,
+      duplicate_transaction: duplicate,
+      source_type: "image_upload",
+      issue_type: "ambiguous_duplicate",
+      date: Date.current,
+      merchant: "스타벅스 강남",
+      amount: 5_000,
+      missing_fields: []
+    )
+
+    assert issue.valid?
+  end
+
+  test "ambiguous duplicate requires duplicate transaction" do
+    issue = @workspace.import_issues.build(
+      parsing_session: @session,
+      source_type: "text_paste",
+      issue_type: "ambiguous_duplicate",
+      missing_fields: []
+    )
+
+    assert_not issue.valid?
+    assert_includes issue.errors[:duplicate_transaction].join, "must be present"
+  end
+
   test "rejects unsupported missing fields" do
     issue = @workspace.import_issues.build(
       parsing_session: @session,
@@ -100,6 +133,23 @@ class ImportIssueTest < ActiveSupport::TestCase
 
     assert_not issue.valid?
     assert_includes issue.errors[:resolved_transaction_id].join, "same workspace"
+  end
+
+  test "duplicate transaction must belong to workspace" do
+    other_transaction = workspaces(:other_workspace).transactions.create!(
+      date: Date.current,
+      amount: 10_000
+    )
+    issue = @workspace.import_issues.build(
+      parsing_session: @session,
+      duplicate_transaction: other_transaction,
+      source_type: "image_upload",
+      issue_type: "ambiguous_duplicate",
+      missing_fields: []
+    )
+
+    assert_not issue.valid?
+    assert_includes issue.errors[:duplicate_transaction_id].join, "same workspace"
   end
 
   test "destroying resolved transaction keeps repair audit record" do

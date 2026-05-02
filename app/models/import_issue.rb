@@ -1,4 +1,5 @@
 class ImportIssue < ApplicationRecord
+  ISSUE_TYPES = %w[missing_required_fields ambiguous_duplicate].freeze
   STATUSES = %w[open resolved dismissed].freeze
   SOURCE_TYPES = %w[image_upload text_paste].freeze
   REQUIRED_FIELDS = %w[date merchant amount].freeze
@@ -6,6 +7,8 @@ class ImportIssue < ApplicationRecord
   belongs_to :workspace
   belongs_to :parsing_session
   belongs_to :processed_file, optional: true
+  belongs_to :duplicate_transaction, class_name: "Transaction", optional: true,
+                                     inverse_of: :duplicate_import_issues
   belongs_to :resolved_transaction, class_name: "Transaction", optional: true,
                                     inverse_of: :resolved_import_issues
 
@@ -14,15 +17,18 @@ class ImportIssue < ApplicationRecord
 
   before_validation :normalize_missing_fields
 
+  validates :issue_type, inclusion: { in: ISSUE_TYPES }
   validates :status, inclusion: { in: STATUSES }
   validates :source_type, inclusion: { in: SOURCE_TYPES }
   validate :missing_fields_present
   validate :missing_fields_are_required_fields
+  validate :duplicate_transaction_present_for_ambiguous_duplicate
   validate :associations_belong_to_workspace
 
   scope :open, -> { where(status: "open") }
   scope :resolved, -> { where(status: "resolved") }
   scope :dismissed, -> { where(status: "dismissed") }
+  scope :ambiguous_duplicates, -> { where(issue_type: "ambiguous_duplicate") }
 
   def open?
     status == "open"
@@ -36,6 +42,14 @@ class ImportIssue < ApplicationRecord
     status == "dismissed"
   end
 
+  def missing_required_fields?
+    issue_type == "missing_required_fields"
+  end
+
+  def ambiguous_duplicate?
+    issue_type == "ambiguous_duplicate"
+  end
+
   private
 
   def normalize_missing_fields
@@ -43,6 +57,7 @@ class ImportIssue < ApplicationRecord
   end
 
   def missing_fields_present
+    return unless missing_required_fields?
     return if Array(missing_fields).any?
 
     errors.add(:missing_fields, "must include at least one missing field")
@@ -55,6 +70,13 @@ class ImportIssue < ApplicationRecord
     errors.add(:missing_fields, "contains unsupported fields: #{invalid.join(', ')}")
   end
 
+  def duplicate_transaction_present_for_ambiguous_duplicate
+    return unless ambiguous_duplicate?
+    return if duplicate_transaction.present?
+
+    errors.add(:duplicate_transaction, "must be present for ambiguous duplicates")
+  end
+
   def associations_belong_to_workspace
     return if workspace_id.blank?
 
@@ -64,6 +86,10 @@ class ImportIssue < ApplicationRecord
 
     if processed_file && processed_file.workspace_id != workspace_id
       errors.add(:processed_file_id, "must belong to the same workspace")
+    end
+
+    if duplicate_transaction && duplicate_transaction.workspace_id != workspace_id
+      errors.add(:duplicate_transaction_id, "must belong to the same workspace")
     end
 
     return unless resolved_transaction && resolved_transaction.workspace_id != workspace_id

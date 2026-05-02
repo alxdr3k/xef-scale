@@ -16,7 +16,17 @@
           issue.merchant.presence || "가맹점 없음",
           issue.amount.present? ? "#{number_with_delimiter(issue.amount)}원" : "금액 없음"
         ].compact.join(" / ") %>
-        <li><%= index + 1 %>. 누락: <%= missing.presence || "필수 정보" %> - <%= visible %></li>
+        <% if issue.ambiguous_duplicate? %>
+          <% duplicate = issue.duplicate_transaction %>
+          <% duplicate_visible = [
+            duplicate&.date&.strftime("%Y.%m.%d"),
+            duplicate&.merchant,
+            duplicate&.amount.present? ? "#{number_with_delimiter(duplicate.amount)}원" : nil
+          ].compact.join(" / ") %>
+          <li><%= index + 1 %>. 중복 확인 필요 - <%= visible %><%= " (기존: #{duplicate_visible})" if duplicate_visible.present? %></li>
+        <% else %>
+          <li><%= index + 1 %>. 누락: <%= missing.presence || "필수 정보" %> - <%= visible %></li>
+        <% end %>
       <% end %>
       <% if limit && import_issues.size > limit %>
         <li>... 외 <%= import_issues.size - limit %>건</li>

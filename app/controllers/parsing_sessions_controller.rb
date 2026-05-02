@@ -7,16 +7,22 @@ class ParsingSessionsController < ApplicationController
 
   def index
     @parsing_sessions = @workspace.parsing_sessions
-                                  .includes(:processed_file, :duplicate_confirmations, :open_import_issues)
+                                  .includes(
+                                    :processed_file,
+                                    :duplicate_confirmations,
+                                    :open_import_issues,
+                                    :review_pending_transactions
+                                  )
                                   .order(created_at: :desc)
 
     month_range = nil
+    month_time_range = nil
     if params[:year].present? && params[:month].present?
       year  = params[:year].to_i
       month = params[:month].to_i
       if year.between?(2000, 2100) && month.between?(1, 12)
         month_range = Date.new(year, month).beginning_of_month..Date.new(year, month).end_of_month
-        @parsing_sessions = @parsing_sessions.joins(:transactions).where(transactions: { date: month_range }).distinct
+        month_time_range = month_range.begin.beginning_of_day..month_range.end.end_of_day
       end
     end
 
@@ -29,9 +35,42 @@ class ParsingSessionsController < ApplicationController
         month_tx_ids = @workspace.transactions.where(date: month_range).select(:id)
         dc_where[:new_transaction_id] = month_tx_ids
       end
+      legacy_duplicate_session_ids = @workspace.parsing_sessions
+                                               .joins(:duplicate_confirmations)
+                                               .where(duplicate_confirmations: dc_where)
+                                               .select(:id)
+      repair_duplicate_issues = @workspace.import_issues.open.ambiguous_duplicates
+      repair_duplicate_issues = repair_duplicate_issues.where(date: month_range) if month_range
+      repair_duplicate_session_ids = repair_duplicate_issues.select(:parsing_session_id)
+
       @parsing_sessions = @parsing_sessions
-                            .joins(:duplicate_confirmations)
-                            .where(duplicate_confirmations: dc_where)
+                            .where(id: legacy_duplicate_session_ids)
+                            .or(@parsing_sessions.where(id: repair_duplicate_session_ids))
+                            .distinct
+    end
+
+    if month_range && params[:filter] != "has_duplicates"
+      transaction_session_ids = @workspace.transactions
+                                              .where(date: month_range)
+                                              .where.not(parsing_session_id: nil)
+                                              .select(:parsing_session_id)
+      issue_session_ids = @workspace.import_issues
+                                    .where(date: month_range)
+                                    .select(:parsing_session_id)
+      undated_issue_session_ids = @workspace.parsing_sessions
+                                             .joins(:import_issues)
+                                             .where(created_at: month_time_range, import_issues: { date: nil })
+                                             .select(:id)
+      rowless_session_ids = @workspace.parsing_sessions
+                                      .where(created_at: month_time_range)
+                                      .where.missing(:transactions)
+                                      .where.missing(:import_issues)
+                                      .select(:id)
+      @parsing_sessions = @parsing_sessions
+                            .where(id: transaction_session_ids)
+                            .or(@parsing_sessions.where(id: issue_session_ids))
+                            .or(@parsing_sessions.where(id: undated_issue_session_ids))
+                            .or(@parsing_sessions.where(id: rowless_session_ids))
                             .distinct
     end
 
