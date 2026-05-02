@@ -61,7 +61,10 @@ class ImportDuplicatePolicy
     transaction.date == candidate.date &&
       transaction.amount == candidate.amount &&
       normalized_merchant(transaction.merchant) == normalized_merchant(candidate.merchant) &&
-      transaction.installment_month == candidate.installment_month
+      transaction.payment_type == candidate.payment_type &&
+      transaction.installment_month == candidate.installment_month &&
+      transaction.installment_total == candidate.installment_total &&
+      transaction.original_amount == candidate.original_amount
   end
 
   def normalized_merchant(value)
