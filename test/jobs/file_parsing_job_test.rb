@@ -199,7 +199,7 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_equal :fail, result, "success==0인 경우 fail 처리되어야 함"
   end
 
-  test "perform records incomplete parsed rows as errors and session notes" do
+  test "perform records incomplete parsed rows as import issues" do
     processed_file = @workspace.processed_files.create!(
       filename: "partial.png",
       original_filename: "partial.png",
@@ -218,7 +218,9 @@ class FileParsingJobTest < ActiveJob::TestCase
     job.define_singleton_method(:parse_file) { |_processed_file| parsed }
 
     assert_difference -> { @workspace.transactions.count }, 1 do
-      job.perform(processed_file.id)
+      assert_difference -> { @workspace.import_issues.count }, 1 do
+        job.perform(processed_file.id)
+      end
     end
 
     parsing_session = processed_file.reload.parsing_session
@@ -230,18 +232,24 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert tx.committed?
     assert_equal users(:admin), tx.committed_by
     assert parsing_session.review_pending?
-    assert parsing_session.incomplete_parse_note?
-    assert_match "자동 반영 제외 1건", parsing_session.notes
-    assert_match "네이버페이", parsing_session.notes
-    assert_match "누락: 날짜", parsing_session.notes
-    assert_match "자동 반영 제외 1건", parsing_session.incomplete_parse_note_text
+    assert_not parsing_session.incomplete_parse_note?
+
+    issue = parsing_session.import_issues.first
+    assert issue.open?
+    assert_equal processed_file, issue.processed_file
+    assert_equal "image_upload", issue.source_type
+    assert_nil issue.date
+    assert_equal "네이버페이", issue.merchant
+    assert_equal 12_000, issue.amount
+    assert_equal [ "date" ], issue.missing_fields
+    assert_equal "네이버페이", issue.raw_payload["merchant"]
 
     notification = Notification.where(notifiable: parsing_session, notification_type: "parsing_complete").last
     assert_includes notification.message, "검토해주세요"
     assert_equal "/workspaces/#{@workspace.id}/parsing_sessions/#{parsing_session.id}/review", notification.action_url
   end
 
-  test "perform fails with counts and notes when every parsed row is incomplete" do
+  test "perform fails with counts and import issues when every parsed row is incomplete" do
     processed_file = @workspace.processed_files.create!(
       filename: "incomplete_only.png",
       original_filename: "incomplete_only.png",
@@ -257,7 +265,9 @@ class FileParsingJobTest < ActiveJob::TestCase
     job.define_singleton_method(:parse_file) { |_processed_file| parsed }
 
     assert_no_difference -> { @workspace.transactions.count } do
-      job.perform(processed_file.id)
+      assert_difference -> { @workspace.import_issues.count }, 1 do
+        job.perform(processed_file.id)
+      end
     end
 
     parsing_session = processed_file.reload.parsing_session
@@ -265,8 +275,8 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert_equal 1, parsing_session.total_count
     assert_equal 0, parsing_session.success_count
     assert_equal 1, parsing_session.error_count
-    assert_match "마차이짬뽕 성수점", parsing_session.notes
-    assert_match "마차이짬뽕 성수점", parsing_session.user_visible_notes
+    assert_nil parsing_session.notes
+    assert_equal "마차이짬뽕 성수점", parsing_session.import_issues.first.merchant
   end
 
   test "gemini batch categorizes image transactions and stores mapping" do

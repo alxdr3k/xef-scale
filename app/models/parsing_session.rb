@@ -9,6 +9,8 @@ class ParsingSession < ApplicationRecord
   has_many :duplicate_confirmations, dependent: :destroy
   has_many :transactions, dependent: :nullify
   has_many :notifications, as: :notifiable, dependent: :destroy
+  has_many :import_issues, dependent: :destroy
+  has_many :open_import_issues, -> { open.order(:created_at) }, class_name: "ImportIssue"
 
   STATUSES = %w[pending processing completed failed].freeze
   REVIEW_STATUSES = %w[pending_review committed rolled_back discarded].freeze

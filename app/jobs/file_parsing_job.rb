@@ -39,7 +39,7 @@ class FileParsingJob < ApplicationJob
 
       stats = { total: result.size + incomplete_result.size, success: 0, duplicate: 0, error: incomplete_result.size, gemini: 0 }
       uncategorized_transactions = []
-      record_incomplete_parse_note(parsing_session, incomplete_result) if incomplete_result.any?
+      record_import_issues(parsing_session, processed_file, incomplete_result) if incomplete_result.any?
 
       result.each do |tx_data|
         begin
@@ -161,49 +161,36 @@ class FileParsingJob < ApplicationJob
     meta
   end
 
-  def record_incomplete_parse_note(parsing_session, incomplete_transactions)
-    note = build_incomplete_parse_note(incomplete_transactions)
-    existing = parsing_session.notes.to_s.strip.presence
-    parsing_session.update!(notes: [ existing, note ].compact.join("\n\n"))
-  end
-
-  def build_incomplete_parse_note(incomplete_transactions)
-    lines = incomplete_transactions.first(5).each_with_index.map do |tx, index|
-      "#{index + 1}. #{missing_field_label(tx)} - #{incomplete_transaction_label(tx)}"
+  def record_import_issues(parsing_session, processed_file, incomplete_transactions)
+    incomplete_transactions.each do |tx|
+      parsing_session.import_issues.create!(
+        workspace: parsing_session.workspace,
+        processed_file: processed_file,
+        source_type: "image_upload",
+        date: tx[:date] || tx["date"],
+        merchant: tx[:merchant].presence || tx["merchant"].presence,
+        amount: tx[:amount] || tx["amount"],
+        missing_fields: import_issue_missing_fields(tx),
+        raw_payload: import_issue_payload(tx)
+      )
     end
-    if incomplete_transactions.size > lines.size
-      lines << "... 외 #{incomplete_transactions.size - lines.size}건"
+  end
+
+  def import_issue_missing_fields(tx)
+    explicit = Array(tx[:missing_fields] || tx["missing_fields"]).map(&:to_s)
+    filtered = explicit & ImportIssue::REQUIRED_FIELDS
+    return filtered if filtered.any?
+
+    ImportIssue::REQUIRED_FIELDS.select do |field|
+      value = tx[field.to_sym] || tx[field]
+      value.blank? || (field == "amount" && value.to_i == 0)
     end
-
-    note = <<~TEXT.strip
-      자동 반영 제외 #{incomplete_transactions.size}건: 날짜, 가맹점, 금액 중 필수 정보가 부족해 결제 내역으로 만들지 않았습니다.
-      #{lines.join("\n")}
-    TEXT
-
-    ParsingSession.incomplete_parse_note_block(note)
   end
 
-  def missing_field_label(tx)
-    labels = {
-      "date" => "날짜",
-      "merchant" => "가맹점",
-      "amount" => "금액"
-    }
-    missing = Array(tx[:missing_fields] || tx["missing_fields"]).map { |field| labels.fetch(field.to_s, field.to_s) }
-    "누락: #{missing.presence&.join(', ') || '필수 정보'}"
-  end
-
-  def incomplete_transaction_label(tx)
-    parts = []
-    parts << (tx[:date]&.strftime("%Y.%m.%d") || tx["date"].presence)
-    parts << (tx[:merchant].presence || tx["merchant"].presence || "가맹점 없음")
-    amount = tx[:amount] || tx["amount"]
-    parts << (amount.present? ? "#{format_amount(amount)}원" : "금액 없음")
-    parts.compact.join(" / ")
-  end
-
-  def format_amount(amount)
-    amount.to_i.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
+  def import_issue_payload(tx)
+    tx.to_h.transform_keys(&:to_s).transform_values do |value|
+      value.respond_to?(:iso8601) ? value.iso8601 : value
+    end
   end
 
   def match_category_without_gemini(workspace, merchant, amount: nil)

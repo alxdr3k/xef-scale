@@ -17,6 +17,9 @@ class Transaction < ApplicationRecord
            foreign_key: :original_transaction_id, dependent: :destroy
   has_many :duplicate_confirmations_as_new, class_name: "DuplicateConfirmation",
            foreign_key: :new_transaction_id, dependent: :destroy
+  has_many :resolved_import_issues, class_name: "ImportIssue",
+           foreign_key: :resolved_transaction_id, dependent: :nullify,
+           inverse_of: :resolved_transaction
 
   STATUSES = %w[pending_review committed rolled_back].freeze
   PAYMENT_TYPES = %w[lump_sum installment coupon].freeze
