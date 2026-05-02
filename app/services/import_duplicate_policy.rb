@@ -20,6 +20,20 @@ class ImportDuplicatePolicy
     @processed_file = processed_file
   end
 
+  def self.exact_duplicate?(transaction, candidate)
+    transaction.date == candidate.date &&
+      transaction.amount == candidate.amount &&
+      normalized_merchant(transaction.merchant) == normalized_merchant(candidate.merchant) &&
+      transaction.payment_type == candidate.payment_type &&
+      transaction.installment_month == candidate.installment_month &&
+      transaction.installment_total == candidate.installment_total &&
+      transaction.original_amount == candidate.original_amount
+  end
+
+  def self.normalized_merchant(value)
+    value.to_s.strip.gsub(/\s+/, "").downcase
+  end
+
   def apply(transaction, raw_payload: {})
     same_session_duplicate = same_session_exact_duplicate(transaction)
     if same_session_duplicate
@@ -58,17 +72,11 @@ class ImportDuplicatePolicy
   end
 
   def exact_duplicate?(transaction, candidate)
-    transaction.date == candidate.date &&
-      transaction.amount == candidate.amount &&
-      normalized_merchant(transaction.merchant) == normalized_merchant(candidate.merchant) &&
-      transaction.payment_type == candidate.payment_type &&
-      transaction.installment_month == candidate.installment_month &&
-      transaction.installment_total == candidate.installment_total &&
-      transaction.original_amount == candidate.original_amount
+    self.class.exact_duplicate?(transaction, candidate)
   end
 
   def normalized_merchant(value)
-    value.to_s.strip.gsub(/\s+/, "").downcase
+    self.class.normalized_merchant(value)
   end
 
   def create_ambiguous_duplicate_issue!(transaction, match, raw_payload:)

@@ -6,13 +6,14 @@ import { loginAsAdmin } from './helpers';
 // - Bulk actions via data-controller="bulk-select" (toolbar checkbox, no per-row edit/delete buttons)
 // - Auto-filter form (year/month/category/institution selects + search debounce)
 // - Duplicate modal trigger button ("중복 검사")
-// Seed workspace: id=1, name="개인 가계부"
+// Seed workspace: name="개인 가계부" (id may vary when local test DB is replanted)
 // Seed merchants: 마라탕 집 (식비 / 신한카드), 카카오T (교통), 쿠팡 (쇼핑)
 
 test.describe('Transactions (결제 내역)', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('/workspaces/1/transactions');
+    await page.getByRole('link', { name: '결제 내역' }).click();
+    await page.waitForURL(/\/workspaces\/\d+\/transactions/);
     await page.waitForLoadState('networkidle');
   });
 
@@ -45,7 +46,7 @@ test.describe('Transactions (결제 내역)', () => {
   test('합계 금액과 총 건수가 표시된다', async ({ page }) => {
     await expect(page.locator('text=합계:')).toBeVisible();
     await expect(page.locator('text=/₩[\\d,]+/').first()).toBeVisible();
-    await expect(page.locator('text=/\\d+건/').first()).toBeVisible();
+    await expect(page.locator('main').getByText(/총\s*\d+건/)).toBeVisible();
   });
 
   // --- Seed data ---

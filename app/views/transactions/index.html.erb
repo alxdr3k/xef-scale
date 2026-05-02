@@ -31,11 +31,9 @@
 
   <% if @repair_filter %>
     <% if @repair_import_issues.any? %>
-      <%= render "shared/import_issues_notice",
+      <%= render "transactions/import_repair_table",
           import_issues: @repair_import_issues,
-          limit: nil,
-          title: "수정 필요한 항목만 표시 중",
-          description: "알림에서 들어온 업로드의 누락 항목입니다. 다음 단계에서 이 화면에서 바로 필수값을 채워 결제 내역으로 반영합니다." %>
+          workspace: @workspace %>
     <% else %>
       <div class="bg-white rounded-lg shadow p-12 text-center text-gray-500">
         수정이 필요한 가져오기 항목이 없습니다.

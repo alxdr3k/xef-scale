@@ -42,6 +42,18 @@ class ImportIssueTest < ActiveSupport::TestCase
     assert_includes issue.errors[:missing_fields].join, "at least one"
   end
 
+  test "resolved missing required fields issue can clear missing fields" do
+    issue = @workspace.import_issues.build(
+      parsing_session: @session,
+      source_type: "image_upload",
+      issue_type: "missing_required_fields",
+      status: "resolved",
+      missing_fields: []
+    )
+
+    assert issue.valid?
+  end
+
   test "ambiguous duplicate is valid without missing fields when duplicate transaction is present" do
     duplicate = @workspace.transactions.create!(
       date: Date.current,

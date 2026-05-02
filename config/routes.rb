@@ -54,6 +54,8 @@ Rails.application.routes.draw do
       resources :comments, only: [ :index, :create, :update, :destroy ]
     end
 
+    resources :import_issues, only: [ :update ]
+
     # Categories within workspace
     resources :categories, except: [ :show ]
 

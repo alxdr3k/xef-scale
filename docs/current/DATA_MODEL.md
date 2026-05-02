@@ -80,7 +80,7 @@ User ──< WorkspaceMembership >── Workspace
                                               │
                                               └──► (discard) rolled_back for auto-posted rows, destroy for remaining pending rows
 
-Current P1 transition ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): complete parsed rows are staged as `pending_review` during duplicate detection. `ImportDuplicatePolicy` deletes exact duplicate staging rows, stores ambiguous duplicates as `ImportIssue(status: open)`, and then `ParsingSession#auto_commit_ready_transactions!` immediately promotes rows with date/merchant/amount present to `committed`. The session only flips to `review_status: committed` when no import exceptions remain. Date/merchant/amount-missing image rows are stored as `ImportIssue(status: open)` repair records instead of `Transaction` rows.
+Current P1 transition ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): complete parsed rows are staged as `pending_review` during duplicate detection. `ImportDuplicatePolicy` deletes exact duplicate staging rows, stores ambiguous duplicates as `ImportIssue(status: open)`, and then `ParsingSession#auto_commit_ready_transactions!` immediately promotes rows with date/merchant/amount present to `committed`. The session only flips to `review_status: committed` when no import exceptions remain. Date/merchant/amount-missing image rows are stored as `ImportIssue(status: open)` repair records instead of `Transaction` rows. `ImportIssueResolutionService` later promotes completed repair rows to committed transactions or dismisses/converts them when duplicate checks apply.
 ```
 
 추가 축:
@@ -102,12 +102,12 @@ Current P1 transition ([ADR-0001](../decisions/ADR-0001-auto-post-imports.md)): 
 - `issue_type` ∈ {`missing_required_fields`, `ambiguous_duplicate`}.
 - `status` ∈ {`open`, `resolved`, `dismissed`}.
 - `source_type` ∈ {`image_upload`, `text_paste`}.
-- `missing_fields`는 JSON 배열로 직렬화되며 허용 값은 `date`, `merchant`, `amount`뿐이다. `missing_required_fields`에서는 빈 배열이나 미지원 필드를 모델 검증에서 거부한다. `ambiguous_duplicate`는 missing field가 없어도 되며 `duplicate_transaction_id`가 필요하다.
+- `missing_fields`는 JSON 배열로 직렬화되며 허용 값은 `date`, `merchant`, `amount`뿐이다. Open `missing_required_fields`에서는 빈 배열이나 미지원 필드를 모델 검증에서 거부한다. Resolved/dismissed repair record는 audit 상태이므로 missing field 배열이 비어 있을 수 있다. `ambiguous_duplicate`는 missing field가 없어도 되며 `duplicate_transaction_id`가 필요하다.
 - `date`/`merchant`/`amount`는 파서가 실제로 본 값만 저장한다. 누락된 값은 추정하지 않는다.
 - `duplicate_transaction_id`는 ambiguous duplicate와 비교된 기존 ledger transaction FK다.
 - `raw_payload`는 repair UI/감사를 위한 원본 파서 payload 사본이며, ledger 계산에는 쓰지 않는다.
-- `resolved_transaction_id`는 향후 repair promotion이 완료됐을 때 생성된 `Transaction`을 연결하기 위한 optional FK다.
-- Open issue는 `Notification(import_repair_needed)`의 `action_url`과 결제 내역 `repair=required` 모드의 데이터 소스다. 현재 repair mode는 missing/duplicate repair item을 보여주는 entry point이며, 필수값 입력·중복 판단·`resolved_transaction_id` 연결은 `UX-1B.3`/`INP-1B.4`에서 완성한다.
+- `resolved_transaction_id`는 repair promotion으로 생성된 `Transaction`을 연결하는 optional FK다.
+- Open issue는 `Notification(import_repair_needed)`의 `action_url`과 결제 내역 `repair=required` 모드의 데이터 소스다. 현재 repair mode는 missing/duplicate repair item을 보여주고, writer가 누락 필수값을 입력하거나 ambiguous duplicate를 제외/새 거래 등록으로 처리하는 focused repair surface다.
 - 입력 기록의 `has_duplicates` 필터와 달력 중복 배지는 pending `DuplicateConfirmation`과 open ambiguous duplicate `ImportIssue`를 함께 센다.
 
 ## 카테고리 학습 루프

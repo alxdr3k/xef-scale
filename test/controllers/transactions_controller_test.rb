@@ -128,6 +128,10 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "수정 필요한 항목만 표시 중"
     assert_includes response.body, "네이버페이"
     assert_not_includes response.body, "마차이짬뽕"
+    assert_select "form[action='#{workspace_import_issue_path(@workspace, @workspace.import_issues.find_by!(merchant: "네이버페이"))}']"
+    assert_select "input[name='import_issue[date]']", minimum: 1
+    assert_select "input[name='import_issue[merchant]'][value='네이버페이']", count: 1
+    assert_select "input[name='import_issue[amount]'][value='12000']", count: 1
     assert_select "table", count: 0
   end
 
