@@ -64,7 +64,8 @@
 
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-1">연도</label>
-        <%= select_tag :year, options_for_select((Date.current.year - 5..Date.current.year).to_a.reverse, @year),
+        <% year_options = (@year.nil? ? [['전체 기간', '']] : []) + (Date.current.year - 5..Date.current.year).to_a.reverse.map { |y| [y, y] } %>
+        <%= select_tag :year, options_for_select(year_options, @year.to_s),
             class: 'block w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
             data: { action: 'change->auto-filter#submitForm' } %>
       </div>
