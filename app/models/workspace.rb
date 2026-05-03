@@ -31,11 +31,6 @@ class Workspace < ApplicationRecord
     update!(ai_consent_acknowledged_at: Time.current)
   end
 
-  def admins
-    members.joins(:workspace_memberships)
-           .where(workspace_memberships: { workspace_id: id, role: %w[owner co_owner] })
-  end
-
   def notification_recipients(roles:)
     return User.none if owner_id.nil?
 
