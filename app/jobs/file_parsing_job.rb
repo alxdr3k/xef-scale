@@ -275,19 +275,19 @@ class FileParsingJob < ApplicationJob
   def create_budget_alerts(workspace, committed_transactions)
     BudgetAlertService.create_for_transactions!(workspace, committed_transactions)
   rescue StandardError => e
-    Rails.logger.error "[FileParsingJob] Budget alert side effect failed: #{e.message}"
+    Rails.logger.error "[FileParsingJob] Budget alert side effect failed: #{e.class} #{e.message}"
   end
 
   def create_completion_notifications_safely(parsing_session)
     create_completion_notifications(parsing_session)
   rescue StandardError => e
-    Rails.logger.error "[FileParsingJob] Completion notification side effect failed: #{e.message}"
+    Rails.logger.error "[FileParsingJob] Completion notification side effect failed: #{e.class} #{e.message}"
   end
 
   def create_import_repair_notifications_safely(parsing_session)
     create_import_repair_notifications(parsing_session)
   rescue StandardError => e
-    Rails.logger.error "[FileParsingJob] Import repair notification side effect failed: #{e.message}"
+    Rails.logger.error "[FileParsingJob] Import repair notification side effect failed: #{e.class} #{e.message}"
   end
 
   def create_import_repair_notifications(parsing_session)
@@ -299,7 +299,7 @@ class FileParsingJob < ApplicationJob
     workspace.notification_recipients(roles: %w[co_owner member_write]).each do |user|
       Notification.create_parsing_failed!(parsing_session, user)
     rescue StandardError => e
-      Rails.logger.error "[FileParsingJob] Failed to notify user #{user.id}: #{e.message}"
+      Rails.logger.error "[FileParsingJob] Failed to notify user #{user.id}: #{e.class} #{e.message}"
     end
   end
 
@@ -308,7 +308,7 @@ class FileParsingJob < ApplicationJob
     workspace.notification_recipients(roles: %w[co_owner member_write member_read]).each do |user|
       Notification.create_parsing_complete!(parsing_session, user)
     rescue StandardError => e
-      Rails.logger.error "[FileParsingJob] Failed to notify user #{user.id}: #{e.message}"
+      Rails.logger.error "[FileParsingJob] Failed to notify user #{user.id}: #{e.class} #{e.message}"
     end
   end
 end
