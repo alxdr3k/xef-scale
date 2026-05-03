@@ -29,7 +29,7 @@ class FileParsingJob < ApplicationJob
 
       user = processed_file.uploaded_by
 
-      excluded = user&.excluded_merchants || []
+      excluded = (user&.excluded_merchants || []).reject(&:blank?)
       if excluded.any?
         result = result.reject { |tx| excluded.any? { |pattern| tx[:merchant]&.include?(pattern) } }
         incomplete_result = incomplete_result.reject { |tx| excluded.any? { |pattern| tx[:merchant]&.include?(pattern) } }
@@ -94,10 +94,10 @@ class FileParsingJob < ApplicationJob
       end
 
     rescue => e
-      Rails.logger.error "Parsing failed: #{e.message}"
+      Rails.logger.error "[FileParsingJob] Parsing failed: #{e.class} #{e.message}"
       Rails.logger.error e.backtrace.join("\n")
-      parsing_session.fail!
-      processed_file.mark_failed!
+      parsing_session&.fail!
+      processed_file&.mark_failed!
       if parsing_session
         create_failure_notifications(parsing_session)
         create_import_repair_notifications_safely(parsing_session)
