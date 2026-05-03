@@ -1,3 +1,4 @@
+@AGENTS.policy.md
 # CLAUDE.md
 
 Claude Code가 이 레포에서 작업할 때 따라야 할 **Claude 전용 운영 규칙**.
