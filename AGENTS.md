@@ -2,6 +2,7 @@
 
 xef-scale에서 작업하는 AI 코딩 에이전트를 위한 간결한 안내. Claude 전용 운영 규칙(배포 안전 규칙 등)은 [CLAUDE.md](CLAUDE.md)에 따로 있다.
 
+See also: `AGENTS.policy.md` — boilerplate-owned cross-cutting agent behaviour rules.
 ## 읽기 순서
 
 일반적인 구현/수정 작업이라면:
