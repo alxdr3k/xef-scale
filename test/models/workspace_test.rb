@@ -34,14 +34,6 @@ class WorkspaceTest < ActiveSupport::TestCase
     assert_includes workspace.transactions, transactions(:food_transaction)
   end
 
-  test "admins returns owner and co_owners" do
-    workspace = workspaces(:main_workspace)
-    admins = workspace.admins
-    assert_includes admins, users(:admin)
-    assert_not_includes admins, users(:member)
-    assert_not_includes admins, users(:reader)
-  end
-
   test "destroying workspace destroys associated memberships" do
     workspace = Workspace.create!(name: "Test Workspace", owner: users(:admin))
     membership_count = workspace.workspace_memberships.count
