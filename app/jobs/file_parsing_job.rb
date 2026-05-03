@@ -103,11 +103,15 @@ class FileParsingJob < ApplicationJob
         create_import_repair_notifications_safely(parsing_session)
       end
     ensure
-      if parsing_session&.processing?
-        parsing_session.fail! rescue nil
+      begin
+        parsing_session.fail! if parsing_session&.processing?
+      rescue ActiveRecord::ActiveRecordError => e
+        Rails.logger.warn "[FileParsingJob] Could not mark session as failed: #{e.class} #{e.message}"
       end
-      if processed_file&.reload&.processing?
-        processed_file.mark_failed! rescue nil
+      begin
+        processed_file.mark_failed! if processed_file&.reload&.processing?
+      rescue ActiveRecord::ActiveRecordError => e
+        Rails.logger.warn "[FileParsingJob] Could not mark file as failed: #{e.class} #{e.message}"
       end
     end
   end
