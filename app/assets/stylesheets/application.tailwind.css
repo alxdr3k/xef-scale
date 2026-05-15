@@ -12,29 +12,44 @@
 @import "./pretendard-dynamic-subset.css";
 
 /*
- * 시맨틱 디자인 토큰 (ADR-0003 채택, synthesis.md 4장 원본)
+ * 시맨틱 디자인 토큰 (ADR-0003 채택, synthesis.md 4장 기반)
  * 컴포넌트는 시맨틱 utility(bg-surface, text-secondary, text-action)만 사용한다.
  * 팔레트 utility(bg-indigo-600, text-gray-900)는 Phase 2~ 점진 제거.
+ *
+ * Tailwind 4 namespace 매핑:
+ *   --color-*               → bg-*, text-*, border-*, fill-*, stroke-*, ring-*
+ *   --font-*                → font-* (family)
+ *   --text-*                → text-* (size)
+ *   --radius-*              → rounded-*
+ *   --shadow-*              → shadow-*
+ *   --transition-duration-* → duration-*
+ *   --ease-*                → ease-*
+ *   --spacing               → 단일 base unit (default 0.25rem). p-{n} = n * --spacing.
+ *
+ * synthesis.md 4장은 토큰 *값*의 권위 — 본 파일은 그 값을 Tailwind 4 namespace 규칙에
+ * 맞춰 *이름*만 정렬했다 (ADR-0003이 명시한 utility 이름 `bg-surface`/`text-secondary`/
+ * `text-action`이 그대로 만들어지도록 단일 namespace로 통일).
  */
 @theme {
-  /* === Surface === */
-  --color-bg-page:        light-dark(#fafafa, #0f1014);
-  --color-bg-surface:     light-dark(#ffffff, #181a1f);
-  --color-bg-elev:        light-dark(#f4f4f5, #21242b);
-  --color-bg-sunken:      light-dark(#f4f4f5, #0a0b0e);
-  --color-bg-overlay:     light-dark(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6));
+  /* === Surface (utility: bg-*) === */
+  --color-page:        light-dark(#fafafa, #0f1014);
+  --color-surface:     light-dark(#ffffff, #181a1f);
+  --color-elev:        light-dark(#f4f4f5, #21242b);
+  --color-sunken:      light-dark(#f4f4f5, #0a0b0e);
+  --color-overlay:     light-dark(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6));
 
-  /* === Border === */
-  --color-border-subtle:  light-dark(#e5e5e5, #2a2d33);
-  --color-border-strong:  light-dark(#d4d4d4, #3f434b);
-  --color-border-focus:   light-dark(#4f46e5, #818cf8);
+  /* === Border (utility: border-*) === */
+  --color-divider:     light-dark(#e5e5e5, #2a2d33);  /* subtle */
+  --color-edge:        light-dark(#d4d4d4, #3f434b);  /* strong */
+  --color-focus:       light-dark(#4f46e5, #818cf8);  /* a11y outline */
 
-  /* === Text === */
-  --color-text-primary:   light-dark(#0a0a0a, #fafafa);
-  --color-text-secondary: light-dark(#525252, #a3a3a3);
-  --color-text-tertiary:  light-dark(#737373, #6b7280);
-  --color-text-disabled:  light-dark(#a3a3a3, #525252);
-  --color-text-inverse:   light-dark(#ffffff, #0a0a0a);
+  /* === Text (utility: text-*) — single namespace로 인해 bg-/border- 도 만들어지지만
+       사용 의도는 텍스트 한정. ADR-0003의 text-secondary/text-primary 가 직접 매핑됨. */
+  --color-primary:     light-dark(#0a0a0a, #fafafa);
+  --color-secondary:   light-dark(#525252, #a3a3a3);
+  --color-tertiary:    light-dark(#737373, #6b7280);
+  --color-disabled:    light-dark(#a3a3a3, #525252);
+  --color-inverse:     light-dark(#ffffff, #0a0a0a);
 
   /* === Semantic action (각 토큰은 단 하나의 의미만 — X5/ADR-0006) === */
   --color-action:         light-dark(#4f46e5, #818cf8);
@@ -54,7 +69,7 @@
   --color-danger:         light-dark(#b91c1c, #f87171);
   --color-danger-subtle:  light-dark(#fee2e2, #450a0a);
 
-  --color-neutral-expense: var(--color-text-primary);
+  --color-expense:        var(--color-primary);  /* 지출은 강조색 사용 안 함 */
 
   /* === AI 채널 — 보라로 격리 (ADR-0006) === */
   --color-ai:        light-dark(#7c3aed, #a78bfa);
@@ -85,32 +100,34 @@
   --text-meta:    0.8125rem;
   --text-caption: 0.75rem;
 
-  /* === Spacing === */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
-  --space-7: 3rem;
+  /*
+   * Spacing — Tailwind 4는 단일 --spacing base unit으로 p-1/p-2/.../p-12 를 자동 생성한다
+   * (default 0.25rem). synthesis.md 4.3 의 7-step scale은 Tailwind 기본 scale 위에 매핑된다:
+   *   space-1 (0.25rem) → p-1     space-5 (1.5rem) → p-6
+   *   space-2 (0.5rem)  → p-2     space-6 (2rem)   → p-8
+   *   space-3 (0.75rem) → p-3     space-7 (3rem)   → p-12
+   *   space-4 (1rem)    → p-4
+   * 따라서 별도 --space-* 토큰을 @theme에 두지 않고 Tailwind 기본값을 그대로 사용한다.
+   * (--space-* 은 Tailwind 4 namespace가 아니라 utility로 기록되지 않으므로 정의해도 unused.)
+   */
 
-  /* === Radius === */
+  /* === Radius (utility: rounded-*) === */
   --radius-xs:   4px;
   --radius-sm:   8px;
   --radius-md:   12px;
   --radius-lg:   20px;
   --radius-full: 9999px;
 
-  /* === Shadow === */
+  /* === Shadow (utility: shadow-*) === */
   --shadow-card:  0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-elev:  0 4px 16px rgba(0, 0, 0, 0.08);
   --shadow-sheet: 0 -2px 24px rgba(0, 0, 0, 0.12);
 
-  /* === Motion === */
-  --duration-instant: 100ms;
-  --duration-fast:    150ms;
-  --duration-base:    220ms;
-  --duration-slow:    400ms;
+  /* === Motion (utility: duration-*, ease-*) === */
+  --transition-duration-instant: 100ms;
+  --transition-duration-fast:    150ms;
+  --transition-duration-base:    220ms;
+  --transition-duration-slow:    400ms;
   --ease-standard:   cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized: cubic-bezier(0.3, 0, 0.1, 1);
 }
