@@ -197,7 +197,7 @@ $ ls public/
 
 → 본 디스커버리는 결정을 후속 ADR에 위임한다. **빌드 파이프라인 변경 비용이 가장 적은 P-public이 우선 권고**. P-erb는 빌드 변경 부담 때문에 비권장.
 
-**채택**: [ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md) — P-public + 전체 Variable WOFF2 (2.0MB). ~200KB Subset 단일 파일은 본 환경(외부 네트워크 차단)과 한글 음절 수 하한으로 달성 불가하여 deviation을 ADR-0010에 명시.
+**채택**: [ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md) — P-public + 전체 Variable WOFF2 (2.0MB). 본 노트가 권고한 "~200KB Subset 단일 파일"은 orioncactus 공식 release에 실재하지 않으며 (static-subset weight당 ~270KB와 혼동된 것으로 보임), 자체 subset도 한글 음절 수 하한으로 ~1.7MB가 한계 — 자세한 사실 정리는 ADR-0010.
 
 공통:
 - 라이선스 고지를 `public/licenses/pretendard.txt` 또는 README에 명시 (SIL OFL 1.1 준수).
@@ -421,7 +421,7 @@ export default class extends Controller {
 본 노트의 권고가 채택되면 Phase 1 첫 PR에서 다음을 함께 처리:
 
 1. **Tailwind `@theme` 토큰 정의** (Q1) — `application.tailwind.css`에 추가.
-2. **Pretendard Variable 자가 호스팅** (Q3) — **P-public 옵션을 Phase 1 default로 채택**. `public/fonts/PretendardVariable.v1.3.9.woff2` + CSS에서 `src: url("/fonts/PretendardVariable.v1.3.9.woff2")`. 라이선스 고지(`public/licenses/pretendard-OFL-1.1.txt`) 함께. *deviation:* Subset 단일 파일 ~200KB는 외부 네트워크 차단 + 한글 음절 수 하한으로 달성 불가하여 전체 Variable WOFF2(~2.0MB)로 출시 — 자세한 근거는 ADR-0010 참조.
+2. **Pretendard Variable 자가 호스팅** (Q3) — **P-public 옵션을 Phase 1 default로 채택**. `public/fonts/PretendardVariable.v1.3.9.woff2` + CSS에서 `src: url("/fonts/PretendardVariable.v1.3.9.woff2")`. 라이선스 고지(`public/licenses/pretendard-OFL-1.1.txt`) 함께. *deviation:* 본 노트가 권고한 "~200KB Variable Subset 단일 파일"은 orioncactus 공식 release에 실재하지 않으며 자체 subset도 한글 음절 수 하한으로 ~1.7MB가 한계여서, 전체 Variable WOFF2(~2.0MB)로 출시 — 자세한 근거는 ADR-0010.
 3. **[ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md)** (Pretendard 자가 호스팅) — 2026-05-15 채택.
 
 Phase 5 시작 전:

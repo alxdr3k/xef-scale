@@ -24,11 +24,13 @@ Accepted
 
 - `package.json` 기준 CSS 빌드는 `npx @tailwindcss/cli -i ./app/assets/stylesheets/application.tailwind.css -o ./app/assets/builds/application.css --minify`. ERB를 평가하지 않는다.
 - 본 레포는 Propshaft를 사용한다 — `app/assets/` 하위 파일은 `/assets/...`로 fingerprinted, `public/` 하위 파일은 정적 경로 그대로.
-- npm `pretendard@1.3.9` 패키지가 제공하는 단일 파일 옵션은 두 가지:
-  - `dist/web/variable/woff2/PretendardVariable.woff2` — 단일 파일 약 **2.0MB** (Hangul 11,172자 + Latin/CJK 기호 포함).
-  - `dist/web/variable/woff2-dynamic-subset/PretendardVariable.subset.{0..104}.woff2` — 105개 분할 파일, 각 평균 ~20KB. `unicode-range` 기반 dynamic loading.
-- Q3 권고가 언급한 "Variable Subset ~200KB 단일 파일"은 GitHub의 `orioncactus/pretendard` 레포에는 존재하지만 npm `pretendard` 패키지에는 포함되지 않는다 (별도 `packages/pretendard-subset/`). 본 환경에서는 외부 네트워크 접근이 차단되어 있어 GitHub raw / jsdelivr 직접 다운로드도 불가하다.
-- 로컬에서 `fontTools.subset`로 KS X 1001 한글 + Latin 기본을 잘라보면 ~1.7MB로 줄어들 뿐, Hangul 음절 ~2,350개 자체가 음절당 ~700 bytes로 시작점이 크다. **200KB는 한글을 빼지 않는 한 도달 불가**.
+- Pretendard `v1.3.9` 공식 release (`github.com/orioncactus/pretendard/releases/download/v1.3.9/Pretendard-1.3.9.zip`)가 단일 파일로 제공하는 옵션:
+  - `web/variable/woff2/PretendardVariable.woff2` — **2.0MB** (Hangul 11,172자 + Latin/CJK 기호 포함, 모든 weight).
+  - `web/static/woff2/Pretendard-{Weight}.woff2` × 9 weights — 각 ~770KB (총 ~7MB, 전체 글리프).
+  - `web/static/woff2-subset/Pretendard-{Weight}.subset.woff2` × 9 weights — 각 ~270KB (KS X 1001 subset, 총 ~2.4MB).
+  - `web/variable/woff2-dynamic-subset/PretendardVariable.subset.{0..104}.woff2` — 105개 분할 (npm `pretendard@1.3.9`에도 동일 포함). `unicode-range` 기반 dynamic loading.
+- **Q3 권고가 언급한 "Variable Subset ~200KB 단일 파일"은 실재하지 않는다** — orioncactus 공식 release/패키지 어디에도 단일 Variable Subset WOFF2가 없다. 디스커버리 노트가 static-subset(weight당 ~270KB)을 Variable로 잘못 기억했거나, third-party 호스팅과 혼동한 것으로 보인다.
+- 로컬에서 `fontTools.subset`로 Variable에 KS X 1001 한글 + Latin 기본만 남겨도 ~1.7MB가 하한 — Hangul 음절 자체가 큰 글리프 데이터를 차지하기 때문이며, **단일 Variable로 200KB대 달성은 한글을 대거 드롭하지 않는 한 불가능**하다.
 
 ## Decision
 
@@ -36,7 +38,7 @@ xef-scale은 다음 4가지를 동시에 채택한다.
 
 1. **자가 호스팅** — CDN 의존을 회피한다 (Q3 옵션 B). CSP·오프라인 개발·외부 의존 0 측면에서 우위.
 2. **호스팅 위치는 `public/fonts/`** (Q3의 P-public 옵션). `app/assets/fonts/` + ERB-rendered `@font-face`(P-layout-preload) 또는 `application.tailwind.css.erb`(P-erb)는 빌드 파이프라인 변경을 동반하므로 거부. 현재 Tailwind CLI 입력 CSS에서 `url("/fonts/...")` 정적 경로로 참조한다.
-3. **Phase 1은 Pretendard Variable 전체 파일(약 2.0MB)을 단일 WOFF2로 출시한다.** Q3 권고가 명시한 "~200KB Variable Subset"은 본 환경(외부 네트워크 차단) + Hangul 음절 수 자체의 크기 하한 때문에 달성 불가. `font-display: swap`으로 첫 페인트는 차단되지 않으며, 브라우저 캐시 + HTTP/2 멀티플렉싱으로 재방문 비용은 0에 수렴한다.
+3. **Phase 1은 Pretendard Variable 전체 파일(약 2.0MB)을 단일 WOFF2로 출시한다.** Q3 권고가 명시한 "~200KB Variable Subset"은 공식 배포본에 실재하지 않으며, 동등한 크기를 자체 subset으로 달성하려 해도 한글 음절 수 하한(약 1.7MB) 때문에 불가능하다. `font-display: swap`으로 첫 페인트는 차단되지 않으며, 브라우저 캐시 + HTTP/2 멀티플렉싱으로 재방문 비용은 0에 수렴한다. 더 작은 footprint가 필요한 시점이 오면 dynamic-subset(105 파일) 또는 static-subset 1~2 weight(~270KB × N)로 전환을 재검토한다.
 4. **캐시 무효화는 파일명 버전 접미사**로 처리한다. 파일명은 `PretendardVariable.v1.3.9.woff2` 형식 (npm 패키지 버전 일치). 폰트 업데이트 시 새 버전 접미사로 파일을 추가하고 CSS의 `src` URL을 함께 갱신한다 — fingerprint가 없는 정적 경로의 한계를 명시적 버전 관리로 보완.
 
 구현:
@@ -83,7 +85,7 @@ app/assets/stylesheets/application.tailwind.css  # @font-face + @theme 블록
 1. **모바일 LCP 회귀** — Phase 1 출시 후 Web Vitals에서 LCP가 측정 가능하게 악화되고 폰트 다운로드가 주요 원인으로 식별된다.
 2. **번들 크기 압박** — `public/` 총 크기가 배포 시스템 제약(예: Cloudflare Pages 25MB 단일 파일 제한)에 근접한다. (현재 2MB는 충분히 여유)
 3. **다국어 확장** — 일본어/중국어 등 추가 스크립트를 동시 지원해야 하는 시점이 오면, dynamic-subset 또는 별도 폰트 패밀리 분할이 더 효율적이다.
-4. **외부 네트워크 정책 변경** — CI/dev 환경에서 GitHub raw/jsdelivr 접근이 열리면, orioncactus가 배포하는 ~200KB Variable Subset 단일 파일 채택을 재고할 수 있다.
+4. **단일 Variable Subset 파일이 공식 배포된다** — orioncactus 또는 third-party가 ~200KB대 단일 Variable Subset WOFF2를 안정적으로 제공하기 시작하면 채택을 재고한다 (현 시점 공식 release에는 없음).
 
 후속 옵션 (재검토 시):
 - **dynamic-subset (105 파일)** — npm 패키지에 이미 포함, `pretendardvariable-dynamic-subset.css`의 `@font-face` + `unicode-range` 패턴 그대로 채택 가능. 첫 페인트에 보이는 글자만 로딩.
