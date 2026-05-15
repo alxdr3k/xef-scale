@@ -136,7 +136,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 
 다음 항목은 본 PR에서 검증하지 못했거나, 추가 확인이 필요합니다.
 
-- **이미지 파서 멀티 기관 지원** — `ImageStatementParser`의 `institution_identifier`는 컨트롤러에서 전달 가능하지만 (`params[:institution_identifier]`), Vision 프롬프트 자체는 신한카드 명세서 텍스트에 종속됨. 다른 기관 명세서가 들어오면 정확도 저하 가능. 실제 동작 측정 필요.
+- ~~**이미지 파서 멀티 기관 지원** — `ImageStatementParser`의 `institution_identifier`는 컨트롤러에서 전달 가능하지만 (`params[:institution_identifier]`), Vision 프롬프트 자체는 신한카드 명세서 텍스트에 종속됨~~ — [ADR-0009](../decisions/ADR-0009-vision-multi-institution-validation-via-dogfood.md)으로 결정됨. 사전 코퍼스 없이 dogfood로 점진 검증, 회귀 시 케이스별 fixture 누적.
 - ~~`Pundit::Authorization` include는 mount만 되어 있고 활성 정책 디렉토리/`authorize` 호출은 0건~~ — [ADR-0001](../decisions/ADR-0001-defer-pundit-adoption.md)으로 결정됨. 현재 패턴 유지, 재검토 트리거는 ADR 참조.
 - **PRD.md의 모델 폴백 체인 vs 코드** — `AiTextParser`는 4모델, `GeminiCategoryService`는 5모델, `GeminiVisionParserService`는 1모델. PRD/디자인 문서가 코드와 일치한다고 단정하지 않음.
 - **`docs/categorization.md`의 "텍스트 경로는 1-2단계만"** — 코드와 일치하지만, 향후 Gemini 카테고리 폴백을 텍스트 경로에도 적용할지 여부는 미결정.
