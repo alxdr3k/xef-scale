@@ -1,0 +1,38 @@
+<%#
+  HeroStat — 화면 최상위 큰 숫자 (synthesis.md 6.3 / X1 숫자가 주인공).
+
+  화면 당 *하나*만 사용. dashboards/monthly의 인디고 그라데이션 hero를
+  본 partial로 추출한다 (Phase 4에서 실제 적용).
+
+  Locals:
+    label      (String, required)  — "2026년 5월 총 지출" 같은 라벨 (text-secondary)
+    value      (Numeric, required) — hero 숫자
+    tone       (Symbol, default :neutral) — _amount 참조
+    supporting (String, optional)  — 보조 텍스트 ("일 평균 …", "예산 잔여 …")
+    cta_label  (String, optional)  — CTA 라벨 ("예산 조정")
+    cta_path   (String, optional)  — CTA 링크
+
+  Tone 토큰만 사용 (인디고 그라데이션 등 팔레트 직접 지정 금지 — ADR-0006).
+%>
+<% label      = local_assigns.fetch(:label) %>
+<% value      = local_assigns.fetch(:value) %>
+<% tone       = local_assigns.fetch(:tone, :neutral) %>
+<% supporting = local_assigns.fetch(:supporting, nil) %>
+<% cta_label  = local_assigns.fetch(:cta_label, nil) %>
+<% cta_path   = local_assigns.fetch(:cta_path, nil) %>
+
+<section class="bg-surface rounded-lg shadow-card p-6">
+  <p class="text-meta text-secondary"><%= label %></p>
+  <div class="mt-1">
+    <%= render "shared/amount", value: value, tone: tone, size: :display %>
+  </div>
+
+  <% if supporting.present? %>
+    <p class="mt-3 text-meta text-secondary"><%= supporting %></p>
+  <% end %>
+
+  <% if cta_label.present? && cta_path.present? %>
+    <%= link_to cta_label, cta_path,
+        class: "mt-4 inline-flex items-center text-meta font-medium text-action hover:text-action-hover" %>
+  <% end %>
+</section>

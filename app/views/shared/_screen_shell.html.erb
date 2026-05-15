@@ -1,0 +1,43 @@
+<%#
+  ScreenShell — body 골조 (synthesis.md 6.3).
+
+  application.html.erb의 body 안쪽 구조(상단 navbar / main / 하단 nav / flash)를
+  단일 partial로 흡수. Phase 1에서는 본 partial이 *유일한 호출자*인 application.html.erb
+  골조를 그대로 옮긴 것이며, 시각적 회귀는 `bg-gray-50 → bg-page` 한 줄에 한정한다.
+
+  Locals:
+    main_class (String, optional)  — `<main>`에 덧붙일 utility (페이지가 헤더/풀폭을
+                                     직접 제어해야 하는 경우용; 미지정 시 signed-in
+                                     기본 padding 사용).
+
+  yield: 페이지 본문.
+
+  Strangler Fig (ADR-0003) — 옛 페이지는 본 shell 안에서 옛 마크업 그대로 동작.
+  새 페이지는 `_context_header`, `_hero_stat`, `_amount` 같은 코어 partial과 함께
+  본 shell 안에 자연스럽게 들어맞도록 점진 전환.
+%>
+<% main_class = local_assigns.fetch(:main_class, nil) %>
+<% default_main_class = user_signed_in? ? "pt-4 px-4 pb-20 sm:pb-6" : "" %>
+<% effective_main_class = main_class || default_main_class %>
+
+<body class="bg-page text-primary min-h-dvh">
+  <% if user_signed_in? %>
+    <%= turbo_stream_from current_user %>
+    <% if current_workspace %>
+      <%= turbo_stream_from current_workspace %>
+    <% end %>
+    <%= render "layouts/navbar" %>
+  <% end %>
+
+  <main class="<%= effective_main_class %>">
+    <%= yield %>
+  </main>
+
+  <% if user_signed_in? %>
+    <%= render "layouts/mobile_bottom_nav" %>
+  <% end %>
+
+  <div id="flash" class="fixed top-6 right-6 z-50 space-y-3 max-w-sm w-full pointer-events-none">
+    <%= render "shared/flash" %>
+  </div>
+</body>

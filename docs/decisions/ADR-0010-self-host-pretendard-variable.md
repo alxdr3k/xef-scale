@@ -117,6 +117,29 @@ npm run build:css
 git rm -r public/fonts/pretendard-1.3.9/
 ```
 
+## Phase 1 follow-up: `<link rel="preload">` 검토 (2026-05-15)
+
+후속 PR(`shared/_screen_shell` 도입 + `application.html.erb` shell 전환)에서 폰트 preload 추가 여부를 검토했다. **결론: 추가하지 않는다.** 근거:
+
+1. **dynamic-subset 구조 자체가 이미 fetch 최소화** — 92개 `@font-face` 가 `unicode-range` 로 분기되어 있어 브라우저는 페이지 DOM 에 등장한 코드 포인트가 포함된 subset(보통 1~3개, ~50-150KB)만 fetch 한다. preload 의 본래 목적인 "필요한 자원 조기 발견"은 dynamic-subset CSS 가 `application.css` 에 인라인되어 `<head>` 의 stylesheet 링크 단계에서 이미 달성된다.
+2. **preload 대상 subset 식별이 자명하지 않다** — subset 0 은 fullwidth/특수 한글, subset 91 은 기본 ASCII + ~30개 최빈 한글(가/고/기/다/로/리/사/스/시/이/인/지/하), subset 90 은 그 다음 최빈 한글(간/개/거/게/결/...). 페이지마다 노출되는 한글이 다르므로 "거의 모든 페이지가 받는 subset"을 1~2개로 안전하게 좁히기 어렵다. 잘못 preload 하면 사용되지 않는 파일을 강제로 받는 손해가 발생한다.
+3. **측정 데이터 없음** — Web Vitals(LCP/CLS/FOUT) 실측이 없는 상태에서의 preload 추가는 premature optimization 이다. 본 ADR 의 "재검토 트리거 1. 모바일 LCP 회귀"가 발동되면 측정 데이터 기반으로 1~2개 subset(예: 페이지 hit ratio 가 높은 subset)을 preload 하는 변경을 별도 PR 로 도입한다.
+4. **HTTP/2 멀티플렉싱** — 본 레포 배포 환경(Thruster + HTTP/2)에서는 CSS 발견 → 폰트 fetch 직렬 의존이 HTTP/1 시절만큼 비싸지 않다. preload 의 이득(parallel fetch)이 작아진다.
+
+향후 measurement-driven 으로 도입할 때의 패턴 (참고):
+
+```erb
+<%# 측정 결과 subset 91 이 사실상 모든 페이지에서 fetch 된다고 확인된 경우 %>
+<link rel="preload" as="font" type="font/woff2"
+      href="/fonts/pretendard-1.3.9/PretendardVariable.subset.91.woff2"
+      crossorigin>
+```
+
+- `crossorigin` 속성은 필수 — 폰트 요청은 CORS 자격으로 fetch 되므로 preload 도 동일한 자격으로 발행해야 캐시 매칭이 된다.
+- 1개 subset 만 preload — 여러 개를 한꺼번에 발행하면 첫 페인트 네트워크 대역폭을 잠식.
+
+본 PR 은 위 패턴을 **도입하지 않고**, 본 섹션을 변경 이력으로 남긴다.
+
 ## 재검토 트리거
 
 다음 중 하나라도 발생하면 본 ADR을 supersede 하는 새 ADR로 폰트 호스팅 전략을 재평가한다.

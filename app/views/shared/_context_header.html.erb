@@ -1,0 +1,36 @@
+<%#
+  ContextHeader — 화면명 + 라이브 컨텍스트 + 우측 액션 (synthesis.md 6.3 / X3 라이브 컨텍스트).
+
+  각 페이지의 `<h1>` + `<p>` 하드코딩을 본 partial로 흡수.
+
+  Locals:
+    title   (String, required) — 화면명 ("거래", "검토", "카테고리")
+    context (String, optional) — 라이브 컨텍스트
+                                 ("검토 대기 12건", "지난달 같은 시점 대비 -12.4%")
+    actions (block, optional)  — 우측 액션 영역(검색 버튼·필터 등). content 블록으로 전달.
+
+  사용 예:
+    <%%= render "shared/context_header",
+        title: "거래",
+        context: t("live.month_pace", delta: -12.4) do %>
+      <button class="..."> 🔍 </button>
+    <%% end %>
+
+  ADR-0003: 시맨틱 utility만 사용 — `text-primary`, `text-secondary`, `bg-surface`.
+%>
+<% title   = local_assigns.fetch(:title) %>
+<% context = local_assigns.fetch(:context, nil) %>
+<% actions = block_given? ? capture { yield } : nil %>
+
+<header class="flex items-start justify-between gap-4 mb-6">
+  <div class="min-w-0">
+    <h1 class="text-title font-bold text-primary truncate"><%= title %></h1>
+    <% if context.present? %>
+      <p class="mt-1 text-meta text-secondary"><%= context %></p>
+    <% end %>
+  </div>
+
+  <% if actions.present? %>
+    <div class="flex items-center gap-2 shrink-0"><%= actions %></div>
+  <% end %>
+</header>

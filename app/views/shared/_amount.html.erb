@@ -1,0 +1,59 @@
+<%#
+  Amount — 금액 단일 표기 (synthesis.md 4.2 / X1 숫자가 주인공).
+
+  의도:
+    - 모든 금액은 `tabular-nums` 강제 (행 스크롤 시 자릿수 흔들림 방지).
+    - 천단위 콤마 + "₩" 후치(`unit: '₩'`은 number_to_currency가 prefix로 두지만,
+      한국 관행은 후치이므로 표기는 `금액 + 원`을 추후 ko.yml 키로 일관화 — 본
+      partial은 표기 자체를 표준화하는 1차 단계로 number_to_currency 기본을 유지한다.
+      Phase 6에서 ko.yml + helper로 후치/통화 기호 처리).
+    - 시맨틱 톤만 사용:
+        :neutral (default — text-primary, 지출/일반 금액)
+        :positive (text-positive, 수입·환급)
+        :warning  (text-warning, pending_review 강조)
+        :danger   (text-danger, 취소/오류)
+        :muted    (text-secondary, 보조 수치)
+    - 크기는 시맨틱 자유 토큰:
+        :amount  (default, text-amount = 1rem) — 거래 row
+        :display (text-display = 2.5rem) — hero
+        :section (text-section) — 섹션 합계
+        :meta    (text-meta)    — 보조 캡션
+
+  Locals:
+    value (Numeric, required)
+    tone  (Symbol, default :neutral)
+    size  (Symbol, default :amount)
+    class (String, optional) — 추가 utility (정렬 등)
+    sign  (Boolean, default false) — true이면 양수에 +, 음수에 - 명시 (X12 한국 관행: 부호는 숫자 앞)
+%>
+<% tone   = local_assigns.fetch(:tone, :neutral) %>
+<% size   = local_assigns.fetch(:size, :amount) %>
+<% extra  = local_assigns.fetch(:class, "") %>
+<% sign   = local_assigns.fetch(:sign, false) %>
+<% value  = local_assigns.fetch(:value) %>
+<%
+  tone_class = {
+    neutral:  "text-primary",
+    positive: "text-positive",
+    warning:  "text-warning",
+    danger:   "text-danger",
+    muted:    "text-secondary"
+  }.fetch(tone, "text-primary")
+
+  size_class = {
+    display: "text-display font-bold",
+    title:   "text-title   font-semibold",
+    section: "text-section font-semibold",
+    amount:  "text-amount  font-medium",
+    body:    "text-body    font-medium",
+    meta:    "text-meta",
+    caption: "text-caption"
+  }.fetch(size, "text-amount font-medium")
+
+  prefix = if sign && value.to_i.positive?
+             "+"
+           else
+             ""
+           end
+%>
+<span class="tabular-nums whitespace-nowrap <%= tone_class %> <%= size_class %> <%= extra %>"><%= prefix %><%= number_to_currency(value, unit: "₩", precision: 0) %></span>
