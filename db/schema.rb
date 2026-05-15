@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_15_072300) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_15_074204) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -159,6 +159,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_15_072300) do
     t.integer "committed_by_id"
     t.datetime "completed_at"
     t.datetime "created_at", null: false
+    t.datetime "discarded_at"
     t.integer "duplicate_count"
     t.integer "error_count"
     t.text "notes"

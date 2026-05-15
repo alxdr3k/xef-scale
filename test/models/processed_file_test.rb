@@ -343,7 +343,39 @@ class ProcessedFileTest < ActiveSupport::TestCase
     assert pf.blob_eligible_for_purge?(retention_days: 180)
   end
 
-  test "blob_eligible_for_purge? uses updated_at for discarded sessions" do
+  test "blob_eligible_for_purge? uses discarded_at for discarded sessions" do
+    pf = processed_files(:completed_file)
+    attach_dummy_blob(pf)
+    pf.parsing_session.update!(
+      review_status: "discarded",
+      committed_at: nil,
+      rolled_back_at: nil,
+      completed_at: nil,
+      discarded_at: 200.days.ago
+    )
+    assert pf.blob_eligible_for_purge?(retention_days: 180)
+  end
+
+  test "blob_eligible_for_purge? is unaffected by unrelated edits after discard (regression: ADR-0002 stable cutoff)" do
+    pf = processed_files(:completed_file)
+    attach_dummy_blob(pf)
+    pf.parsing_session.update!(
+      review_status: "discarded",
+      committed_at: nil,
+      rolled_back_at: nil,
+      completed_at: nil,
+      discarded_at: 200.days.ago
+    )
+    # Simulate a later inline_update bumping notes/updated_at by 30 days ago.
+    # discarded_at must remain the source of truth so the file is still
+    # eligible for purge.
+    pf.parsing_session.update!(notes: "user added a note later")
+    assert pf.parsing_session.updated_at > 31.days.ago,
+           "sanity: updated_at should have moved forward"
+    assert pf.blob_eligible_for_purge?(retention_days: 180)
+  end
+
+  test "blob_eligible_for_purge? false when discarded_at is nil (predates column, never set)" do
     pf = processed_files(:completed_file)
     attach_dummy_blob(pf)
     pf.parsing_session.update_columns(
@@ -351,9 +383,9 @@ class ProcessedFileTest < ActiveSupport::TestCase
       committed_at: nil,
       rolled_back_at: nil,
       completed_at: nil,
-      updated_at: 200.days.ago
+      discarded_at: nil
     )
-    assert pf.blob_eligible_for_purge?(retention_days: 180)
+    assert_not pf.blob_eligible_for_purge?(retention_days: 180)
   end
 
   test "purge_blob! stamps blob_purged_at and schedules detach" do

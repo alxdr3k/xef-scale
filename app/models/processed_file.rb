@@ -111,9 +111,12 @@ class ProcessedFile < ApplicationRecord
     when "rolled_back"
       session.rolled_back_at
     when "discarded"
-      # No dedicated timestamp column; fall back to updated_at, which is when
-      # discard_all! flipped the review_status.
-      session.updated_at
+      # discarded_at is stamped by discard_all! and remains stable across
+      # later unrelated edits (e.g. notes via inline_update). Pre-migration
+      # rows are backfilled to updated_at by the schema migration; nil means
+      # the row predates the column AND was never updated since — treat as
+      # not-yet-eligible (safer than guessing).
+      session.discarded_at
     end
   end
 
