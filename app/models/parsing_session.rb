@@ -153,7 +153,7 @@ class ParsingSession < ApplicationRecord
       # Originals are not touched until commit_all!, so discarding only needs
       # to throw away the imported pending_review rows.
       transactions.pending_review.destroy_all
-      update!(review_status: "discarded")
+      update!(review_status: "discarded", discarded_at: Time.current)
     end
     true
   end

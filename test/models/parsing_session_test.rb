@@ -228,6 +228,18 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert original.committed?
   end
 
+  test "discard_all! stamps discarded_at for ADR-0002 retention" do
+    session, = build_session_with_duplicate(decision: "keep_new")
+    frozen_now = Time.zone.parse("2026-05-15 13:00:00")
+    travel_to(frozen_now) do
+      assert session.discard_all!
+    end
+
+    session.reload
+    assert_equal "discarded", session.review_status
+    assert_equal frozen_now, session.discarded_at
+  end
+
   test "commit_all! with keep_new soft-deletes original and commits new" do
     session, original, new_tx = build_session_with_duplicate(decision: "keep_new")
 

@@ -30,6 +30,8 @@ class ProcessedFile < ApplicationRecord
   scope :pending, -> { where(status: "pending") }
   scope :completed, -> { where(status: "completed") }
   scope :failed, -> { where(status: "failed") }
+  scope :blob_purged, -> { where.not(blob_purged_at: nil) }
+  scope :blob_retained, -> { where(blob_purged_at: nil) }
 
   def pending?
     status == "pending"
@@ -45,6 +47,37 @@ class ProcessedFile < ApplicationRecord
 
   def failed?
     status == "failed"
+  end
+
+  def blob_purged?
+    blob_purged_at.present?
+  end
+
+  # Returns true when the parsing session linked to this file is in a terminal
+  # state (failed status, or review_status in committed/rolled_back/discarded)
+  # and that state was entered at least `retention_days` ago. Used by the
+  # cleanup job introduced for ADR-0002. Returns false when no parsing session
+  # exists yet.
+  def blob_eligible_for_purge?(retention_days: 180, now: Time.current)
+    return false if blob_purged?
+    return false unless file.attached?
+
+    session = parsing_session
+    return false unless session
+
+    terminal_at = session_terminal_at(session)
+    return false unless terminal_at
+
+    now - terminal_at >= retention_days.days
+  end
+
+  def purge_blob!(now: Time.current)
+    return false if blob_purged?
+    return false unless file.attached?
+
+    file.purge_later
+    update!(blob_purged_at: now)
+    true
   end
 
   def mark_processing!
@@ -64,6 +97,28 @@ class ProcessedFile < ApplicationRecord
   }
 
   private
+
+  # ADR-0002 defines terminal states narrowly: status == "failed", or
+  # review_status in committed/rolled_back/discarded. A session whose parsing
+  # is complete but whose review is still pending_review is NOT terminal — the
+  # user has not yet acted on it, so the blob must stay.
+  def session_terminal_at(session)
+    return session.completed_at if session.status == "failed"
+
+    case session.review_status
+    when "committed"
+      session.committed_at
+    when "rolled_back"
+      session.rolled_back_at
+    when "discarded"
+      # discarded_at is stamped by discard_all! and remains stable across
+      # later unrelated edits (e.g. notes via inline_update). Pre-migration
+      # rows are backfilled to updated_at by the schema migration; nil means
+      # the row predates the column AND was never updated since — treat as
+      # not-yet-eligible (safer than guessing).
+      session.discarded_at
+    end
+  end
 
   def broadcast_removal
     broadcast_remove_to(workspace, target: "pending_file_row_#{id}")
