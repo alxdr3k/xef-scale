@@ -219,6 +219,86 @@
 
 ---
 
+## 8. 외부 레퍼런스 교차검증 (웹 자료 기반)
+
+스크린샷만으로 추론한 위 원칙들이, 뱅크샐러드 공식 블로그·외부 디자인 분석 글에서 실제로 어떻게 설명되는지 대조한다. **내가 본 → 그들이 말한** 매핑이 맞아떨어지는지가 검증 포인트.
+
+### 8.1 Banksalad Product Language (BPL) — 디자인 시스템
+
+뱅크샐러드는 단순 디자인 시스템이 아니라 "Product Language"라 명명한 자체 프레임워크를 운영한다. Figma 디자인을 코드로 선언적으로 작성하면 그대로 UI가 완성되는 RxSwift + LayoutDrivenUI 기반의 선언적 UI 프레임워크. ([공식 블로그](https://blog.banksalad.com/tech/banksalad-product-language-ios/), [BPL 디자인 편](https://blog.banksalad.com/tech/banksalad-product-language-design/))
+
+→ **추론 검증**: 본 분석 1.3(컴포넌트 셰이프)에서 카드 16pt, pill 999pt, 시트 24pt 등 **수치가 너무 정확하게 일관**된 이유가 여기서 설명된다. 단순한 디자인 가이드가 아닌 코드 레벨의 토큰 시스템.
+
+### 8.2 데이터 기반 설계 — 7번의 UT + 50/100 A/B
+
+홈 화면 하나를 확정하기까지 총 **7번의 UT(사용성 테스트)** 를 진행, 변경안은 우선 50% 실험군에 배포하고 클릭/전환 지표 개선이 확인되면 100% 롤아웃하는 정책을 가진다. ([노트폴리오 라이브 세미나 후기](https://medium.com/@bunny753358/%EB%85%B8%ED%8A%B8%ED%8F%B4%EB%A6%AC%EC%98%A4-%EB%9D%BC%EC%9D%B4%EB%B8%8C-%EB%B1%85%ED%81%AC%EC%83%90%EB%9F%AC%EB%93%9C-%ED%94%84%EB%A1%9C%EB%8D%95%ED%8A%B8-%EB%94%94%EC%9E%90%EC%9D%B4%EB%84%88-%EB%8D%B0%EC%9D%B4%ED%84%B0-%EB%B6%84%EC%84%9D%EA%B0%80-%EC%84%B8%EB%AF%B8%EB%82%98-%ED%9B%84%EA%B8%B0-4dbcfb954f92), [원티드 인터뷰](https://www.wanted.co.kr/events/article_23_08_23))
+
+→ **추론 검증**: 본 분석 P2~P6의 일관성이 우연이 아니라 **반복 실험으로 수렴된 결과**임을 시사. 특히 KPI 배치(지출 위/수입 아래), 카드 빈상태 CTA 등은 단순 미감이 아니라 전환율 검증을 통과한 패턴일 가능성이 크다.
+
+### 8.3 1,081명 사용자 인터뷰 — "카테고리"가 가계부의 본질
+
+뱅샐 제품팀은 가계부 사용자·체리피커·종합 자산관리자·투자/대출 관리자 등 총 **1,081명을 인터뷰**했고, 가계부 유저 100%가 "카테고리 파악"을 지출 관리의 가장 기본·필수 행동으로 응답. 핵심 요구사항은 "있는 그대로, 빠짐없이 / 직관적으로, 한눈에". ([뱅샐 브런치 #298](https://brunch.co.kr/@banksalad/298))
+
+→ **추론 검증**: 본 분석 P5(자동 분류 → 인간 보정 게이미피케이션), 3.2(거래 2줄 + 카테고리|결제수단), 3.7(카테고리별 지출 도넛)이 왜 이렇게 전면에 배치됐는지 일관되게 설명된다. "분류 필요 3개 / 90% 완성" UI는 100% 유저가 가장 중요시하는 행동을 자연스럽게 끌어내는 장치.
+
+### 8.4 마이데이터 + 자동 분류 파이프라인
+
+가계부 자동 입력은 마이데이터로 연동된 거래 내역을 **자동 카테고라이즈**해서 채워주는 구조. 약 4,000+ 개 데이터 아이템을 자산/가계부/건강/금융매칭 4개 도메인으로 체계화. ([마이데이터 핸드북 PDF](https://blog.banksalad.com/2524bc79e3bea82c9f7a1d7f79a2ac59/mydata_handbook_2.pdf), [마이데이터 맵 글](https://blog.banksalad.com/pnc/mydata-handbook-202108/))
+
+→ **추론 검증**: 본 분석에서 본 5탭(홈·자산·가계부·건강·금융쇼핑)이 정확히 이 도메인 체계의 UI 매핑이다. "분류가 필요한 내역 3개"가 0이 아닌 이유 = 자동 분류 정확도의 한계 자백이며, 이를 게이미피케이션으로 노출하는 것은 P5의 정확한 구현.
+
+### 8.5 토스 vs 뱅크샐러드 — 포지셔닝의 차이
+
+여러 비교 글이 일관되게 같은 축을 제시:
+- **토스** = 간편함 / 라이프스타일 통합 / 최소 클릭 / 밝고 명료
+- **뱅크샐러드** = 정밀한 재무분석 / 데이터 기반 피드백 / AI 피드백 + 전략적 조정
+
+([smartlifepick 비교 글](https://smartlifepick.com/entry/%ED%86%A0%EC%8A%A4-vs-%EB%B1%85%ED%81%AC%EC%83%90%EB%9F%AC%EB%93%9C-%EA%B0%80%EA%B3%84%EB%B6%80-%EC%95%B1-%EB%B9%84%EA%B5%90-%EA%B8%B0%EB%8A%A5-%EC%98%88%EC%82%B0%EA%B4%80%EB%A6%AC-UI), [trendxinsight](https://trendxinsight.com/95), [위클리 UX/UI 챌린지](https://weeklyuxuichallenge.oopy.io/f9b6105e-9473-42ca-bfa3-295c6ee086a5))
+
+→ **추론 검증**: 본 분석 P2(숫자가 주연), P8(예측 + 근거 캡션)이 단순 미감이 아니라 **포지셔닝 결정**이라는 점을 강화. 다크 모드 + 큰 숫자 + 도넛 차트의 조합은 "정밀 분석 도구" 인상을 의도적으로 만든다.
+
+### 8.6 사용성 테스트의 깊이 — '심층 경험 검증'
+
+뱅샐은 정량 A/B와 별개로 정성 UT를 깊게 운영하는 사례로 자주 인용된다. 가계부 탭의 편집 접근성·편리성·자유도에 대한 사용성 검증을 수차례 프로토타이핑과 함께 진행. ([위디엑스 UT 전략 글](https://www.wedesignx.com/knowledge/-usability-testing-ut))
+
+→ **추론 검증**: 필터 시트가 평탄화 대신 2-depth(P7)인 것, 카테고리 선택 시트에서 아이콘을 제거(3.5)한 것 같은 **세부 결정의 정합성**이 우연이 아닌 검증 산출물임을 시사.
+
+### 8.7 외부 자료가 보강해주지 않는 항목
+
+웹 자료에서 직접 확인 안 되는, 그래서 본 분석의 추론으로 남는 항목:
+
+- **P10 (긍정 컬러의 광고 재활용)**: 공식 자료에선 언급 없음 — 본인들 입으로 dark pattern을 인정할 리 없다. 본 분석의 독자적 관찰로 남긴다.
+- **알림 토글 default ON 정책**: 공개된 문서 없음. 행동 관찰만으로 추론.
+- **광고를 알림 채널에 배치(P3 유지)**: 명시적 정책 글은 못 찾았으나 화면 구조상 확실.
+
+### 8.8 종합
+
+뱅크샐러드 UI는 **"디자인 시스템(BPL) × 데이터 검증(UT+A/B) × 마이데이터 자동화"** 의 곱으로 구성되어 있다. 본 분석에서 추출한 토큰·원칙은 외부 자료의 설명과 모순되지 않으며, 오히려 외부 자료가 **왜 그렇게 일관되어 보였는지의 메커니즘**(BPL의 코드 레벨 토큰화, 7회 UT의 수렴)을 보강한다.
+
+자체 앱 개발 시의 시사점:
+- 디자인을 "코드와 동기된 토큰"으로 가져가는 게 일관성의 진짜 비결이다 — 단순 가이드라인 문서는 부족.
+- 핵심 화면은 1회 디자인이 아닌 **N회 수렴**을 전제로 한다. A/B 인프라 없는 채로 "참고만 잘 하면" 같은 인상이 나오지 않는다.
+- "가계부 = 카테고리"라는 사용자 인식을 받아들이면 UI의 중심축이 자동으로 결정된다 (분류 진행률·카테고리별 차트·자동 추천+사용자 라벨링).
+
+### 참고 링크
+
+- [Banksalad Product Language를 소개합니다 — iOS 편](https://blog.banksalad.com/tech/banksalad-product-language-ios/)
+- [Banksalad Product Language는 어떻게 디자인되었나요? — 디자인 편](https://blog.banksalad.com/tech/banksalad-product-language-design/)
+- [뱅크샐러드 공식 블로그 — design system 키워드](https://blog.banksalad.com/tags/design-system/)
+- [뱅크샐러드 공식 블로그 — UX 키워드](https://blog.banksalad.com/tags/ux/)
+- [뱅크샐러드가 1,081명의 사용자를 만난 이유 (브런치)](https://brunch.co.kr/@banksalad/298)
+- [노트폴리오 라이브 — 뱅크샐러드 PD/DA 세미나 후기](https://medium.com/@bunny753358/%EB%85%B8%ED%8A%B8%ED%8F%B4%EB%A6%AC%EC%98%A4-%EB%9D%BC%EC%9D%B4%EB%B8%8C-%EB%B1%85%ED%81%AC%EC%83%90%EB%9F%AC%EB%93%9C-%ED%94%84%EB%A1%9C%EB%8D%95%ED%8A%B8-%EB%94%94%EC%9E%90%EC%9D%B4%EB%84%88-%EB%8D%B0%EC%9D%B4%ED%84%B0-%EB%B6%84%EC%84%9D%EA%B0%80-%EC%84%B8%EB%AF%B8%EB%82%98-%ED%9B%84%EA%B8%B0-4dbcfb954f92)
+- [뱅크샐러드 앱 UX/UI 리뉴얼 프로젝트 (노트폴리오)](https://notefolio.net/DIO_/217569)
+- [원티드 — 뱅크샐러드, 매끄러운 플로우 설계](https://www.wanted.co.kr/events/article_23_08_23)
+- [위디엑스 — 심층 경험 검증을 위한 UT 전략](https://www.wedesignx.com/knowledge/-usability-testing-ut)
+- [smartlifepick — 토스 vs 뱅크샐러드 가계부 비교](https://smartlifepick.com/entry/%ED%86%A0%EC%8A%A4-vs-%EB%B1%85%ED%81%AC%EC%83%90%EB%9F%AC%EB%93%9C-%EA%B0%80%EA%B3%84%EB%B6%80-%EC%95%B1-%EB%B9%84%EA%B5%90-%EA%B8%B0%EB%8A%A5-%EC%98%88%EC%82%B0%EA%B4%80%EB%A6%AC-UI)
+- [위클리 UX/UI 챌린지 — 뱅샐 vs 토스 소비/가계부](https://weeklyuxuichallenge.oopy.io/f9b6105e-9473-42ca-bfa3-295c6ee086a5)
+- [trendxinsight — 가계부 앱 비교](https://trendxinsight.com/95)
+- [뱅크샐러드 마이데이터 핸드북 PDF](https://blog.banksalad.com/2524bc79e3bea82c9f7a1d7f79a2ac59/mydata_handbook_2.pdf)
+- [뱅크샐러드 — 마이데이터 맵과 비즈니스 확장성](https://blog.banksalad.com/pnc/mydata-handbook-202108/)
+
+---
+
 ## 후속 액션 (제안)
 
 - [ ] 채택할 원칙(P1~P9)에 대해 ADR 작성 — `docs/decisions/`.
