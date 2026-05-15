@@ -164,20 +164,28 @@ $ ls public/
 
 본 레포는 Propshaft를 사용하므로 `app/assets/`에 둔 파일은 fingerprinted된 `/assets/...` 경로로 서비스된다. CSS에서 폰트를 정적 경로(`/fonts/...`)로 하드코딩하면 production에서 404가 나고 시스템 폰트로 폴백된다. 두 방식 중 하나를 명시 채택해야 한다:
 
-**옵션 P-asset (권장)** — asset pipeline 경유:
+**현재 CSS 빌드 파이프라인 사실** (2026-05-15 기준 `package.json`): `npm run build:css`는 `npx @tailwindcss/cli -i ./app/assets/stylesheets/application.tailwind.css -o ./app/assets/builds/application.css --minify`를 실행한다. **이 파이프라인은 ERB를 평가하지 않는다.** 따라서 입력 CSS를 `.css.erb`로 두고 `<%= asset_path %>`를 박는 접근은 **빌드 파이프라인 변경 없이는 불가**하며, 그대로 두면 빌드된 CSS에 미해석 ERB 토큰이 그대로 실린다.
 
-1. `app/assets/fonts/PretendardVariable-Subset.woff2` 저장.
-2. CSS에서 fingerprinted URL을 생성하려면 ERB-rendered 스타일시트 또는 Tailwind 빌드 시 자산 경로 처리 도구가 필요. Rails 8 + Tailwind v4 + Propshaft 조합에서는 보통 다음 중 하나:
-   - `app/assets/stylesheets/application.tailwind.css`를 `.css.erb`로 두고 `<%= asset_path "PretendardVariable-Subset.woff2" %>` 사용.
-   - 또는 `<link rel="preload">` + `font_path` helper를 layout에서 직접 발행 (CSS 안 `@font-face`는 그대로 두되 layout에서 폰트 로딩만 처리).
-3. `--font-sans` 토큰이 이를 참조.
+세 옵션 중 하나를 명시 채택해야 한다:
 
-**옵션 P-public** — 정적 경로(`/fonts/...`)로 고정:
+**옵션 P-public (가장 단순, 권장)** — 정적 경로(`/fonts/...`):
 
-1. `public/fonts/PretendardVariable-Subset.woff2` 저장 (fingerprint 없음, 캐시 무효화는 파일명 버전 접미사로).
-2. CSS에서 `src: url("/fonts/PretendardVariable-Subset.woff2")` 사용 가능.
+1. `public/fonts/PretendardVariable-Subset.woff2` 저장 (fingerprint 없음, 캐시 무효화는 파일명 버전 접미사로: 예 `PretendardVariable-Subset.v1.woff2`).
+2. CSS에서 `src: url("/fonts/PretendardVariable-Subset.woff2") format("woff2-variations")` 사용 가능. 현재 Tailwind CLI 파이프라인을 그대로 유지.
 
-→ 본 디스커버리는 결정을 ADR-0009 후보에 위임한다. 핵심: **둘 중 어느 방식이든 "asset pipeline fingerprinting 동작"과 "CSS src 경로"가 정합해야 한다**.
+**옵션 P-layout-preload** — `app/assets/fonts/`에 두고 layout에서 preload:
+
+1. `app/assets/fonts/PretendardVariable-Subset.woff2` 저장 (Propshaft가 `/assets/...`로 fingerprint).
+2. `application.html.erb`에 `<link rel="preload" as="font" href="<%= font_path("PretendardVariable-Subset.woff2") %>" crossorigin>` 추가.
+3. `@font-face`는 `src: url(/assets/...)`가 아니라 **CSS-side 정의 없이 layout이 폰트를 보장**하는 방식이거나, ERB-rendered `link` 태그 안에서 inline `@font-face`를 발행하는 우회. CSS 빌드는 그대로 유지.
+
+**옵션 P-erb (빌드 파이프라인 변경 동반)** — `application.tailwind.css.erb`로:
+
+1. `application.tailwind.css`를 `.css.erb`로 변경.
+2. `npm run build:css`를 *ERB 사전 평가*하는 단계로 감싼다 (예: `bin/render-css.rb` 같은 wrapper). `@tailwindcss/cli`는 ERB를 평가하지 않으므로 *반드시* 빌드 파이프라인을 같이 변경해야 한다 — 그렇지 않으면 production CSS에 미해석 ERB가 실린다.
+3. `<%= asset_path "..." %>` 사용 가능.
+
+→ 본 디스커버리는 결정을 ADR-0009 후보에 위임한다. **빌드 파이프라인 변경 비용이 가장 적은 P-public이 우선 권고**. P-erb는 빌드 변경 부담 때문에 비권장.
 
 공통:
 - 라이선스 고지를 `public/licenses/pretendard.txt` 또는 README에 명시 (SIL OFL 1.1 준수).

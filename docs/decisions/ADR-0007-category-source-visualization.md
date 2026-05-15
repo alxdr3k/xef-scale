@@ -63,10 +63,6 @@ SOURCES = %w[import gemini manual].freeze
    - 검토함의 파싱 결과 탭에서 AI 추천 카테고리 행은 보라 outline.
    - 사용자가 채택/거부 행동을 명시.
    - 채택 시 `CategoryMapping`이 *학습*되어 다음 거래에서 `mapping_match`로 이동.
-3. **AI 추천(`gemini`) 거래는 AIBadgeCard 톤으로 묶어 검토함에서 별도 표시**:
-   - 검토함의 파싱 결과 탭에서 AI 추천 카테고리 행은 보라 outline.
-   - 사용자가 채택/거부 행동을 명시.
-   - 채택 시 `CategoryMapping`으로 *학습* 되어 다음 거래에서 1단계로 이동.
 4. **사용자가 카테고리 변경 시 인라인 학습 제안 alert** 노출:
    - 마이크로카피: "다음 같은 가맹점부터는 이 카테고리로 자동 분류할까요?" + [예 / 아니오] 액션.
    - "예" 선택 시 `CategoryMapping` 신설 (`source: "manual"`).
@@ -85,7 +81,7 @@ SOURCES = %w[import gemini manual].freeze
 
 **부정**
 - `CategorySourceChip`이 거래 row를 시각적으로 더 무겁게 만들 수 있음 — 디자인에서 마이크로 라벨 톤 다운 필요.
-- `Transaction#category_source` 데이터 모델 추적이 추가 마이그레이션 부담.
+- `Transaction#classification_source` 데이터 모델 추적이 추가 마이그레이션 부담.
 - AI 추천 채택률이 노출되어 *Gemini 정확도가 낮으면 신뢰 손실* 발생 가능 — 정확도 모니터링 필요.
 
 **완화**

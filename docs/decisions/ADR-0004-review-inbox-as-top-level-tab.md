@@ -65,7 +65,21 @@ resources :workspaces, ... do
 end
 ```
 
-`reviews#index`는 워크스페이스 스코프에서 `ParsingSession.where(review_status: "pending_review")` + `DuplicateConfirmation.pending` 양쪽을 합쳐 렌더하는 인덱스 액션이다. 세션 상세는 기존 helper(`review_workspace_parsing_session_path`)로 진입.
+`reviews#index`는 **현재 워크스페이스로 명시 스코프된** 다음 두 데이터를 합쳐 렌더한다:
+
+- `current_workspace.parsing_sessions.where(review_status: "pending_review")`
+- 같은 워크스페이스에 속한 `DuplicateConfirmation` 중 `status: "pending"`
+
+`DuplicateConfirmation` 모델은 자체 `workspace_id` 컬럼이 없고 `belongs_to :parsing_session`을 통해 간접 연결된다 (2026-05-15 기준 `app/models/duplicate_confirmation.rb`). 따라서 `DuplicateConfirmation.pending`만 부르면 **다른 워크스페이스의 pending까지 섞이는 cross-tenant leak**이 발생한다. 인덱스 액션은 반드시 다음 형태로 스코핑한다:
+
+```ruby
+@pending_duplicates = DuplicateConfirmation
+  .pending
+  .joins(:parsing_session)
+  .where(parsing_sessions: { workspace_id: current_workspace.id })
+```
+
+세션 상세는 기존 helper(`review_workspace_parsing_session_path`)로 진입.
 
 **ReviewsController 콜백 정정 (필수)**
 
@@ -87,12 +101,11 @@ end
 
 **부정**
 - 기존 사용자의 IA 학습 비용 (4탭 → 5탭).
-- 기존 `parsing_sessions/index` 경로의 redirect 처리 필요.
 - "가져오기" 어휘에 익숙한 사용자에게 "검토함"이라는 어휘 변화 부담.
 - 더보기 탭 안에 메뉴가 누적될 위험 — 향후 hygiene 필요.
 
 **완화**
-- 기존 `/parsing_sessions` 경로는 한동안 유지하고 검토함으로 302 redirect + 토스트 안내.
+- 기존 `/parsing_sessions` 경로는 **그대로 유지**한다 (위 "라우트 매핑" 표 참조). 새 검토함 인덱스(`/workspaces/:id/reviews`)는 *추가*이지 *대체*가 아니므로 redirect를 사용하지 않는다. 북마크·외부 링크는 그대로 동작.
 - 첫 진입 시 새 IA 안내 모달 (Stimulus `onboarding_controller`).
 - 더보기 탭에 검색 도입 (서비스 수 증가 시).
 
