@@ -216,4 +216,67 @@ class SharedPartialsTest < ActionView::TestCase
     assert_match "border-ai", output
     assert_match "text-ai", output
   end
+
+  # ---------- shared/_inline_alert ----------
+
+  test "inline_alert defaults to info tone with status role" do
+    output = render(partial: "shared/inline_alert", locals: { body: "안내 본문" })
+    assert_match "bg-info-subtle", output
+    assert_match "text-info", output
+    assert_match 'role="status"', output
+    assert_match 'aria-live="polite"', output
+    assert_match "안내 본문", output
+  end
+
+  test "inline_alert tone maps to semantic utility" do
+    %i[info warning positive danger ai].each do |tone|
+      output = render(partial: "shared/inline_alert", locals: { tone: tone, body: "x" })
+      assert_match "bg-#{tone}-subtle", output
+      assert_match "text-#{tone}", output
+    end
+  end
+
+  test "inline_alert danger tone escalates to alert role and assertive live region" do
+    output = render(partial: "shared/inline_alert", locals: { tone: :danger, body: "위험" })
+    assert_match 'role="alert"', output
+    assert_match 'aria-live="assertive"', output
+  end
+
+  test "inline_alert ai tone adds border for AI channel isolation" do
+    output = render(partial: "shared/inline_alert", locals: { tone: :ai, body: "AI 추천" })
+    assert_match "border-ai", output
+    assert_match "✨", output
+  end
+
+  test "inline_alert renders title when provided" do
+    output = render(partial: "shared/inline_alert", locals: {
+      tone: :info, title: "학습 제안", body: "다음부터 자동 분류"
+    })
+    assert_match "학습 제안", output
+    assert_match "font-semibold", output
+    assert_match "다음부터 자동 분류", output
+  end
+
+  test "inline_alert renders actions block beneath body" do
+    output = render(inline: <<~ERB)
+      <%= render "shared/inline_alert", body: "동의?" do %>
+        <button class="btn-yes">예</button><button class="btn-no">아니오</button>
+      <% end %>
+    ERB
+    assert_match "btn-yes", output
+    assert_match "btn-no", output
+    # actions wrapper appears after body content
+    assert_match(/동의\?.*btn-yes/m, output)
+  end
+
+  test "inline_alert renders without title or body when only actions given" do
+    output = render(inline: <<~ERB)
+      <%= render "shared/inline_alert" do %>
+        <button>확인</button>
+      <% end %>
+    ERB
+    assert_match "확인", output
+    # no title <p> nor body <p>
+    refute_match(/<p[^>]*>/, output)
+  end
 end
