@@ -19,6 +19,32 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "index renders AI consent notice via _inline_alert when consent required" do
+    @workspace.update!(ai_consent_acknowledged_at: nil)
+    assert @workspace.ai_consent_required?, "setup must produce a consent-required workspace"
+
+    get workspace_parsing_sessions_path(@workspace)
+    assert_response :success
+
+    # _inline_alert :warning tone outputs bg-warning-subtle + text-warning +
+    # role="status" + aria-live="polite". Pinning these together guards against
+    # the alert reverting to a raw amber palette card.
+    assert_match "외부 AI 사용 안내", response.body
+    assert_select "[role='status'][aria-live='polite']" do
+      assert_select "p", text: "외부 AI 사용 안내"
+    end
+    assert_match "bg-warning-subtle", response.body
+  end
+
+  test "index omits AI consent notice when consent is acknowledged" do
+    @workspace.update!(ai_consent_acknowledged_at: Time.current)
+    refute @workspace.ai_consent_required?
+
+    get workspace_parsing_sessions_path(@workspace)
+    assert_response :success
+    assert_no_match(/외부 AI 사용 안내/, response.body)
+  end
+
   test "show redirects to review for completed session" do
     get workspace_parsing_session_path(@workspace, @parsing_session)
     assert_redirected_to review_workspace_parsing_session_path(@workspace, @parsing_session)
