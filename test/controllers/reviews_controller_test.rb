@@ -181,6 +181,43 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "금융기관 미확인"
   end
 
+  test "show renders source_icon glyph when source_type is set" do
+    @parsing_session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "스타벅스",
+      amount: 5800,
+      status: "pending_review",
+      source_type: "text_paste",
+      source_metadata: { "source_channel" => "pasted_text" }
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    # _source_icon emits 💬 glyph + aria-label="문자 붙여넣기" for text_paste
+    assert_includes response.body, "💬"
+    assert_select "[aria-label='문자 붙여넣기']", minimum: 1
+  end
+
+  test "show falls back to circle-info SVG when source_type is nil" do
+    @parsing_session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "스타벅스",
+      amount: 5800,
+      status: "pending_review",
+      source_type: nil,
+      source_metadata: { "source_channel" => "pasted_text" }
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    # Without source_type, the popover trigger still appears (metadata present) — uses circle-info SVG.
+    assert_select "button[aria-label='가져온 출처 보기']", minimum: 1
+  end
+
   test "show renders pending_badge for pending_review transactions" do
     @parsing_session.transactions.create!(
       workspace: @workspace,
