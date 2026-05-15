@@ -15,7 +15,8 @@ xef-scale의 수락된 구현·아키텍처 결정 기록(ADR).
 
 ## 현재 ADR
 
-(없음 — 본 PR은 ADR을 새로 만들지 않는다. 미래 결정이 추가되면 여기에 한 줄 인덱스)
+- [ADR-0001](ADR-0001-defer-pundit-adoption.md) — Pundit 채택을 보류하고 커스텀 권한 패턴을 유지한다 (Accepted, 2026-05-15)
+- [ADR-0002](ADR-0002-active-storage-blob-retention.md) — 업로드 이미지 blob은 ParsingSession 종결 후 180일 보존하고 자동 purge한다 (Accepted, 2026-05-15)
 
 ## 역사적 결정에 대한 메모
 
