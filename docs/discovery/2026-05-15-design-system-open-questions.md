@@ -312,9 +312,16 @@ resources :allowances, only: [ :index ]
 ### 후속 액션
 
 - Phase 3 PR에서 `resources :reviews, only: [ :index ]` 신설 + `reviews#index` 컨트롤러 액션 추가. 기존 `parsing_sessions/:id/review` (`reviews#show`) member action은 그대로 유지.
-- **`ReviewsController#set_parsing_session` 콜백 스코핑** (필수). 현재 `before_action :set_parsing_session`이 모든 액션에 적용되며 `params[:parsing_session_id] || params[:id]`를 요구하므로, 신규 `index`에서는 적용되면 안 된다. 다음 중 하나로 처리:
-  - `before_action :set_parsing_session, except: [ :index ]` (단일 컨트롤러 유지, 권장).
-  - 또는 `ReviewsInboxController#index`로 분리.
+- **`ReviewsController` 콜백 스코핑** (필수, 2개 콜백). 현재 컨트롤러는 다음 둘이 모든 액션에 적용된다:
+  - `before_action :set_parsing_session` — `params[:parsing_session_id] || params[:id]` 요구. 인덱스에는 두 param 모두 없음 → `RecordNotFound`.
+  - `before_action :require_workspace_write_access, except: [ :show ]` — 인덱스가 write-gated 상태 → `member_read` 멤버 차단.
+  단일 컨트롤러 유지 시 (권장):
+  ```ruby
+  before_action :set_parsing_session, except: [ :index ]
+  before_action :require_workspace_write_access, except: [ :show, :index ]
+  ```
+  또는 `ReviewsInboxController#index`로 분리(이 경우에도 인덱스는 read 권한만 요구). 자세한 가이드는 ADR-0004.
+- **인덱스 쿼리는 `ParsingSession.needs_review` (= `completed.pending_review`) 사용**. `where(review_status: "pending_review")`만 쓰면 status가 `pending`/`processing`/`failed`인 세션도 섞임. ADR-0004의 쿼리 sketch 참조.
 - `parsing_sessions/index` 경로는 한동안 유지하고, 새 IA에서 "검토함 > + 새로 가져오기" 시트로 흡수.
 - ADR 불필요 — 구현 디테일. 단 path 변경이 발생하면 PR description에 명시.
 

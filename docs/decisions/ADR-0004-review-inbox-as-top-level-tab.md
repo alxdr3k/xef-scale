@@ -67,12 +67,16 @@ end
 
 `reviews#index`는 **현재 워크스페이스로 명시 스코프된** 다음 두 데이터를 합쳐 렌더한다:
 
-- `current_workspace.parsing_sessions.where(review_status: "pending_review")`
+- `current_workspace.parsing_sessions.needs_review` (= `completed.pending_review` scope)
 - 같은 워크스페이스에 속한 `DuplicateConfirmation` 중 `status: "pending"`
+
+**왜 `needs_review`인가**: `ParsingSession#review_status`는 기본값이 `"pending_review"`라서 `status`가 `pending`/`processing`/`failed`일 때도 그 값을 가질 수 있다 (2026-05-15 기준 `app/models/parsing_session.rb`). `where(review_status: "pending_review")`만 쓰면 미처리·실패 세션이 검토 인덱스에 섞여 사용자가 검토할 수 없는 항목으로 라우팅된다. 모델이 이미 제공하는 `scope :needs_review, -> { completed.pending_review }`를 그대로 활용해 의미 일관성을 보장한다.
 
 `DuplicateConfirmation` 모델은 자체 `workspace_id` 컬럼이 없고 `belongs_to :parsing_session`을 통해 간접 연결된다 (2026-05-15 기준 `app/models/duplicate_confirmation.rb`). 따라서 `DuplicateConfirmation.pending`만 부르면 **다른 워크스페이스의 pending까지 섞이는 cross-tenant leak**이 발생한다. 인덱스 액션은 반드시 다음 형태로 스코핑한다:
 
 ```ruby
+@pending_sessions = current_workspace.parsing_sessions.needs_review
+
 @pending_duplicates = DuplicateConfirmation
   .pending
   .joins(:parsing_session)
