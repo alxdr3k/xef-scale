@@ -27,6 +27,19 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[aria-label='검토 대기']", count: 0
   end
 
+  test "index renders category_source_chip with color dot for categorized rows" do
+    get workspace_transactions_path(@workspace)
+    assert_response :success
+    cat = transactions(:food_transaction).category
+    assert cat.present?, "fixture must have category"
+    # _category_source_chip outer span sets background-color: #COLOR20 (8-digit
+    # RGBA hex). The dropdown list items render the same color but as a solid
+    # 6-digit dot (no alpha suffix), so this 8-digit pattern is unique to the
+    # row chip — guards against the chip being removed while the dropdown stays.
+    assert_match(/background-color:\s*#{Regexp.escape(cat.color)}20/, response.body,
+                 "_category_source_chip outer span (background #COLOR20) must appear in the row")
+  end
+
   test "index filters by year" do
     get workspace_transactions_path(@workspace, year: Date.today.year)
     assert_response :success
