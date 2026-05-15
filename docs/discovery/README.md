@@ -21,3 +21,4 @@
 - [2026-05-15-design-system-synthesis.md](2026-05-15-design-system-synthesis.md) — **토스 + 뱅샐 종합 보고서**: 두 분석을 통합한 xef-scale 디자인 시스템 결정 권고(원칙 X1~X12, 토큰, Product Language, 5탭 IA, UX Writing 사전, 의도적 마찰).
 - [2026-05-15-ui-redesign-plan.md](2026-05-15-ui-redesign-plan.md) — xef-scale UI 재구성 실행 계획: 현재 진단 + 화면별 재구성 명세 + 단계별 로드맵 + 마이그레이션 전략.
 - [2026-05-15-design-system-open-questions.md](2026-05-15-design-system-open-questions.md) — Phase 1 시작 전 미해결 질문 7개(Tailwind 4, ViewComponent, Pretendard 호스팅, theme 저장, 라우트, 키보드, 일러스트)에 대한 컨텍스트·옵션·권고·후속 액션. ADR-0009/0010 후보 식별.
+- [2026-05-15-phase-3-ia-preflight.md](2026-05-15-phase-3-ia-preflight.md) — Phase 3 IA 재구성 진입 전 deferred triage (A/B/C 3-bucket), IA scope, 5개 contract 포인트, PR 분할 권장안. Phase 2 deferred 전체 선처리는 비채택, Phase 3 첫 PR은 IA preflight slice로 분리.

@@ -132,6 +132,8 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 
 이 우선순위는 시간이 지나면 빠르게 stale 됩니다. 현재 권위 있는 우선순위는 `PRD.md` + 머지된 ADR + 최근 커밋입니다.
 
+Phase 1·2(`ui-redesign-plan §6`)는 main에 머지됨. 다음 사이클은 Phase 3 IA 재구성 — 단, IA Skeleton 진입 전 [`docs/discovery/2026-05-15-phase-3-ia-preflight.md`](../discovery/2026-05-15-phase-3-ia-preflight.md)의 Bucket A 항목(IA 계약 변경 deferred)을 먼저 닫는다. Phase 2 deferred 전체 선처리는 비채택.
+
 ## Needs audit
 
 다음 항목은 본 PR에서 검증하지 못했거나, 추가 확인이 필요합니다.
