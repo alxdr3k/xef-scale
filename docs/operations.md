@@ -72,6 +72,9 @@ bin/rails db:reset    # 개발 전용
 
 - `AiTextParsingJob`, `FileParsingJob`이 `solid_queue`로 인큐된다.
 - 별도 워커 프로세스는 `bin/jobs` (Rails 8 기본) 또는 컨테이너의 process 정의에 따른다 — `Procfile.dev`에는 워커가 명시되지 않으므로 in-process executor 또는 Kamal/k8s 배포 정의에서 제공해야 한다 (`needs audit`).
+- `config/recurring.yml`은 production에서만 활성화되는 정기 잡을 정의한다.
+  - `clear_solid_queue_finished_jobs` — 매 시간 12분 finished 잡 정리.
+  - `cleanup_active_storage_blobs` — 매일 03:00 KST. ADR-0002에 따라 종결 상태 + 180일 경과한 ParsingSession의 ActiveStorage blob을 `ActiveStorageBlobCleanupJob`이 `purge_later`로 정리한다. `ProcessedFile` 메타데이터(`filename`/`byte_size` 등)는 유지되고 `blob_purged_at` 타임스탬프가 찍힌다.
 
 ## Gemini API
 
