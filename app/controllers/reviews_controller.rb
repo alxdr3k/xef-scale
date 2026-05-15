@@ -127,7 +127,6 @@ class ReviewsController < ApplicationController
       count = 0
       transactions.find_each do |tx|
         tx.update!(category_id: category&.id)
-        create_category_mapping(tx, category) if category
         count += 1
       end
       notice = "#{count}건의 거래 카테고리가 변경되었습니다."
@@ -224,10 +223,8 @@ class ReviewsController < ApplicationController
         @transaction.update(category: new_category) if new_category
       end
 
-      # 카테고리가 수동으로 변경되었으면 매핑 생성
-      if transaction_params[:category_id].present? && transaction_params[:category_id].to_i != old_category_id
-        create_category_mapping(@transaction, @transaction.category)
-      end
+      # ADR-0007 §4: 카테고리 변경 시 묵시적 CategoryMapping 생성은 금지.
+      # 학습은 CategoryLearningSuggestionsController explicit opt-in으로만 가능하다.
 
       respond_to do |format|
         format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), notice: "거래가 수정되었습니다." }
@@ -319,32 +316,5 @@ class ReviewsController < ApplicationController
       next if already_alerted
       Notification.create_budget_alert!(@workspace, member, alert_type, progress, year: year, month: month)
     end
-  end
-
-  def create_category_mapping(transaction, category)
-    return if transaction.merchant.blank? || category.nil?
-
-    # description이 있으면 description_pattern 포함 매핑 생성, 없으면 기본 매핑
-    description_pattern = extract_description_pattern(transaction.description)
-
-    mapping = CategoryMapping.find_or_initialize_by(
-      workspace: @workspace,
-      merchant_pattern: transaction.merchant,
-      description_pattern: description_pattern,
-      match_type: "exact",
-      amount: nil
-    )
-
-    mapping.category = category
-    mapping.source = "manual"
-    mapping.save!
-  rescue ActiveRecord::RecordInvalid => e
-    Rails.logger.warn "[ReviewsController] 매핑 생성 실패: #{e.message}"
-  end
-
-  def extract_description_pattern(description)
-    return nil if description.blank?
-
-    description.strip.presence
   end
 end

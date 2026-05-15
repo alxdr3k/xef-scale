@@ -19,13 +19,17 @@ class CategoryLearningSuggestionsController < ApplicationController
     merchant = @transaction.merchant.to_s.strip
     return head :unprocessable_entity if merchant.blank?
 
-    mapping = CategoryMapping.find_or_initialize_by(
-      workspace: @workspace,
-      merchant_pattern: merchant,
-      description_pattern: nil,
-      match_type: "exact",
-      amount: nil
-    )
+    # dedup_signature 정합성: 동일 (merchant, exact, blank desc, nil amount) 매핑이
+    # 이미 있으면 category만 갱신, 없으면 신규 생성. nil/"" description_pattern을
+    # 모두 같은 축으로 본다.
+    mapping = CategoryMapping.find_default_exact_mapping(@workspace, merchant) ||
+              CategoryMapping.new(
+                workspace: @workspace,
+                merchant_pattern: merchant,
+                description_pattern: nil,
+                match_type: "exact",
+                amount: nil
+              )
     mapping.category = category
     mapping.source = "manual"
 

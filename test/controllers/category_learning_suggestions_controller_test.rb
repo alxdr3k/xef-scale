@@ -102,6 +102,30 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
     assert_response :unprocessable_entity
   end
 
+  test "create reuses existing mapping when description_pattern is empty string" do
+    # dedup_signature는 nil과 ""를 같은 키로 보지만 find_or_initialize_by(nil)은
+    # ""를 못 찾아 unique constraint 충돌이 날 수 있다. find_default_exact_mapping
+    # finder는 [nil, ""]를 함께 본다.
+    existing = CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: @transaction.merchant.strip,
+      description_pattern: "",
+      match_type: "exact",
+      amount: nil,
+      category: categories(:food),
+      source: "manual"
+    )
+    new_target = categories(:transport)
+
+    assert_no_difference -> { CategoryMapping.count } do
+      post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
+           params: { category_id: new_target.id },
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+    assert_response :success
+    assert_equal new_target.id, existing.reload.category_id
+  end
+
   test "create response removes the suggestion row via turbo_stream" do
     target = categories(:transport)
 

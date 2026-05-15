@@ -68,6 +68,21 @@ class CategoryMapping < ApplicationRecord
     mapping&.category
   end
 
+  # ADR-0007 §4 explicit opt-in 학습이 만들고/조회하는 "기본 매핑" finder.
+  # 기본 매핑은 (merchant_pattern, exact, description_pattern blank, amount nil).
+  # description_pattern은 nil과 "" 모두 같은 dedup_signature를 가지므로 두 값을
+  # 함께 본다. TransactionsController#eligible_for_learning_suggestion?와
+  # CategoryLearningSuggestionsController#create가 동일하게 이 finder를 쓰도록
+  # 강제한다 — 두 경로가 어긋나면 unique constraint에 의해 save가 실패할 수 있다.
+  def self.find_default_exact_mapping(workspace, merchant)
+    return nil if merchant.blank?
+
+    for_workspace(workspace)
+      .where(merchant_pattern: merchant.strip, match_type: "exact", amount: nil)
+      .where(description_pattern: [ nil, "" ])
+      .first
+  end
+
   # 가맹점명 + 설명 조합으로 카테고리 찾기
   # 우선순위: 1. description_pattern 매칭 → 2. 기본 매핑 (description_pattern이 nil)
   def self.find_category_for_merchant_and_description(workspace, merchant, description = nil, amount: nil)

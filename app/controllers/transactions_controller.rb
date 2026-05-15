@@ -410,13 +410,7 @@ class TransactionsController < ApplicationController
     return false if transaction.category_id == old_category_id
     return false if transaction.merchant.to_s.strip.blank?
 
-    existing = CategoryMapping.find_by(
-      workspace: @workspace,
-      merchant_pattern: transaction.merchant.strip,
-      description_pattern: nil,
-      match_type: "exact",
-      amount: nil
-    )
+    existing = CategoryMapping.find_default_exact_mapping(@workspace, transaction.merchant)
     existing.nil? || existing.category_id != transaction.category_id
   end
 

@@ -262,14 +262,21 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     other = @workspace.transactions.create!(
       date: Date.current, merchant: "다른가맹점", amount: 1234, status: "committed"
     )
+    target = categories(:transport)
+
+    # 실제 컨트롤러는 `bulk_action` + comma-split `transaction_ids`를 기대.
     assert_no_difference -> { CategoryMapping.count } do
       post bulk_update_workspace_transactions_path(@workspace),
            params: {
-             action_type: "change_category",
-             category_id: categories(:transport).id,
-             transaction_ids: [ @transaction.id, other.id ]
+             bulk_action: "change_category",
+             category_id: target.id,
+             transaction_ids: "#{@transaction.id},#{other.id}"
            }
     end
+
+    # change_category 분기가 실제로 실행됐는지 검증 (false-positive 방지).
+    assert_equal target.id, @transaction.reload.category_id
+    assert_equal target.id, other.reload.category_id
   end
 
   test "quick_update_category admin response includes inline learning suggestion when no mapping exists" do
