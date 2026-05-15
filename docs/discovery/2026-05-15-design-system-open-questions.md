@@ -162,20 +162,26 @@ $ ls public/
 
 ### 후속 액션 (Phase 1)
 
-1. `app/assets/fonts/` 디렉토리 신설.
-2. Pretendard Variable Subset (KO + Latin) WOFF2 다운로드 + 저장.
-3. `application.tailwind.css`에 `@font-face` 정의:
-   ```css
-   @font-face {
-     font-family: "Pretendard Variable";
-     font-weight: 100 900;
-     font-style: normal;
-     font-display: swap;
-     src: url("/fonts/PretendardVariable-Subset.woff2") format("woff2-variations");
-   }
-   ```
-4. `--font-sans` 토큰이 이를 참조.
-5. 라이선스 고지를 `public/licenses/pretendard.txt` 또는 README에 명시 (SIL OFL 1.1 준수).
+본 레포는 Propshaft를 사용하므로 `app/assets/`에 둔 파일은 fingerprinted된 `/assets/...` 경로로 서비스된다. CSS에서 폰트를 정적 경로(`/fonts/...`)로 하드코딩하면 production에서 404가 나고 시스템 폰트로 폴백된다. 두 방식 중 하나를 명시 채택해야 한다:
+
+**옵션 P-asset (권장)** — asset pipeline 경유:
+
+1. `app/assets/fonts/PretendardVariable-Subset.woff2` 저장.
+2. CSS에서 fingerprinted URL을 생성하려면 ERB-rendered 스타일시트 또는 Tailwind 빌드 시 자산 경로 처리 도구가 필요. Rails 8 + Tailwind v4 + Propshaft 조합에서는 보통 다음 중 하나:
+   - `app/assets/stylesheets/application.tailwind.css`를 `.css.erb`로 두고 `<%= asset_path "PretendardVariable-Subset.woff2" %>` 사용.
+   - 또는 `<link rel="preload">` + `font_path` helper를 layout에서 직접 발행 (CSS 안 `@font-face`는 그대로 두되 layout에서 폰트 로딩만 처리).
+3. `--font-sans` 토큰이 이를 참조.
+
+**옵션 P-public** — 정적 경로(`/fonts/...`)로 고정:
+
+1. `public/fonts/PretendardVariable-Subset.woff2` 저장 (fingerprint 없음, 캐시 무효화는 파일명 버전 접미사로).
+2. CSS에서 `src: url("/fonts/PretendardVariable-Subset.woff2")` 사용 가능.
+
+→ 본 디스커버리는 결정을 ADR-0009 후보에 위임한다. 핵심: **둘 중 어느 방식이든 "asset pipeline fingerprinting 동작"과 "CSS src 경로"가 정합해야 한다**.
+
+공통:
+- 라이선스 고지를 `public/licenses/pretendard.txt` 또는 README에 명시 (SIL OFL 1.1 준수).
+- `font-display: swap`, `font-weight: 100 900`, `format("woff2-variations")`.
 
 ### 후속 ADR 후보
 
@@ -303,7 +309,10 @@ resources :allowances, only: [ :index ]
 
 ### 후속 액션
 
-- Phase 3 PR에서 `resources :reviews, only: [:index, :show]` 신설 + `reviews#index` 컨트롤러 액션 추가.
+- Phase 3 PR에서 `resources :reviews, only: [ :index ]` 신설 + `reviews#index` 컨트롤러 액션 추가. 기존 `parsing_sessions/:id/review` (`reviews#show`) member action은 그대로 유지.
+- **`ReviewsController#set_parsing_session` 콜백 스코핑** (필수). 현재 `before_action :set_parsing_session`이 모든 액션에 적용되며 `params[:parsing_session_id] || params[:id]`를 요구하므로, 신규 `index`에서는 적용되면 안 된다. 다음 중 하나로 처리:
+  - `before_action :set_parsing_session, except: [ :index ]` (단일 컨트롤러 유지, 권장).
+  - 또는 `ReviewsInboxController#index`로 분리.
 - `parsing_sessions/index` 경로는 한동안 유지하고, 새 IA에서 "검토함 > + 새로 가져오기" 시트로 흡수.
 - ADR 불필요 — 구현 디테일. 단 path 변경이 발생하면 PR description에 명시.
 
@@ -343,12 +352,15 @@ export default class extends Controller {
   disconnect() { document.removeEventListener("keydown", this.boundHandler) }
   handle(e) {
     if (this.isTyping(e)) return
-    if (e.key === "j") this.next()
-    if (e.key === "k") this.prev()
-    if (e.key === "c") this.openCategoryPicker()
-    if (e.key === "d") this.discard()
-    if (e.key === "x") this.markDuplicate()
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) this.commit()
+    if (e.key === "j") return this.next()
+    if (e.key === "k") return this.prev()
+    if (e.key === "c") return this.openCategoryPicker()
+    if (e.key === "d") return this.discard()
+    if (e.key === "x") return this.markDuplicate()
+    if (e.key === "Enter") {
+      if (e.metaKey || e.ctrlKey) return this.commit()    // cmd/ctrl+enter: 전체 반영
+      return this.openCurrentRow()                          // plain enter: 현재 행 펼침/상세
+    }
   }
   isTyping(e) { return ["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName) || e.target.isContentEditable }
 }
