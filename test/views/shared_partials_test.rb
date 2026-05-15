@@ -228,6 +228,14 @@ class SharedPartialsTest < ActionView::TestCase
     assert_match "안내 본문", output
   end
 
+  test "inline_alert falls back to info when explicit tone is nil or blank" do
+    [nil, ""].each do |blank|
+      output = render(partial: "shared/inline_alert", locals: { tone: blank, body: "x" })
+      assert_match "bg-info-subtle", output, "tone=#{blank.inspect} must degrade to :info"
+      assert_match "text-info", output
+    end
+  end
+
   test "inline_alert tone maps to semantic utility" do
     %i[info warning positive danger ai].each do |tone|
       output = render(partial: "shared/inline_alert", locals: { tone: tone, body: "x" })

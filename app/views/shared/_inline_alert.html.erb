@@ -19,7 +19,7 @@
   ADR-0003 / ADR-0006: 시맨틱 utility만 사용. tone별로 bg-{tone}-subtle +
   text-{tone}. AI 톤은 추가로 border border-ai로 시각 격리 (X4 AI 채널).
 %>
-<% tone    = local_assigns.fetch(:tone, :info).to_sym %>
+<% tone    = (local_assigns[:tone].presence || :info).to_sym %>
 <% title   = local_assigns.fetch(:title, nil) %>
 <% body    = local_assigns.fetch(:body, nil) %>
 <% extra   = local_assigns.fetch(:class, "") %>
