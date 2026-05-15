@@ -181,6 +181,21 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "금융기관 미확인"
   end
 
+  test "show renders pending_badge for pending_review transactions" do
+    @parsing_session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "스타벅스",
+      amount: 5800,
+      status: "pending_review"
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    assert_select "[aria-label='검토 대기']", minimum: 1
+  end
+
   test "bulk_resolve_duplicates is refused on finalized sessions" do
     dc = @parsing_session.duplicate_confirmations.create!(
       original_transaction: transactions(:food_transaction),

@@ -20,6 +20,13 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "index does not render pending_badge for committed transactions" do
+    get workspace_transactions_path(@workspace)
+    assert_response :success
+    # transactions/index uses .active scope (committed only) — pending dot must not appear
+    assert_select "[aria-label='검토 대기']", count: 0
+  end
+
   test "index filters by year" do
     get workspace_transactions_path(@workspace, year: Date.today.year)
     assert_response :success
