@@ -1,0 +1,10 @@
+<%# Locals: processed_file (required) %>
+<%# ADR-0002: when the underlying ActiveStorage blob has been purged for retention, %>
+<%# we still keep the ProcessedFile metadata (filename, created_at) but show the user %>
+<%# that the original image is no longer available. %>
+<% if processed_file&.blob_purged? %>
+  <span class="inline-flex items-center px-2 py-0.5 ml-1 text-xs rounded-full bg-gray-200 text-gray-700"
+        title="원본 이미지가 보존 기간을 경과하여 삭제되었습니다">
+    원본 만료
+  </span>
+<% end %>
