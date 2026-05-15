@@ -229,7 +229,7 @@
         </thead>
         <tbody class="divide-y divide-gray-200" id="transactions-review-list">
           <% @transactions.each do |tx| %>
-            <%= render 'reviews/transaction_row', transaction: tx, read_only: @read_only,
+            <%= render 'transactions/transaction_row', transaction: tx, read_only: @read_only,
                 categories: @categories %>
           <% end %>
         </tbody>

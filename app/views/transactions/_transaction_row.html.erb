@@ -1,15 +1,47 @@
-<% update_url = inline_update_workspace_transaction_path(@workspace, transaction) %>
+<%#
+  Unified transaction row — transactions/index, reviews/show, 양쪽 turbo_stream
+  응답에서 공통 사용 (ADR-0003 / ui-redesign-plan §4.2).
+
+  과거에는 transactions/_transaction_row와 reviews/_transaction_row가 거의 동일한
+  partial로 분기되어 있어 변경 시 두 곳을 동기화해야 했다. shared/transaction_cells/*
+  를 이미 공유하던 차이를 정리해 단일 partial로 통합한다.
+
+  Locals:
+    transaction (Transaction, required)
+    read_only   (Boolean, default false) — true면 인라인 편집 비활성, 클릭 핸들러 없음.
+    categories  (Enumerable, optional)   — 카테고리 드롭다운 옵션. 미지정 시 @categories.
+
+  업데이트 URL은 @parsing_session 인스턴스 변수 유무로 분기한다:
+    있음 → update_transaction_workspace_parsing_session_path (검토 세션 스코프).
+    없음 → inline_update_workspace_transaction_path (워크스페이스 스코프).
+  read_only 또는 deleted 행에서는 update_url이 nil로 셀에 전달되어 인라인 편집이 닫힌다.
+%>
+<% read_only  = local_assigns.fetch(:read_only, false) %>
+<% categories = local_assigns.fetch(:categories, nil) || @categories %>
+<% editable   = !read_only && !transaction.deleted? %>
+<% update_url = if editable
+                  if @parsing_session
+                    update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: transaction.id)
+                  else
+                    inline_update_workspace_transaction_path(@workspace, transaction)
+                  end
+                end %>
 
 <tr id="<%= dom_id(transaction) %>"
     data-bulk-select-target="row"
     data-transaction-id="<%= transaction.id %>"
-    data-action="click->bulk-select#toggleRow"
-    class="group/row transition-colors duration-150 cursor-pointer">
+    data-deleted="<%= transaction.deleted? %>"
+    <% unless read_only || transaction.deleted? %>
+      data-action="click->bulk-select#toggleRow"
+    <% end %>
+    class="group/row <%= 'bg-red-50 opacity-60' if transaction.deleted? %>
+           transition-colors duration-150
+           <%= 'cursor-pointer' unless read_only || transaction.deleted? %>">
 
-  <%= render 'shared/transaction_cells/date_cell', transaction: transaction, editable: true, update_url: update_url %>
-  <%= render 'shared/transaction_cells/merchant_cell', transaction: transaction, editable: true, update_url: update_url %>
-  <%= render 'shared/transaction_cells/amount_cell', transaction: transaction, editable: true, update_url: update_url %>
-  <%= render 'shared/transaction_cells/category_cell', transaction: transaction, editable: true, show_management_links: true, workspace: @workspace %>
+  <%= render 'shared/transaction_cells/date_cell', transaction: transaction, editable: editable, update_url: update_url %>
+  <%= render 'shared/transaction_cells/merchant_cell', transaction: transaction, editable: editable, update_url: update_url %>
+  <%= render 'shared/transaction_cells/amount_cell', transaction: transaction, editable: editable, update_url: update_url %>
+  <%= render 'shared/transaction_cells/category_cell', transaction: transaction, editable: !read_only, categories: categories, show_management_links: !read_only, workspace: @workspace %>
   <%= render 'shared/transaction_cells/source_metadata_cell', transaction: transaction %>
   <%= render 'shared/transaction_cells/comment_badge_cell', transaction: transaction %>
 </tr>
