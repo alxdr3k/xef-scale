@@ -27,6 +27,17 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[aria-label='검토 대기']", count: 0
   end
 
+  test "index renders category_source_chip with color dot for categorized rows" do
+    get workspace_transactions_path(@workspace)
+    assert_response :success
+    # _category_source_chip renders a small color dot (w-2 h-2 rounded-full)
+    # before the category name when category is present.
+    cat = transactions(:food_transaction).category
+    assert cat.present?, "fixture must have category"
+    assert_includes response.body, cat.name
+    assert_includes response.body, cat.color
+  end
+
   test "index filters by year" do
     get workspace_transactions_path(@workspace, year: Date.today.year)
     assert_response :success
