@@ -83,12 +83,32 @@ end
 
 **ReviewsController 콜백 정정 (필수)**
 
-현재 `ReviewsController`는 `before_action :set_parsing_session`를 모든 액션에 적용하며 `params[:parsing_session_id] || params[:id]`를 요구한다 (2026-05-15 기준). 신규 `index` 액션은 두 param 모두 없으므로 그대로 두면 `RecordNotFound`가 발생한다. Phase 3 구현 PR은 다음 중 하나를 반드시 포함해야 한다:
+현재 `ReviewsController`의 콜백 (2026-05-15 기준):
 
-- `before_action :set_parsing_session, except: [ :index ]` (단일 컨트롤러 유지 + 콜백 스코핑)
-- 또는 `reviews#index`를 별도 컨트롤러(예: `ReviewsInboxController`)에 분리
+```ruby
+before_action :authenticate_user!
+before_action :set_workspace
+before_action :require_workspace_access
+before_action :set_parsing_session
+before_action :require_workspace_write_access, except: [ :show ]
+before_action :reject_if_finalized, only: [ :bulk_update, :bulk_resolve_duplicates, :update_transaction ]
+```
 
-전자가 마이그레이션 비용이 낮아 권장.
+신규 `index` 액션은 두 콜백과 충돌한다:
+
+1. `:set_parsing_session`이 `params[:parsing_session_id] || params[:id]`를 요구 → 인덱스에는 두 param 모두 없음 → `RecordNotFound`.
+2. `:require_workspace_write_access`가 `except: [ :show ]`로만 풀려 있음 → 인덱스가 write-gated 상태로 남아 read-only 멤버(`member_read`)가 검토함 인덱스 진입 불가.
+
+Phase 3 구현 PR은 다음 중 하나를 반드시 포함해야 한다:
+
+- 단일 컨트롤러 유지 (권장):
+  ```ruby
+  before_action :set_parsing_session, except: [ :index ]
+  before_action :require_workspace_write_access, except: [ :show, :index ]
+  ```
+- 또는 `reviews#index`를 별도 컨트롤러(예: `ReviewsInboxController`)에 분리. 이 경우에도 인덱스는 read 작업이므로 `:require_workspace_access`만 적용하고 write는 요구하지 않는다.
+
+전자가 마이그레이션 비용이 낮아 권장. 둘 중 어느 방식이든 인덱스는 **read 권한만 요구**한다 — 검토함은 워크스페이스의 모든 멤버가 *볼* 수 있어야 하기 때문.
 
 ## Consequences
 

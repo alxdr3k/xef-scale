@@ -15,7 +15,7 @@
 | Q1 | **Tailwind 4 & `@theme` 도입 가능한가?** | **즉시 채택** — 이미 v4.1.18 | 불필요 (ADR-0003 안에 포함) |
 | Q2 | **ViewComponent 도입할 것인가?** | **본 사이클 보류** — ERB partial 표준화 우선 | 향후 별도 ADR |
 | Q3 | **Pretendard 폰트 자가 호스팅 vs CDN** | **자가 호스팅 (WOFF2 subset)** | ADR-0009 후보 |
-| Q4 | **`UserSetting#theme` 마이그레이션 방식** | **`users.theme` 컬럼 단일 추가** (UserSetting 모델 부재) | ADR-0010 후보 (ADR-0008 종속) |
+| Q4 | **`UserSetting#theme` 마이그레이션 방식** | `User#settings["theme"]` vs `users.theme` 둘 다 후보. 디스커버리 preference는 `users.theme`이나 **저장 위치는 ADR-0010에서 확정** (ADR-0008은 값 도메인만 결정) | ADR-0010 후보 (ADR-0008 종속) |
 | Q5 | **5탭 라우트 path 명명** | **기존 path 유지 + 별칭 추가** (breaking change 회피) | Phase 3 내부 결정 (ADR 불필요) |
 | Q6 | **키보드 단축키 라이브러리** | **Stimulus 자체 구현** (외부 라이브러리 회피) | Phase 2 내부 결정 |
 | Q7 | **일러스트 시스템** | **본 사이클 deferred — 빈 상태는 이모지 한정** | 향후 별도 디스커버리 |
@@ -158,26 +158,36 @@ $ ls public/
 - ADR-0003에서 hero/title/section/body/meta 등 다양한 weight 사용 — Variable이 자연스러움.
 - 200KB 정도면 첫 페인트에 무리 없음 (`font-display: swap`).
 - 외부 CDN 의존 회피는 보안·CSP·오프라인 개발 모두에 유리.
-- Rails asset pipeline에 그대로 올림 (`app/assets/fonts/PretendardVariable-Subset.woff2`).
+- 호스팅 위치(`public/fonts/` vs `app/assets/fonts/`)는 빌드 파이프라인 호환성에 따라 아래 P-public/P-layout-preload/P-erb 옵션 중 선택. **본 디스커버리는 P-public을 Phase 1 default로 권고**한다.
 
 ### 후속 액션 (Phase 1)
 
-본 레포는 Propshaft를 사용하므로 `app/assets/`에 둔 파일은 fingerprinted된 `/assets/...` 경로로 서비스된다. CSS에서 폰트를 정적 경로(`/fonts/...`)로 하드코딩하면 production에서 404가 나고 시스템 폰트로 폴백된다. 두 방식 중 하나를 명시 채택해야 한다:
-
 **현재 CSS 빌드 파이프라인 사실** (2026-05-15 기준 `package.json`): `npm run build:css`는 `npx @tailwindcss/cli -i ./app/assets/stylesheets/application.tailwind.css -o ./app/assets/builds/application.css --minify`를 실행한다. **이 파이프라인은 ERB를 평가하지 않는다.** 따라서 입력 CSS를 `.css.erb`로 두고 `<%= asset_path %>`를 박는 접근은 **빌드 파이프라인 변경 없이는 불가**하며, 그대로 두면 빌드된 CSS에 미해석 ERB 토큰이 그대로 실린다.
 
-세 옵션 중 하나를 명시 채택해야 한다:
+본 레포는 Propshaft를 사용하므로 `app/assets/`에 둔 파일은 fingerprinted된 `/assets/...` 경로로 서비스된다. CSS에서 폰트를 정적 경로(`/fonts/...`)로 하드코딩하면 production에서 404가 나고 시스템 폰트로 폴백된다. 세 옵션 중 하나를 명시 채택해야 한다:
 
 **옵션 P-public (가장 단순, 권장)** — 정적 경로(`/fonts/...`):
 
 1. `public/fonts/PretendardVariable-Subset.woff2` 저장 (fingerprint 없음, 캐시 무효화는 파일명 버전 접미사로: 예 `PretendardVariable-Subset.v1.woff2`).
 2. CSS에서 `src: url("/fonts/PretendardVariable-Subset.woff2") format("woff2-variations")` 사용 가능. 현재 Tailwind CLI 파이프라인을 그대로 유지.
 
-**옵션 P-layout-preload** — `app/assets/fonts/`에 두고 layout에서 preload:
+**옵션 P-layout-preload** — `app/assets/fonts/`에 두고 layout에서 preload + ERB-rendered `@font-face`:
 
 1. `app/assets/fonts/PretendardVariable-Subset.woff2` 저장 (Propshaft가 `/assets/...`로 fingerprint).
-2. `application.html.erb`에 `<link rel="preload" as="font" href="<%= font_path("PretendardVariable-Subset.woff2") %>" crossorigin>` 추가.
-3. `@font-face`는 `src: url(/assets/...)`가 아니라 **CSS-side 정의 없이 layout이 폰트를 보장**하는 방식이거나, ERB-rendered `link` 태그 안에서 inline `@font-face`를 발행하는 우회. CSS 빌드는 그대로 유지.
+2. `application.html.erb`에 `<link rel="preload" as="font" href="<%= font_path("PretendardVariable-Subset.woff2") %>" crossorigin>` 추가 (네트워크 fetch 우선순위 확보).
+3. **`@font-face` 매핑은 반드시 함께 발행해야 한다** — preload 단독으로는 `font-family: "Pretendard Variable"` 바인딩이 안 되어 폰트가 다운로드돼도 시스템 폰트로 폴백된다. layout 안에 inline `<style>`로 ERB 평가가 가능한 `@font-face`를 발행한다:
+   ```erb
+   <style>
+     @font-face {
+       font-family: "Pretendard Variable";
+       font-weight: 100 900;
+       font-style: normal;
+       font-display: swap;
+       src: url("<%= font_path("PretendardVariable-Subset.woff2") %>") format("woff2-variations");
+     }
+   </style>
+   ```
+4. CSS 빌드 파이프라인은 그대로 유지 (Tailwind CLI 입력은 `.css`).
 
 **옵션 P-erb (빌드 파이프라인 변경 동반)** — `application.tailwind.css.erb`로:
 
@@ -228,40 +238,24 @@ class UserSettingsController < ApplicationController
 
 | 옵션 | 장점 | 단점 |
 |---|---|---|
-| **A. `users.theme` 컬럼 추가 (권고)** | 기존 패턴 따름. 마이그레이션 단순(컬럼 1개). | `users` 테이블이 커짐 |
-| B. 별도 `user_settings` 테이블 신설 | 설정 분리, 향후 설정 확장에 유리 | 마이그레이션·연관 모델·컨트롤러 리팩터 필요. 기존 `excluded_merchants` 위치 결정도 같이 해야 함 |
-| C. JSON 컬럼 (`users.preferences`)에 통합 | 설정 추가 시 마이그레이션 불필요 | 인덱스·쿼리 제약. ActiveRecord 통합 약함 |
+| **A. `users.theme` 컬럼 추가** | 마이그레이션 단순(컬럼 1개). 인덱스/check constraint 가능. | `users` 테이블이 커짐. 기존 `excluded_merchants` 같은 JSON 패턴과 어휘 분기. |
+| **B. `User#settings["theme"]` (기존 JSON store)** | 기존 패턴(`serialize :settings, coder: JSON`) 일관 유지. 마이그레이션 불요. | 인덱스 어려움. JSON 키 typo 위험. enum 강제 어려움. |
+| C. 별도 `user_settings` 테이블 신설 | 설정 분리, 향후 설정 확장에 유리 | 마이그레이션·연관 모델·컨트롤러 리팩터 필요. 기존 `excluded_merchants` 위치 결정도 같이 해야 함 |
 
-### 권고
+### 디스커버리 preference (구속력 없음)
 
-**A. `users.theme` 컬럼 추가.**
+본 디스커버리는 **A(`users.theme` 컬럼)** 를 약하게 선호한다. 근거: enum/check constraint로 값 도메인을 DB 레벨에서 강제 가능, 인덱스 가능, ActiveRecord 통합 자연스러움.
 
-```ruby
-# db/migrate/YYYYMMDDHHMMSS_add_theme_to_users.rb
-class AddThemeToUsers < ActiveRecord::Migration[8.1]
-  def change
-    add_column :users, :theme, :string, null: false, default: "auto"
-    add_check_constraint :users, "theme IN ('auto','light','dark')", name: "users_theme_valid"
-  end
-end
-```
+다만 본 레포의 기존 패턴(`User#settings` JSON)도 일관성 있는 옵션이며, 둘 사이의 트레이드오프(스키마 명확성 vs 패턴 일관성)는 **본 디스커버리에서 최종 결정하지 않는다**. ADR-0008은 *값 도메인*만 결정했고, *저장 위치*는 다음 ADR에서 확정한다.
 
-근거:
-- 기존 `users` 테이블에 사용자 설정이 들어가는 패턴 일관 유지.
-- `theme`은 사용자당 1값이므로 별도 테이블 불요.
-- 향후 설정이 늘어나면 별도 ADR로 `user_settings` 테이블 신설 검토.
+### 후속 액션 (Phase 5 시작 전)
 
-### 후속 액션 (Phase 5)
-
-1. 마이그레이션 추가.
-2. `User#theme` enum 또는 validation 추가 (`auto/light/dark` 3종).
-3. `app/views/user_settings/show.html.erb`에 SwitchRow 추가.
-4. `<html data-theme="...">` 속성을 `application.html.erb`에서 `current_user&.theme || "auto"` 로 렌더.
-5. Stimulus `theme_controller.js`로 즉시 토글(turbo-frame 회피 — 페이지 깜빡임 방지).
+1. **ADR-0010 작성** — 옵션 A/B/C 중 하나를 채택. Phase 5 구현 PR보다 먼저 머지.
+2. ADR-0010 채택 후 Phase 5 구현 PR에서: 마이그레이션 또는 JSON 키 추가 → `User#theme` 접근자 → `app/views/user_settings/show.html.erb` SwitchRow → `<html data-theme="...">` 렌더 → Stimulus `theme_controller.js`.
 
 ### 후속 ADR 후보
 
-ADR-0010 `Store user theme preference on users.theme column`. ADR-0008과 연결.
+ADR-0010 `User theme preference storage location`. ADR-0008(값 도메인 `auto/light/dark`)과 연결. 옵션 A/B/C 중 채택.
 
 ---
 
@@ -418,13 +412,13 @@ export default class extends Controller {
 본 노트의 권고가 채택되면 Phase 1 첫 PR에서 다음을 함께 처리:
 
 1. **Tailwind `@theme` 토큰 정의** (Q1) — `application.tailwind.css`에 추가.
-2. **Pretendard Variable Subset 자가 호스팅** (Q3) — `app/assets/fonts/`에 WOFF2 + `@font-face` + 라이선스 고지.
+2. **Pretendard Variable Subset 자가 호스팅** (Q3) — **P-public 옵션을 Phase 1 default로 채택**. `public/fonts/PretendardVariable-Subset.woff2` + CSS에서 `src: url("/fonts/PretendardVariable-Subset.woff2")`. `app/assets/fonts/` + ERB-rendered `@font-face`(P-layout-preload)는 디자인 시스템 PR과 함께 검증 후 적용. 라이선스 고지 함께.
 3. **ADR-0009** (Pretendard 자가 호스팅) 작성.
 
-Phase 5에서:
+Phase 5 시작 전:
 
-4. **`users.theme` 마이그레이션** (Q4) — `add_column users, :theme, :string, default: "auto"`.
-5. **ADR-0010** (테마 저장 위치) 작성.
+4. **ADR-0010** (테마 저장 위치) 작성 — `User#settings["theme"]` vs `users.theme` 컬럼 vs `user_settings` 테이블 중 채택. 디스커버리 preference는 컬럼이지만 구속력 없음.
+5. ADR-0010 채택 후 Phase 5 구현 PR에서 마이그레이션 또는 JSON 키 추가 + UI 토글 + Stimulus controller.
 
 본 사이클에서 *하지 않을 것*:
 
