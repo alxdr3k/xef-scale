@@ -1,0 +1,36 @@
+<%#
+  SourceIcon — 거래가 어떻게 입력되었는지 시각화 (synthesis.md 6.3 / ui-redesign-plan 3.2).
+
+  Transaction#source_type ∈ {manual, text_paste, image_upload, api, import} 또는 nil.
+
+  Locals:
+    source_type (String|Symbol, optional) — nil이면 아무것도 렌더하지 않는다.
+    label       (Boolean, default false)  — true면 아이콘 옆에 한글 라벨을 함께 렌더.
+    class       (String, default "")      — 추가 utility class.
+
+  ADR-0003: 시맨틱 utility만 사용. 아이콘 자체는 unicode이며 색 토큰은 text-tertiary.
+%>
+<% source_type = local_assigns.fetch(:source_type, nil).to_s.presence %>
+<% with_label  = local_assigns.fetch(:label, false) %>
+<% extra       = local_assigns.fetch(:class, "") %>
+
+<%
+  glyph, aria = case source_type
+                when "manual"       then ["✍",  "수기 입력"]
+                when "text_paste"   then ["\u{1F4AC}", "문자 붙여넣기"]
+                when "image_upload" then ["\u{1F4F7}", "스크린샷"]
+                when "api"          then ["\u{1F517}", "외부 API"]
+                when "import"       then ["\u{1F517}", "가져오기"]
+                end
+%>
+
+<% if glyph %>
+  <span class="inline-flex items-center gap-1 text-tertiary text-meta <%= extra %>"
+        aria-label="<%= aria %>"
+        title="<%= aria %>">
+    <span aria-hidden="true"><%= glyph %></span>
+    <% if with_label %>
+      <span><%= aria %></span>
+    <% end %>
+  </span>
+<% end %>

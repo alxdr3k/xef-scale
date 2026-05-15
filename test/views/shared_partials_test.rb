@@ -100,4 +100,120 @@ class SharedPartialsTest < ActionView::TestCase
     output = render(partial: "shared/context_header", locals: { title: "거래" })
     assert_no_match(/<p[^>]*>/, output)
   end
+
+  # ---------- shared/_source_icon ----------
+
+  test "source_icon renders manual glyph with korean aria label" do
+    output = render(partial: "shared/source_icon", locals: { source_type: "manual" })
+    assert_match "✍", output
+    assert_match 'aria-label="수기 입력"', output
+    assert_match "text-tertiary", output
+  end
+
+  test "source_icon renders distinct glyphs for text_paste and image_upload" do
+    text   = render(partial: "shared/source_icon", locals: { source_type: "text_paste" })
+    image  = render(partial: "shared/source_icon", locals: { source_type: "image_upload" })
+    assert_match "💬", text
+    assert_match 'aria-label="문자 붙여넣기"', text
+    assert_match "📷", image
+    assert_match 'aria-label="스크린샷"', image
+  end
+
+  test "source_icon distinguishes api and import with aria label" do
+    api    = render(partial: "shared/source_icon", locals: { source_type: "api" })
+    import = render(partial: "shared/source_icon", locals: { source_type: "import" })
+    assert_match "🔗", api
+    assert_match "🔗", import
+    assert_match 'aria-label="외부 API"', api
+    assert_match 'aria-label="가져오기"', import
+  end
+
+  test "source_icon renders nothing when source_type is nil or unknown" do
+    assert_equal "", render(partial: "shared/source_icon", locals: { source_type: nil }).strip
+    assert_equal "", render(partial: "shared/source_icon", locals: { source_type: "" }).strip
+    assert_equal "", render(partial: "shared/source_icon", locals: { source_type: "bogus" }).strip
+  end
+
+  test "source_icon appends label text when label flag set" do
+    output = render(partial: "shared/source_icon", locals: { source_type: "manual", label: true })
+    assert_match "수기 입력", output
+    output_no_label = render(partial: "shared/source_icon", locals: { source_type: "manual" })
+    # aria-label always present; visible label only when flagged
+    refute_match(/<span>수기 입력<\/span>/, output_no_label)
+  end
+
+  # ---------- shared/_pending_badge ----------
+
+  test "pending_badge renders warning dot for pending_review status" do
+    output = render(partial: "shared/pending_badge", locals: { status: "pending_review" })
+    assert_match "text-warning", output
+    assert_match "bg-warning", output
+    assert_match 'aria-label="검토 대기"', output
+  end
+
+  test "pending_badge omits visible label by default" do
+    output = render(partial: "shared/pending_badge", locals: { status: "pending_review" })
+    refute_match(/<span>검토 대기<\/span>/, output)
+  end
+
+  test "pending_badge shows visible label when flag set" do
+    output = render(partial: "shared/pending_badge", locals: { status: "pending_review", label: true })
+    assert_match "<span>검토 대기</span>", output
+  end
+
+  test "pending_badge renders nothing for committed or rolled_back status" do
+    assert_equal "", render(partial: "shared/pending_badge", locals: { status: "committed" }).strip
+    assert_equal "", render(partial: "shared/pending_badge", locals: { status: "rolled_back" }).strip
+  end
+
+  # ---------- shared/_category_source_chip ----------
+
+  test "category_source_chip renders category name and color dot" do
+    category = categories(:food)
+    output = render(partial: "shared/category_source_chip", locals: { category: category })
+    assert_match category.name, output
+    assert_match category.color, output
+    assert_match "rounded-full", output
+  end
+
+  test "category_source_chip renders 미분류 fallback when category is nil" do
+    output = render(partial: "shared/category_source_chip", locals: { category: nil })
+    assert_match "미분류", output
+    assert_match "text-secondary", output
+  end
+
+  test "category_source_chip omits decision mark for manual_set or nil decision" do
+    category = categories(:food)
+    none = render(partial: "shared/category_source_chip", locals: { category: category })
+    manual = render(partial: "shared/category_source_chip", locals: { category: category, decision: :manual_set })
+    assert_no_match "title=\"학습된 매핑으로 분류\"", none
+    assert_no_match "title=\"학습된 매핑으로 분류\"", manual
+    assert_no_match "✨", none
+    assert_no_match "✨", manual
+  end
+
+  test "category_source_chip renders mapping_match dot with hover label" do
+    output = render(partial: "shared/category_source_chip", locals: {
+      category: categories(:food), decision: :mapping_match
+    })
+    assert_match 'aria-label="학습됨"', output
+    assert_match "text-tertiary", output
+  end
+
+  test "category_source_chip renders keyword_match dot with hover label" do
+    output = render(partial: "shared/category_source_chip", locals: {
+      category: categories(:food), decision: :keyword_match
+    })
+    assert_match 'aria-label="키워드"', output
+  end
+
+  test "category_source_chip renders gemini_batch with ai border and sparkle" do
+    output = render(partial: "shared/category_source_chip", locals: {
+      category: categories(:food), decision: :gemini_batch
+    })
+    assert_match "✨", output
+    assert_match "border-dashed", output
+    assert_match "border-ai", output
+    assert_match "text-ai", output
+  end
 end
