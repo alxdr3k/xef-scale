@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_27_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_15_072300) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -179,6 +179,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_27_100000) do
   end
 
   create_table "processed_files", force: :cascade do |t|
+    t.datetime "blob_purged_at"
     t.datetime "created_at", null: false
     t.string "file_hash"
     t.string "filename"
@@ -188,6 +189,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_27_100000) do
     t.datetime "updated_at", null: false
     t.integer "uploaded_by_id"
     t.integer "workspace_id", null: false
+    t.index ["blob_purged_at"], name: "index_processed_files_on_blob_purged_at"
     t.index ["uploaded_by_id"], name: "index_processed_files_on_uploaded_by_id"
     t.index ["workspace_id"], name: "index_processed_files_on_workspace_id"
   end

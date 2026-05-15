@@ -30,6 +30,8 @@ class ProcessedFile < ApplicationRecord
   scope :pending, -> { where(status: "pending") }
   scope :completed, -> { where(status: "completed") }
   scope :failed, -> { where(status: "failed") }
+  scope :blob_purged, -> { where.not(blob_purged_at: nil) }
+  scope :blob_retained, -> { where(blob_purged_at: nil) }
 
   def pending?
     status == "pending"
@@ -45,6 +47,37 @@ class ProcessedFile < ApplicationRecord
 
   def failed?
     status == "failed"
+  end
+
+  def blob_purged?
+    blob_purged_at.present?
+  end
+
+  # Returns true when the parsing session linked to this file is in a terminal
+  # state (failed status, or review_status in committed/rolled_back/discarded)
+  # and that state was entered at least `retention_days` ago. Used by the
+  # cleanup job introduced for ADR-0002. Returns false when no parsing session
+  # exists yet.
+  def blob_eligible_for_purge?(retention_days: 180, now: Time.current)
+    return false if blob_purged?
+    return false unless file.attached?
+
+    session = parsing_session
+    return false unless session
+
+    terminal_at = session_terminal_at(session)
+    return false unless terminal_at
+
+    now - terminal_at >= retention_days.days
+  end
+
+  def purge_blob!(now: Time.current)
+    return false if blob_purged?
+    return false unless file.attached?
+
+    file.purge_later
+    update!(blob_purged_at: now)
+    true
   end
 
   def mark_processing!
@@ -64,6 +97,22 @@ class ProcessedFile < ApplicationRecord
   }
 
   private
+
+  def session_terminal_at(session)
+    candidates = [
+      session.committed_at,
+      session.rolled_back_at,
+      session.completed_at
+    ].compact
+
+    if session.review_status == "discarded"
+      # discarded sessions don't have a dedicated timestamp column; fall back
+      # to updated_at, which is when discard_all! flipped the review_status.
+      candidates << session.updated_at
+    end
+
+    candidates.max
+  end
 
   def broadcast_removal
     broadcast_remove_to(workspace, target: "pending_file_row_#{id}")
