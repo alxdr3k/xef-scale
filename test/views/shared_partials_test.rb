@@ -250,9 +250,13 @@ class SharedPartialsTest < ActionView::TestCase
     assert_match 'aria-live="assertive"', output
   end
 
-  test "inline_alert ai tone adds border for AI channel isolation" do
+  test "inline_alert ai tone adds subtle border for AI channel isolation" do
     output = render(partial: "shared/inline_alert", locals: { tone: :ai, body: "AI 추천" })
-    assert_match "border-ai", output
+    # Per ADR-0006 / application.tailwind.css: large card outline over bg-ai-subtle
+    # uses --color-ai-border (the subtle variant), distinct from --color-ai which is
+    # reserved for stronger accents (e.g. _category_source_chip dashed chip border).
+    assert_match "border-ai-border", output
+    refute_match(/\bborder-ai\b(?!-)/, output)
     assert_match "✨", output
   end
 
@@ -286,5 +290,19 @@ class SharedPartialsTest < ActionView::TestCase
     assert_match "확인", output
     # no title <p> nor body <p>
     refute_match(/<p[^>]*>/, output)
+  end
+
+  test "inline_alert renders nothing when title body and actions are absent" do
+    assert_equal "", render(partial: "shared/inline_alert").strip
+    assert_equal "", render(partial: "shared/inline_alert", locals: { tone: :ai }).strip
+  end
+
+  test "inline_alert appends custom class to outer wrapper" do
+    output = render(partial: "shared/inline_alert", locals: {
+      body: "x",
+      class: "mt-4 max-w-md"
+    })
+    assert_match "mt-4", output
+    assert_match "max-w-md", output
   end
 end

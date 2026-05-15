@@ -31,30 +31,32 @@
     warning:  { bg: "bg-warning-subtle",  text: "text-warning",  icon: "⚠", border: "" },
     positive: { bg: "bg-positive-subtle", text: "text-positive", icon: "✓", border: "" },
     danger:   { bg: "bg-danger-subtle",   text: "text-danger",   icon: "⚠", border: "" },
-    ai:       { bg: "bg-ai-subtle",       text: "text-ai",       icon: "✨", border: "border border-ai" }
+    ai:       { bg: "bg-ai-subtle",       text: "text-ai",       icon: "✨", border: "border border-ai-border" }
   }
   style = tone_styles.fetch(tone, tone_styles[:info])
   role  = tone == :danger ? "alert" : "status"
   live  = tone == :danger ? "assertive" : "polite"
 %>
 
-<div class="flex items-start gap-3 p-3 rounded-md <%= style[:bg] %> <%= style[:border] %> <%= extra %>"
-     role="<%= role %>"
-     aria-live="<%= live %>">
-  <span class="shrink-0 <%= style[:text] %> text-section leading-none mt-0.5"
-        aria-hidden="true"><%= style[:icon] %></span>
+<% if title.present? || body.present? || actions.present? %>
+  <div class="flex items-start gap-3 p-3 rounded-md <%= style[:bg] %> <%= style[:border] %> <%= extra %>"
+       role="<%= role %>"
+       aria-live="<%= live %>">
+    <span class="shrink-0 <%= style[:text] %> text-section leading-none mt-0.5"
+          aria-hidden="true"><%= style[:icon] %></span>
 
-  <div class="flex-1 min-w-0 space-y-1">
-    <% if title.present? %>
-      <p class="text-meta font-semibold text-primary"><%= title %></p>
-    <% end %>
+    <div class="flex-1 min-w-0 space-y-1">
+      <% if title.present? %>
+        <p class="text-meta font-semibold text-primary"><%= title %></p>
+      <% end %>
 
-    <% if body.present? %>
-      <p class="text-meta text-secondary"><%= body %></p>
-    <% end %>
+      <% if body.present? %>
+        <p class="text-meta text-secondary"><%= body %></p>
+      <% end %>
 
-    <% if actions.present? %>
-      <div class="mt-2 flex flex-wrap items-center gap-2"><%= actions %></div>
-    <% end %>
+      <% if actions.present? %>
+        <div class="mt-2 flex flex-wrap items-center gap-2"><%= actions %></div>
+      <% end %>
+    </div>
   </div>
-</div>
+<% end %>
