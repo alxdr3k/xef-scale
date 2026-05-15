@@ -5,6 +5,7 @@
 <td class="px-4 py-2 h-14">
   <% if editable && update_url %>
     <div class="whitespace-nowrap overflow-hidden text-ellipsis">
+      <%= render 'shared/pending_badge', status: transaction.status, class: 'mr-1.5 align-middle' %>
       <div data-controller="inline-edit"
            data-inline-edit-url-value="<%= update_url %>"
            data-inline-edit-field-value="merchant"
@@ -53,6 +54,7 @@
     </div>
   <% else %>
     <div class="whitespace-nowrap overflow-hidden text-ellipsis">
+      <%= render 'shared/pending_badge', status: transaction.status, class: 'mr-1.5 align-middle' %>
       <span data-controller="truncate-tooltip"
            data-action="mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
            class="text-sm font-medium text-gray-900 align-middle"><%= transaction.merchant %></span>
