@@ -16,6 +16,11 @@ module ExpenseTrackerRails
     # Common ones are `templates`, `generators`, or `middleware`, for example.
     config.autoload_lib(ignore: %w[assets tasks])
 
+    # Korean is the product surface language (ADR-0007 §4 / ui-redesign-plan §X10).
+    # Devise messages remain in en.yml — fall back to :en when keys are missing.
+    config.i18n.default_locale = :ko
+    config.i18n.fallbacks = [ :en ]
+
     # Configuration for the application, engines, and railties goes here.
     #
     # These settings can be overridden in specific environments using the files

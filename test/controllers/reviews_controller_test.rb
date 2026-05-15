@@ -270,4 +270,69 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to review_workspace_parsing_session_path(@workspace, @parsing_session)
     assert_equal "pending", dc.reload.status
   end
+
+  # ADR-0007 §4: review 경로에서도 묵시적 학습 금지. CategoryMapping은
+  # explicit opt-in endpoint를 통해서만 생성/갱신된다.
+
+  test "bulk_update change_category does not silently create CategoryMapping" do
+    @parsing_session.duplicate_confirmations.destroy_all
+    tx1 = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "스타벅스",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    tx2 = @workspace.transactions.create!(
+      date: Date.current, amount: 2000, merchant: "맥도날드",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    target = categories(:food)
+
+    assert_no_difference -> { CategoryMapping.count } do
+      post bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+           params: {
+             bulk_action: "change_category",
+             category_id: target.id,
+             transaction_ids: "#{tx1.id},#{tx2.id}"
+           }
+    end
+
+    # change_category 분기가 실제로 실행됐는지 검증 (false-positive 방지).
+    assert_equal target.id, tx1.reload.category_id
+    assert_equal target.id, tx2.reload.category_id
+  end
+
+  test "update_transaction category change does not silently create CategoryMapping" do
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1500, merchant: "투썸플레이스",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    new_category = categories(:food)
+    refute_equal new_category.id, tx.category_id
+
+    assert_no_difference -> { CategoryMapping.count } do
+      patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+            params: { transaction: { category_id: new_category.id } },
+            as: :turbo_stream
+    end
+
+    assert_equal new_category.id, tx.reload.category_id
+  end
+
+  test "non-admin writer cannot silently create CategoryMapping through review category changes" do
+    sign_out @user
+    sign_in users(:member) # member_write per fixtures
+    refute users(:member).admin_of?(@workspace)
+
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 3000, merchant: "올리브영",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    target = categories(:food)
+
+    assert_no_difference -> { CategoryMapping.count } do
+      patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+            params: { transaction: { category_id: target.id } },
+            as: :turbo_stream
+    end
+    assert_equal target.id, tx.reload.category_id
+  end
 end

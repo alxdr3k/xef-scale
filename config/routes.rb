@@ -51,6 +51,7 @@ Rails.application.routes.draw do
         get :duplicates
       end
       resources :comments, only: [ :index, :create, :update, :destroy ]
+      resource :category_learning_suggestion, only: :create, controller: "category_learning_suggestions"
     end
 
     # Categories within workspace

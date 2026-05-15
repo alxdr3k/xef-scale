@@ -1,0 +1,11 @@
+# Korean translations.
+#
+# 본 파일은 ADR-0007 §4 인라인 학습 제안 카피로 시작한다. 전체 한글 카피의
+# i18n 추출은 ui-redesign-plan Phase 6에서 진행되며, 본 파일은 그 마이그레이션의
+# 시작점이기도 하다.
+ko:
+  transactions:
+    category_learning_suggestion:
+      body: "다음 같은 가맹점부터는 이 카테고리로 자동 분류할까요?"
+      accept: "예, 자동 분류"
+      dismiss: "아니요, 이번만 변경"

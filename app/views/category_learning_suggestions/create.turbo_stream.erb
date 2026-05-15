@@ -1,0 +1,3 @@
+<%# 학습 수락 후 suggestion row를 DOM에서 제거. 별도 flash 알림은 띄우지 않는다 —
+    행 인라인 변경 자체가 명시 확인이며, 별도 토스트는 노이즈가 된다. %>
+<%= turbo_stream.remove "category-learning-suggestion-#{@transaction.id}" %>

@@ -1,0 +1,37 @@
+<%#
+  CategoryLearningSuggestionRow — 인라인 카테고리 변경 후 행 바로 아래에
+  렌더되는 "학습 제안" 행 (ADR-0007 §4).
+
+  방금 변경한 거래의 merchant + category로 explicit opt-in 학습을 제안한다.
+  수락 시 CategoryLearningSuggestionsController#create로 POST, CategoryMapping
+  생성 후 turbo_stream로 본 행을 제거. 거절 시 클라이언트가 본 행을 DOM에서
+  제거(서버 호출 없음).
+
+  Locals:
+    transaction (Transaction, required) — 방금 카테고리가 변경된 거래
+
+  Workspaces/transactions 테이블 컬럼 수(6)와 colspan 일치 필요.
+%>
+<tr id="category-learning-suggestion-<%= transaction.id %>"
+    data-controller="category-learning-suggestion"
+    data-category-learning-suggestion-url-value="<%= workspace_transaction_category_learning_suggestion_path(@workspace, transaction) %>"
+    data-category-learning-suggestion-category-id-value="<%= transaction.category_id %>"
+    class="bg-ai-subtle">
+  <td colspan="6" class="px-4 py-3">
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+      <p class="text-meta text-primary"><%= t("transactions.category_learning_suggestion.body") %></p>
+      <div class="flex gap-2 shrink-0">
+        <button type="button"
+                data-action="click->category-learning-suggestion#accept"
+                class="px-3 py-1 text-meta font-medium rounded-md bg-action text-action-on hover:bg-action-hover">
+          <%= t("transactions.category_learning_suggestion.accept") %>
+        </button>
+        <button type="button"
+                data-action="click->category-learning-suggestion#dismiss"
+                class="px-3 py-1 text-meta text-secondary hover:bg-elev rounded-md">
+          <%= t("transactions.category_learning_suggestion.dismiss") %>
+        </button>
+      </div>
+    </div>
+  </td>
+</tr>
