@@ -18,6 +18,17 @@ xef-scale의 수락된 구현·아키텍처 결정 기록(ADR).
 - [ADR-0001](ADR-0001-defer-pundit-adoption.md) — Pundit 채택을 보류하고 커스텀 권한 패턴을 유지한다 (Accepted, 2026-05-15)
 - [ADR-0002](ADR-0002-active-storage-blob-retention.md) — 업로드 이미지 blob은 ParsingSession 종결 후 180일 보존하고 자동 purge한다 (Accepted, 2026-05-15)
 
+### Design system 결정 묶음 (Proposed, 2026-05-15)
+
+> `docs/discovery/2026-05-15-design-system-synthesis.md` + `2026-05-15-ui-redesign-plan.md`에서 승격된 결정들. 토스·뱅크샐러드 UI 해체분석 → 통합 → xef-scale 도메인 번역의 결과. ADR-0003이 우산 결정이며 나머지가 그 위에 얹힌다.
+
+- [ADR-0003](ADR-0003-design-system-and-product-language.md) — Design system & Product Language 채택 (X1~X12 원칙 + 시맨틱 토큰 + 컴포넌트 사전 + Strangler Fig 마이그레이션)
+- [ADR-0004](ADR-0004-review-inbox-as-top-level-tab.md) — 검토함을 IA 1번 시민으로 승격 (5탭 IA, "가져오기" 탭 폐기)
+- [ADR-0005](ADR-0005-ad-free-policy.md) — 광고 청정 정책 명문화
+- [ADR-0006](ADR-0006-separate-semantic-color-axes.md) — CTA와 시맨틱 컬러 축 분리 (action/positive/warning/info/danger)
+- [ADR-0007](ADR-0007-category-source-visualization.md) — 카테고리 4단계 폴백 출처 시각화
+- [ADR-0008](ADR-0008-light-first-with-dark-pair.md) — 라이트 우선, 다크 동등 지원
+
 ## 역사적 결정에 대한 메모
 
 `docs/design-phase-a.md`, `docs/design-phase-b.md`는 큰 방향 결정의 *스냅샷*이지만 ADR 형식은 아니다. 본 PR은 이를 강제로 ADR로 백필하지 않는다. 향후 큰 결정이 phase-a/phase-b를 supersede 한다면, 새 ADR에 `Supersedes: docs/design-phase-b.md`로 명시한다.
