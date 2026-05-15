@@ -133,6 +133,16 @@
 }
 
 @layer base {
+  /*
+   * light-dark() 토큰이 실제로 토글되려면 문서가 두 스킴 모두에 opt-in 해야 한다.
+   * Phase 1은 OS preference를 그대로 따른다 (auto 기본).
+   * Phase 5에서 UserSetting#theme(auto/light/dark) 토글 시 :root 의 color-scheme 을
+   * `light` 또는 `dark` 단일값으로 덮어써 강제 전환 — `data-theme` 속성 기반 selector.
+   */
+  :root {
+    color-scheme: light dark;
+  }
+
   html {
     scrollbar-gutter: stable;
   }
