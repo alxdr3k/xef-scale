@@ -197,7 +197,7 @@ $ ls public/
 
 → 본 디스커버리는 결정을 후속 ADR에 위임한다. **빌드 파이프라인 변경 비용이 가장 적은 P-public이 우선 권고**. P-erb는 빌드 변경 부담 때문에 비권장.
 
-**채택**: [ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md) — P-public + 전체 Variable WOFF2 (2.0MB). 본 노트가 권고한 "~200KB Subset 단일 파일"은 orioncactus 공식 release에 실재하지 않으며 (static-subset weight당 ~270KB와 혼동된 것으로 보임), 자체 subset도 한글 음절 수 하한으로 ~1.7MB가 한계 — 자세한 사실 정리는 ADR-0010.
+**채택**: [ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md) — P-public + **Dynamic Subset (92 파일, unicode-range 기반)**. 본 노트가 권고한 "~200KB Subset 단일 파일"은 orioncactus 공식 release에 실재하지 않으며 (static-subset weight당 ~270KB와 혼동된 것으로 보임), 단일 Variable로 동등 크기를 달성하는 것도 한글 음절 수 하한으로 불가능. Dynamic Subset은 첫 페인트에 보이는 글자가 속한 1-3개 subset(~50-150KB)만 fetch하므로 한국 프로덕션 관행(Toss/뱅샐/네이버)과 일치 — 자세한 사실 정리는 ADR-0010.
 
 공통:
 - 라이선스 고지를 `public/licenses/pretendard.txt` 또는 README에 명시 (SIL OFL 1.1 준수).
@@ -421,7 +421,7 @@ export default class extends Controller {
 본 노트의 권고가 채택되면 Phase 1 첫 PR에서 다음을 함께 처리:
 
 1. **Tailwind `@theme` 토큰 정의** (Q1) — `application.tailwind.css`에 추가.
-2. **Pretendard Variable 자가 호스팅** (Q3) — **P-public 옵션을 Phase 1 default로 채택**. `public/fonts/PretendardVariable.v1.3.9.woff2` + CSS에서 `src: url("/fonts/PretendardVariable.v1.3.9.woff2")`. 라이선스 고지(`public/licenses/pretendard-OFL-1.1.txt`) 함께. *deviation:* 본 노트가 권고한 "~200KB Variable Subset 단일 파일"은 orioncactus 공식 release에 실재하지 않으며 자체 subset도 한글 음절 수 하한으로 ~1.7MB가 한계여서, 전체 Variable WOFF2(~2.0MB)로 출시 — 자세한 근거는 ADR-0010.
+2. **Pretendard Variable 자가 호스팅** (Q3) — **P-public + Dynamic Subset 채택**. 92개 파일을 `public/fonts/pretendard-1.3.9/`에, `app/assets/stylesheets/pretendard-dynamic-subset.css`에 92개 `@font-face`(unicode-range)를 두고 `application.tailwind.css`에서 `@import`. 첫 페인트 ~50-150KB. 라이선스 고지(`public/licenses/pretendard-OFL-1.1.txt`) 함께. *deviation:* 본 노트가 권고한 "~200KB Variable Subset 단일 파일"은 orioncactus 공식 release에 실재하지 않아 dynamic-subset(한국 프로덕션 관행)으로 진행 — 자세한 근거는 ADR-0010.
 3. **[ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md)** (Pretendard 자가 호스팅) — 2026-05-15 채택.
 
 Phase 5 시작 전:
