@@ -1,0 +1,62 @@
+<%#
+  InlineAlert — 화면 인라인 알림/제안 컴포넌트 (synthesis.md 6.3 / X3 라이브 컨텍스트).
+
+  사용처(예정):
+    - parsing_sessions/index AI 동의 안내 카드 흡수 (ui-redesign-plan §4.1)
+    - 인라인 카테고리 변경 시 학습 제안 "다음 같은 가맹점부터는 …" (ADR-0007 §4)
+
+  flash partial은 토스트(자동 사라짐, dismiss, progress bar)이고 본 partial은
+  화면에 정적으로 머무는 인라인 안내이다. 둘은 같은 시각 컴포넌트가 아니다.
+
+  Locals:
+    tone   (Symbol, default :info)  — :info / :warning / :positive / :danger / :ai
+    title  (String, optional)        — 상단 굵은 줄
+    body   (String, optional)        — 본문 텍스트
+    class  (String, default "")
+
+  block_given?면 body 아래 액션 슬롯으로 렌더된다 (예: 예/아니오 버튼 묶음).
+
+  ADR-0003 / ADR-0006: 시맨틱 utility만 사용. tone별로 bg-{tone}-subtle +
+  text-{tone}. AI 톤은 추가로 border border-ai로 시각 격리 (X4 AI 채널).
+%>
+<% tone    = (local_assigns[:tone].presence || :info).to_sym %>
+<% title   = local_assigns.fetch(:title, nil) %>
+<% body    = local_assigns.fetch(:body, nil) %>
+<% extra   = local_assigns.fetch(:class, "") %>
+<% actions = block_given? ? capture { yield } : nil %>
+
+<%
+  tone_styles = {
+    info:     { bg: "bg-info-subtle",     text: "text-info",     icon: "ⓘ", border: "" },
+    warning:  { bg: "bg-warning-subtle",  text: "text-warning",  icon: "⚠", border: "" },
+    positive: { bg: "bg-positive-subtle", text: "text-positive", icon: "✓", border: "" },
+    danger:   { bg: "bg-danger-subtle",   text: "text-danger",   icon: "⚠", border: "" },
+    ai:       { bg: "bg-ai-subtle",       text: "text-ai",       icon: "✨", border: "border border-ai-border" }
+  }
+  style = tone_styles.fetch(tone, tone_styles[:info])
+  role  = tone == :danger ? "alert" : "status"
+  live  = tone == :danger ? "assertive" : "polite"
+%>
+
+<% if title.present? || body.present? || actions.present? %>
+  <div class="flex items-start gap-3 p-3 rounded-md <%= style[:bg] %> <%= style[:border] %> <%= extra %>"
+       role="<%= role %>"
+       aria-live="<%= live %>">
+    <span class="shrink-0 <%= style[:text] %> text-section leading-none mt-0.5"
+          aria-hidden="true"><%= style[:icon] %></span>
+
+    <div class="flex-1 min-w-0 space-y-1">
+      <% if title.present? %>
+        <p class="text-meta font-semibold text-primary"><%= title %></p>
+      <% end %>
+
+      <% if body.present? %>
+        <p class="text-meta text-secondary"><%= body %></p>
+      <% end %>
+
+      <% if actions.present? %>
+        <div class="mt-2 flex flex-wrap items-center gap-2"><%= actions %></div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
