@@ -218,6 +218,29 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_select "button[aria-label='가져온 출처 보기']", minimum: 1
   end
 
+  test "show falls back to circle-info SVG when source_type is unrecognized" do
+    tx = @parsing_session.transactions.create!(
+      workspace: @workspace,
+      date: Date.current,
+      merchant: "스타벅스",
+      amount: 5800,
+      status: "pending_review",
+      source_type: "manual",
+      source_metadata: { "source_channel" => "pasted_text" }
+    )
+    # Simulate legacy / future unmapped value (e.g. parsing_sessions' "file_upload")
+    # by bypassing the inclusion validator — popover trigger must still show an icon.
+    tx.update_column(:source_type, "file_upload")
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    assert_select "button[aria-label='가져온 출처 보기']" do
+      # Either glyph or SVG must be rendered — never an empty button (P2 regression guard)
+      assert_select "svg", minimum: 1
+    end
+  end
+
   test "show renders pending_badge for pending_review transactions" do
     @parsing_session.transactions.create!(
       workspace: @workspace,
