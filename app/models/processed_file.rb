@@ -98,20 +98,23 @@ class ProcessedFile < ApplicationRecord
 
   private
 
+  # ADR-0002 defines terminal states narrowly: status == "failed", or
+  # review_status in committed/rolled_back/discarded. A session whose parsing
+  # is complete but whose review is still pending_review is NOT terminal — the
+  # user has not yet acted on it, so the blob must stay.
   def session_terminal_at(session)
-    candidates = [
-      session.committed_at,
-      session.rolled_back_at,
-      session.completed_at
-    ].compact
+    return session.completed_at if session.status == "failed"
 
-    if session.review_status == "discarded"
-      # discarded sessions don't have a dedicated timestamp column; fall back
-      # to updated_at, which is when discard_all! flipped the review_status.
-      candidates << session.updated_at
+    case session.review_status
+    when "committed"
+      session.committed_at
+    when "rolled_back"
+      session.rolled_back_at
+    when "discarded"
+      # No dedicated timestamp column; fall back to updated_at, which is when
+      # discard_all! flipped the review_status.
+      session.updated_at
     end
-
-    candidates.max
   end
 
   def broadcast_removal

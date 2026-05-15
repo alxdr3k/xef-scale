@@ -314,6 +314,35 @@ class ProcessedFileTest < ActiveSupport::TestCase
     assert_not pf.blob_eligible_for_purge?(retention_days: 180)
   end
 
+  test "blob_eligible_for_purge? false for completed session still pending review (regression: ADR terminal-state contract)" do
+    pf = processed_files(:completed_file)
+    attach_dummy_blob(pf)
+    # status: "completed" + review_status: "pending_review" means parsing
+    # finished but the user has not committed/rolled back/discarded yet. Even
+    # 400 days later, the original blob must stay until the review is closed.
+    pf.parsing_session.update!(
+      status: "completed",
+      review_status: "pending_review",
+      completed_at: 400.days.ago,
+      committed_at: nil,
+      rolled_back_at: nil
+    )
+    assert_not pf.blob_eligible_for_purge?(retention_days: 180)
+  end
+
+  test "blob_eligible_for_purge? true for failed session after retention window" do
+    pf = processed_files(:completed_file)
+    attach_dummy_blob(pf)
+    pf.parsing_session.update!(
+      status: "failed",
+      review_status: nil,
+      completed_at: 200.days.ago,
+      committed_at: nil,
+      rolled_back_at: nil
+    )
+    assert pf.blob_eligible_for_purge?(retention_days: 180)
+  end
+
   test "blob_eligible_for_purge? uses updated_at for discarded sessions" do
     pf = processed_files(:completed_file)
     attach_dummy_blob(pf)
