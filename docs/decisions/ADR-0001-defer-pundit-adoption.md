@@ -55,6 +55,23 @@ xef-scale은 **Pundit 정책 객체(`app/policies/*`)를 도입하지 않는다.
 2. 권한 경계 축이 **3개 이상**으로 늘어난다 (현재 2개: 워크스페이스 역할, 작성자).
 3. 컨트롤러 외부(job/API/MCP)에서 동일 권한 로직이 **2회 이상** 중복된다.
 
+## 모니터링
+
+본 ADR의 효력을 유지할지 판단하려면 위 트리거를 주기적으로 측정해야 한다. 측정 방법과 이력은 아래와 같다.
+
+측정 방법:
+
+- 트리거 1: `grep -rn "def authorize_" app/controllers`
+- 트리거 2: 권한 분기 식별자 카운트 — 워크스페이스 역할 (`User#admin_of?`/`can_write?`/`can_read?`)과 작성자(`@resource.user_id == current_user.id` 패턴).
+- 트리거 3: `grep -rln "can_read?\|can_write?\|admin_of?" app/jobs app/services app/mailers app/controllers/api`
+
+측정 이력:
+
+| 일자 | 트리거 1 | 트리거 2 | 트리거 3 | 상태 |
+|---|---|---|---|---|
+| 2026-05-15 (ADR 채택) | 1 (`CommentsController#authorize_comment!`) | 2 (역할, 작성자) | 0 | 모두 미달 — 결정 유지 |
+| 2026-05-15 (1차 재측정) | 1 | 2 | 0 | 변동 없음 — 결정 유지 |
+
 ## Alternatives considered
 
 - **Pundit을 지금 도입해 `app/policies/`를 채운다** — 정책 객체 5~10개를 만들고 모든 컨트롤러에 `authorize` 호출을 도입한다. 거부 이유: 현재 권한 매트릭스가 단순해 추가 abstraction의 비용이 이득을 초과한다.
