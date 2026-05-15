@@ -229,7 +229,7 @@ class SharedPartialsTest < ActionView::TestCase
   end
 
   test "inline_alert falls back to info when explicit tone is nil or blank" do
-    [nil, ""].each do |blank|
+    [ nil, "" ].each do |blank|
       output = render(partial: "shared/inline_alert", locals: { tone: blank, body: "x" })
       assert_match "bg-info-subtle", output, "tone=#{blank.inspect} must degrade to :info"
       assert_match "text-info", output
