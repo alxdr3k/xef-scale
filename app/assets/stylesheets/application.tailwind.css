@@ -1,5 +1,123 @@
 @import "tailwindcss";
 
+/*
+ * Pretendard Variable (자가 호스팅, public/fonts/, P-public 옵션)
+ * 결정: docs/decisions/ADR-0010-self-host-pretendard-variable.md
+ * 라이선스: SIL OFL 1.1 — public/licenses/pretendard-OFL-1.1.txt
+ * 캐시 무효화: 파일명에 버전 접미사. 폰트 업데이트 시 v1.3.9 → v1.3.10 형태로 교체.
+ */
+@font-face {
+  font-family: "Pretendard Variable";
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/PretendardVariable.v1.3.9.woff2") format("woff2-variations");
+}
+
+/*
+ * 시맨틱 디자인 토큰 (ADR-0003 채택, synthesis.md 4장 원본)
+ * 컴포넌트는 시맨틱 utility(bg-surface, text-secondary, text-action)만 사용한다.
+ * 팔레트 utility(bg-indigo-600, text-gray-900)는 Phase 2~ 점진 제거.
+ */
+@theme {
+  /* === Surface === */
+  --color-bg-page:        light-dark(#fafafa, #0f1014);
+  --color-bg-surface:     light-dark(#ffffff, #181a1f);
+  --color-bg-elev:        light-dark(#f4f4f5, #21242b);
+  --color-bg-sunken:      light-dark(#f4f4f5, #0a0b0e);
+  --color-bg-overlay:     light-dark(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6));
+
+  /* === Border === */
+  --color-border-subtle:  light-dark(#e5e5e5, #2a2d33);
+  --color-border-strong:  light-dark(#d4d4d4, #3f434b);
+  --color-border-focus:   light-dark(#4f46e5, #818cf8);
+
+  /* === Text === */
+  --color-text-primary:   light-dark(#0a0a0a, #fafafa);
+  --color-text-secondary: light-dark(#525252, #a3a3a3);
+  --color-text-tertiary:  light-dark(#737373, #6b7280);
+  --color-text-disabled:  light-dark(#a3a3a3, #525252);
+  --color-text-inverse:   light-dark(#ffffff, #0a0a0a);
+
+  /* === Semantic action (각 토큰은 단 하나의 의미만 — X5/ADR-0006) === */
+  --color-action:         light-dark(#4f46e5, #818cf8);
+  --color-action-hover:   light-dark(#4338ca, #6366f1);
+  --color-action-on:      #ffffff;
+  --color-action-subtle:  light-dark(#eef2ff, #312e81);
+
+  --color-positive:        light-dark(#15803d, #4ade80);
+  --color-positive-subtle: light-dark(#dcfce7, #14532d);
+
+  --color-warning:        light-dark(#b45309, #f59e0b);
+  --color-warning-subtle: light-dark(#fef3c7, #451a03);
+
+  --color-info:           light-dark(#0369a1, #38bdf8);
+  --color-info-subtle:    light-dark(#e0f2fe, #082f49);
+
+  --color-danger:         light-dark(#b91c1c, #f87171);
+  --color-danger-subtle:  light-dark(#fee2e2, #450a0a);
+
+  --color-neutral-expense: var(--color-text-primary);
+
+  /* === AI 채널 — 보라로 격리 (ADR-0006) === */
+  --color-ai:        light-dark(#7c3aed, #a78bfa);
+  --color-ai-subtle: light-dark(#f5f3ff, #1e1b2e);
+  --color-ai-border: light-dark(#ddd6fe, #5b21b6);
+
+  /* === Category palette (chart/chip) === */
+  --color-category-1:  light-dark(#0891b2, #67e8f9);
+  --color-category-2:  light-dark(#0d9488, #5eead4);
+  --color-category-3:  light-dark(#65a30d, #bef264);
+  --color-category-4:  light-dark(#ca8a04, #fde047);
+  --color-category-5:  light-dark(#ea580c, #fdba74);
+  --color-category-6:  light-dark(#db2777, #f9a8d4);
+  --color-category-7:  light-dark(#9333ea, #d8b4fe);
+  --color-category-8:  light-dark(#4f46e5, #a5b4fc);
+  --color-category-9:  light-dark(#475569, #94a3b8);
+  --color-category-10: light-dark(#78716c, #a8a29e);
+
+  /* === Typography === */
+  --font-sans: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --text-display: 2.5rem;
+  --text-title:   1.5rem;
+  --text-section: 1.125rem;
+  --text-amount:  1rem;
+  --text-body:    0.9375rem;
+  --text-meta:    0.8125rem;
+  --text-caption: 0.75rem;
+
+  /* === Spacing === */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  /* === Radius === */
+  --radius-xs:   4px;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   20px;
+  --radius-full: 9999px;
+
+  /* === Shadow === */
+  --shadow-card:  0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-elev:  0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-sheet: 0 -2px 24px rgba(0, 0, 0, 0.12);
+
+  /* === Motion === */
+  --duration-instant: 100ms;
+  --duration-fast:    150ms;
+  --duration-base:    220ms;
+  --duration-slow:    400ms;
+  --ease-standard:   cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.3, 0, 0.1, 1);
+}
+
 @layer base {
   html {
     scrollbar-gutter: stable;

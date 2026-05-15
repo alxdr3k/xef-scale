@@ -14,8 +14,8 @@
 |---|---|---|---|
 | Q1 | **Tailwind 4 & `@theme` 도입 가능한가?** | **즉시 채택** — 이미 v4.1.18 | 불필요 (ADR-0003 안에 포함) |
 | Q2 | **ViewComponent 도입할 것인가?** | **본 사이클 보류** — ERB partial 표준화 우선 | 향후 별도 ADR |
-| Q3 | **Pretendard 폰트 자가 호스팅 vs CDN** | **자가 호스팅 (WOFF2 subset)** | ADR-0009 후보 |
-| Q4 | **`UserSetting#theme` 마이그레이션 방식** | `User#settings["theme"]` vs `users.theme` 둘 다 후보. 디스커버리 preference는 `users.theme`이나 **저장 위치는 ADR-0010에서 확정** (ADR-0008은 값 도메인만 결정) | ADR-0010 후보 (ADR-0008 종속) |
+| Q3 | **Pretendard 폰트 자가 호스팅 vs CDN** | **자가 호스팅 (WOFF2 subset)** | [ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md) 채택됨 |
+| Q4 | **`UserSetting#theme` 마이그레이션 방식** | `User#settings["theme"]` vs `users.theme` 둘 다 후보. 디스커버리 preference는 `users.theme`이나 **저장 위치는 ADR-0011에서 확정** (ADR-0008은 값 도메인만 결정) | ADR-0011 후보 (ADR-0008 종속) |
 | Q5 | **5탭 라우트 path 명명** | **기존 path 유지 + 별칭 추가** (breaking change 회피) | Phase 3 내부 결정 (ADR 불필요) |
 | Q6 | **키보드 단축키 라이브러리** | **Stimulus 자체 구현** (외부 라이브러리 회피) | Phase 2 내부 결정 |
 | Q7 | **일러스트 시스템** | **본 사이클 deferred — 빈 상태는 이모지 한정** | 향후 별도 디스커버리 |
@@ -195,15 +195,17 @@ $ ls public/
 2. `npm run build:css`를 *ERB 사전 평가*하는 단계로 감싼다 (예: `bin/render-css.rb` 같은 wrapper). `@tailwindcss/cli`는 ERB를 평가하지 않으므로 *반드시* 빌드 파이프라인을 같이 변경해야 한다 — 그렇지 않으면 production CSS에 미해석 ERB가 실린다.
 3. `<%= asset_path "..." %>` 사용 가능.
 
-→ 본 디스커버리는 결정을 ADR-0009 후보에 위임한다. **빌드 파이프라인 변경 비용이 가장 적은 P-public이 우선 권고**. P-erb는 빌드 변경 부담 때문에 비권장.
+→ 본 디스커버리는 결정을 후속 ADR에 위임한다. **빌드 파이프라인 변경 비용이 가장 적은 P-public이 우선 권고**. P-erb는 빌드 변경 부담 때문에 비권장.
+
+**채택**: [ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md) — P-public + 전체 Variable WOFF2 (2.0MB). ~200KB Subset 단일 파일은 본 환경(외부 네트워크 차단)과 한글 음절 수 하한으로 달성 불가하여 deviation을 ADR-0010에 명시.
 
 공통:
 - 라이선스 고지를 `public/licenses/pretendard.txt` 또는 README에 명시 (SIL OFL 1.1 준수).
 - `font-display: swap`, `font-weight: 100 900`, `format("woff2-variations")`.
 
-### 후속 ADR 후보
+### 후속 ADR
 
-ADR-0009 `Self-host Pretendard Variable Subset`. Phase 1 PR과 같이 머지 권장.
+[ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md) `Pretendard Variable을 public/fonts/로 자가 호스팅한다`. 2026-05-15 채택. (당초 ADR-0009 슬롯으로 예약되었으나 그 사이 ADR-0009가 vision-dogfood로 선행 채택되어 번호가 0010으로 밀렸음.)
 
 ---
 
@@ -250,12 +252,12 @@ class UserSettingsController < ApplicationController
 
 ### 후속 액션 (Phase 5 시작 전)
 
-1. **ADR-0010 작성** — 옵션 A/B/C 중 하나를 채택. Phase 5 구현 PR보다 먼저 머지.
-2. ADR-0010 채택 후 Phase 5 구현 PR에서: 마이그레이션 또는 JSON 키 추가 → `User#theme` 접근자 → `app/views/user_settings/show.html.erb` SwitchRow → `<html data-theme="...">` 렌더 → Stimulus `theme_controller.js`.
+1. **ADR-0011 작성** — 옵션 A/B/C 중 하나를 채택. Phase 5 구현 PR보다 먼저 머지.
+2. ADR-0011 채택 후 Phase 5 구현 PR에서: 마이그레이션 또는 JSON 키 추가 → `User#theme` 접근자 → `app/views/user_settings/show.html.erb` SwitchRow → `<html data-theme="...">` 렌더 → Stimulus `theme_controller.js`.
 
 ### 후속 ADR 후보
 
-ADR-0010 `User theme preference storage location`. ADR-0008(값 도메인 `auto/light/dark`)과 연결. 옵션 A/B/C 중 채택.
+ADR-0011 `User theme preference storage location`. ADR-0008(값 도메인 `auto/light/dark`)과 연결. 옵션 A/B/C 중 채택. (당초 ADR-0010 슬롯이었으나 그 사이 Pretendard 자가 호스팅이 ADR-0010으로 먼저 채택됨.)
 
 ---
 
@@ -419,13 +421,13 @@ export default class extends Controller {
 본 노트의 권고가 채택되면 Phase 1 첫 PR에서 다음을 함께 처리:
 
 1. **Tailwind `@theme` 토큰 정의** (Q1) — `application.tailwind.css`에 추가.
-2. **Pretendard Variable Subset 자가 호스팅** (Q3) — **P-public 옵션을 Phase 1 default로 채택**. `public/fonts/PretendardVariable-Subset.woff2` + CSS에서 `src: url("/fonts/PretendardVariable-Subset.woff2")`. `app/assets/fonts/` + ERB-rendered `@font-face`(P-layout-preload)는 디자인 시스템 PR과 함께 검증 후 적용. 라이선스 고지 함께.
-3. **ADR-0009** (Pretendard 자가 호스팅) 작성.
+2. **Pretendard Variable 자가 호스팅** (Q3) — **P-public 옵션을 Phase 1 default로 채택**. `public/fonts/PretendardVariable.v1.3.9.woff2` + CSS에서 `src: url("/fonts/PretendardVariable.v1.3.9.woff2")`. 라이선스 고지(`public/licenses/pretendard-OFL-1.1.txt`) 함께. *deviation:* Subset 단일 파일 ~200KB는 외부 네트워크 차단 + 한글 음절 수 하한으로 달성 불가하여 전체 Variable WOFF2(~2.0MB)로 출시 — 자세한 근거는 ADR-0010 참조.
+3. **[ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md)** (Pretendard 자가 호스팅) — 2026-05-15 채택.
 
 Phase 5 시작 전:
 
-4. **ADR-0010** (테마 저장 위치) 작성 — `User#settings["theme"]` vs `users.theme` 컬럼 vs `user_settings` 테이블 중 채택. 디스커버리 preference는 컬럼이지만 구속력 없음.
-5. ADR-0010 채택 후 Phase 5 구현 PR에서 마이그레이션 또는 JSON 키 추가 + UI 토글 + Stimulus controller.
+4. **ADR-0011** (테마 저장 위치) 작성 — `User#settings["theme"]` vs `users.theme` 컬럼 vs `user_settings` 테이블 중 채택. 디스커버리 preference는 컬럼이지만 구속력 없음.
+5. ADR-0011 채택 후 Phase 5 구현 PR에서 마이그레이션 또는 JSON 키 추가 + UI 토글 + Stimulus controller.
 
 본 사이클에서 *하지 않을 것*:
 
@@ -441,4 +443,4 @@ Phase 5 시작 전:
 - `docs/discovery/2026-05-15-design-system-synthesis.md` (12장: 후속 액션)
 - `docs/discovery/2026-05-15-ui-redesign-plan.md` (8장: 미해결 질문)
 - `docs/decisions/ADR-0003` ~ `ADR-0008` (Accepted, 2026-05-15)
-- 후속 ADR 후보: ADR-0009 (Pretendard 자가 호스팅), ADR-0010 (사용자 테마 저장 위치)
+- 후속 ADR: [ADR-0010](../decisions/ADR-0010-self-host-pretendard-variable.md) (Pretendard 자가 호스팅, 채택). 후속 ADR 후보: ADR-0011 (사용자 테마 저장 위치). 당초 ADR-0009/0010 슬롯으로 예약되었으나 그 사이 ADR-0009가 vision-dogfood로 선행 채택되어 번호가 한 칸씩 밀렸음.
