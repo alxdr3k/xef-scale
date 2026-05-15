@@ -3,7 +3,7 @@
   <%= turbo_stream.remove dom_id(@transaction) %>
 <% elsif @source == 'review' %>
   <%= turbo_stream.replace dom_id(@transaction),
-      partial: 'reviews/transaction_row',
+      partial: 'transactions/transaction_row',
       locals: {
         transaction: @transaction,
         categories: @categories,
