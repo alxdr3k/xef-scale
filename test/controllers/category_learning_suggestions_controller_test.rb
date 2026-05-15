@@ -126,6 +126,48 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
     assert_equal new_target.id, existing.reload.category_id
   end
 
+  test "create recovers from a concurrent unique-constraint race" do
+    # 시뮬레이션: 컨트롤러 첫 find_default_exact_mapping은 nil을 반환하지만,
+    # save 직전에 다른 요청이 같은 signature row를 만들었다. mapping.save →
+    # RecordNotUnique. 컨트롤러는 한 번 더 find & update하여 idempotent를
+    # 보장해야 한다.
+    target = categories(:transport)
+    merchant = @transaction.merchant.strip
+    racing_row = CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: merchant,
+      description_pattern: nil,
+      match_type: "exact",
+      amount: nil,
+      category: categories(:food),
+      source: "manual"
+    )
+
+    call_count = 0
+    original = CategoryMapping.method(:find_default_exact_mapping)
+    CategoryMapping.define_singleton_method(:find_default_exact_mapping) do |ws, m|
+      call_count += 1
+      # 첫 호출만 nil(처음에는 racing row가 없었다고 가정), 이후 호출은 실제 결과.
+      call_count == 1 ? nil : original.call(ws, m)
+    end
+
+    begin
+      assert_no_difference -> { CategoryMapping.count } do
+        post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
+             params: { category_id: target.id },
+             headers: { "Accept" => "text/vnd.turbo-stream.html" }
+      end
+    ensure
+      # `remove_method` 후 클래스 재로딩이 안 일어나면 후속 테스트에서 NoMethodError가
+      # 난다. 원본 Method 객체로 다시 정의해 복원한다.
+      CategoryMapping.define_singleton_method(:find_default_exact_mapping, original)
+    end
+
+    assert_response :success
+    assert_equal target.id, racing_row.reload.category_id
+    assert call_count >= 2, "rescue 경로가 finder를 재호출해야 함"
+  end
+
   test "create response removes the suggestion row via turbo_stream" do
     target = categories(:transport)
 

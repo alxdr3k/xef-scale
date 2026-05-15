@@ -69,9 +69,11 @@ Rails.application.configure do
   #   authentication: :plain
   # }
 
-  # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
-  # the I18n.default_locale when a translation cannot be found).
-  config.i18n.fallbacks = true
+  # Locale fallbacks for I18n. default_locale은 :ko (application.rb)지만 Devise
+  # 등 영어로만 정의된 키가 있으므로 :en을 명시 fallback 체인으로 둔다.
+  # `= true`로 두면 fallback 체인이 default_locale(:ko)로만 향해 영문 키가
+  # missing translation이 된다.
+  config.i18n.fallbacks = [ :en ]
 
   # Do not dump schema after migrations.
   config.active_record.dump_schema_after_migration = false
