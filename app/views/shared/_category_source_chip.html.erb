@@ -1,0 +1,59 @@
+<%#
+  CategorySourceChip — 카테고리 표시 + 결정 메커니즘 마크 (ADR-0007).
+
+  표시 구조: {color dot} {카테고리명} {decision mark}
+  카테고리 미지정(nil) 시 "미분류"를 secondary 톤으로 렌더.
+
+  결정 메커니즘(decision) — 거래의 카테고리가 *어떻게* 정해졌는가 (ADR-0007 §1):
+    :manual_set     — 사용자 직접 지정 → 마크 없음
+    :mapping_match  — CategoryMapping 매칭 → "·" 도트 (호버 시 "학습됨")
+    :keyword_match  — Category#keyword 매칭 → "·" 도트 (호버 시 "키워드")
+    :gemini_batch   — Gemini 배치 추천 → ✨ + 점선 테두리 (AI 채널 격리, X4 / ADR-0006)
+
+  Locals:
+    category  (Category|nil, required) — nil이면 "미분류"
+    decision  (Symbol, optional, default nil) — 위 4값. nil이면 마크 없음 (=manual_set 동등).
+    class     (String, default "")
+
+  주의: Transaction#classification_source 컬럼은 아직 없으므로 decision은
+        호출자가 비즈니스 로직에서 도출해 전달한다. 컬럼 도입은 후속 마이그레이션 ADR.
+
+  ADR-0003: 시맨틱 utility만 사용. 카테고리 color(record값)는 인라인 스타일 유지.
+%>
+<% category = local_assigns.fetch(:category) %>
+<% decision = local_assigns.fetch(:decision, nil)&.to_sym %>
+<% extra    = local_assigns.fetch(:class, "") %>
+
+<%
+  base_classes = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-caption max-w-40"
+  ai_chip      = decision == :gemini_batch
+  border_class = ai_chip ? "border border-dashed border-ai" : ""
+  text_class   = category ? "text-primary" : "text-secondary"
+%>
+
+<span class="<%= base_classes %> <%= border_class %> <%= text_class %> <%= extra %>"
+      <% if category %>style="background-color: <%= category.color %>20"<% end %>>
+  <% if category %>
+    <span aria-hidden="true"
+          class="inline-block w-2 h-2 rounded-full shrink-0"
+          style="background-color: <%= category.color %>"></span>
+    <span class="truncate"><%= category.name %></span>
+  <% else %>
+    <span class="truncate">미분류</span>
+  <% end %>
+
+  <% case decision %>
+  <% when :mapping_match %>
+    <span class="text-tertiary shrink-0"
+          aria-label="학습됨"
+          title="학습된 매핑으로 분류">·</span>
+  <% when :keyword_match %>
+    <span class="text-tertiary shrink-0"
+          aria-label="키워드"
+          title="카테고리 키워드로 분류">·</span>
+  <% when :gemini_batch %>
+    <span class="text-ai shrink-0"
+          aria-label="AI 추천"
+          title="AI 추천 (검토 필요)">✨</span>
+  <% end %>
+</span>

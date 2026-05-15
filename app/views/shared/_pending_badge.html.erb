@@ -1,0 +1,27 @@
+<%#
+  PendingBadge — pending_review 상태일 때만 노출되는 작은 도트/라벨 (ui-redesign-plan 3.2).
+
+  Locals:
+    status (String, required) — Transaction#status 또는 동등 문자열
+                                ("pending_review" / "committed" / "rolled_back")
+    label  (Boolean, default false) — true면 "검토 대기" 텍스트를 도트 옆에 함께 렌더.
+    class  (String, default "")     — 추가 utility class.
+
+  pending_review 가 아닌 경우 빈 출력 — 호출자가 매번 if를 쓸 필요가 없도록 한다.
+
+  ADR-0003 / ADR-0006: text-warning 토큰 사용 (의미: 사용자 결정이 필요한 보류 상태).
+%>
+<% status = local_assigns.fetch(:status).to_s %>
+<% with_label = local_assigns.fetch(:label, false) %>
+<% extra = local_assigns.fetch(:class, "") %>
+
+<% if status == "pending_review" %>
+  <span class="inline-flex items-center gap-1 text-warning text-caption <%= extra %>"
+        aria-label="검토 대기"
+        title="검토 대기">
+    <span aria-hidden="true" class="inline-block w-1.5 h-1.5 rounded-full bg-warning"></span>
+    <% if with_label %>
+      <span>검토 대기</span>
+    <% end %>
+  </span>
+<% end %>
