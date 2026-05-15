@@ -20,26 +20,7 @@
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
   </head>
 
-  <body class="bg-gray-50 min-h-dvh">
-    <% if user_signed_in? %>
-      <%= turbo_stream_from current_user %>
-      <% if current_workspace %>
-        <%= turbo_stream_from current_workspace %>
-      <% end %>
-      <%= render 'layouts/navbar' %>
-    <% end %>
-
-    <main class="<%= user_signed_in? ? 'pt-4 px-4 pb-20 sm:pb-6' : '' %>">
-      <%= yield %>
-    </main>
-
-    <% if user_signed_in? %>
-      <%= render 'layouts/mobile_bottom_nav' %>
-    <% end %>
-
-    <!-- Toast Notifications Container -->
-    <div id="flash" class="fixed top-6 right-6 z-50 space-y-3 max-w-sm w-full pointer-events-none">
-      <%= render 'shared/flash' %>
-    </div>
-  </body>
+  <%= render 'shared/screen_shell' do %>
+    <%= yield %>
+  <% end %>
 </html>
