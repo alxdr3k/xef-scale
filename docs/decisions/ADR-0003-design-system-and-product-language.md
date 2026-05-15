@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -28,7 +28,7 @@ xef-scale은 다음 4가지를 동시에 채택한다.
 1. **xef-scale Design Principles X1~X12** — `2026-05-15-design-system-synthesis.md 3장`에 정의된 12개 원칙. 모든 UI 결정은 이 원칙에서 파생된다.
 2. **시맨틱 디자인 토큰** — `synthesis.md 4장`에 정의된 컬러/타이포/간격/모션 토큰. Tailwind CSS의 `@theme` 블록과 `light-dark()`로 정의하며, `app/assets/stylesheets/application.tailwind.css`(또는 동등 진입점)를 단일 진실 원천으로 둔다. 컴포넌트는 *시맨틱* utility(`bg-surface`, `text-secondary`, `text-action`)만 사용하고 팔레트 utility(`bg-indigo-600`, `text-gray-900`)는 점진 제거한다.
 3. **Product Language (xPL)** — `synthesis.md 6장`의 컴포넌트 사전. Scene(라우트) / Section / Card / Row / Chip / Sheet 5층 명명을 ERB partial 명에 일관 적용. 직군 간 같은 단어로 같은 대상을 부른다.
-4. **컴포넌트 거버넌스 (X12, X15)** — 카탈로그에 없는 partial을 신설하려면 PR description에 "왜 기존 카탈로그로 못 푸는가" 1줄을 의무화한다. `_transaction_row` 같은 도메인 partial은 단일 출처를 유지하고 상태(`committed`/`pending_review`/`discarded`)는 conditional로 처리한다.
+4. **컴포넌트 거버넌스 (X12; Toss P15에서 번역)** — 카탈로그에 없는 partial을 신설하려면 PR description에 "왜 기존 카탈로그로 못 푸는가" 1줄을 의무화한다. `_transaction_row` 같은 도메인 partial은 단일 출처를 유지하고 상태(`committed`/`pending_review`/`discarded`)는 conditional로 처리한다.
 
 마이그레이션은 **Strangler Fig** 방식. 새 partial을 만들 때 기존 partial을 즉시 폐기하지 않고 페이지 단위로 점진 전환한다.
 
@@ -37,14 +37,14 @@ xef-scale은 다음 4가지를 동시에 채택한다.
 **긍정**
 - 다크 모드 도입의 기반이 마련된다 (ADR-0008 종속).
 - view 코드의 시각 일관성이 자동으로 보장된다.
-- 직군 간 의사소통 비용 감소 (뱅샐 BPL 사례에서 디자이너 1인당 월 ~38h 절약 보고됨, 본 레포 규모에서는 비례적).
+- 직군 간 의사소통 비용 감소 (뱅샐 BPL 같은 코드 레벨 토큰화 시스템이 협업 비용을 줄인다는 보고가 있다 — 본 레포 규모에서는 효과가 비례한다고 단정하기 어렵고 기대 수준).
 - 카피 변경이 `ko.yml` 한 곳에서 처리 (X10 종속).
 - 신규 page 작성이 컴포넌트 조합으로 압축됨.
 
 **부정**
 - 초기 마이그레이션 비용 (Phase 1~7, `ui-redesign-plan.md 6장`).
 - 기존 view를 점진 전환하는 동안 시각적 일관성이 한시 깨질 수 있음.
-- `@theme` 블록 도입은 Tailwind 4를 전제 — 본 레포의 Tailwind 버전 확인이 선행 필요. CSS-first config로 마이그레이션이 안 되면 별도 sub-디스커버리 후 supersede.
+- `@theme` 블록 도입은 Tailwind 4를 전제. `package.json` 기준 `tailwindcss@^4.1.18` + `@tailwindcss/postcss` 도입 확인됨(2026-05-15). Phase 1에서 `@theme`·`light-dark()`·시맨틱 utility 생성 및 Rails 빌드 호환성을 실측 검증한다 (`docs/discovery/2026-05-15-design-system-open-questions.md Q1`).
 
 **중립**
 - ViewComponent 도입 여부는 본 ADR이 결정하지 않는다 — Phase 2 시작 전 별도 ADR.

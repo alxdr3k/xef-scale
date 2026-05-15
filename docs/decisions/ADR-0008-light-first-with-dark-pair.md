@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -35,7 +35,10 @@ xef-scale의 컨텍스트는 다음 점에서 다르다:
 2. **다크 모드를 동등 지원** — 모든 토큰은 `light-dark()` CSS 함수로 라이트/다크 페어 정의 (ADR-0006의 토큰 시스템과 짝).
    - 한쪽만 정의하는 토큰 금지.
    - 다크 모드에서 명도 대비를 *별도 검증* (단순 색 반전이 아니라 다크 컨텍스트에서 컨트라스트 4.5:1 보장).
-3. **사용자 설정으로 강제 토글 가능** — `UserSetting#theme: auto | light | dark` 컬럼 추가.
+3. **사용자 설정으로 강제 토글 가능** — 값 도메인은 `auto | light | dark` 3종으로 고정. 저장 위치는 두 옵션 중 후속 ADR에서 선택한다 (현재 코드 사실: `UserSetting` 모델은 존재하지 않으며 사용자 설정은 `User#settings` JSON 컬럼에 저장된다, `serialize :settings, coder: JSON`).
+   - 옵션 A (기존 패턴 유지): `current_user.settings["theme"]`.
+   - 옵션 B (전용 컬럼): `users.theme:string` 추가.
+   - 본 ADR은 *값 도메인과 토글 가능성*만 결정한다. 저장 매체는 `docs/discovery/2026-05-15-design-system-open-questions.md Q4` 후속 ADR (ADR-0010 후보)에서 확정.
    - "내 계정" 카드(ADR-0004 더보기 탭)에 화면 테마 SwitchRow.
    - `<html>` 태그에 `data-theme` 속성 부여, Stimulus `theme_controller`로 토글.
 4. **컴포넌트는 토큰만 참조** — `bg-gray-50`, `text-gray-900` 같은 팔레트 utility 금지. `bg-surface`, `text-primary` 같은 시맨틱 utility만 사용.
@@ -61,7 +64,7 @@ xef-scale의 컨텍스트는 다음 점에서 다르다:
 
 **테스트/문서 영향**
 - 시각 회귀 테스트가 라이트·다크 양쪽 스냅샷 (Phase 5).
-- `docs/code-map.md`에 `UserSetting#theme` 마이그레이션 명시.
+- `docs/code-map.md`에 테마 저장 위치 (`User#settings["theme"]` 또는 `users.theme` 컬럼, 후속 ADR로 결정) 명시.
 - `docs/runtime.md`에 테마 토글 컨트롤러 명시.
 
 ## Alternatives considered
@@ -82,4 +85,4 @@ xef-scale의 컨텍스트는 다음 점에서 다르다:
 - 디스커버리: `docs/discovery/2026-05-15-banksalad-ui-deconstruction.md` (1.1)
 - 디스커버리: `docs/discovery/2026-05-15-ui-redesign-plan.md` (5.3, Phase 5)
 - 관련 ADR: ADR-0003, ADR-0006
-- 코드: `app/views/layouts/application.html.erb`, `app/models/user_setting.rb`
+- 코드: `app/views/layouts/application.html.erb`, `app/models/user.rb` (`serialize :settings, coder: JSON`), `app/controllers/user_settings_controller.rb`

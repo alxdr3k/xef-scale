@@ -18,7 +18,7 @@ xef-scale의 수락된 구현·아키텍처 결정 기록(ADR).
 - [ADR-0001](ADR-0001-defer-pundit-adoption.md) — Pundit 채택을 보류하고 커스텀 권한 패턴을 유지한다 (Accepted, 2026-05-15)
 - [ADR-0002](ADR-0002-active-storage-blob-retention.md) — 업로드 이미지 blob은 ParsingSession 종결 후 180일 보존하고 자동 purge한다 (Accepted, 2026-05-15)
 
-### Design system 결정 묶음 (Proposed, 2026-05-15)
+### Design system 결정 묶음 (Accepted, 2026-05-15)
 
 > `docs/discovery/2026-05-15-design-system-synthesis.md` + `2026-05-15-ui-redesign-plan.md`에서 승격된 결정들. 토스·뱅크샐러드 UI 해체분석 → 통합 → xef-scale 도메인 번역의 결과. ADR-0003이 우산 결정이며 나머지가 그 위에 얹힌다.
 

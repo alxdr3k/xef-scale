@@ -20,3 +20,4 @@
 - [2026-05-15-banksalad-ui-deconstruction.md](2026-05-15-banksalad-ui-deconstruction.md) — 뱅크샐러드 가계부 UI 해체분석: 원칙 10개 추출 → 외부 자료 교차검증 → GPT 병행 분석 부록 → xef-scale 디자인 시스템 명세.
 - [2026-05-15-design-system-synthesis.md](2026-05-15-design-system-synthesis.md) — **토스 + 뱅샐 종합 보고서**: 두 분석을 통합한 xef-scale 디자인 시스템 결정 권고(원칙 X1~X12, 토큰, Product Language, 5탭 IA, UX Writing 사전, 의도적 마찰).
 - [2026-05-15-ui-redesign-plan.md](2026-05-15-ui-redesign-plan.md) — xef-scale UI 재구성 실행 계획: 현재 진단 + 화면별 재구성 명세 + 단계별 로드맵 + 마이그레이션 전략.
+- [2026-05-15-design-system-open-questions.md](2026-05-15-design-system-open-questions.md) — Phase 1 시작 전 미해결 질문 7개(Tailwind 4, ViewComponent, Pretendard 호스팅, theme 저장, 라우트, 키보드, 일러스트)에 대한 컨텍스트·옵션·권고·후속 액션. ADR-0009/0010 후보 식별.
