@@ -96,6 +96,46 @@ class ActiveStorageBlobCleanupJobTest < ActiveJob::TestCase
     assert_nil not_eligible.reload.blob_purged_at
   end
 
+  test "scan stays O(1) in row-fan-out queries (regression: N+1 on parsing_session/attachment)" do
+    # Three retained ProcessedFile rows, all non-eligible so purge_blob! does
+    # not fire and we only measure the scan cost. Without eager-loading,
+    # blob_eligible_for_purge? would lazy-load parsing_session per row and the
+    # attachment per row, growing linearly with the backlog.
+    3.times do |i|
+      pf = @workspace.processed_files.create!(
+        filename: "noop_#{i}.png",
+        status: "completed"
+      )
+      attach_dummy_blob(pf)
+      pf.create_parsing_session!(
+        workspace: @workspace,
+        source_type: "file_upload",
+        status: "completed",
+        review_status: "pending_review"
+      )
+    end
+
+    select_counts = Hash.new(0)
+    subscriber = ->(_name, _start, _finish, _id, payload) {
+      sql = payload[:sql].to_s
+      next if payload[:name] == "SCHEMA"
+      next unless sql.match?(/\ASELECT/i)
+      table = sql[/FROM "?([a-z_]+)"?/i, 1]
+      select_counts[table] += 1 if table
+    }
+
+    ActiveSupport::Notifications.subscribed(subscriber, "sql.active_record") do
+      ActiveStorageBlobCleanupJob.new.perform
+    end
+
+    # The Codex P2 concern was specifically that blob_eligible_for_purge?
+    # dereferences parsing_session per row. With proper eager loading the
+    # entire batch's parsing_sessions resolve in a single SELECT, so the
+    # count must stay tight regardless of how many rows blob_retained yields.
+    assert_operator select_counts["parsing_sessions"], :<=, 1,
+                    "expected <= 1 parsing_sessions SELECT (eager-loaded), got #{select_counts['parsing_sessions']}"
+  end
+
   private
 
   def attach_dummy_blob(pf)

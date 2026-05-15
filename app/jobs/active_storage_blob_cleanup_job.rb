@@ -6,11 +6,19 @@ class ActiveStorageBlobCleanupJob < ApplicationJob
   # long enough to release the file. The actual file.purge_later is fanned out
   # inside ProcessedFile#purge_blob! so a slow storage backend cannot block this
   # daily sweep.
+  #
+  # `blob_eligible_for_purge?` dereferences both `parsing_session` and the
+  # ActiveStorage attachment, so we eager-load both to avoid an N+1 fan-out
+  # that would tie up the default queue on backlogs of any size.
   def perform
     purged = 0
     scanned = 0
 
-    ProcessedFile.blob_retained.find_each do |processed_file|
+    ProcessedFile
+      .blob_retained
+      .includes(:parsing_session)
+      .with_attached_file
+      .find_each do |processed_file|
       scanned += 1
       next unless processed_file.blob_eligible_for_purge?
 

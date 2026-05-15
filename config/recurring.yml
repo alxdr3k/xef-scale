@@ -16,8 +16,10 @@ production:
   # ADR-0002: purge ActiveStorage blobs whose parsing session has been in a
   # terminal state for >= 180 days. Runs once a day at 03:00 KST — off-peak,
   # and the daily cadence means a failed run is automatically retried the next
-  # day rather than needing per-run retry logic.
+  # day rather than needing per-run retry logic. The "Asia/Seoul" suffix is
+  # parsed by Fugit so the schedule is pinned to KST regardless of the worker
+  # container's process timezone (containers default to UTC).
   cleanup_active_storage_blobs:
     class: ActiveStorageBlobCleanupJob
     queue: default
-    schedule: every day at 3am
+    schedule: every day at 3am Asia/Seoul
