@@ -1,3 +1,12 @@
 <%= turbo_stream.replace dom_id(@transaction) do %>
   <%= render 'transaction_row', transaction: @transaction %>
 <% end %>
+
+<%# 이전 suggestion 잔존을 제거 (Turbo는 미존재 id에 대해 idempotent). %>
+<%= turbo_stream.remove "category-learning-suggestion-#{@transaction.id}" %>
+
+<% if @show_learning_suggestion %>
+  <%= turbo_stream.after dom_id(@transaction) do %>
+    <%= render 'transactions/category_learning_suggestion_row', transaction: @transaction %>
+  <% end %>
+<% end %>

@@ -238,6 +238,133 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal true, body["success"]
   end
 
+  # ADR-0007 §4: explicit opt-in 학습. quick_update_category / update /
+  # bulk_update(change_category) 어느 경로도 CategoryMapping을 묵시적으로
+  # 만들지 않는다.
+
+  test "quick_update_category does not silently create a CategoryMapping" do
+    assert_no_difference -> { CategoryMapping.count } do
+      patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+            params: { category_id: categories(:transport).id },
+            headers: { "Accept" => "application/json" }
+    end
+    assert_response :success
+  end
+
+  test "update does not silently create a CategoryMapping when category changes" do
+    assert_no_difference -> { CategoryMapping.count } do
+      patch workspace_transaction_path(@workspace, @transaction),
+            params: { transaction: { category_id: categories(:transport).id } }
+    end
+  end
+
+  test "bulk_update change_category does not silently create a CategoryMapping" do
+    other = @workspace.transactions.create!(
+      date: Date.current, merchant: "다른가맹점", amount: 1234, status: "committed"
+    )
+    assert_no_difference -> { CategoryMapping.count } do
+      post bulk_update_workspace_transactions_path(@workspace),
+           params: {
+             action_type: "change_category",
+             category_id: categories(:transport).id,
+             transaction_ids: [ @transaction.id, other.id ]
+           }
+    end
+  end
+
+  test "quick_update_category admin response includes inline learning suggestion when no mapping exists" do
+    target_category = categories(:transport)
+    refute_equal target_category.id, @transaction.category_id
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: target_category.id },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_match(/category-learning-suggestion-#{@transaction.id}/, response.body)
+    assert_match(/category-learning-suggestion#accept/, response.body)
+    assert_match(/category-learning-suggestion#dismiss/, response.body)
+  end
+
+  test "quick_update_category suppresses suggestion when category did not change" do
+    same = @transaction.category_id
+    assert same.present?, "fixture must be categorized"
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: same },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    # remove still appears (idempotent cleanup) but no `after` insertion of the row partial
+    refute_match(/category-learning-suggestion#accept/, response.body)
+  end
+
+  test "quick_update_category suppresses suggestion when merchant is blank" do
+    @transaction.update_column(:merchant, "")
+    target_category = categories(:transport)
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: target_category.id },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    refute_match(/category-learning-suggestion#accept/, response.body)
+  end
+
+  test "quick_update_category suppresses suggestion when same mapping already exists" do
+    target_category = categories(:transport)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: @transaction.merchant.strip,
+      description_pattern: nil,
+      match_type: "exact",
+      amount: nil,
+      category: target_category,
+      source: "manual"
+    )
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: target_category.id },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    refute_match(/category-learning-suggestion#accept/, response.body)
+  end
+
+  test "quick_update_category still offers suggestion when existing mapping points to a different category" do
+    new_target = categories(:transport)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: @transaction.merchant.strip,
+      description_pattern: nil,
+      match_type: "exact",
+      amount: nil,
+      category: categories(:food),
+      source: "manual"
+    )
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: new_target.id },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_match(/category-learning-suggestion#accept/, response.body)
+  end
+
+  test "quick_update_category suppresses suggestion for non-admin writers" do
+    sign_out @user
+    sign_in users(:member) # member_write role per fixtures
+    refute users(:member).admin_of?(@workspace)
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: categories(:transport).id },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_equal categories(:transport).id, @transaction.reload.category_id
+    refute_match(/category-learning-suggestion#accept/, response.body)
+  end
+
   test "quick_update_category rejects categories from other workspaces" do
     foreign = categories(:other_category)
     original_category_id = @transaction.category_id

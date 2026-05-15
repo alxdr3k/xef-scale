@@ -55,15 +55,9 @@ class TransactionsController < ApplicationController
   end
 
   def update
-    old_category_id = @transaction.category_id
     old_allowance_status = @transaction.allowance?
 
     if @transaction.update(transaction_params)
-      # 카테고리가 변경되었으면 매핑 생성
-      if transaction_params[:category_id].present? && transaction_params[:category_id].to_i != old_category_id
-        create_category_mapping(@transaction, @transaction.category)
-      end
-
       # Handle allowance toggle if present in params
       if params[:allowance].present?
         new_allowance_status = params[:allowance] == "1"
@@ -145,10 +139,7 @@ class TransactionsController < ApplicationController
 
     if @transaction.update(category_id: category_id)
       @categories = @workspace.categories.order(:name)
-
-      if category_id.present? && category_id.to_i != old_category_id
-        create_category_mapping(@transaction, @transaction.category)
-      end
+      @show_learning_suggestion = eligible_for_learning_suggestion?(@transaction, old_category_id)
 
       respond_to do |format|
         format.turbo_stream
@@ -276,7 +267,6 @@ class TransactionsController < ApplicationController
       count = 0
       transactions.find_each do |tx|
         tx.update!(category_id: category&.id)
-        create_category_mapping(tx, category) if category
         count += 1
       end
       notice = "#{count}건의 거래 카테고리가 변경되었습니다."
@@ -404,31 +394,30 @@ class TransactionsController < ApplicationController
     str.start_with?("=", "+", "-", "@", "\t", "\r") ? "'#{str}" : str
   end
 
-  def create_category_mapping(transaction, category)
-    return if transaction.merchant.blank? || category.nil?
+  # ADR-0007 §4: 카테고리 변경 시 학습은 explicit opt-in으로만 일어난다.
+  # 사용자가 quick_update_category로 행 카테고리를 바꿨을 때 inline
+  # suggestion row를 띄울지 결정한다.
+  #
+  # 조건:
+  #   - admin 권한
+  #   - 카테고리가 실제로 변경되었고 새 카테고리가 present
+  #   - merchant가 present (학습 대상)
+  #   - 동일 (merchant, exact, amount=nil, description=nil) signature 매핑이
+  #     이미 같은 카테고리를 가리키면 학습할 게 없으므로 미노출
+  def eligible_for_learning_suggestion?(transaction, old_category_id)
+    return false unless current_user.admin_of?(@workspace)
+    return false if transaction.category_id.blank?
+    return false if transaction.category_id == old_category_id
+    return false if transaction.merchant.to_s.strip.blank?
 
-    # description이 있으면 description_pattern 포함 매핑 생성, 없으면 기본 매핑
-    description_pattern = extract_description_pattern(transaction.description)
-
-    mapping = CategoryMapping.find_or_initialize_by(
+    existing = CategoryMapping.find_by(
       workspace: @workspace,
-      merchant_pattern: transaction.merchant,
-      description_pattern: description_pattern,
+      merchant_pattern: transaction.merchant.strip,
+      description_pattern: nil,
       match_type: "exact",
       amount: nil
     )
-
-    mapping.category = category
-    mapping.source = "manual"
-    mapping.save!
-  rescue ActiveRecord::RecordInvalid => e
-    Rails.logger.warn "[TransactionsController] 매핑 생성 실패: #{e.message}"
-  end
-
-  def extract_description_pattern(description)
-    return nil if description.blank?
-
-    description.strip.presence
+    existing.nil? || existing.category_id != transaction.category_id
   end
 
   def apply_index_filters(scope, year:, month:)

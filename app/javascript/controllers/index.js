@@ -22,6 +22,9 @@ application.register("bulk-select", BulkSelectController)
 import CategoryBroadcastController from "./category_broadcast_controller"
 application.register("category-broadcast", CategoryBroadcastController)
 
+import CategoryLearningSuggestionController from "./category_learning_suggestion_controller"
+application.register("category-learning-suggestion", CategoryLearningSuggestionController)
+
 import CategorySelectorController from "./category_selector_controller"
 application.register("category-selector", CategorySelectorController)
 
