@@ -305,4 +305,34 @@ class SharedPartialsTest < ActionView::TestCase
     assert_match "mt-4", output
     assert_match "max-w-md", output
   end
+
+  # ---------- transactions/_transaction_row ----------
+
+  test "transaction_row does not render category selector for deleted rows" do
+    @workspace = workspaces(:main_workspace)
+    deleted = transactions(:deleted_transaction)
+    output = render(partial: "transactions/transaction_row",
+                    locals: { transaction: deleted, read_only: false, categories: @workspace.categories })
+
+    # 카테고리 칩은 read-only chip만 렌더되고 dropdown stimulus controller는 부착되지 않아야 한다.
+    refute_match 'data-controller="category-selector"', output
+  end
+
+  test "transaction_row renders category selector for active editable rows" do
+    @workspace = workspaces(:main_workspace)
+    active = transactions(:food_transaction)
+    output = render(partial: "transactions/transaction_row",
+                    locals: { transaction: active, read_only: false, categories: @workspace.categories })
+
+    assert_match 'data-controller="category-selector"', output
+  end
+
+  test "transaction_row hides category selector when read_only even if active" do
+    @workspace = workspaces(:main_workspace)
+    active = transactions(:food_transaction)
+    output = render(partial: "transactions/transaction_row",
+                    locals: { transaction: active, read_only: true, categories: @workspace.categories })
+
+    refute_match 'data-controller="category-selector"', output
+  end
 end

@@ -1,3 +1,9 @@
 <%= turbo_stream.replace dom_id(@transaction) do %>
   <%= render 'transaction_row', transaction: @transaction %>
 <% end %>
+
+<%# inline-edit으로 merchant가 바뀌면 화면에 남아있던 학습 제안의 merchant snapshot이
+    stale이 된다. server-side stale 검증으로 잘못된 매핑은 막히지만, UX 측면에서
+    무효해진 제안은 즉시 사라지는 게 자연스럽다. Turbo remove는 id 미존재 시
+    no-op이라 다른 필드 inline 편집에서도 안전하다. %>
+<%= turbo_stream.remove "category-learning-suggestion-#{@transaction.id}" %>

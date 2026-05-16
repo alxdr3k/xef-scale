@@ -16,6 +16,7 @@
     data-controller="category-learning-suggestion"
     data-category-learning-suggestion-url-value="<%= workspace_transaction_category_learning_suggestion_path(@workspace, transaction) %>"
     data-category-learning-suggestion-category-id-value="<%= transaction.category_id %>"
+    data-category-learning-suggestion-merchant-value="<%= transaction.merchant.to_s.strip %>"
     class="bg-ai-subtle">
   <td colspan="6" class="px-4 py-3">
     <div class="flex items-center justify-between gap-3 flex-wrap">
