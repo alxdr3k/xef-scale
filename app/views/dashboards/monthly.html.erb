@@ -40,6 +40,17 @@
         supporting: supporting_parts.join(" · ") %>
   </div>
 
+  <%# Phase 4 slice 2: VarianceCard — 현재 월 + 전월 데이터 있을 때만 노출. %>
+  <% if @variance %>
+    <div class="mb-4">
+      <%= render 'shared/variance_card',
+          variance: @variance,
+          workspace: @workspace,
+          year: @year,
+          month: @month %>
+    </div>
+  <% end %>
+
   <%# Phase 4: ReviewInboxCard — N>0일 때만 노출. 사용자 행동 압력. %>
   <div class="mb-6">
     <%= render 'shared/review_inbox_card',

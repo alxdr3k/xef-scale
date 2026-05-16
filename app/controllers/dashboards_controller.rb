@@ -21,6 +21,7 @@ class DashboardsController < ApplicationController
     @daily_average_denominator = daily_average_denominator(@year, @month)
     @daily_average = @daily_average_denominator.zero? ? 0 : (@total_spending / @daily_average_denominator)
     review_inbox_counts!
+    @variance = monthly_variance!(@year, @month, @total_spending)
 
     render :monthly
   end
@@ -182,6 +183,44 @@ class DashboardsController < ApplicationController
                                 .merge(ParsingSession.needs_review)
                                 .where(parsing_sessions: { workspace_id: @workspace.id })
                                 .count
+  end
+
+  # Phase 4 slice 2: VarianceCard 데이터.
+  # - 현재 월(`year/month`)의 진행 중인 시점(today)까지 누적 vs 전월 같은 일자까지 누적
+  # - variance_pct = round((current - prior) / prior * 100)
+  # - projected: 현재 페이스를 그대로 유지했을 때 월말 예상 (today < month_end일 때만)
+  #
+  # 현재 보고 있는 월이 `Date.current`의 (year, month)가 아니거나, 데이터가
+  # 비교 불가능한 경우(prior 0건 등) nil 반환 — view는 카드 자체를 미렌더.
+  def monthly_variance!(year, month, current_month_total)
+    today = Date.current
+    return nil unless today.year == year && today.month == month
+
+    day_of_month = today.day
+    start_of_month = Date.new(year, month, 1)
+    end_of_month = start_of_month.end_of_month
+    return nil if day_of_month >= end_of_month.day # 마지막 날 — 페이스 의미 없음
+
+    prior_start = start_of_month.prev_month
+    prior_end = [ prior_start + (day_of_month - 1), prior_start.end_of_month ].min
+    prior_total = @workspace.transactions
+                            .active
+                            .excluding_coupon
+                            .where(date: prior_start..prior_end)
+                            .sum(:amount)
+
+    return nil if prior_total.zero?
+
+    variance_pct = (((current_month_total - prior_total).to_f / prior_total) * 100).round
+    projected_end = ((current_month_total.to_f / day_of_month) * end_of_month.day).round
+
+    {
+      prior_total: prior_total,
+      current_total: current_month_total,
+      variance_pct: variance_pct,
+      projected_end: projected_end,
+      compared_until_day: day_of_month
+    }
   end
 
   def sanitize_date(value)

@@ -1,0 +1,50 @@
+<%#
+  VarianceCard — 현재 월 페이스 vs 전월 같은 시점 누적 비교 (ui-redesign-plan §3.1, Phase 4).
+  뱅샐 P8 "예측 수치엔 근거 캡션": 비교 기간이 명시되어야 한다.
+
+  Locals:
+    variance (Hash|nil, required) — DashboardsController#monthly_variance! 결과
+      :prior_total       (Integer) — 전월 같은 일자까지 누적
+      :current_total     (Integer) — 현재 월 today까지 누적
+      :variance_pct      (Integer) — round((current - prior) / prior * 100)
+      :projected_end     (Integer) — 현재 페이스 유지 시 월말 예상 누적
+      :compared_until_day (Integer) — D일까지 누적이라는 비교 기간
+    workspace (Workspace, required)
+    year, month (Integer, required) — CTA 링크용
+
+  variance가 nil이면 *렌더 안 함* (전월 데이터 없음 / 보고 있는 월이 today와 다름 / 마지막 날).
+%>
+<% variance  = local_assigns.fetch(:variance) %>
+<% workspace = local_assigns.fetch(:workspace) %>
+<% year      = local_assigns.fetch(:year) %>
+<% month     = local_assigns.fetch(:month) %>
+
+<% if variance %>
+  <%
+    pct = variance[:variance_pct]
+    increased = pct.positive?
+    decreased = pct.negative?
+    arrow = increased ? "▲" : (decreased ? "▼" : "—")
+    # 의미축: 지출이 *늘었으면* warning, *줄었으면* positive (ADR-0006).
+    tone_class = increased ? "text-warning" : (decreased ? "text-positive" : "text-secondary")
+    abs_pct = pct.abs
+  %>
+  <section class="bg-surface rounded-lg shadow-card p-5"
+           aria-label="이번 달 페이스">
+    <p class="text-meta text-secondary">지난달 같은 시점 대비</p>
+    <div class="mt-1 flex items-baseline gap-2">
+      <span class="<%= tone_class %> text-2xl font-bold tabular-nums">
+        <%= arrow %> <%= abs_pct %>%
+      </span>
+      <span class="text-meta text-tertiary">
+        (D-<%= variance[:compared_until_day] %>까지 ₩<%= number_with_delimiter(variance[:prior_total]) %> → ₩<%= number_with_delimiter(variance[:current_total]) %>)
+      </span>
+    </div>
+    <p class="mt-3 text-meta text-secondary">
+      이 페이스 유지 시 예상 마감 약 <span class="text-primary font-medium tabular-nums">₩<%= number_with_delimiter(variance[:projected_end]) %></span>
+    </p>
+    <%= link_to '상세 보기 →',
+          workspace_transactions_path(workspace, year: year, month: month),
+          class: "mt-3 inline-flex items-center text-meta font-medium text-action hover:text-action-hover" %>
+  </section>
+<% end %>
