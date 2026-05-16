@@ -28,6 +28,9 @@ application.register("category-learning-suggestion", CategoryLearningSuggestionC
 import ReviewTabsController from "./review_tabs_controller"
 application.register("review-tabs", ReviewTabsController)
 
+import InputSheetController from "./input_sheet_controller"
+application.register("input-sheet", InputSheetController)
+
 import CategorySelectorController from "./category_selector_controller"
 application.register("category-selector", CategorySelectorController)
 

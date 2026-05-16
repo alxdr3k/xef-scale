@@ -17,13 +17,8 @@
         파싱 결과를 확인하고 중복을 정리한 뒤 거래 내역에 반영하세요.
       </p>
     </div>
-    <%= link_to workspace_parsing_sessions_path(@workspace),
-        class: "inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md bg-action text-action-on hover:bg-action-hover" do %>
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-      </svg>
-      새로 가져오기
-    <% end %>
+    <%# Phase 3.3: "+ 새로 가져오기"는 시트를 연다. parsing_sessions/index로의 하드 링크는 폐기. %>
+    <%= render 'shared/input_sheet', workspace: @workspace %>
   </div>
 
   <%# 세그먼트 탭 — segmented_tabs 채택은 Phase 3.x. 본 PR은 인라인. %>
