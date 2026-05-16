@@ -2,9 +2,62 @@ class ReviewsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :set_parsing_session
-  before_action :require_workspace_write_access, except: [ :show ]
+  # ADR-0004 §"필수": 인덱스는 parsing_session_id를 가지지 않으므로
+  # set_parsing_session에서 제외. 인덱스는 read 권한만 요구한다.
+  before_action :set_parsing_session, except: [ :index ]
+  before_action :require_workspace_write_access, except: [ :show, :index ]
   before_action :reject_if_finalized, only: [ :bulk_update, :bulk_resolve_duplicates, :update_transaction ]
+
+  # 검토함 인덱스 — IA 1번 시민 (ADR-0004).
+  # - 파싱 결과 탭: `ParsingSession.needs_review` (= completed.pending_review).
+  #   `review_status: "pending_review"` 단독 사용 금지 (status가 pending/processing/failed인
+  #   세션도 같은 값을 가질 수 있어 미처리 세션이 큐에 섞임 — ADR-0004 §"왜 needs_review인가").
+  # - 중복 후보 탭: 같은 워크스페이스의 `needs_review` 세션에 속한 pending DuplicateConfirmation.
+  #   DuplicateConfirmation은 자체 workspace_id가 없어 parsing_session 조인을 통해
+  #   스코핑해야 cross-tenant leak이 방지된다 (ADR-0004 §"필수"). 또한 finalized(commit/
+  #   rollback/discard) 세션의 잔여 pending dup은 사용자가 해결할 수 없으므로 인덱스에서
+  #   제외한다.
+  #
+  # Counts:
+  # - 탭 badge용 *전체* count는 `*_count` ivar로 보존, 실제 렌더 컬렉션은
+  #   하드 limit으로 제한해 unbounded 응답 비용을 방지한다.
+  # - 행별 (per-session) 거래/중복 카운트는 grouped count로 한 번에 집계해 N+1을 회피.
+  # - 정식 per-tab pagy 도입은 Phase 3.3 검토함 화면 PR에서.
+  INDEX_LIMIT = 50
+
+  def index
+    sessions_scope = @workspace.parsing_sessions.needs_review
+    @pending_sessions_count = sessions_scope.count
+    @pending_sessions = sessions_scope
+                          .includes(:processed_file)
+                          .order(created_at: :desc)
+                          .limit(INDEX_LIMIT)
+
+    duplicates_scope = DuplicateConfirmation
+                         .pending
+                         .joins(:parsing_session)
+                         .merge(ParsingSession.needs_review)
+                         .where(parsing_sessions: { workspace_id: @workspace.id })
+    @pending_duplicates_count = duplicates_scope.count
+    @pending_duplicates = duplicates_scope
+                            .includes(
+                              :parsing_session,
+                              original_transaction: [ :category ],
+                              new_transaction: [ :category ]
+                            )
+                            .order(created_at: :desc)
+                            .limit(INDEX_LIMIT)
+
+    session_ids = @pending_sessions.map(&:id)
+    @pending_tx_counts = Transaction
+                           .where(parsing_session_id: session_ids, status: "pending_review", deleted: false)
+                           .group(:parsing_session_id)
+                           .count
+    @pending_dup_counts = DuplicateConfirmation
+                            .where(parsing_session_id: session_ids, status: "pending")
+                            .group(:parsing_session_id)
+                            .count
+  end
 
   def show
     @transactions = @parsing_session.reviewable_transactions

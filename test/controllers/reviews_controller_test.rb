@@ -335,4 +335,122 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_equal target.id, tx.reload.category_id
   end
+
+  # ADR-0004 §"필수" — reviews#index callback fix + needs_review scope + cross-tenant safe duplicate scoping.
+
+  test "index renders for owner with parsing session present" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get workspace_reviews_path(@workspace)
+
+    assert_response :success
+    assert_select "h1", text: "검토함"
+    # 파싱 결과 row에 detail 페이지(reviews#show) 링크가 포함
+    assert_includes response.body, review_workspace_parsing_session_path(@workspace, @parsing_session)
+  end
+
+  test "index is reachable by member_read (read-only) member" do
+    # ADR-0004 §"필수": index는 read 권한만 요구.
+    # require_workspace_write_access가 except: [:show, :index]로 풀려야 통과.
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    sign_out @user
+    sign_in users(:reader)
+
+    get workspace_reviews_path(@workspace)
+
+    assert_response :success
+  end
+
+  test "index excludes parsing_sessions whose status is not completed (uses needs_review scope)" do
+    # ADR-0004 §"왜 needs_review인가": review_status가 기본값 'pending_review'라
+    # status가 pending/processing/failed인 세션도 동일 값을 가질 수 있음.
+    # 미완료 세션이 인덱스에 섞이지 않아야 한다.
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    pending = parsing_sessions(:pending_session)      # status: pending
+    processing = parsing_sessions(:processing_session) # status: processing
+    failed = parsing_sessions(:failed_session)         # status: failed
+    [ pending, processing, failed ].each do |ps|
+      assert_equal "pending_review", ps.review_status, "fixture #{ps.id} should default to pending_review"
+    end
+
+    get workspace_reviews_path(@workspace)
+
+    # 완료된 세션의 review URL만 포함, 비완료 세션 URL은 미포함.
+    assert_includes response.body, review_workspace_parsing_session_path(@workspace, @parsing_session)
+    [ pending, processing, failed ].each do |ps|
+      assert_not_includes response.body, review_workspace_parsing_session_path(@workspace, ps),
+                          "index should not link to non-completed session #{ps.id}"
+    end
+  end
+
+  test "index pending_duplicates excludes finalized sessions (review_status != pending_review)" do
+    # 사용자 시각에서 commit/rollback/discard된 세션의 잔여 pending dup은
+    # reviews#show가 read_only로 잠겨 해결 액션을 제공하지 않는다.
+    # 인덱스 자체에서 제외해 stale 행이 큐에 보이지 않게 한다.
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    finalized = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "committed",
+      total_count: 0, success_count: 0, duplicate_count: 0, error_count: 0
+    )
+    finalized_tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "STALE_DUP_MERCHANT_XYZ",
+      status: "pending_review", parsing_session: finalized
+    )
+    finalized.duplicate_confirmations.create!(
+      original_transaction: transactions(:food_transaction),
+      new_transaction: finalized_tx,
+      status: "pending"
+    )
+
+    get workspace_reviews_path(@workspace)
+
+    assert_response :success
+    assert_not_includes response.body, "STALE_DUP_MERCHANT_XYZ",
+                        "finalized session's pending dup should not appear in inbox"
+  end
+
+  test "index pending_duplicates does not leak across workspaces" do
+    # ADR-0004 §"필수": DuplicateConfirmation은 자체 workspace_id가 없고
+    # parsing_session 조인을 통해서만 스코프 가능. 직접 .pending 호출 시 leak.
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    @parsing_session.duplicate_confirmations.create!(
+      original_transaction: transactions(:food_transaction),
+      new_transaction: transactions(:transport_transaction),
+      status: "pending"
+    )
+
+    other_ws = workspaces(:other_workspace)
+    other_session = other_ws.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review",
+      total_count: 0, success_count: 0, duplicate_count: 0, error_count: 0
+    )
+    other_tx_original = other_ws.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "OTHER_MERCHANT_ORIGINAL_XYZ",
+      status: "committed"
+    )
+    other_tx_new = other_ws.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "OTHER_MERCHANT_NEW_XYZ",
+      status: "pending_review", parsing_session: other_session
+    )
+    other_session.duplicate_confirmations.create!(
+      original_transaction: other_tx_original,
+      new_transaction: other_tx_new,
+      status: "pending"
+    )
+
+    get workspace_reviews_path(@workspace)
+
+    # 본인 워크스페이스의 세션은 포함, 타 워크스페이스 세션은 URL이 노출되면 leak.
+    assert_response :success
+    assert_not_includes response.body,
+                        review_workspace_parsing_session_path(other_ws, other_session),
+                        "cross-tenant duplicate leak: index linked to other workspace's session"
+    assert_not_includes response.body, "OTHER_MERCHANT_NEW_XYZ",
+                        "cross-tenant duplicate leak: index showed other workspace's transaction merchant"
+  end
 end

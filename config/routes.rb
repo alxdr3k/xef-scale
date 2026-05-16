@@ -60,6 +60,11 @@ Rails.application.routes.draw do
     # Category mappings (분류 규칙)
     resources :category_mappings, except: [ :show ]
 
+    # 검토함 인덱스 (ADR-0004) — 파싱 세션 needs_review + pending 중복 후보를
+    # 한 화면에 합쳐 보여주는 IA 1번 시민. 세부 검토는 기존
+    # `parsing_sessions/:id/review` (reviews#show) 경로 유지.
+    resources :reviews, only: [ :index ]
+
     # File uploads and parsing
     resources :parsing_sessions, only: [ :index, :show, :create, :destroy ] do
       collection do

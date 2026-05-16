@@ -25,6 +25,9 @@ application.register("category-broadcast", CategoryBroadcastController)
 import CategoryLearningSuggestionController from "./category_learning_suggestion_controller"
 application.register("category-learning-suggestion", CategoryLearningSuggestionController)
 
+import ReviewTabsController from "./review_tabs_controller"
+application.register("review-tabs", ReviewTabsController)
+
 import CategorySelectorController from "./category_selector_controller"
 application.register("category-selector", CategorySelectorController)
 
