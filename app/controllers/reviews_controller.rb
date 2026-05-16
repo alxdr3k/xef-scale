@@ -291,8 +291,12 @@ class ReviewsController < ApplicationController
           @transaction.merchant,
           @transaction.description
         )
-        # ADR-0011 §Decision 3: merchant 변경으로 재매칭된 카테고리는 `mapping_match`.
-        @transaction.update(category: new_category, classification_source: "mapping_match") if new_category
+        # ADR-0011 §Decision 3: 재매칭이 *다른* 카테고리를 가리킬 때만 mapping_match로
+        # 갱신한다. 같은 카테고리면 의미상 분류 변동이 없으므로 기존 classification_source
+        # (예: 사용자가 이전에 지정한 manual_set)를 silent overwrite하지 않는다.
+        if new_category && new_category.id != @transaction.category_id
+          @transaction.update(category: new_category, classification_source: "mapping_match")
+        end
       end
 
       # ADR-0007 §4: 카테고리 변경 시 묵시적 CategoryMapping 생성은 금지.

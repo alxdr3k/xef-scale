@@ -507,6 +507,29 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "manual_set", @transaction.reload.classification_source
   end
 
+  test "update (edit page) with category_id sets manual_set" do
+    # Codex PR #174: TransactionsController#update가 누락되어 있어 edit 페이지에서
+    # 사용자가 카테고리를 변경해도 stale provenance가 남는 문제.
+    @transaction.update!(classification_source: "mapping_match")
+    target = categories(:transport)
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { category_id: target.id } }
+
+    assert_equal "manual_set", @transaction.reload.classification_source
+  end
+
+  test "update (edit page) explicit clear (category_id='') sets manual_set" do
+    @transaction.update!(category: categories(:food), classification_source: "mapping_match")
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { category_id: "" } }
+
+    @transaction.reload
+    assert_nil @transaction.category_id
+    assert_equal "manual_set", @transaction.classification_source
+  end
+
   test "inline_update merchant change with mapping hit sets mapping_match" do
     target = categories(:food)
     CategoryMapping.create!(

@@ -59,8 +59,16 @@ class TransactionsController < ApplicationController
 
   def update
     old_allowance_status = @transaction.allowance?
+    # ADR-0011 §Decision 3: 폼에 `category_id` 키가 포함됐는지로 판단.
+    # 빈 문자열로 해제한 경우도 사용자 명시 행위.
+    category_id_submitted = params[:transaction].respond_to?(:key?) &&
+                            params[:transaction].key?(:category_id)
 
     if @transaction.update(transaction_params)
+      if category_id_submitted
+        @transaction.update_column(:classification_source, "manual_set")
+      end
+
       # Handle allowance toggle if present in params
       if params[:allowance].present?
         new_allowance_status = params[:allowance] == "1"

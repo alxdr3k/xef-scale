@@ -531,6 +531,35 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
                  "category_id 키가 폼에 포함되었으므로 manual_set"
   end
 
+  test "update_transaction merchant change preserves classification_source when rematch resolves to same category" do
+    # Codex PR #174: 재매칭이 *같은* 카테고리로 끝나면 의미상 분류 변동이 없으므로
+    # 기존 manual_set 같은 사용자 의도 provenance를 silent overwrite하면 안 된다.
+    target = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "RC_SAME_REMATCH",
+      match_type: "exact",
+      source: "manual",
+      category: target
+    )
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "초기 가맹점",
+      category: target, # 이미 같은 카테고리
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "manual_set" # 사용자가 이전에 직접 지정
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { merchant: "RC_SAME_REMATCH" } },
+          as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_equal target.id, tx.category_id, "카테고리 자체는 그대로"
+    assert_equal "manual_set", tx.classification_source,
+                 "재매칭이 같은 카테고리면 provenance 유지"
+  end
+
   test "update_transaction merchant change with mapping hit sets mapping_match" do
     target = categories(:food)
     CategoryMapping.create!(
