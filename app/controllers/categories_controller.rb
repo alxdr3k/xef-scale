@@ -6,8 +6,18 @@ class CategoriesController < ApplicationController
   before_action :require_workspace_admin_access
   before_action :set_category, only: [ :edit, :update, :destroy ]
 
+  # Phase 3.4 (ADR-0004 / ui-redesign-plan §3.4): 카테고리와 학습된 매핑을 같은
+  # 페이지에 *두 섹션*으로 결합한다. 매핑은 최근 N개 미리보기 + 전체 보기 CTA로
+  # workspace_category_mappings_path를 노출. CategoryMappingsController는 그대로 유지.
+  RECENT_MAPPINGS_LIMIT = 10
+
   def index
     @categories = @workspace.categories.order(:name)
+    @recent_mappings = @workspace.category_mappings
+                                 .includes(:category)
+                                 .order(updated_at: :desc)
+                                 .limit(RECENT_MAPPINGS_LIMIT)
+    @total_mappings_count = @workspace.category_mappings.count
   end
 
   def new
@@ -27,12 +37,14 @@ class CategoriesController < ApplicationController
 
     if @category.save
       if @slideover && @transaction_id.present?
-        # Assign category to transaction and return turbo stream
+        # Assign category to transaction and return turbo stream.
+        # ADR-0011 §Decision 3: 슬라이드오버 "+ 새 카테고리 만들기"는 사용자가
+        # 명시적으로 새 카테고리를 만들고 거래에 적용한 흐름이므로 manual_set.
         @transaction = @workspace.transactions.find(@transaction_id)
-        @transaction.update(category_id: @category.id)
+        @transaction.update(category_id: @category.id, classification_source: "manual_set")
         @categories = @workspace.categories.order(:name)
         flash.now[:notice] = "카테고리가 추가되고 거래에 적용되었습니다."
-        broadcast_html = content_tag(:div, "",
+        broadcast_html = helpers.content_tag(:div, "",
           data: {
             controller: "category-broadcast",
             category_broadcast_id_value: @category.id,
