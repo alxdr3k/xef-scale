@@ -29,10 +29,13 @@
     새로 가져오기
   </button>
 
-  <%# Backdrop + sheet container %>
+  <%# Backdrop + sheet container.
+      z-50: 모바일 하단 nav(z-40) 위에 떠야 nav 탭이 backdrop 위로 노출되어
+      실수로 navigation되는 일을 막는다. sheet는 같은 z-50이지만 DOM 순서상
+      뒤에 있어 backdrop 위에 자연스럽게 쌓인다. %>
   <div data-input-sheet-target="backdrop"
        data-action="click->input-sheet#close"
-       class="hidden fixed inset-0 bg-black/40 z-40"></div>
+       class="hidden fixed inset-0 bg-black/40 z-50"></div>
 
   <div data-input-sheet-target="sheet"
        role="dialog"
