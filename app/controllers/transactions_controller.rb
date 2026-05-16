@@ -291,8 +291,12 @@ class TransactionsController < ApplicationController
       category = @workspace.categories.find_by(id: params[:category_id])
       count = 0
       transactions.find_each do |tx|
-        # ADR-0011 §Decision 3: 사용자가 일괄 변경한 카테고리 → `manual_set`.
-        tx.update!(category_id: category&.id, classification_source: "manual_set")
+        # ADR-0011 §Decision 3 (Codex PR #174 follow-up): per-row 가드 — 실제 category
+        # 변동시에만 manual_set 잠금. mixed selection에서 이미 같은 카테고리인 rows는
+        # 기존 provenance(mapping_match 등) 보존.
+        attrs = { category_id: category&.id }
+        attrs[:classification_source] = "manual_set" if tx.category_id != category&.id
+        tx.update!(attrs)
         count += 1
       end
       notice = "#{count}건의 거래 카테고리가 변경되었습니다."

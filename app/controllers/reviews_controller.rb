@@ -179,8 +179,11 @@ class ReviewsController < ApplicationController
       category = @workspace.categories.find_by(id: params[:category_id])
       count = 0
       transactions.find_each do |tx|
-        # ADR-0011 §Decision 3: 검토 중 일괄 변경된 카테고리 → `manual_set`.
-        tx.update!(category_id: category&.id, classification_source: "manual_set")
+        # ADR-0011 §Decision 3 (Codex PR #174 follow-up): per-row 가드 — 실제 category
+        # 변동시에만 manual_set 잠금. 이미 같은 카테고리인 rows는 provenance 보존.
+        attrs = { category_id: category&.id }
+        attrs[:classification_source] = "manual_set" if tx.category_id != category&.id
+        tx.update!(attrs)
         count += 1
       end
       notice = "#{count}건의 거래 카테고리가 변경되었습니다."
@@ -237,9 +240,12 @@ class ReviewsController < ApplicationController
       end
 
       if @transaction.update(field => value)
-        # ADR-0011 §Decision 3: 사용자가 명시적으로 category_id를 인라인 편집
-        # (field=="category_id")한 경우는 `manual_set`. 다른 필드 편집은 영향 없음.
-        @transaction.update_column(:classification_source, "manual_set") if field == "category_id"
+        # ADR-0011 §Decision 3 (Codex PR #174 follow-up): inline category_id 편집은
+        # 실제 category가 *변동*했을 때만 manual_set으로 잠근다. 같은 값 재전송은
+        # no-op이므로 기존 provenance(mapping_match 등) 보존.
+        if field == "category_id" && @transaction.category_id != old_category_id
+          @transaction.update_column(:classification_source, "manual_set")
+        end
 
         # If merchant changed, try to auto-categorize
         if field == "merchant"
@@ -282,12 +288,16 @@ class ReviewsController < ApplicationController
         @transaction.update_column(:classification_source, "manual_set")
       end
 
-      # merchant가 변경되었고, 사용자가 직접 카테고리를 다루지 *않았으면* 자동 재매칭.
-      # 사용자가 의도적으로 해제(`""`)한 경우는 그 의도를 존중해 재매칭 금지.
+      # ADR-0011 §Decision 3 (Codex PR #174 follow-up): merchant 변경 + 결과적으로
+      # 카테고리가 nil(미분류)일 때 자동 재매칭. 단 사용자가 이번 요청에서
+      # *명시적으로 해제*한 경우(`category_intentionally_cleared`)는 그 의도를
+      # 존중해 rematch 금지.
       merchant_changed = old_merchant != @transaction.merchant
-      category_not_manually_changed = !category_id_submitted
+      category_intentionally_cleared = category_id_submitted &&
+                                       old_category_id.present? &&
+                                       @transaction.category_id.blank?
 
-      if merchant_changed && category_not_manually_changed
+      if merchant_changed && @transaction.category_id.blank? && !category_intentionally_cleared
         new_category = CategoryMapping.find_category_for_merchant_and_description(
           @workspace,
           @transaction.merchant,

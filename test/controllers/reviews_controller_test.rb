@@ -531,6 +531,77 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
                  "category_id 키가 폼에 포함되었으므로 manual_set"
   end
 
+  test "update_transaction inline category_id no-op preserves classification_source" do
+    # Codex PR #174: inline field=category_id 편집이 같은 값이면 manual_set으로
+    # 덮지 않는다 (no-op).
+    target = categories(:food)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "RC_INLINE_NOOP",
+      category: target, status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { field: "category_id", value: target.id },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "mapping_match", tx.reload.classification_source
+  end
+
+  test "update_transaction merchant change on uncategorized auto-applies CategoryMapping" do
+    # Codex PR #174 regression fix: uncategorized 거래에서 form-based merchant 변경
+    # (category_id="" 함께 전송) 시 자동 mapping 적용은 그대로 동작해야 한다.
+    target = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "RC_UNCAT_REMATCH",
+      match_type: "exact",
+      source: "manual",
+      category: target
+    )
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "초기 가맹점",
+      category: nil, status: "pending_review", parsing_session: @parsing_session,
+      classification_source: nil
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { merchant: "RC_UNCAT_REMATCH", category_id: "" } },
+          as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_equal target.id, tx.category_id, "rematch로 mapping이 자동 적용돼야"
+    assert_equal "mapping_match", tx.classification_source
+  end
+
+  test "bulk_update change_category per-row guard preserves provenance" do
+    # Codex PR #174: review bulk-change도 mixed selection에서 no-op rows preserve.
+    target = categories(:food)
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    already_in_target = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "RC_BULK_NOOP",
+      category: target, status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+    changes_to_target = @workspace.transactions.create!(
+      date: Date.current, amount: 2000, merchant: "RC_BULK_CHANGE",
+      category: categories(:transport), status: "pending_review",
+      parsing_session: @parsing_session, classification_source: "keyword_match"
+    )
+
+    post bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+         params: {
+           transaction_ids: "#{already_in_target.id},#{changes_to_target.id}",
+           bulk_action: "change_category",
+           category_id: target.id
+         }
+
+    assert_equal "mapping_match", already_in_target.reload.classification_source
+    assert_equal "manual_set", changes_to_target.reload.classification_source
+  end
+
   test "update_transaction form-based no-op category preserves classification_source" do
     # Codex PR #174 — 검토 폼도 category_id를 항상 보낼 수 있으므로 동일 카테고리
     # 재전송 시 mapping_match 등이 silent erase되면 안 된다.

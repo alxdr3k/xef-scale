@@ -536,6 +536,34 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
                  "category 미변경 + 다른 필드만 편집 시 provenance 보존"
   end
 
+  test "bulk_update change_category per-row guard preserves provenance on no-op rows" do
+    # Codex PR #174: mixed selection — 일부는 이미 target 카테고리.
+    # no-op rows의 provenance(mapping_match 등)는 보존돼야 한다.
+    target = categories(:food)
+    already_in_target = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "BULK_NOOP",
+      category: target, status: "committed",
+      classification_source: "mapping_match"
+    )
+    changes_to_target = @workspace.transactions.create!(
+      date: Date.current, amount: 2000, merchant: "BULK_CHANGE",
+      category: categories(:transport), status: "committed",
+      classification_source: "keyword_match"
+    )
+
+    post bulk_update_workspace_transactions_path(@workspace),
+         params: {
+           transaction_ids: "#{already_in_target.id},#{changes_to_target.id}",
+           bulk_action: "change_category",
+           category_id: target.id
+         }
+
+    assert_equal "mapping_match", already_in_target.reload.classification_source,
+                 "no-op row 보존"
+    assert_equal "manual_set", changes_to_target.reload.classification_source,
+                 "실제 변동 row는 manual_set"
+  end
+
   test "update (edit page) with category_id sets manual_set" do
     # Codex PR #174: TransactionsController#update가 누락되어 있어 edit 페이지에서
     # 사용자가 카테고리를 변경해도 stale provenance가 남는 문제.
