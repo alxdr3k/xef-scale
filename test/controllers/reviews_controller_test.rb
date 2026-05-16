@@ -349,6 +349,18 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, review_workspace_parsing_session_path(@workspace, @parsing_session)
   end
 
+  # Phase 3.3: 검토함의 "+ 새로 가져오기"는 input_sheet 시트를 연다.
+  # 이전(PR B)의 parsing_sessions/index 하드 링크는 폐기.
+  test "index embeds input sheet trigger (sheet contains 3-way forms)" do
+    get workspace_reviews_path(@workspace)
+    assert_response :success
+    assert_select "[data-controller~='input-sheet']", minimum: 1
+    assert_select "[data-input-sheet-target='trigger']", minimum: 1
+    # 시트 안 폼 action들 — text_paste / image_upload / 직접 입력 링크
+    assert_includes response.body, text_parse_workspace_parsing_sessions_path(@workspace)
+    assert_includes response.body, new_workspace_transaction_path(@workspace)
+  end
+
   test "index is reachable by member_read (read-only) member" do
     # ADR-0004 §"필수": index는 read 권한만 요구.
     # require_workspace_write_access가 except: [:show, :index]로 풀려야 통과.

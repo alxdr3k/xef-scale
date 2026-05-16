@@ -19,6 +19,26 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  # Phase 3.3 (ADR-0004 / preflight §3.1): 입력 폼이 검토함 시트로 이동.
+  # parsing_sessions/index 라우트는 *유지*하되 페이지에서는 입력 카드가 없어야 한다.
+  # 새로 가져오기는 sheet trigger를 통해서만 진입.
+  test "index does not embed inline input form cards (moved to input sheet)" do
+    get workspace_parsing_sessions_path(@workspace)
+    assert_response :success
+
+    # 폼이 시트 안에는 있지만, "결제 추가" 같은 옛 페이지 헤딩은 제거.
+    assert_no_match(/<h1[^>]*>결제 추가</, response.body)
+    # 페이지 제목은 "입력 기록"으로 변경.
+    assert_select "h1", text: "입력 기록"
+  end
+
+  test "index renders input sheet trigger for new imports" do
+    get workspace_parsing_sessions_path(@workspace)
+    assert_response :success
+    assert_select "[data-controller~='input-sheet']", minimum: 1
+    assert_select "[data-input-sheet-target='trigger']", minimum: 1
+  end
+
   test "index renders AI consent notice via _inline_alert when consent required" do
     @workspace.update!(ai_consent_acknowledged_at: nil)
     assert @workspace.ai_consent_required?, "setup must produce a consent-required workspace"
