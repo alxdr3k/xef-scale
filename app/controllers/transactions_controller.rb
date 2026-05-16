@@ -37,6 +37,9 @@ class TransactionsController < ApplicationController
   def create
     @transaction = @workspace.transactions.build(transaction_params)
     @transaction.source_type ||= "manual"
+    # ADR-0011 §Decision 3: 직접 입력 시 카테고리가 지정되면 사용자 명시 →
+    # `manual_set`. 카테고리 미지정은 nil 유지 (chip 마크 없음).
+    @transaction.classification_source = "manual_set" if @transaction.category_id.present?
 
     if @transaction.save
       @categories = @workspace.categories.order(:name)
@@ -56,8 +59,21 @@ class TransactionsController < ApplicationController
 
   def update
     old_allowance_status = @transaction.allowance?
+    old_category_id = @transaction.category_id
+    # ADR-0011 §Decision 3: 폼에 `category_id` 키가 포함됐는지로 판단.
+    # 빈 문자열로 해제한 경우도 사용자 명시 행위.
+    category_id_submitted = params[:transaction].respond_to?(:key?) &&
+                            params[:transaction].key?(:category_id)
 
     if @transaction.update(transaction_params)
+      # ADR-0011 §Decision 3 (Codex PR #174 follow-up): edit 폼은 collection_select로
+      # category_id를 *항상* 보내므로 단순 키 존재로는 사용자가 카테고리를 *바꿨는지*
+      # 알 수 없다. 실제 category_id가 변동한 경우에만 manual_set으로 잠근다.
+      # 동일 카테고리를 그대로 보낸 경우는 기존 provenance(mapping_match 등) 보존.
+      if category_id_submitted && @transaction.category_id != old_category_id
+        @transaction.update_column(:classification_source, "manual_set")
+      end
+
       # Handle allowance toggle if present in params
       if params[:allowance].present?
         new_allowance_status = params[:allowance] == "1"
@@ -137,7 +153,14 @@ class TransactionsController < ApplicationController
       return
     end
 
-    if @transaction.update(category_id: category_id)
+    # ADR-0011 §Decision 3 (Codex PR #174 follow-up): dropdown은 현재 카테고리도
+    # 표시하므로 같은 카테고리 재클릭은 no-op. category가 실제로 *변동*했을 때만
+    # manual_set으로 잠금 — 변동 없으면 기존 provenance(mapping_match 등) 보존.
+    category_changed = category_id.to_s.presence != old_category_id&.to_s
+    update_attrs = { category_id: category_id }
+    update_attrs[:classification_source] = "manual_set" if category_changed
+
+    if @transaction.update(update_attrs)
       @categories = @workspace.categories.order(:name)
       @show_learning_suggestion = eligible_for_learning_suggestion?(@transaction, old_category_id)
 
@@ -214,7 +237,9 @@ class TransactionsController < ApplicationController
           @transaction.description
         )
         if new_category && new_category.id != old_category_id
-          @transaction.update(category: new_category)
+          # ADR-0011 §Decision 3: merchant 변경으로 자동 재매칭된 카테고리는
+          # CategoryMapping 매칭 → `mapping_match`.
+          @transaction.update(category: new_category, classification_source: "mapping_match")
         end
       end
 
@@ -266,7 +291,12 @@ class TransactionsController < ApplicationController
       category = @workspace.categories.find_by(id: params[:category_id])
       count = 0
       transactions.find_each do |tx|
-        tx.update!(category_id: category&.id)
+        # ADR-0011 §Decision 3 (Codex PR #174 follow-up): per-row 가드 — 실제 category
+        # 변동시에만 manual_set 잠금. mixed selection에서 이미 같은 카테고리인 rows는
+        # 기존 provenance(mapping_match 등) 보존.
+        attrs = { category_id: category&.id }
+        attrs[:classification_source] = "manual_set" if tx.category_id != category&.id
+        tx.update!(attrs)
         count += 1
       end
       notice = "#{count}건의 거래 카테고리가 변경되었습니다."

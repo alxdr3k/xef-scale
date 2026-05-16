@@ -140,4 +140,8 @@ Gemini 분류 결과는 CategoryMapping으로 저장됩니다:
 | `gemini_batch` | `GeminiCategoryService` 배치 추천 (3단계, 이미지 경로만) | `file_parsing_job` |
 | `manual_set` | 사용자가 명시적으로 지정 | 직접 입력 / 인라인 변경 / 검토 중 변경 |
 
-본 컬럼은 nullable이며, 기존 거래는 backfill하지 않습니다 (ADR-0011 §Consequences). 호출지점에서 set하는 로직은 ADR-0011 §Decision 6 기준으로 후속 PR에서 도입됩니다.
+본 컬럼은 nullable이며, 기존 거래는 backfill하지 않습니다 (ADR-0011 §Consequences). 호출지점 set 로직:
+
+- 파싱 잡 (`AiTextParsingJob`, `FileParsingJob`): `match_category(_without_gemini)`가 `{ category:, source: }` 형태로 결정 메커니즘을 함께 반환 → 거래 생성 시 그대로 저장. Gemini 배치는 `transaction.update!(... classification_source: "gemini_batch")`.
+- 직접 입력 (`TransactionsController#create`): 카테고리 지정 시 `manual_set`.
+- 인라인/일괄 변경 (`TransactionsController#quick_update_category`, `#inline_update`, `#bulk_update`, `ReviewsController#update_transaction`, `#bulk_update`): 사용자가 명시한 변경 → `manual_set`. merchant 변경으로 자동 재매칭된 경우 → `mapping_match`.

@@ -465,4 +465,213 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "OTHER_MERCHANT_NEW_XYZ",
                         "cross-tenant duplicate leak: index showed other workspace's transaction merchant"
   end
+
+  # ADR-0011 §Decision 3: 검토 흐름에서 classification_source set 시점 검증.
+
+  test "update_transaction with form-based category change sets manual_set" do
+    target = categories(:food)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "RC_ADR0011",
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: nil
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { category_id: target.id } },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "manual_set", tx.reload.classification_source
+  end
+
+  test "update_transaction with inline category_id field sets manual_set" do
+    target = categories(:food)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "RC_ADR0011_INLINE",
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: nil
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { field: "category_id", value: target.id },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "manual_set", tx.reload.classification_source
+  end
+
+  test "update_transaction explicit clear (category_id='') sets manual_set and prevents auto-rematch" do
+    # Codex PR #174 — 폼에서 사용자가 의도적으로 카테고리를 *해제*("")한 경우.
+    # 1) classification_source는 manual_set으로 잠겨야 한다.
+    # 2) 같은 요청에서 merchant도 바뀌면 자동 재매칭이 *동작하지 않아야* 한다
+    #    (사용자의 명시적 해제 의도를 존중).
+    target_for_rematch = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "RC_CLEAR_REMATCH",
+      match_type: "exact",
+      source: "manual",
+      category: target_for_rematch
+    )
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "원래 가맹점",
+      category: categories(:transport),
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { category_id: "", merchant: "RC_CLEAR_REMATCH" } },
+          as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_nil tx.category_id, "사용자가 빈 문자열로 카테고리를 해제했으므로 nil이어야 함"
+    assert_equal "manual_set", tx.classification_source,
+                 "category_id 키가 폼에 포함되었으므로 manual_set"
+  end
+
+  test "update_transaction inline category_id no-op preserves classification_source" do
+    # Codex PR #174: inline field=category_id 편집이 같은 값이면 manual_set으로
+    # 덮지 않는다 (no-op).
+    target = categories(:food)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "RC_INLINE_NOOP",
+      category: target, status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { field: "category_id", value: target.id },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "mapping_match", tx.reload.classification_source
+  end
+
+  test "update_transaction merchant change on uncategorized auto-applies CategoryMapping" do
+    # Codex PR #174 regression fix: uncategorized 거래에서 form-based merchant 변경
+    # (category_id="" 함께 전송) 시 자동 mapping 적용은 그대로 동작해야 한다.
+    target = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "RC_UNCAT_REMATCH",
+      match_type: "exact",
+      source: "manual",
+      category: target
+    )
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "초기 가맹점",
+      category: nil, status: "pending_review", parsing_session: @parsing_session,
+      classification_source: nil
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { merchant: "RC_UNCAT_REMATCH", category_id: "" } },
+          as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_equal target.id, tx.category_id, "rematch로 mapping이 자동 적용돼야"
+    assert_equal "mapping_match", tx.classification_source
+  end
+
+  test "bulk_update change_category per-row guard preserves provenance" do
+    # Codex PR #174: review bulk-change도 mixed selection에서 no-op rows preserve.
+    target = categories(:food)
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    already_in_target = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "RC_BULK_NOOP",
+      category: target, status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+    changes_to_target = @workspace.transactions.create!(
+      date: Date.current, amount: 2000, merchant: "RC_BULK_CHANGE",
+      category: categories(:transport), status: "pending_review",
+      parsing_session: @parsing_session, classification_source: "keyword_match"
+    )
+
+    post bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+         params: {
+           transaction_ids: "#{already_in_target.id},#{changes_to_target.id}",
+           bulk_action: "change_category",
+           category_id: target.id
+         }
+
+    assert_equal "mapping_match", already_in_target.reload.classification_source
+    assert_equal "manual_set", changes_to_target.reload.classification_source
+  end
+
+  test "update_transaction form-based no-op category preserves classification_source" do
+    # Codex PR #174 — 검토 폼도 category_id를 항상 보낼 수 있으므로 동일 카테고리
+    # 재전송 시 mapping_match 등이 silent erase되면 안 된다.
+    current_cat = categories(:food)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "RC_NOOP",
+      category: current_cat,
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { category_id: current_cat.id, merchant: "RC_NOOP" } },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "mapping_match", tx.reload.classification_source
+  end
+
+  test "update_transaction merchant change preserves classification_source when rematch resolves to same category" do
+    # Codex PR #174: 재매칭이 *같은* 카테고리로 끝나면 의미상 분류 변동이 없으므로
+    # 기존 manual_set 같은 사용자 의도 provenance를 silent overwrite하면 안 된다.
+    target = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "RC_SAME_REMATCH",
+      match_type: "exact",
+      source: "manual",
+      category: target
+    )
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "초기 가맹점",
+      category: target, # 이미 같은 카테고리
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "manual_set" # 사용자가 이전에 직접 지정
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { merchant: "RC_SAME_REMATCH" } },
+          as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_equal target.id, tx.category_id, "카테고리 자체는 그대로"
+    assert_equal "manual_set", tx.classification_source,
+                 "재매칭이 같은 카테고리면 provenance 유지"
+  end
+
+  test "update_transaction merchant change with mapping hit sets mapping_match" do
+    target = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "RC_ADR0011_REMATCH",
+      match_type: "exact",
+      source: "manual",
+      category: target
+    )
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "초기 가맹점",
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: nil
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { field: "merchant", value: "RC_ADR0011_REMATCH" },
+          as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_equal target.id, tx.category_id
+    assert_equal "mapping_match", tx.classification_source
+  end
 end

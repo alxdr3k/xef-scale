@@ -17,26 +17,28 @@ class FileParsingJobTest < ActiveJob::TestCase
     end
   end
 
-  # Test the private helper methods via reflection
-  test "match_category returns nil for blank merchant" do
+  # Test the private helper methods via reflection.
+  # ADR-0011 §Decision 3: 반환 형식이 { category:, source: } 해시로 변경됨.
+  test "match_category returns nil category/source for blank merchant" do
     job = FileParsingJob.new
     result = job.send(:match_category_without_gemini, @workspace, nil)
-    assert_nil result
+    assert_equal({ category: nil, source: nil }, result)
   end
 
-  test "match_category returns nil for empty merchant" do
+  test "match_category returns nil category/source for empty merchant" do
     job = FileParsingJob.new
     result = job.send(:match_category_without_gemini, @workspace, "")
-    assert_nil result
+    assert_equal({ category: nil, source: nil }, result)
   end
 
-  test "match_category finds category by keyword" do
+  test "match_category returns keyword_match source when category keyword hits" do
     category = categories(:food)
     category.update!(keyword: "마라탕")
 
     job = FileParsingJob.new
     result = job.send(:match_category_without_gemini, @workspace, "마라탕집")
-    assert_equal category, result
+    assert_equal category, result[:category]
+    assert_equal "keyword_match", result[:source]
   end
 
   test "DuplicateDetector finds an existing transaction with the same date, amount and merchant" do
@@ -151,19 +153,36 @@ class FileParsingJobTest < ActiveJob::TestCase
     assert tx.valid?
   end
 
-  test "match_category finds category with matching keyword" do
+  test "match_category finds category with matching keyword (keyword_match source)" do
     category = @workspace.categories.first
     category.update!(keyword: "커피")
 
     job = FileParsingJob.new
     result = job.send(:match_category_without_gemini, @workspace, "스타벅스커피")
-    assert_equal category, result
+    assert_equal category, result[:category]
+    assert_equal "keyword_match", result[:source]
   end
 
-  test "match_category returns nil when no category matches" do
+  test "match_category returns nil category/source when no category matches" do
     job = FileParsingJob.new
     result = job.send(:match_category_without_gemini, @workspace, "random merchant without match")
-    assert_nil result
+    assert_equal({ category: nil, source: nil }, result)
+  end
+
+  test "match_category returns mapping_match source when CategoryMapping exists" do
+    category = @workspace.categories.first
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "스타벅스",
+      match_type: "exact",
+      source: "manual",
+      category: category
+    )
+
+    job = FileParsingJob.new
+    result = job.send(:match_category_without_gemini, @workspace, "스타벅스")
+    assert_equal category, result[:category]
+    assert_equal "mapping_match", result[:source]
   end
 
   test "create_failure_notifications sends notifications to owner and write members" do

@@ -62,7 +62,7 @@ class AiTextParsingJob < ApplicationJob
   private
 
   def create_transaction(workspace, tx_data, parsing_session)
-    category = match_category(workspace, tx_data[:merchant])
+    match = match_category(workspace, tx_data[:merchant])
 
     # institution is import/source metadata only — not a domain field.
     # Store the raw name from the parser in source_metadata; do NOT
@@ -76,7 +76,8 @@ class AiTextParsingJob < ApplicationJob
       payment_type: tx_data[:payment_type] || "lump_sum",
       installment_month: tx_data[:installment_month],
       installment_total: tx_data[:installment_total],
-      category: category,
+      category: match[:category],
+      classification_source: match[:source],
       status: "pending_review",
       parsing_session: parsing_session,
       source_type: "text_paste",
@@ -92,13 +93,19 @@ class AiTextParsingJob < ApplicationJob
     meta
   end
 
+  # ADR-0011 §Decision 3: 2단계 폴백(텍스트 경로)에서 어느 단계가 카테고리를
+  # 결정했는지 함께 반환한다. classification_source 컬럼에 보존된다.
+  # 반환: { category: Category|nil, source: "mapping_match"|"keyword_match"|nil }
   def match_category(workspace, merchant)
-    return nil if merchant.blank?
+    return { category: nil, source: nil } if merchant.blank?
 
     mapping = CategoryMapping.find_for_merchant(workspace, merchant)
-    return mapping.category if mapping
+    return { category: mapping.category, source: "mapping_match" } if mapping
 
-    workspace.categories.find { |c| c.matches?(merchant) }
+    keyword_category = workspace.categories.find { |c| c.matches?(merchant) }
+    return { category: keyword_category, source: "keyword_match" } if keyword_category
+
+    { category: nil, source: nil }
   end
 
   def create_failure_notifications(parsing_session)

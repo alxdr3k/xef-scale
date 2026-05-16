@@ -179,7 +179,11 @@ class ReviewsController < ApplicationController
       category = @workspace.categories.find_by(id: params[:category_id])
       count = 0
       transactions.find_each do |tx|
-        tx.update!(category_id: category&.id)
+        # ADR-0011 §Decision 3 (Codex PR #174 follow-up): per-row 가드 — 실제 category
+        # 변동시에만 manual_set 잠금. 이미 같은 카테고리인 rows는 provenance 보존.
+        attrs = { category_id: category&.id }
+        attrs[:classification_source] = "manual_set" if tx.category_id != category&.id
+        tx.update!(attrs)
         count += 1
       end
       notice = "#{count}건의 거래 카테고리가 변경되었습니다."
@@ -236,6 +240,13 @@ class ReviewsController < ApplicationController
       end
 
       if @transaction.update(field => value)
+        # ADR-0011 §Decision 3 (Codex PR #174 follow-up): inline category_id 편집은
+        # 실제 category가 *변동*했을 때만 manual_set으로 잠근다. 같은 값 재전송은
+        # no-op이므로 기존 provenance(mapping_match 등) 보존.
+        if field == "category_id" && @transaction.category_id != old_category_id
+          @transaction.update_column(:classification_source, "manual_set")
+        end
+
         # If merchant changed, try to auto-categorize
         if field == "merchant"
           new_category = CategoryMapping.find_category_for_merchant_and_description(
@@ -244,7 +255,8 @@ class ReviewsController < ApplicationController
             @transaction.description
           )
           if new_category && new_category.id != old_category_id
-            @transaction.update(category: new_category)
+            # ADR-0011 §Decision 3: merchant 변경으로 재매칭된 카테고리는 `mapping_match`.
+            @transaction.update(category: new_category, classification_source: "mapping_match")
           end
         end
 
@@ -262,18 +274,41 @@ class ReviewsController < ApplicationController
     # Handle form-based updates (original behavior)
     transaction_params = params.require(:transaction).permit(permitted)
 
-    if @transaction.update(transaction_params)
-      # merchant가 변경되었고, 사용자가 직접 카테고리를 변경하지 않았으면 재매칭
-      merchant_changed = old_merchant != @transaction.merchant
-      category_not_manually_changed = transaction_params[:category_id].blank?
+    # ADR-0011 §Decision 3: 폼에 `category_id` 키가 실제로 *포함되어 있는지*로
+    # 사용자가 카테고리를 명시적으로 다뤘는지 판단한다. 빈 문자열로 *해제*한
+    # 경우도 사용자 의도이므로 `present?` 검사는 부적절 — 키 존재로 본다.
+    category_id_submitted = params[:transaction].respond_to?(:key?) &&
+                            params[:transaction].key?(:category_id)
 
-      if merchant_changed && category_not_manually_changed
+    if @transaction.update(transaction_params)
+      # ADR-0011 §Decision 3 (Codex PR #174 follow-up): 검토 폼도 collection_select로
+      # category_id를 항상 보낼 수 있으므로 키 존재만으로는 부족. 실제 category_id가
+      # *변동*한 경우에만 manual_set 잠금 — 동일 카테고리는 기존 provenance 보존.
+      if category_id_submitted && @transaction.category_id != old_category_id
+        @transaction.update_column(:classification_source, "manual_set")
+      end
+
+      # ADR-0011 §Decision 3 (Codex PR #174 follow-up): merchant 변경 + 결과적으로
+      # 카테고리가 nil(미분류)일 때 자동 재매칭. 단 사용자가 이번 요청에서
+      # *명시적으로 해제*한 경우(`category_intentionally_cleared`)는 그 의도를
+      # 존중해 rematch 금지.
+      merchant_changed = old_merchant != @transaction.merchant
+      category_intentionally_cleared = category_id_submitted &&
+                                       old_category_id.present? &&
+                                       @transaction.category_id.blank?
+
+      if merchant_changed && @transaction.category_id.blank? && !category_intentionally_cleared
         new_category = CategoryMapping.find_category_for_merchant_and_description(
           @workspace,
           @transaction.merchant,
           @transaction.description
         )
-        @transaction.update(category: new_category) if new_category
+        # ADR-0011 §Decision 3: 재매칭이 *다른* 카테고리를 가리킬 때만 mapping_match로
+        # 갱신한다. 같은 카테고리면 의미상 분류 변동이 없으므로 기존 classification_source
+        # (예: 사용자가 이전에 지정한 manual_set)를 silent overwrite하지 않는다.
+        if new_category && new_category.id != @transaction.category_id
+          @transaction.update(category: new_category, classification_source: "mapping_match")
+        end
       end
 
       # ADR-0007 §4: 카테고리 변경 시 묵시적 CategoryMapping 생성은 금지.

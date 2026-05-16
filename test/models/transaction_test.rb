@@ -268,4 +268,19 @@ class TransactionTest < ActiveSupport::TestCase
     assert_equal %w[mapping_match keyword_match gemini_batch manual_set],
                  Transaction::CLASSIFICATION_SOURCES
   end
+
+  # ADR-0011 §Decision 3 view 헬퍼: chip에 그대로 전달 가능한 심볼 변환.
+  test "classification_decision returns symbol for valid values" do
+    transaction = transactions(:food_transaction)
+    Transaction::CLASSIFICATION_SOURCES.each do |value|
+      transaction.update!(classification_source: value)
+      assert_equal value.to_sym, transaction.classification_decision
+    end
+  end
+
+  test "classification_decision returns nil when source is nil" do
+    transaction = transactions(:food_transaction)
+    transaction.update!(classification_source: nil)
+    assert_nil transaction.classification_decision
+  end
 end

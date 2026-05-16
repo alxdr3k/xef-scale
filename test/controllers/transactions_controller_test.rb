@@ -475,4 +475,136 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/turbo-stream action="remove"/, response.body)
     assert_match(/target="category-learning-suggestion-#{@transaction.id}"/, response.body)
   end
+
+  # ADR-0011 §Decision 3: classification_source set 시점 검증.
+
+  test "create with category_id sets classification_source to manual_set" do
+    category = categories(:food)
+    post workspace_transactions_path(@workspace),
+         params: { transaction: { date: Date.current, merchant: "Test_ADR0011_A", amount: 1000, category_id: category.id } }
+
+    tx = @workspace.transactions.where(merchant: "Test_ADR0011_A").last
+    assert_equal "manual_set", tx.classification_source
+  end
+
+  test "create without category_id keeps classification_source nil" do
+    post workspace_transactions_path(@workspace),
+         params: { transaction: { date: Date.current, merchant: "Test_ADR0011_B", amount: 1000 } }
+
+    tx = @workspace.transactions.where(merchant: "Test_ADR0011_B").last
+    assert_nil tx.classification_source
+  end
+
+  test "quick_update_category sets classification_source to manual_set when category changes" do
+    # 다른 카테고리로 변경 — same-category guard 회피 (Codex PR #174 fix).
+    @transaction.update!(category: categories(:food), classification_source: nil)
+    target = categories(:transport)
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: target.id },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "manual_set", @transaction.reload.classification_source
+  end
+
+  test "quick_update_category no-op re-click preserves classification_source" do
+    # Codex PR #174 — dropdown은 현재 카테고리도 표시하므로 같은 카테고리 클릭은 no-op.
+    # 기존 provenance(mapping_match 등)가 silent erase되면 안 된다.
+    current_cat = categories(:food)
+    @transaction.update!(category: current_cat, classification_source: "mapping_match")
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: current_cat.id },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "mapping_match", @transaction.reload.classification_source,
+                 "no-op 클릭은 기존 provenance 보존"
+  end
+
+  test "update (edit page) routine non-category edit preserves classification_source" do
+    # Codex PR #174 — edit 폼은 collection_select로 category_id를 항상 보내므로
+    # merchant/amount/notes만 편집해도 manual_set으로 덮으면 안 된다.
+    @transaction.update!(category: categories(:food), classification_source: "mapping_match")
+    same_category_id = @transaction.category_id
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { merchant: "노카테고리편집_가맹점", category_id: same_category_id } }
+
+    assert_equal "mapping_match", @transaction.reload.classification_source,
+                 "category 미변경 + 다른 필드만 편집 시 provenance 보존"
+  end
+
+  test "bulk_update change_category per-row guard preserves provenance on no-op rows" do
+    # Codex PR #174: mixed selection — 일부는 이미 target 카테고리.
+    # no-op rows의 provenance(mapping_match 등)는 보존돼야 한다.
+    target = categories(:food)
+    already_in_target = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "BULK_NOOP",
+      category: target, status: "committed",
+      classification_source: "mapping_match"
+    )
+    changes_to_target = @workspace.transactions.create!(
+      date: Date.current, amount: 2000, merchant: "BULK_CHANGE",
+      category: categories(:transport), status: "committed",
+      classification_source: "keyword_match"
+    )
+
+    post bulk_update_workspace_transactions_path(@workspace),
+         params: {
+           transaction_ids: "#{already_in_target.id},#{changes_to_target.id}",
+           bulk_action: "change_category",
+           category_id: target.id
+         }
+
+    assert_equal "mapping_match", already_in_target.reload.classification_source,
+                 "no-op row 보존"
+    assert_equal "manual_set", changes_to_target.reload.classification_source,
+                 "실제 변동 row는 manual_set"
+  end
+
+  test "update (edit page) with category_id sets manual_set" do
+    # Codex PR #174: TransactionsController#update가 누락되어 있어 edit 페이지에서
+    # 사용자가 카테고리를 변경해도 stale provenance가 남는 문제.
+    @transaction.update!(classification_source: "mapping_match")
+    target = categories(:transport)
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { category_id: target.id } }
+
+    assert_equal "manual_set", @transaction.reload.classification_source
+  end
+
+  test "update (edit page) explicit clear (category_id='') sets manual_set" do
+    @transaction.update!(category: categories(:food), classification_source: "mapping_match")
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { category_id: "" } }
+
+    @transaction.reload
+    assert_nil @transaction.category_id
+    assert_equal "manual_set", @transaction.classification_source
+  end
+
+  test "inline_update merchant change with mapping hit sets mapping_match" do
+    target = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "재매칭가맹점_ADR0011",
+      match_type: "exact",
+      source: "manual",
+      category: target
+    )
+    @transaction.update!(category: nil, classification_source: nil)
+
+    patch inline_update_workspace_transaction_path(@workspace, @transaction),
+          params: { field: "merchant", value: "재매칭가맹점_ADR0011" },
+          as: :json
+
+    assert_response :success
+    @transaction.reload
+    assert_equal target.id, @transaction.category_id
+    assert_equal "mapping_match", @transaction.classification_source
+  end
 end

@@ -15,8 +15,9 @@
     decision  (Symbol, optional, default nil) — 위 4값. nil이면 마크 없음 (=manual_set 동등).
     class     (String, default "")
 
-  주의: Transaction#classification_source 컬럼은 아직 없으므로 decision은
-        호출자가 비즈니스 로직에서 도출해 전달한다. 컬럼 도입은 후속 마이그레이션 ADR.
+  ADR-0011: Transaction#classification_source 컬럼이 보존하는 결정 메커니즘을
+            `Transaction#classification_decision` 헬퍼로 심볼 변환해 그대로 전달한다.
+            기존 거래는 backfill이 없어 nil → 마크 없음 (manual_set 동등).
 
   ADR-0003: 시맨틱 utility만 사용. 카테고리 color(record값)는 인라인 스타일 유지.
 %>
