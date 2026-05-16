@@ -264,7 +264,8 @@ class TransactionTest < ActiveSupport::TestCase
   end
 
   test "CLASSIFICATION_SOURCES matches ADR-0007 §1.1 decision mechanism 4-value domain" do
-    assert_equal %w[manual_set mapping_match keyword_match gemini_batch],
+    # 순서는 ADR-0007 §1.1을 따른다: 1단계 mapping → 2단계 keyword → 3단계 gemini → 수동.
+    assert_equal %w[mapping_match keyword_match gemini_batch manual_set],
                  Transaction::CLASSIFICATION_SOURCES
   end
 end
