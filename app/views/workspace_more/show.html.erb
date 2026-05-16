@@ -1,0 +1,97 @@
+<%#
+  Phase 3.5 (ADR-0004 / ui-redesign-plan §3.5) — 더보기 페이지.
+  그룹 리스트 카드 진입점만. 세부 화면은 기존 경로 유지.
+%>
+<div class="max-w-2xl mx-auto pb-12">
+  <%# ProfileRow %>
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-primary"><%= @workspace.name %></h1>
+    <% if @membership %>
+      <p class="text-meta text-secondary mt-1">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-elev text-secondary">
+          <%= case @membership.role
+              when "owner" then "소유자"
+              when "co_owner" then "공동 소유자"
+              when "member_write" then "쓰기 멤버"
+              when "member_read" then "읽기 멤버"
+              else @membership.role
+              end %>
+        </span>
+      </p>
+    <% end %>
+  </div>
+
+  <%# Group 1: 이 워크스페이스 %>
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-secondary uppercase tracking-wider mb-2 px-1">이 워크스페이스</h2>
+    <div class="bg-surface rounded-lg shadow-sm overflow-hidden divide-y divide-default">
+      <%= link_to workspace_path(@workspace), class: "flex items-center justify-between px-4 py-3 hover:bg-elev" do %>
+        <span class="text-primary">워크스페이스 정보</span>
+        <%= render 'shared/chevron' %>
+      <% end %>
+      <% if current_user.admin_of?(@workspace) %>
+        <%= link_to settings_workspace_path(@workspace), class: "flex items-center justify-between px-4 py-3 hover:bg-elev" do %>
+          <span class="text-primary">설정 (AI · 멤버 · 예산)</span>
+          <%= render 'shared/chevron' %>
+        <% end %>
+      <% end %>
+      <%= link_to workspaces_path, class: "flex items-center justify-between px-4 py-3 hover:bg-elev" do %>
+        <span class="text-primary">다른 워크스페이스로 이동</span>
+        <%= render 'shared/chevron' %>
+      <% end %>
+    </div>
+  </section>
+
+  <%# Group 2: 내 계정 %>
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-secondary uppercase tracking-wider mb-2 px-1">내 계정</h2>
+    <div class="bg-surface rounded-lg shadow-sm overflow-hidden divide-y divide-default">
+      <%= link_to user_settings_path, class: "flex items-center justify-between px-4 py-3 hover:bg-elev" do %>
+        <span class="text-primary">계정 설정</span>
+        <%= render 'shared/chevron' %>
+      <% end %>
+      <%= link_to notifications_path, class: "flex items-center justify-between px-4 py-3 hover:bg-elev" do %>
+        <span class="text-primary">알림</span>
+        <%= render 'shared/chevron' %>
+      <% end %>
+    </div>
+  </section>
+
+  <%# Group 3: 도구 %>
+  <section class="mb-6">
+    <h2 class="text-sm font-semibold text-secondary uppercase tracking-wider mb-2 px-1">도구</h2>
+    <div class="bg-surface rounded-lg shadow-sm overflow-hidden divide-y divide-default">
+      <%= link_to allowances_path, class: "flex items-center justify-between px-4 py-3 hover:bg-elev" do %>
+        <span class="text-primary">용돈 관리</span>
+        <%= render 'shared/chevron' %>
+      <% end %>
+    </div>
+  </section>
+
+  <%# Group 4: 위험한 작업 %>
+  <% if current_user.admin_of?(@workspace) %>
+    <section>
+      <h2 class="text-sm font-semibold text-danger uppercase tracking-wider mb-2 px-1">위험한 작업</h2>
+      <div class="bg-surface rounded-lg shadow-sm overflow-hidden divide-y divide-default">
+        <%= button_to workspace_path(@workspace),
+              method: :delete,
+              data: { turbo_confirm: "워크스페이스를 삭제하면 모든 거래·카테고리·매핑·세션이 함께 삭제됩니다. 계속하시겠습니까?" },
+              class: "w-full flex items-center justify-between px-4 py-3 hover:bg-elev text-left" do %>
+          <span class="text-danger">워크스페이스 삭제</span>
+          <%= render 'shared/chevron' %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
+  <%# Sign out %>
+  <section class="mt-6">
+    <div class="bg-surface rounded-lg shadow-sm overflow-hidden">
+      <%= button_to destroy_user_session_path,
+            method: :delete,
+            class: "w-full flex items-center justify-between px-4 py-3 hover:bg-elev text-left" do %>
+        <span class="text-primary">로그아웃</span>
+      <% end %>
+    </div>
+  </section>
+</div>

@@ -39,8 +39,9 @@
       <% end %>
     <% end %>
 
-    <%# 더보기 — 전용 페이지는 후속 PR. 현재는 계정 설정/용돈으로 매핑. %>
-    <%= link_to user_settings_path, class: "flex flex-col items-center justify-center w-full h-full #{request.path == user_settings_path || request.path == allowances_path ? 'text-indigo-600' : 'text-gray-500'}" do %>
+    <%# Phase 3.5: 더보기 전용 페이지(`/workspaces/:id/more`). 워크스페이스가 없을 때만 폴백. %>
+    <% more_path = current_workspace ? workspace_more_path(current_workspace) : user_settings_path %>
+    <%= link_to more_path, class: "flex flex-col items-center justify-center w-full h-full #{request.path == more_path || request.path == user_settings_path || request.path == allowances_path ? 'text-indigo-600' : 'text-gray-500'}" do %>
       <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <circle cx="5" cy="12" r="1.5" />
         <circle cx="12" cy="12" r="1.5" />

@@ -65,6 +65,10 @@ Rails.application.routes.draw do
     # `parsing_sessions/:id/review` (reviews#show) 경로 유지.
     resources :reviews, only: [ :index ]
 
+    # 더보기 (Phase 3.5, ADR-0004 §Decision 5) — 그룹 리스트 카드 진입점만 모은다.
+    # 세부 화면은 기존 경로(workspaces#settings, allowances 등) 그대로 사용.
+    resource :more, only: [ :show ], controller: "workspace_more"
+
     # File uploads and parsing
     resources :parsing_sessions, only: [ :index, :show, :create, :destroy ] do
       collection do
