@@ -7,15 +7,16 @@
             workspace_category_mappings_path(@workspace, source: "all"),
             class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}",
             data: { turbo_frame: "category-mappings-panel" } %>
-      <%= link_to "수동",
+      <%# ADR-0011 §Decision 5: 매핑 출처 어휘 동기화. %>
+      <%= link_to t("category_mappings.source.manual"),
             workspace_category_mappings_path(@workspace, source: "manual"),
             class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'manual' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}",
             data: { turbo_frame: "category-mappings-panel" } %>
-      <%= link_to "학습",
+      <%= link_to t("category_mappings.source.import"),
             workspace_category_mappings_path(@workspace, source: "import"),
             class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'import' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}",
             data: { turbo_frame: "category-mappings-panel" } %>
-      <%= link_to "AI",
+      <%= link_to t("category_mappings.source.gemini"),
             workspace_category_mappings_path(@workspace, source: "gemini"),
             class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'gemini' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}",
             data: { turbo_frame: "category-mappings-panel" } %>

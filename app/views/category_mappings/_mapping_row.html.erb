@@ -17,13 +17,16 @@
     <% end %>
   </td>
   <td class="px-6 py-4 text-sm">
+    <%# ADR-0011 §Decision 5: 매핑 출처 어휘를 ko.yml로 분리해 결정 메커니즘과
+        단어 충돌을 피한다 ("수동" → "직접 등록", "학습" → "가져온 매핑",
+        "AI" → "AI 학습 매핑"). 색상은 의미 신호 유지. %>
     <% case mapping.source %>
     <% when "manual" %>
-      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">수동</span>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"><%= t("category_mappings.source.manual") %></span>
     <% when "import" %>
-      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">학습</span>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800"><%= t("category_mappings.source.import") %></span>
     <% when "gemini" %>
-      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">AI</span>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"><%= t("category_mappings.source.gemini") %></span>
     <% end %>
   </td>
   <td class="px-6 py-4 text-right text-sm">

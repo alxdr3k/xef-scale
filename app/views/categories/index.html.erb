@@ -1,68 +1,105 @@
+<%#
+  Phase 3.4 (ADR-0004 / ui-redesign-plan §3.4): 카테고리 + 학습된 매핑을 같은
+  페이지에 *두 섹션*으로 결합한다 (탭 폐기). 학습된 매핑은 최근 N개 미리보기 +
+  전체 보기 CTA로 workspace_category_mappings_path를 노출 — 라우트는 유지.
+%>
 <div class="max-w-4xl mx-auto">
-  <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">카테고리 관리</h1>
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-primary">카테고리</h1>
+    <p class="text-secondary text-sm mt-1">
+      카테고리 <%= @categories.size %>개 · 학습된 매핑 <%= @total_mappings_count %>건
+    </p>
   </div>
 
-  <div data-controller="tabs">
-    <%# 탭 헤더 %>
-    <div class="border-b border-gray-200 mb-6">
-      <nav class="-mb-px flex gap-6" aria-label="탭">
-        <button data-tabs-target="tab"
-                data-action="click->tabs#switch"
-                class="py-3 px-1 border-b-2 font-medium text-sm text-indigo-600 border-indigo-600"
-                aria-selected="true">
-          카테고리
-        </button>
-        <button data-tabs-target="tab"
-                data-action="click->tabs#switch"
-                class="py-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 border-transparent"
-                aria-selected="false">
-          분류 규칙
-        </button>
-      </nav>
+  <%# 섹션 1: 내 카테고리 %>
+  <section class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-primary">내 카테고리</h2>
+      <%= link_to '+ 카테고리 추가', new_workspace_category_path(@workspace),
+            class: 'inline-flex items-center px-3 py-2 text-sm font-medium rounded-md bg-action text-action-on hover:bg-action-hover' %>
     </div>
 
-    <%# 카테고리 패널 %>
-    <div data-tabs-target="panel">
-      <div class="flex justify-end mb-4">
-        <%= link_to '새 카테고리', new_workspace_category_path(@workspace), class: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700' %>
-      </div>
+    <div class="bg-surface rounded-lg shadow-sm overflow-hidden">
+      <table class="min-w-full divide-y divide-default">
+        <thead class="bg-elev">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">색상</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">이름</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">키워드</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-secondary uppercase">작업</th>
+          </tr>
+        </thead>
+        <tbody id="categories-list" class="bg-surface divide-y divide-default">
+          <% @categories.each do |category| %>
+            <%= render 'category_row', category: category %>
+          <% end %>
 
-      <div class="bg-white rounded-lg shadow overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+          <% if @categories.empty? %>
+            <tr id="no-categories-row">
+              <td colspan="4" class="px-6 py-12 text-center text-secondary">등록된 카테고리가 없습니다.</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <%# 섹션 2: 학습된 매핑 (최근 N개 미리보기) %>
+  <section>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-base font-semibold text-primary">학습된 매핑</h2>
+      <%= link_to '전체 보기 →', workspace_category_mappings_path(@workspace),
+            class: 'text-sm font-medium text-action hover:underline' %>
+    </div>
+
+    <% if @recent_mappings.any? %>
+      <div class="bg-surface rounded-lg shadow-sm overflow-hidden">
+        <table class="min-w-full divide-y divide-default">
+          <thead class="bg-elev">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">색상</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">이름</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">키워드</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">작업</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">가맹점 패턴</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">카테고리</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">출처</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">최근 갱신</th>
             </tr>
           </thead>
-          <tbody id="categories-list" class="bg-white divide-y divide-gray-200">
-            <% @categories.each do |category| %>
-              <%= render 'category_row', category: category %>
-            <% end %>
-
-            <% if @categories.empty? %>
-              <tr id="no-categories-row">
-                <td colspan="4" class="px-6 py-12 text-center text-gray-500">등록된 카테고리가 없습니다.</td>
+          <tbody class="bg-surface divide-y divide-default">
+            <% @recent_mappings.each do |mapping| %>
+              <tr id="<%= dom_id(mapping, :preview) %>">
+                <td class="px-6 py-3 text-sm text-primary"><%= mapping.merchant_pattern %></td>
+                <td class="px-6 py-3 text-sm">
+                  <% if mapping.category %>
+                    <span class="inline-flex items-center gap-1.5">
+                      <span class="w-2.5 h-2.5 rounded-full" style="background-color: <%= mapping.category.color %>"></span>
+                      <%= mapping.category.name %>
+                    </span>
+                  <% end %>
+                </td>
+                <td class="px-6 py-3 text-sm">
+                  <%# ADR-0011 §Decision 5: 매핑 출처 어휘를 ko.yml로 분리해
+                      결정 메커니즘과 단어를 공유하지 않게 한다. %>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-elev text-secondary">
+                    <%= t("category_mappings.source.#{mapping.source}", default: mapping.source) %>
+                  </span>
+                </td>
+                <td class="px-6 py-3 text-sm text-secondary">
+                  <%= time_ago_in_words(mapping.updated_at) %> 전
+                </td>
               </tr>
             <% end %>
           </tbody>
         </table>
       </div>
-    </div>
-
-    <%# 분류 규칙 패널 %>
-    <div data-tabs-target="panel" class="hidden">
-      <turbo-frame id="category-mappings-panel" src="<%= workspace_category_mappings_path(@workspace) %>" loading="lazy">
-        <div class="flex justify-center py-12">
-          <svg class="animate-spin h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-          </svg>
-        </div>
-      </turbo-frame>
-    </div>
-  </div>
+      <% if @total_mappings_count > @recent_mappings.size %>
+        <p class="text-meta text-tertiary text-center mt-2">
+          최근 <%= @recent_mappings.size %>건만 표시. 전체 <%= @total_mappings_count %>건 — 전체 보기에서 필터·수정.
+        </p>
+      <% end %>
+    <% else %>
+      <div class="bg-surface rounded-lg shadow-sm px-6 py-8 text-center text-secondary">
+        아직 학습된 매핑이 없습니다.<br>
+        <span class="text-meta text-tertiary">거래의 카테고리를 바꾼 뒤 "다음부터는 자동 분류"에 동의하면 여기에 표시됩니다.</span>
+      </div>
+    <% end %>
+  </section>
 </div>
