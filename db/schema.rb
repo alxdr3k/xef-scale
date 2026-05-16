@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_15_074204) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_16_022650) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -200,6 +200,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_15_074204) do
     t.integer "benefit_amount"
     t.string "benefit_type"
     t.integer "category_id"
+    t.string "classification_source"
     t.integer "comments_count", default: 0, null: false
     t.datetime "committed_at"
     t.integer "committed_by_id"
@@ -222,6 +223,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_15_074204) do
     t.datetime "updated_at", null: false
     t.integer "workspace_id", null: false
     t.index ["category_id"], name: "index_transactions_on_category_id"
+    t.index ["classification_source"], name: "index_transactions_on_classification_source"
     t.index ["date", "merchant", "amount"], name: "index_transactions_on_date_and_merchant_and_amount"
     t.index ["financial_institution_id"], name: "index_transactions_on_financial_institution_id"
     t.index ["parsing_session_id"], name: "index_transactions_on_parsing_session_id"

@@ -240,4 +240,31 @@ class TransactionTest < ActiveSupport::TestCase
     )
     assert_not transaction_no_institution.source_editable?
   end
+
+  # ADR-0011: classification_source 컬럼 — 결정 메커니즘 4값 + nil.
+  test "classification_source accepts nil (default for backfill / not-yet-set)" do
+    transaction = transactions(:food_transaction)
+    transaction.classification_source = nil
+    assert transaction.valid?
+  end
+
+  test "classification_source accepts all four ADR-0011 values" do
+    transaction = transactions(:food_transaction)
+    Transaction::CLASSIFICATION_SOURCES.each do |value|
+      transaction.classification_source = value
+      assert transaction.valid?, "expected #{value} to be a valid classification_source"
+    end
+  end
+
+  test "classification_source rejects values outside the 4-value domain" do
+    transaction = transactions(:food_transaction)
+    transaction.classification_source = "import"  # CategoryMapping#source 값과 충돌 — 거부돼야 함
+    assert_not transaction.valid?
+    assert_includes transaction.errors[:classification_source], "is not included in the list"
+  end
+
+  test "CLASSIFICATION_SOURCES matches ADR-0007 §1.1 decision mechanism 4-value domain" do
+    assert_equal %w[manual_set mapping_match keyword_match gemini_batch],
+                 Transaction::CLASSIFICATION_SOURCES
+  end
 end

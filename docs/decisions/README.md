@@ -19,6 +19,7 @@ xef-scale의 수락된 구현·아키텍처 결정 기록(ADR).
 - [ADR-0002](ADR-0002-active-storage-blob-retention.md) — 업로드 이미지 blob은 ParsingSession 종결 후 180일 보존하고 자동 purge한다 (Accepted, 2026-05-15)
 - [ADR-0009](ADR-0009-vision-multi-institution-validation-via-dogfood.md) — Vision 파서의 멀티 기관 정확도는 사전 코퍼스 없이 dogfood로 점진 검증한다 (Accepted, 2026-05-15)
 - [ADR-0010](ADR-0010-self-host-pretendard-variable.md) — Pretendard Variable을 dynamic-subset으로 자가 호스팅한다 (Accepted, 2026-05-15)
+- [ADR-0011](ADR-0011-transaction-classification-source.md) — Transaction 단위 결정 메커니즘 보존 필드를 `classification_source` 컬럼으로 신설 (Accepted, 2026-05-16, ADR-0007 §2 후속)
 
 ### Design system 결정 묶음 (Accepted, 2026-05-15)
 

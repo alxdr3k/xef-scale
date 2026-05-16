@@ -128,3 +128,16 @@ Gemini 분류 결과는 CategoryMapping으로 저장됩니다:
 | `app/models/category_mapping.rb` | 매핑 모델 |
 | `app/models/category.rb` | keyword 매칭 |
 | `app/services/gemini_category_service.rb` | AI 분류 (3단계 전용) |
+
+## 결정 메커니즘 보존 (ADR-0011)
+
+결정 메커니즘(이번 거래의 카테고리가 *어떻게* 정해졌는가)은 `Transaction#classification_source` 컬럼에 4값으로 보존됩니다 (ADR-0011). 이는 매핑 출처(`CategoryMapping#source ∈ {import, gemini, manual}`)와 **축이 다른** 메타이며 (ADR-0007 §1.2), UI 어휘도 분리됩니다 (`config/locales/ko.yml`의 `transactions.classification_source` vs `category_mappings.source`).
+
+| `Transaction#classification_source` | 정의 | 발생 시점 |
+|---|---|---|
+| `mapping_match` | `CategoryMapping`이 매칭됨 (1단계) | 파싱 잡 또는 검토 commit |
+| `keyword_match` | `Category#keyword`가 매칭됨 (2단계) | 파싱 잡 또는 검토 commit |
+| `gemini_batch` | `GeminiCategoryService` 배치 추천 (3단계, 이미지 경로만) | `file_parsing_job` |
+| `manual_set` | 사용자가 명시적으로 지정 | 직접 입력 / 인라인 변경 / 검토 중 변경 |
+
+본 컬럼은 nullable이며, 기존 거래는 backfill하지 않습니다 (ADR-0011 §Consequences). 호출지점에서 set하는 로직은 ADR-0011 §Decision 6 기준으로 후속 PR에서 도입됩니다.
