@@ -500,6 +500,37 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "manual_set", tx.reload.classification_source
   end
 
+  test "update_transaction explicit clear (category_id='') sets manual_set and prevents auto-rematch" do
+    # Codex PR #174 — 폼에서 사용자가 의도적으로 카테고리를 *해제*("")한 경우.
+    # 1) classification_source는 manual_set으로 잠겨야 한다.
+    # 2) 같은 요청에서 merchant도 바뀌면 자동 재매칭이 *동작하지 않아야* 한다
+    #    (사용자의 명시적 해제 의도를 존중).
+    target_for_rematch = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "RC_CLEAR_REMATCH",
+      match_type: "exact",
+      source: "manual",
+      category: target_for_rematch
+    )
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "원래 가맹점",
+      category: categories(:transport),
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { category_id: "", merchant: "RC_CLEAR_REMATCH" } },
+          as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_nil tx.category_id, "사용자가 빈 문자열로 카테고리를 해제했으므로 nil이어야 함"
+    assert_equal "manual_set", tx.classification_source,
+                 "category_id 키가 폼에 포함되었으므로 manual_set"
+  end
+
   test "update_transaction merchant change with mapping hit sets mapping_match" do
     target = categories(:food)
     CategoryMapping.create!(

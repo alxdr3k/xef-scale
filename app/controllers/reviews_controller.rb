@@ -268,17 +268,22 @@ class ReviewsController < ApplicationController
     # Handle form-based updates (original behavior)
     transaction_params = params.require(:transaction).permit(permitted)
 
+    # ADR-0011 §Decision 3: 폼에 `category_id` 키가 실제로 *포함되어 있는지*로
+    # 사용자가 카테고리를 명시적으로 다뤘는지 판단한다. 빈 문자열로 *해제*한
+    # 경우도 사용자 의도이므로 `present?` 검사는 부적절 — 키 존재로 본다.
+    category_id_submitted = params[:transaction].respond_to?(:key?) &&
+                            params[:transaction].key?(:category_id)
+
     if @transaction.update(transaction_params)
-      # ADR-0011 §Decision 3: form 기반 update에서 category_id가 폼에 포함되면
-      # 사용자 명시 → `manual_set`. (transaction_params[:category_id]가 nil이면
-      # 폼에 필드 자체가 없었다는 뜻 — 영향 없음.)
-      if transaction_params[:category_id].present?
+      # 사용자가 폼에서 category_id를 보냈으면 (값이 nil이든 ID든) → `manual_set`.
+      if category_id_submitted
         @transaction.update_column(:classification_source, "manual_set")
       end
 
-      # merchant가 변경되었고, 사용자가 직접 카테고리를 변경하지 않았으면 재매칭
+      # merchant가 변경되었고, 사용자가 직접 카테고리를 다루지 *않았으면* 자동 재매칭.
+      # 사용자가 의도적으로 해제(`""`)한 경우는 그 의도를 존중해 재매칭 금지.
       merchant_changed = old_merchant != @transaction.merchant
-      category_not_manually_changed = transaction_params[:category_id].blank?
+      category_not_manually_changed = !category_id_submitted
 
       if merchant_changed && category_not_manually_changed
         new_category = CategoryMapping.find_category_for_merchant_and_description(
