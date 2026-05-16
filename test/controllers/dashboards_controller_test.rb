@@ -194,4 +194,45 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, controller.instance_variable_get(:@daily_average_denominator)
     assert_select "span", text: /일 평균/, count: 0
   end
+
+  # Phase 4: Hero stat + ReviewInboxCard 채택 검증.
+  test "monthly dashboard adopts shared/_hero_stat (semantic tokens, no indigo gradient)" do
+    get monthly_dashboard_path
+    assert_response :success
+    # 옛 hero는 `bg-indigo-600 rounded-2xl shadow-lg` 조합으로 인디고 그라데이션
+    # block을 만들었음 — 그 조합이 사라졌는지 확인.
+    assert_no_match(/bg-indigo-600\s+rounded-2xl\s+shadow-lg/, response.body)
+    # 신규 hero는 shared/_hero_stat: bg-surface section + text-secondary label.
+    assert_match(/<section[^>]*bg-surface[^>]*>\s*<p[^>]*text-secondary[^>]*>[^<]*총 지출/m, response.body)
+  end
+
+  test "monthly dashboard renders ReviewInboxCard when pending items exist" do
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste", status: "completed",
+      review_status: "pending_review",
+      total_count: 1, success_count: 1, duplicate_count: 0, error_count: 0
+    )
+    @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "REVIEW_INBOX_HOME",
+      status: "pending_review", parsing_session: session
+    )
+
+    get monthly_dashboard_path
+    assert_response :success
+    assert_match(/검토 대기/, response.body)
+    assert_includes response.body, workspace_reviews_path(@workspace)
+  end
+
+  test "monthly dashboard omits ReviewInboxCard when no pending items" do
+    @workspace.parsing_sessions.where(status: "completed", review_status: "pending_review")
+              .find_each { |s| s.update!(review_status: "committed") }
+    DuplicateConfirmation.joins(:parsing_session)
+                         .where(parsing_sessions: { workspace_id: @workspace.id })
+                         .find_each(&:destroy)
+
+    get monthly_dashboard_path
+    assert_response :success
+    # 검토함 진입 CTA가 없음 (카드 자체 미렌더).
+    assert_no_match(/지금 검토/, response.body)
+  end
 end

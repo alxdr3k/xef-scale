@@ -23,31 +23,29 @@
         class: 'text-indigo-600 hover:text-indigo-800' %>
   </div>
 
-  <!-- Hero Card: 선택한 월 총 지출 -->
-  <div class="bg-indigo-600 rounded-2xl shadow-lg p-6 mb-6 text-white">
-    <div class="text-sm font-medium text-indigo-200"><%= @year %>년 <%= @month %>월 총 지출</div>
-    <div class="text-4xl sm:text-5xl font-bold mt-1">
-      <%= number_to_currency(@total_spending, unit: '₩', precision: 0) %>
-    </div>
-    <div class="flex gap-6 mt-3 text-sm text-indigo-200">
-      <span><%= @transactions.count %>건 결제</span>
-      <% if @daily_average_denominator.positive? %>
-        <span>일 평균 <%= number_to_currency(@daily_average, unit: '₩', precision: 0) %></span>
-      <% end %>
-    </div>
+  <%# Phase 4: shared/_hero_stat 채택 (ADR-0003 / ADR-0006 시맨틱 토큰).
+      옛 인디고 그라데이션은 ADR-0006의 컬러 의미축과 충돌하므로 제거. %>
+  <% supporting_parts = [] %>
+  <% supporting_parts << "#{@transactions.count}건 결제" %>
+  <% supporting_parts << "일 평균 #{number_to_currency(@daily_average, unit: '₩', precision: 0)}" if @daily_average_denominator.positive? %>
+  <% if @budget_progress %>
+    <% supporting_parts << "예산 대비 #{@budget_progress[:percentage]}% (#{number_to_currency(@budget_progress[:budget], unit: '₩', precision: 0)})" %>
+  <% end %>
 
-    <% if @budget_progress %>
-      <div class="mt-4">
-        <div class="flex justify-between text-xs text-indigo-200 mb-1">
-          <span>예산 대비 <%= @budget_progress[:percentage] %>%</span>
-          <span><%= number_to_currency(@budget_progress[:budget], unit: '₩', precision: 0) %></span>
-        </div>
-        <div class="w-full bg-indigo-800 rounded-full h-2">
-          <div class="h-2 rounded-full transition-all duration-500 <%= @budget_progress[:percentage] >= 100 ? 'bg-red-400' : @budget_progress[:percentage] >= 80 ? 'bg-yellow-400' : 'bg-white' %>"
-               style="width: <%= [@budget_progress[:percentage], 100].min %>%"></div>
-        </div>
-      </div>
-    <% end %>
+  <div class="mb-4">
+    <%= render 'shared/hero_stat',
+        label: "#{@year}년 #{@month}월 총 지출",
+        value: @total_spending,
+        tone: :neutral,
+        supporting: supporting_parts.join(" · ") %>
+  </div>
+
+  <%# Phase 4: ReviewInboxCard — N>0일 때만 노출. 사용자 행동 압력. %>
+  <div class="mb-6">
+    <%= render 'shared/review_inbox_card',
+        workspace: @workspace,
+        pending_count: @pending_review_count,
+        duplicate_count: @pending_duplicate_count %>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
