@@ -495,9 +495,10 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_nil tx.classification_source
   end
 
-  test "quick_update_category sets classification_source to manual_set" do
-    @transaction.update!(classification_source: nil)
-    target = categories(:food)
+  test "quick_update_category sets classification_source to manual_set when category changes" do
+    # 다른 카테고리로 변경 — same-category guard 회피 (Codex PR #174 fix).
+    @transaction.update!(category: categories(:food), classification_source: nil)
+    target = categories(:transport)
 
     patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
           params: { category_id: target.id },
@@ -505,6 +506,34 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal "manual_set", @transaction.reload.classification_source
+  end
+
+  test "quick_update_category no-op re-click preserves classification_source" do
+    # Codex PR #174 — dropdown은 현재 카테고리도 표시하므로 같은 카테고리 클릭은 no-op.
+    # 기존 provenance(mapping_match 등)가 silent erase되면 안 된다.
+    current_cat = categories(:food)
+    @transaction.update!(category: current_cat, classification_source: "mapping_match")
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: current_cat.id },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "mapping_match", @transaction.reload.classification_source,
+                 "no-op 클릭은 기존 provenance 보존"
+  end
+
+  test "update (edit page) routine non-category edit preserves classification_source" do
+    # Codex PR #174 — edit 폼은 collection_select로 category_id를 항상 보내므로
+    # merchant/amount/notes만 편집해도 manual_set으로 덮으면 안 된다.
+    @transaction.update!(category: categories(:food), classification_source: "mapping_match")
+    same_category_id = @transaction.category_id
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { merchant: "노카테고리편집_가맹점", category_id: same_category_id } }
+
+    assert_equal "mapping_match", @transaction.reload.classification_source,
+                 "category 미변경 + 다른 필드만 편집 시 provenance 보존"
   end
 
   test "update (edit page) with category_id sets manual_set" do

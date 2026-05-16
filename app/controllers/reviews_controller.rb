@@ -275,8 +275,10 @@ class ReviewsController < ApplicationController
                             params[:transaction].key?(:category_id)
 
     if @transaction.update(transaction_params)
-      # 사용자가 폼에서 category_id를 보냈으면 (값이 nil이든 ID든) → `manual_set`.
-      if category_id_submitted
+      # ADR-0011 §Decision 3 (Codex PR #174 follow-up): 검토 폼도 collection_select로
+      # category_id를 항상 보낼 수 있으므로 키 존재만으로는 부족. 실제 category_id가
+      # *변동*한 경우에만 manual_set 잠금 — 동일 카테고리는 기존 provenance 보존.
+      if category_id_submitted && @transaction.category_id != old_category_id
         @transaction.update_column(:classification_source, "manual_set")
       end
 

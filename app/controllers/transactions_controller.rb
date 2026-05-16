@@ -59,13 +59,18 @@ class TransactionsController < ApplicationController
 
   def update
     old_allowance_status = @transaction.allowance?
+    old_category_id = @transaction.category_id
     # ADR-0011 §Decision 3: 폼에 `category_id` 키가 포함됐는지로 판단.
     # 빈 문자열로 해제한 경우도 사용자 명시 행위.
     category_id_submitted = params[:transaction].respond_to?(:key?) &&
                             params[:transaction].key?(:category_id)
 
     if @transaction.update(transaction_params)
-      if category_id_submitted
+      # ADR-0011 §Decision 3 (Codex PR #174 follow-up): edit 폼은 collection_select로
+      # category_id를 *항상* 보내므로 단순 키 존재로는 사용자가 카테고리를 *바꿨는지*
+      # 알 수 없다. 실제 category_id가 변동한 경우에만 manual_set으로 잠근다.
+      # 동일 카테고리를 그대로 보낸 경우는 기존 provenance(mapping_match 등) 보존.
+      if category_id_submitted && @transaction.category_id != old_category_id
         @transaction.update_column(:classification_source, "manual_set")
       end
 
@@ -148,9 +153,14 @@ class TransactionsController < ApplicationController
       return
     end
 
-    # ADR-0011 §Decision 3: quick_update_category는 사용자 명시 변경 → `manual_set`.
-    # 카테고리 해제(category_id nil)도 사용자 명시 행동이므로 동일하게 `manual_set`.
-    if @transaction.update(category_id: category_id, classification_source: "manual_set")
+    # ADR-0011 §Decision 3 (Codex PR #174 follow-up): dropdown은 현재 카테고리도
+    # 표시하므로 같은 카테고리 재클릭은 no-op. category가 실제로 *변동*했을 때만
+    # manual_set으로 잠금 — 변동 없으면 기존 provenance(mapping_match 등) 보존.
+    category_changed = category_id.to_s.presence != old_category_id&.to_s
+    update_attrs = { category_id: category_id }
+    update_attrs[:classification_source] = "manual_set" if category_changed
+
+    if @transaction.update(update_attrs)
       @categories = @workspace.categories.order(:name)
       @show_learning_suggestion = eligible_for_learning_suggestion?(@transaction, old_category_id)
 
