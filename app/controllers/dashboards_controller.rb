@@ -20,6 +20,7 @@ class DashboardsController < ApplicationController
     @budget_progress = @budget&.progress_for_month(@year, @month)
     @daily_average_denominator = daily_average_denominator(@year, @month)
     @daily_average = @daily_average_denominator.zero? ? 0 : (@total_spending / @daily_average_denominator)
+    review_inbox_counts!
 
     render :monthly
   end
@@ -168,6 +169,19 @@ class DashboardsController < ApplicationController
     unless @workspace
       redirect_to new_workspace_path, notice: "먼저 워크스페이스를 생성해 주세요."
     end
+  end
+
+  # Phase 4: 홈 dashboard용 ReviewInboxCard 카운트. ADR-0004 §"필수":
+  # `needs_review` scope + DuplicateConfirmation는 parsing_session join으로
+  # cross-tenant 스코핑 + finalized 세션 제외 (merge needs_review).
+  def review_inbox_counts!
+    @pending_review_count = @workspace.parsing_sessions.needs_review.count
+    @pending_duplicate_count = DuplicateConfirmation
+                                .pending
+                                .joins(:parsing_session)
+                                .merge(ParsingSession.needs_review)
+                                .where(parsing_sessions: { workspace_id: @workspace.id })
+                                .count
   end
 
   def sanitize_date(value)

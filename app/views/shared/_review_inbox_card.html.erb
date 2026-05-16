@@ -1,0 +1,40 @@
+<%#
+  ReviewInboxCard — 검토 대기/중복 후보 카운트와 검토함 진입 CTA를
+  홈 대시보드에 노출 (ui-redesign-plan §3.1, Phase 4).
+
+  Locals:
+    workspace       (Workspace, required)
+    pending_count   (Integer, required) — 검토 대기 세션 수 (needs_review)
+    duplicate_count (Integer, required) — pending DuplicateConfirmation 수
+
+  pending_count + duplicate_count 가 0이면 *렌더하지 않는다* (행동 압력만 노출).
+  ADR-0004 §"왜 needs_review인가": 정확한 needs_review 집계는 호출자가 책임.
+%>
+<% workspace       = local_assigns.fetch(:workspace) %>
+<% pending_count   = local_assigns.fetch(:pending_count).to_i %>
+<% duplicate_count = local_assigns.fetch(:duplicate_count).to_i %>
+
+<% if pending_count.positive? || duplicate_count.positive? %>
+  <section class="bg-warning-subtle border border-warning/30 rounded-lg shadow-card p-5"
+           role="status"
+           aria-label="검토 대기 안내">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-warning shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+      </svg>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-primary">
+          <% parts = [] %>
+          <% parts << "검토 대기 #{pending_count}건" if pending_count.positive? %>
+          <% parts << "중복 후보 #{duplicate_count}건" if duplicate_count.positive? %>
+          <%= parts.join(" · ") %>
+        </p>
+        <p class="text-meta text-secondary mt-1">
+          확정 전 거래를 검토하고 중복을 정리하세요.
+        </p>
+      </div>
+      <%= link_to '지금 검토 →', workspace_reviews_path(workspace),
+            class: "shrink-0 inline-flex items-center px-3 py-2 text-sm font-medium rounded-md bg-action text-action-on hover:bg-action-hover" %>
+    </div>
+  </section>
+<% end %>
