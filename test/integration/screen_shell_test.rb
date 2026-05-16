@@ -44,6 +44,14 @@ class ScreenShellTest < ActionDispatch::IntegrationTest
     assert_match(/카테고리/, response.body)
   end
 
+  # Phase 3.5: 더보기 nav가 workspace_more_path를 가리키는지 확인.
+  test "nav 더보기 link points to workspace_more_path when current_workspace present" do
+    sign_in @user
+    get dashboard_path
+    assert_response :success
+    assert_includes response.body, workspace_more_path(@workspace)
+  end
+
   test "nav hides 카테고리 tab from non-admin (member_read) member" do
     sign_in users(:reader)
     get dashboard_path
