@@ -452,4 +452,27 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
           as: :json
     assert_response :unprocessable_entity
   end
+
+  # ADR-0007 §4: inline-edit이 merchant를 바꾸면 화면에 떠있던 학습 제안 row는
+  # snapshot이 stale이 된다. 서버 stale 검증과 별도로, UX 차원에서 turbo response가
+  # 그 row를 즉시 제거해야 한다 (Turbo remove는 미존재 id에 idempotent).
+  test "inline_update turbo response removes stale category learning suggestion row" do
+    patch inline_update_workspace_transaction_path(@workspace, @transaction),
+          params: { field: "merchant", value: "새가맹점" },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_match(/turbo-stream action="remove"/, response.body)
+    assert_match(/target="category-learning-suggestion-#{@transaction.id}"/, response.body)
+  end
+
+  test "update turbo response removes stale category learning suggestion row" do
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { merchant: "새가맹점" } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_response :success
+    assert_match(/turbo-stream action="remove"/, response.body)
+    assert_match(/target="category-learning-suggestion-#{@transaction.id}"/, response.body)
+  end
 end

@@ -5,13 +5,15 @@ import { Controller } from "@hotwired/stimulus"
 // quick_update_category turbo_stream로 추가된 inline suggestion row의 [예/아니오]
 // 버튼을 처리한다.
 //
-// accept  — POST urlValue, body { category_id: categoryIdValue }. 응답은
-//           turbo_stream으로 본 row를 제거.
+// accept  — POST urlValue, body { category_id, merchant }. 둘 다 suggestion이
+//           렌더된 시점의 snapshot이며 서버가 현재 transaction 상태와 일치 여부를
+//           검증한다. 행이 그 사이 변경되었으면 422로 거부되어 stale 학습을 막는다.
 // dismiss — 본 row를 DOM에서 즉시 제거. 서버 호출 없음(상태 미보존).
 export default class extends Controller {
   static values = {
     url: String,
-    categoryId: Number
+    categoryId: Number,
+    merchant: String
   }
 
   async accept(event) {
@@ -26,7 +28,10 @@ export default class extends Controller {
           "Accept": "text/vnd.turbo-stream.html",
           "X-CSRF-Token": token
         },
-        body: JSON.stringify({ category_id: this.categoryIdValue })
+        body: JSON.stringify({
+          category_id: this.categoryIdValue,
+          merchant: this.merchantValue
+        })
       })
 
       if (response.ok) {

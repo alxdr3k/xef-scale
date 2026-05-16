@@ -9,6 +9,14 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
     sign_in @user
   end
 
+  # 정상 흐름: suggestion 렌더 시점 snapshot이 현재 transaction 상태와 일치.
+  def accept_params(category, merchant: nil)
+    {
+      category_id: category.id,
+      merchant: merchant || @transaction.merchant.to_s.strip
+    }
+  end
+
   test "create requires admin access" do
     sign_out @user
     sign_in users(:member) # member_write
@@ -16,7 +24,7 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
 
     assert_no_difference -> { CategoryMapping.count } do
       post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
-           params: { category_id: categories(:transport).id }
+           params: accept_params(categories(:transport))
     end
     # require_workspace_admin_access redirects writers
     assert_response :redirect
@@ -28,7 +36,7 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
 
     assert_difference -> { CategoryMapping.count }, 1 do
       post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
-           params: { category_id: target.id },
+           params: accept_params(target, merchant: "스타벅스"),
            headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
 
@@ -48,7 +56,52 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
 
     assert_no_difference -> { CategoryMapping.count } do
       post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
-           params: { category_id: foreign.id }
+           params: { category_id: foreign.id, merchant: @transaction.merchant }
+    end
+    assert_response :unprocessable_entity
+  end
+
+  test "create rejects stale category_id when transaction category changed after suggestion rendered" do
+    # suggestion 렌더 시점: transport.
+    rendered_target = categories(:transport)
+    @transaction.update!(category: rendered_target)
+    # 그 사이 사용자가 다시 카테고리를 바꿈(=현재 상태는 food).
+    @transaction.update!(category: categories(:food))
+
+    assert_no_difference -> { CategoryMapping.count } do
+      post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
+           params: accept_params(rendered_target),
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+    assert_response :unprocessable_entity
+  end
+
+  test "create rejects stale merchant when transaction merchant changed after suggestion rendered" do
+    target = categories(:transport)
+    @transaction.update!(merchant: "스타벅스", category: target)
+
+    # 사용자가 suggestion이 떠있는 동안 다른 통로(inline-edit 등)로 merchant를 변경.
+    @transaction.update!(merchant: "네이버페이")
+
+    assert_no_difference -> { CategoryMapping.count } do
+      post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
+           params: accept_params(target, merchant: "스타벅스"),
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+    assert_response :unprocessable_entity
+
+    # 우발적으로 새 merchant로 mapping이 만들어지지 않았음을 확인.
+    refute CategoryMapping.exists?(workspace: @workspace, merchant_pattern: "네이버페이")
+  end
+
+  test "create rejects missing merchant snapshot" do
+    target = categories(:transport)
+    @transaction.update!(category: target)
+
+    assert_no_difference -> { CategoryMapping.count } do
+      post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
+           params: { category_id: target.id }, # merchant 미포함
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
     assert_response :unprocessable_entity
   end
@@ -59,19 +112,20 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
 
     assert_difference -> { CategoryMapping.count }, 1 do
       post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
-           params: { category_id: target.id },
+           params: accept_params(target),
            headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
 
     # Second call must not duplicate — dedup_signature uniqueness guards this.
     assert_no_difference -> { CategoryMapping.count } do
       post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
-           params: { category_id: target.id },
+           params: accept_params(target),
            headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
   end
 
   test "create updates category when same signature mapping points elsewhere" do
+    # 기존에 (merchant → food) 매핑이 있고, 사용자가 transport로 카테고리 변경 후 학습 수락.
     existing = CategoryMapping.create!(
       workspace: @workspace,
       merchant_pattern: @transaction.merchant.strip,
@@ -82,10 +136,11 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
       source: "manual"
     )
     new_target = categories(:transport)
+    @transaction.update!(category: new_target)
 
     assert_no_difference -> { CategoryMapping.count } do
       post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
-           params: { category_id: new_target.id },
+           params: accept_params(new_target),
            headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
     assert_response :success
@@ -97,7 +152,7 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
 
     assert_no_difference -> { CategoryMapping.count } do
       post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
-           params: { category_id: categories(:transport).id }
+           params: { category_id: @transaction.category_id, merchant: "" }
     end
     assert_response :unprocessable_entity
   end
@@ -116,10 +171,11 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
       source: "manual"
     )
     new_target = categories(:transport)
+    @transaction.update!(category: new_target)
 
     assert_no_difference -> { CategoryMapping.count } do
       post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
-           params: { category_id: new_target.id },
+           params: accept_params(new_target),
            headers: { "Accept" => "text/vnd.turbo-stream.html" }
     end
     assert_response :success
@@ -132,6 +188,7 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
     # RecordNotUnique. 컨트롤러는 한 번 더 find & update하여 idempotent를
     # 보장해야 한다.
     target = categories(:transport)
+    @transaction.update!(category: target)
     merchant = @transaction.merchant.strip
     racing_row = CategoryMapping.create!(
       workspace: @workspace,
@@ -154,7 +211,7 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
     begin
       assert_no_difference -> { CategoryMapping.count } do
         post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
-             params: { category_id: target.id },
+             params: accept_params(target),
              headers: { "Accept" => "text/vnd.turbo-stream.html" }
       end
     ensure
@@ -170,9 +227,10 @@ class CategoryLearningSuggestionsControllerTest < ActionDispatch::IntegrationTes
 
   test "create response removes the suggestion row via turbo_stream" do
     target = categories(:transport)
+    @transaction.update!(category: target)
 
     post workspace_transaction_category_learning_suggestion_path(@workspace, @transaction),
-         params: { category_id: target.id },
+         params: accept_params(target),
          headers: { "Accept" => "text/vnd.turbo-stream.html" }
 
     assert_response :success

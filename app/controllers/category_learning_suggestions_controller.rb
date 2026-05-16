@@ -12,12 +12,19 @@ class CategoryLearningSuggestionsController < ApplicationController
   # description_pattern: nil, amount: nil)을 idempotent하게 만든다.
   #
   # 동일 dedup signature가 다른 카테고리를 가리키면 category만 갱신한다.
+  #
+  # Stale snapshot 방어: 클라이언트는 suggestion 렌더 시점의 category_id, merchant
+  # 스냅샷을 함께 보낸다. 그 사이 inline-edit으로 transaction의 category/merchant가
+  # 바뀌었으면 snapshot이 현재 상태와 어긋나 422를 돌려보낸다. 사용자가 의도한
+  # 매핑과 실제 만들 매핑이 일치하지 않는 stale 학습을 막는 안전장치이다.
   def create
     category = @workspace.categories.find_by(id: params[:category_id])
     return head :unprocessable_entity if category.nil?
+    return head :unprocessable_entity if category.id != @transaction.category_id
 
     merchant = @transaction.merchant.to_s.strip
     return head :unprocessable_entity if merchant.blank?
+    return head :unprocessable_entity if params[:merchant].to_s.strip != merchant
 
     mapping = upsert_default_mapping(merchant, category)
     if mapping
