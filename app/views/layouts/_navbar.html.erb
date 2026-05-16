@@ -17,8 +17,12 @@
             <%= link_to '검토함', workspace_reviews_path(current_workspace),
                 class: "#{request.path.match?(/\/reviews\z|\/reviews\?|\/parsing_sessions/) ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" %>
 
-            <%= link_to '카테고리', workspace_categories_path(current_workspace),
-                class: "#{request.path.include?('/categories') || request.path.include?('/category_mappings') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" %>
+            <%# 카테고리 탭: categories/category_mappings 컨트롤러가 admin-only이므로 admin만 노출.
+                non-admin 멤버에게도 카테고리를 보여주는 결정은 별도 ADR (preflight Bucket B / Phase 3.4). %>
+            <% if current_user.admin_of?(current_workspace) %>
+              <%= link_to '카테고리', workspace_categories_path(current_workspace),
+                  class: "#{request.path.include?('/categories') || request.path.include?('/category_mappings') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium" %>
+            <% end %>
           <% end %>
 
           <%= link_to '더보기', user_settings_path,

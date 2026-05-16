@@ -36,7 +36,7 @@
             role="tab" aria-selected="true">
       파싱 결과
       <span class="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-meta rounded-full bg-action-subtle text-action-strong">
-        <%= @pending_sessions.size %>
+        <%= @pending_sessions_count %>
       </span>
     </button>
     <button type="button"
@@ -47,7 +47,7 @@
             role="tab" aria-selected="false">
       중복 후보
       <span class="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-meta rounded-full bg-elev text-secondary">
-        <%= @pending_duplicates.size %>
+        <%= @pending_duplicates_count %>
       </span>
     </button>
   </div>
@@ -69,10 +69,10 @@
                   <% end %>
                 </p>
                 <p class="text-meta text-secondary mt-0.5">
-                  <%= session.transactions.pending_review.where(deleted: false).count %>건 검토 대기
-                  <% pending_dup = session.duplicate_confirmations.pending.count %>
-                  <% if pending_dup.positive? %>
-                    · 중복 의심 <%= pending_dup %>건
+                  <%= @pending_tx_counts[session.id] || 0 %>건 검토 대기
+                  <% dup_count = @pending_dup_counts[session.id] || 0 %>
+                  <% if dup_count.positive? %>
+                    · 중복 의심 <%= dup_count %>건
                   <% end %>
                   · <%= time_ago_in_words(session.created_at) %> 전
                 </p>
@@ -84,6 +84,11 @@
           </li>
         <% end %>
       </ul>
+      <% if @pending_sessions_count > @pending_sessions.size %>
+        <p class="text-meta text-tertiary text-center mt-2">
+          최근 <%= @pending_sessions.size %>건만 표시. 전체 <%= @pending_sessions_count %>건 — 세부 페이지네이션은 후속.
+        </p>
+      <% end %>
     <% else %>
       <div class="px-6 py-12 text-center text-secondary bg-surface rounded-lg">
         <p class="text-base">검토 대기 중인 항목이 없습니다.</p>
@@ -115,6 +120,11 @@
           </li>
         <% end %>
       </ul>
+      <% if @pending_duplicates_count > @pending_duplicates.size %>
+        <p class="text-meta text-tertiary text-center mt-2">
+          최근 <%= @pending_duplicates.size %>건만 표시. 전체 <%= @pending_duplicates_count %>건 — 세부 페이지네이션은 후속.
+        </p>
+      <% end %>
     <% else %>
       <div class="px-6 py-12 text-center text-secondary bg-surface rounded-lg">
         <p class="text-base">중복 후보가 없습니다.</p>

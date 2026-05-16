@@ -27,12 +27,15 @@
         <span class="text-xs mt-1">검토함</span>
       <% end %>
 
-      <%# 카테고리 %>
-      <%= link_to workspace_categories_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.include?('/categories') || request.path.include?('/category_mappings') ? 'text-indigo-600' : 'text-gray-500'}" do %>
-        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-        </svg>
-        <span class="text-xs mt-1">카테고리</span>
+      <%# 카테고리 — admin-only 게이트 (데스크탑 nav와 동일 규칙). preflight Bucket B / Phase 3.4에서
+          non-admin 노출 결정 별도. %>
+      <% if current_user.admin_of?(current_workspace) %>
+        <%= link_to workspace_categories_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.include?('/categories') || request.path.include?('/category_mappings') ? 'text-indigo-600' : 'text-gray-500'}" do %>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          <span class="text-xs mt-1">카테고리</span>
+        <% end %>
       <% end %>
     <% end %>
 

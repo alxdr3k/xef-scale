@@ -383,6 +383,35 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "index pending_duplicates excludes finalized sessions (review_status != pending_review)" do
+    # 사용자 시각에서 commit/rollback/discard된 세션의 잔여 pending dup은
+    # reviews#show가 read_only로 잠겨 해결 액션을 제공하지 않는다.
+    # 인덱스 자체에서 제외해 stale 행이 큐에 보이지 않게 한다.
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    finalized = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "committed",
+      total_count: 0, success_count: 0, duplicate_count: 0, error_count: 0
+    )
+    finalized_tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "STALE_DUP_MERCHANT_XYZ",
+      status: "pending_review", parsing_session: finalized
+    )
+    finalized.duplicate_confirmations.create!(
+      original_transaction: transactions(:food_transaction),
+      new_transaction: finalized_tx,
+      status: "pending"
+    )
+
+    get workspace_reviews_path(@workspace)
+
+    assert_response :success
+    assert_not_includes response.body, "STALE_DUP_MERCHANT_XYZ",
+                        "finalized session's pending dup should not appear in inbox"
+  end
+
   test "index pending_duplicates does not leak across workspaces" do
     # ADR-0004 §"필수": DuplicateConfirmation은 자체 workspace_id가 없고
     # parsing_session 조인을 통해서만 스코프 가능. 직접 .pending 호출 시 leak.
