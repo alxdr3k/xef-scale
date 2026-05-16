@@ -179,7 +179,8 @@ class ReviewsController < ApplicationController
       category = @workspace.categories.find_by(id: params[:category_id])
       count = 0
       transactions.find_each do |tx|
-        tx.update!(category_id: category&.id)
+        # ADR-0011 §Decision 3: 검토 중 일괄 변경된 카테고리 → `manual_set`.
+        tx.update!(category_id: category&.id, classification_source: "manual_set")
         count += 1
       end
       notice = "#{count}건의 거래 카테고리가 변경되었습니다."
@@ -236,6 +237,10 @@ class ReviewsController < ApplicationController
       end
 
       if @transaction.update(field => value)
+        # ADR-0011 §Decision 3: 사용자가 명시적으로 category_id를 인라인 편집
+        # (field=="category_id")한 경우는 `manual_set`. 다른 필드 편집은 영향 없음.
+        @transaction.update_column(:classification_source, "manual_set") if field == "category_id"
+
         # If merchant changed, try to auto-categorize
         if field == "merchant"
           new_category = CategoryMapping.find_category_for_merchant_and_description(
@@ -244,7 +249,8 @@ class ReviewsController < ApplicationController
             @transaction.description
           )
           if new_category && new_category.id != old_category_id
-            @transaction.update(category: new_category)
+            # ADR-0011 §Decision 3: merchant 변경으로 재매칭된 카테고리는 `mapping_match`.
+            @transaction.update(category: new_category, classification_source: "mapping_match")
           end
         end
 
@@ -263,6 +269,13 @@ class ReviewsController < ApplicationController
     transaction_params = params.require(:transaction).permit(permitted)
 
     if @transaction.update(transaction_params)
+      # ADR-0011 §Decision 3: form 기반 update에서 category_id가 폼에 포함되면
+      # 사용자 명시 → `manual_set`. (transaction_params[:category_id]가 nil이면
+      # 폼에 필드 자체가 없었다는 뜻 — 영향 없음.)
+      if transaction_params[:category_id].present?
+        @transaction.update_column(:classification_source, "manual_set")
+      end
+
       # merchant가 변경되었고, 사용자가 직접 카테고리를 변경하지 않았으면 재매칭
       merchant_changed = old_merchant != @transaction.merchant
       category_not_manually_changed = transaction_params[:category_id].blank?
@@ -273,7 +286,8 @@ class ReviewsController < ApplicationController
           @transaction.merchant,
           @transaction.description
         )
-        @transaction.update(category: new_category) if new_category
+        # ADR-0011 §Decision 3: merchant 변경으로 재매칭된 카테고리는 `mapping_match`.
+        @transaction.update(category: new_category, classification_source: "mapping_match") if new_category
       end
 
       # ADR-0007 §4: 카테고리 변경 시 묵시적 CategoryMapping 생성은 금지.

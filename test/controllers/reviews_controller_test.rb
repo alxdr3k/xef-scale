@@ -465,4 +465,63 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "OTHER_MERCHANT_NEW_XYZ",
                         "cross-tenant duplicate leak: index showed other workspace's transaction merchant"
   end
+
+  # ADR-0011 §Decision 3: 검토 흐름에서 classification_source set 시점 검증.
+
+  test "update_transaction with form-based category change sets manual_set" do
+    target = categories(:food)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "RC_ADR0011",
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: nil
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { category_id: target.id } },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "manual_set", tx.reload.classification_source
+  end
+
+  test "update_transaction with inline category_id field sets manual_set" do
+    target = categories(:food)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "RC_ADR0011_INLINE",
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: nil
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { field: "category_id", value: target.id },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "manual_set", tx.reload.classification_source
+  end
+
+  test "update_transaction merchant change with mapping hit sets mapping_match" do
+    target = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "RC_ADR0011_REMATCH",
+      match_type: "exact",
+      source: "manual",
+      category: target
+    )
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "초기 가맹점",
+      status: "pending_review", parsing_session: @parsing_session,
+      classification_source: nil
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { field: "merchant", value: "RC_ADR0011_REMATCH" },
+          as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_equal target.id, tx.category_id
+    assert_equal "mapping_match", tx.classification_source
+  end
 end

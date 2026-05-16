@@ -475,4 +475,56 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/turbo-stream action="remove"/, response.body)
     assert_match(/target="category-learning-suggestion-#{@transaction.id}"/, response.body)
   end
+
+  # ADR-0011 §Decision 3: classification_source set 시점 검증.
+
+  test "create with category_id sets classification_source to manual_set" do
+    category = categories(:food)
+    post workspace_transactions_path(@workspace),
+         params: { transaction: { date: Date.current, merchant: "Test_ADR0011_A", amount: 1000, category_id: category.id } }
+
+    tx = @workspace.transactions.where(merchant: "Test_ADR0011_A").last
+    assert_equal "manual_set", tx.classification_source
+  end
+
+  test "create without category_id keeps classification_source nil" do
+    post workspace_transactions_path(@workspace),
+         params: { transaction: { date: Date.current, merchant: "Test_ADR0011_B", amount: 1000 } }
+
+    tx = @workspace.transactions.where(merchant: "Test_ADR0011_B").last
+    assert_nil tx.classification_source
+  end
+
+  test "quick_update_category sets classification_source to manual_set" do
+    @transaction.update!(classification_source: nil)
+    target = categories(:food)
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: target.id },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "manual_set", @transaction.reload.classification_source
+  end
+
+  test "inline_update merchant change with mapping hit sets mapping_match" do
+    target = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: "재매칭가맹점_ADR0011",
+      match_type: "exact",
+      source: "manual",
+      category: target
+    )
+    @transaction.update!(category: nil, classification_source: nil)
+
+    patch inline_update_workspace_transaction_path(@workspace, @transaction),
+          params: { field: "merchant", value: "재매칭가맹점_ADR0011" },
+          as: :json
+
+    assert_response :success
+    @transaction.reload
+    assert_equal target.id, @transaction.category_id
+    assert_equal "mapping_match", @transaction.classification_source
+  end
 end

@@ -37,6 +37,14 @@ class Transaction < ApplicationRecord
   validates :payment_type, inclusion: { in: PAYMENT_TYPES }
   validates :source_type, inclusion: { in: SOURCE_TYPES }, allow_nil: true
   validates :classification_source, inclusion: { in: CLASSIFICATION_SOURCES }, allow_nil: true
+
+  # ADR-0011 §Decision 3: chip 컴포넌트(_category_source_chip)가 받는 `decision:`
+  # 매개변수에 그대로 전달할 수 있는 심볼 형태. 값이 없거나 도메인 외이면 nil.
+  def classification_decision
+    return nil if classification_source.blank?
+    return nil unless CLASSIFICATION_SOURCES.include?(classification_source)
+    classification_source.to_sym
+  end
   validates :parse_confidence,
             numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 },
             allow_nil: true

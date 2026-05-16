@@ -37,6 +37,9 @@ class TransactionsController < ApplicationController
   def create
     @transaction = @workspace.transactions.build(transaction_params)
     @transaction.source_type ||= "manual"
+    # ADR-0011 §Decision 3: 직접 입력 시 카테고리가 지정되면 사용자 명시 →
+    # `manual_set`. 카테고리 미지정은 nil 유지 (chip 마크 없음).
+    @transaction.classification_source = "manual_set" if @transaction.category_id.present?
 
     if @transaction.save
       @categories = @workspace.categories.order(:name)
@@ -137,7 +140,9 @@ class TransactionsController < ApplicationController
       return
     end
 
-    if @transaction.update(category_id: category_id)
+    # ADR-0011 §Decision 3: quick_update_category는 사용자 명시 변경 → `manual_set`.
+    # 카테고리 해제(category_id nil)도 사용자 명시 행동이므로 동일하게 `manual_set`.
+    if @transaction.update(category_id: category_id, classification_source: "manual_set")
       @categories = @workspace.categories.order(:name)
       @show_learning_suggestion = eligible_for_learning_suggestion?(@transaction, old_category_id)
 
@@ -214,7 +219,9 @@ class TransactionsController < ApplicationController
           @transaction.description
         )
         if new_category && new_category.id != old_category_id
-          @transaction.update(category: new_category)
+          # ADR-0011 §Decision 3: merchant 변경으로 자동 재매칭된 카테고리는
+          # CategoryMapping 매칭 → `mapping_match`.
+          @transaction.update(category: new_category, classification_source: "mapping_match")
         end
       end
 
@@ -266,7 +273,8 @@ class TransactionsController < ApplicationController
       category = @workspace.categories.find_by(id: params[:category_id])
       count = 0
       transactions.find_each do |tx|
-        tx.update!(category_id: category&.id)
+        # ADR-0011 §Decision 3: 사용자가 일괄 변경한 카테고리 → `manual_set`.
+        tx.update!(category_id: category&.id, classification_source: "manual_set")
         count += 1
       end
       notice = "#{count}건의 거래 카테고리가 변경되었습니다."

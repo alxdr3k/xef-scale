@@ -8,6 +8,9 @@ module Api
         transaction.status = "committed"
         transaction.committed_at = Time.current
         transaction.source_type = "api"
+        # ADR-0011 §Decision 3: API 클라이언트가 category_id를 명시하면 사용자
+        # 명시 행위와 동등 → `manual_set`. 카테고리 미지정은 nil 유지.
+        transaction.classification_source = "manual_set" if transaction.category_id.present?
 
         if transaction.save
           render json: { data: serialize_transaction(transaction) }, status: :created

@@ -102,7 +102,7 @@ class FileParsingJob < ApplicationJob
   end
 
   def create_transaction_without_gemini(workspace, tx_data, parsing_session)
-    category = match_category_without_gemini(workspace, tx_data[:merchant], amount: tx_data[:amount])
+    match = match_category_without_gemini(workspace, tx_data[:merchant], amount: tx_data[:amount])
 
     # institution_identifier is an import hint from the processed_file; store it
     # in source_metadata rather than linking a FinancialInstitution record.
@@ -119,7 +119,8 @@ class FileParsingJob < ApplicationJob
       original_amount: tx_data[:original_amount],
       benefit_type: tx_data[:benefit_type],
       benefit_amount: tx_data[:benefit_amount],
-      category: category,
+      category: match[:category],
+      classification_source: match[:source],
       status: "pending_review",
       parsing_session: parsing_session,
       source_type: "image_upload",
@@ -136,13 +137,20 @@ class FileParsingJob < ApplicationJob
     meta
   end
 
+  # ADR-0011 §Decision 3: 이미지 경로 1·2단계(mapping/keyword) 폴백에서 어느 단계가
+  # 카테고리를 결정했는지 함께 반환. 3단계(gemini_batch)는
+  # `categorize_with_gemini_batch`에서 별도 처리.
+  # 반환: { category: Category|nil, source: "mapping_match"|"keyword_match"|nil }
   def match_category_without_gemini(workspace, merchant, amount: nil)
-    return nil if merchant.blank?
+    return { category: nil, source: nil } if merchant.blank?
 
     mapping = CategoryMapping.find_for_merchant(workspace, merchant, amount: amount)
-    return mapping.category if mapping
+    return { category: mapping.category, source: "mapping_match" } if mapping
 
-    workspace.categories.find { |c| c.matches?(merchant) }
+    keyword_category = workspace.categories.find { |c| c.matches?(merchant) }
+    return { category: keyword_category, source: "keyword_match" } if keyword_category
+
+    { category: nil, source: nil }
   end
 
   def categorize_with_gemini_batch(workspace, transactions)
@@ -167,7 +175,8 @@ class FileParsingJob < ApplicationJob
       category = workspace.categories.find_by(name: category_name)
       next unless category
 
-      transaction.update!(category: category)
+      # ADR-0011 §Decision 3: 3단계 Gemini 배치 결과는 `gemini_batch`로 기록.
+      transaction.update!(category: category, classification_source: "gemini_batch")
       categorized_count += 1
 
       begin
