@@ -21,6 +21,9 @@ class Transaction < ApplicationRecord
   STATUSES = %w[pending_review committed rolled_back].freeze
   PAYMENT_TYPES = %w[lump_sum installment coupon].freeze
   SOURCE_TYPES = %w[manual text_paste image_upload api import].freeze
+  # ADR-0011: 결정 메커니즘 4값. 순서는 ADR-0007 §1.1을 따른다 (1단계→2단계→3단계→수동).
+  # 호출지점 set 로직은 후속 PR — 본 컬럼은 현재 새 거래에서도 nil로 유지된다.
+  CLASSIFICATION_SOURCES = %w[mapping_match keyword_match gemini_batch manual_set].freeze
 
   enum :payment_type, {
     lump_sum: "lump_sum",
@@ -33,6 +36,7 @@ class Transaction < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
   validates :payment_type, inclusion: { in: PAYMENT_TYPES }
   validates :source_type, inclusion: { in: SOURCE_TYPES }, allow_nil: true
+  validates :classification_source, inclusion: { in: CLASSIFICATION_SOURCES }, allow_nil: true
   validates :parse_confidence,
             numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 1 },
             allow_nil: true

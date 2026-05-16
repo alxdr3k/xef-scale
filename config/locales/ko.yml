@@ -9,3 +9,19 @@ ko:
       body: "다음 같은 가맹점부터는 이 카테고리로 자동 분류할까요?"
       accept: "예, 자동 분류"
       dismiss: "아니요, 이번만 변경"
+    # ADR-0011: 결정 메커니즘 4값의 사용자 라벨. 순서는 ADR-0007 §1.1(1→2→3→수동).
+    # manual_set은 chip 마크 없음 (사용자 직접 지정). 호출지점 set 로직은 후속 PR.
+    classification_source:
+      mapping_match: "학습 매핑"
+      keyword_match: "키워드"
+      gemini_batch: "AI 추천"
+      manual_set: ""
+  # ADR-0011: 매핑 출처(`CategoryMapping#source`) 3값의 사용자 라벨.
+  # 결정 메커니즘(transactions.classification_source)과 *어휘를 공유하지 않는다* —
+  # 결정 메커니즘의 mapping_match("학습 매핑")와 매핑 출처의 manual("직접 등록") 등
+  # 서로 다른 단어로 분리한다.
+  category_mappings:
+    source:
+      manual: "직접 등록"
+      import: "가져온 매핑"
+      gemini: "AI 학습 매핑"

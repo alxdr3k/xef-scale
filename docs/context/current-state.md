@@ -100,7 +100,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 | `Workspace` | 멀티테넌트 루트, AI 토글, 동의 시각 보관 |
 | `WorkspaceMembership` | 역할: `owner`, `co_owner`, `member_write`, `member_read` |
 | `WorkspaceInvitation` | 토큰 기반 초대 (`/join/:token`) |
-| `Transaction` | 거래 — `pending_review` / `committed` / `rolled_back`, `source_type` 5종, `payment_type` 3종, `source_metadata` import hint |
+| `Transaction` | 거래 — `pending_review` / `committed` / `rolled_back`, `source_type` 5종, `payment_type` 3종, `source_metadata` import hint, `classification_source` 결정 메커니즘 4값 (ADR-0011, nullable, set 로직은 후속 PR) |
 | `Category` / `CategoryMapping` | 카테고리 + 학습된 매핑 (4단계 우선순위) |
 | `ParsingSession` | 파싱 작업 컨테이너, `source_type: file_upload \| text_paste`, 검토 상태 머신 보유 |
 | `ProcessedFile` | 업로드된 이미지 파일 — 이미지 외 거부 |
