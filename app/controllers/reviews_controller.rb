@@ -2,9 +2,35 @@ class ReviewsController < ApplicationController
   before_action :authenticate_user!
   before_action :set_workspace
   before_action :require_workspace_access
-  before_action :set_parsing_session
-  before_action :require_workspace_write_access, except: [ :show ]
+  # ADR-0004 §"필수": 인덱스는 parsing_session_id를 가지지 않으므로
+  # set_parsing_session에서 제외. 인덱스는 read 권한만 요구한다.
+  before_action :set_parsing_session, except: [ :index ]
+  before_action :require_workspace_write_access, except: [ :show, :index ]
   before_action :reject_if_finalized, only: [ :bulk_update, :bulk_resolve_duplicates, :update_transaction ]
+
+  # 검토함 인덱스 — IA 1번 시민 (ADR-0004).
+  # - 파싱 결과 탭: `ParsingSession.needs_review` (= completed.pending_review).
+  #   `review_status: "pending_review"` 단독 사용 금지 (status가 pending/processing/failed인
+  #   세션도 같은 값을 가질 수 있어 미처리 세션이 큐에 섞임 — ADR-0004 §"왜 needs_review인가").
+  # - 중복 후보 탭: 같은 워크스페이스의 pending DuplicateConfirmation.
+  #   DuplicateConfirmation은 자체 workspace_id가 없어 parsing_session 조인을 통해
+  #   스코핑해야 cross-tenant leak이 방지된다 (ADR-0004 §"필수").
+  def index
+    @pending_sessions = @workspace.parsing_sessions
+                                  .needs_review
+                                  .includes(:processed_file)
+                                  .order(created_at: :desc)
+    @pending_duplicates = DuplicateConfirmation
+                            .pending
+                            .joins(:parsing_session)
+                            .where(parsing_sessions: { workspace_id: @workspace.id })
+                            .includes(
+                              :parsing_session,
+                              original_transaction: [ :category ],
+                              new_transaction: [ :category ]
+                            )
+                            .order(created_at: :desc)
+  end
 
   def show
     @transactions = @parsing_session.reviewable_transactions

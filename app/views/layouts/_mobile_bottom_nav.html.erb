@@ -1,34 +1,49 @@
+<%# 5탭 IA (ADR-0004) — 홈/거래/검토함/카테고리/더보기.
+    "더보기"는 user_settings_path로 임시 매핑 (전용 페이지는 후속 PR / preflight §3.5). %>
 <nav class="mobile-bottom-nav fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 sm:hidden z-40">
   <div class="flex justify-around items-center h-16">
+    <%# 홈 %>
     <%= link_to dashboard_path, class: "flex flex-col items-center justify-center w-full h-full #{request.path == dashboard_path || request.path.start_with?('/dashboard') ? 'text-indigo-600' : 'text-gray-500'}" do %>
-      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" />
       </svg>
-      <span class="text-xs mt-1">대시보드</span>
+      <span class="text-xs mt-1">홈</span>
     <% end %>
 
     <% if current_workspace %>
+      <%# 거래 %>
       <%= link_to workspace_transactions_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.include?('/transactions') ? 'text-indigo-600' : 'text-gray-500'}" do %>
-        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
-        <span class="text-xs mt-1">결제</span>
+        <span class="text-xs mt-1">거래</span>
       <% end %>
 
-      <%= link_to workspace_parsing_sessions_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.include?('/parsing_sessions') ? 'text-indigo-600' : 'text-gray-500'}" do %>
-        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+      <%# 검토함 — ADR-0004 IA 1번 시민. /reviews 또는 parsing_sessions 경로에서 활성. %>
+      <%= link_to workspace_reviews_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.match?(/\/reviews\z|\/reviews\?|\/parsing_sessions/) ? 'text-indigo-600' : 'text-gray-500'}" do %>
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        <span class="text-xs mt-1">가져오기</span>
+        <span class="text-xs mt-1">검토함</span>
+      <% end %>
+
+      <%# 카테고리 %>
+      <%= link_to workspace_categories_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.include?('/categories') || request.path.include?('/category_mappings') ? 'text-indigo-600' : 'text-gray-500'}" do %>
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+        </svg>
+        <span class="text-xs mt-1">카테고리</span>
       <% end %>
     <% end %>
 
-    <%= link_to user_settings_path, class: "flex flex-col items-center justify-center w-full h-full #{request.path == user_settings_path ? 'text-indigo-600' : 'text-gray-500'}" do %>
-      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <%# 더보기 — 전용 페이지는 후속 PR. 현재는 계정 설정/용돈으로 매핑. %>
+    <%= link_to user_settings_path, class: "flex flex-col items-center justify-center w-full h-full #{request.path == user_settings_path || request.path == allowances_path ? 'text-indigo-600' : 'text-gray-500'}" do %>
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="5" cy="12" r="1.5" />
+        <circle cx="12" cy="12" r="1.5" />
+        <circle cx="19" cy="12" r="1.5" />
       </svg>
-      <span class="text-xs mt-1">설정</span>
+      <span class="text-xs mt-1">더보기</span>
     <% end %>
   </div>
 </nav>
