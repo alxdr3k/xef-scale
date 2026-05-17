@@ -5,7 +5,7 @@
 } do |f| %>
   <%= hidden_field_tag :return_to, params[:return_to] %>
   <% if transaction.errors.any? %>
-    <div class="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
+    <div class="bg-danger-subtle border border-danger text-danger px-4 py-3 rounded">
       <ul class="list-disc list-inside">
         <% transaction.errors.full_messages.each do |message| %>
           <li><%= message %></li>
@@ -14,52 +14,52 @@
     </div>
   <% end %>
 
-  <div class="bg-white shadow rounded-lg p-6 space-y-4">
+  <div class="bg-surface shadow rounded-lg p-6 space-y-4">
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">날짜 *</label>
+      <label class="block text-sm font-medium text-secondary mb-1">날짜 *</label>
       <%= f.date_field :date, required: true,
-          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+          class: 'w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">가맹점/내역 *</label>
+      <label class="block text-sm font-medium text-secondary mb-1">가맹점/내역 *</label>
       <%= f.text_field :merchant, required: true,
-          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+          class: 'w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
           data: { category_suggest_target: "merchant" } %>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">금액 *</label>
+      <label class="block text-sm font-medium text-secondary mb-1">금액 *</label>
       <%= f.number_field :amount, required: true, min: 0,
-          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+          class: 'w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">카테고리</label>
+      <label class="block text-sm font-medium text-secondary mb-1">카테고리</label>
       <%= f.collection_select :category_id, @categories, :id, :name,
           { include_blank: '선택하세요' },
-          { class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 transition-all duration-300',
+          { class: 'w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action transition-all duration-300',
             data: { category_suggest_target: "category" } } %>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">설명</label>
+      <label class="block text-sm font-medium text-secondary mb-1">설명</label>
       <%= f.text_field :description,
-          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+          class: 'w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
           data: { category_suggest_target: "description", action: "input->category-suggest#suggest" } %>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">메모</label>
+      <label class="block text-sm font-medium text-secondary mb-1">메모</label>
       <%= f.text_area :notes, rows: 3,
-          class: 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500' %>
+          class: 'w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
     </div>
   </div>
 
   <div class="flex justify-end space-x-3">
     <%= link_to "취소", safe_return_to(workspace_transactions_path(@workspace)),
-        class: "px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50" %>
+        class: "px-4 py-2 border border-divider rounded-md text-secondary hover:bg-elev" %>
     <%= f.submit transaction.persisted? ? '수정' : '추가',
-        class: 'px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 cursor-pointer' %>
+        class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
   </div>
 <% end %>

@@ -5,51 +5,51 @@
       <% current_source = params[:source] || "all" %>
       <%= link_to "전체",
             workspace_category_mappings_path(@workspace, source: "all"),
-            class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}",
+            class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'all' ? 'bg-primary text-inverse' : 'bg-elev text-secondary hover:bg-divider'}",
             data: { turbo_frame: "category-mappings-panel" } %>
       <%# ADR-0011 §Decision 5: 매핑 출처 어휘 동기화. %>
       <%= link_to t("category_mappings.source.manual"),
             workspace_category_mappings_path(@workspace, source: "manual"),
-            class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'manual' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}",
+            class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'manual' ? 'bg-action text-action-on' : 'bg-elev text-secondary hover:bg-divider'}",
             data: { turbo_frame: "category-mappings-panel" } %>
       <%= link_to t("category_mappings.source.import"),
             workspace_category_mappings_path(@workspace, source: "import"),
-            class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'import' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}",
+            class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'import' ? 'bg-positive text-action-on' : 'bg-elev text-secondary hover:bg-divider'}",
             data: { turbo_frame: "category-mappings-panel" } %>
       <%= link_to t("category_mappings.source.gemini"),
             workspace_category_mappings_path(@workspace, source: "gemini"),
-            class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'gemini' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}",
+            class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'gemini' ? 'bg-warning text-action-on' : 'bg-elev text-secondary hover:bg-divider'}",
             data: { turbo_frame: "category-mappings-panel" } %>
     </div>
 
     <%# 새 규칙 버튼 %>
     <%= link_to new_workspace_category_mapping_path(@workspace),
-          class: "bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm",
+          class: "bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover text-sm",
           data: { action: "click->slideover#open", turbo_frame: "slideover-content" } do %>
       새 규칙
     <% end %>
   </div>
 
-  <div class="bg-white rounded-lg shadow overflow-hidden">
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
+  <div class="bg-surface rounded-lg shadow overflow-hidden">
+    <table class="min-w-full divide-y divide-divider">
+      <thead class="bg-elev">
         <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">내역 패턴</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">매칭 방식</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">금액</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">카테고리</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">출처</th>
-          <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">작업</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase">내역 패턴</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase">매칭 방식</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase">금액</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase">카테고리</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase">출처</th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-tertiary uppercase">작업</th>
         </tr>
       </thead>
-      <tbody id="category-mappings-list" class="bg-white divide-y divide-gray-200">
+      <tbody id="category-mappings-list" class="bg-surface divide-y divide-divider">
         <% @mappings.each do |mapping| %>
           <%= render "mapping_row", mapping: mapping %>
         <% end %>
 
         <% if @mappings.empty? %>
           <tr id="no-mappings-row">
-            <td colspan="6" class="px-6 py-12 text-center text-gray-500">등록된 분류 규칙이 없습니다.</td>
+            <td colspan="6" class="px-6 py-12 text-center text-tertiary">등록된 분류 규칙이 없습니다.</td>
           </tr>
         <% end %>
       </tbody>
