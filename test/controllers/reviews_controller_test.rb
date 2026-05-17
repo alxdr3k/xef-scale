@@ -879,6 +879,17 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_select "kbd", text: "Enter"
   end
 
+  # Phase 5 slice 9: 컨트라스트 감사 — reviews/show 시맨틱 토큰.
+  test "show view template uses semantic tokens (no hardcoded palette)" do
+    src = File.read(Rails.root.join("app/views/reviews/show.html.erb"))
+    %w[bg-indigo-600 text-gray-900 text-gray-500 text-gray-700 bg-white bg-gray-100].each do |stale|
+      assert_no_match(/\b#{Regexp.escape(stale)}\b/, src,
+                      "reviews/show.html.erb에 옛 팔레트 #{stale} 잔존 (시맨틱 토큰으로 마이그레이션 필요)")
+    end
+    assert_match(/\bbg-surface\b/, src)
+    assert_match(/\btext-primary\b/, src)
+  end
+
   test "show omits excludeForm target for read-only member (member_read)" do
     @workspace.transactions.create!(
       date: Date.current, amount: 1000, merchant: "D_READONLY",
