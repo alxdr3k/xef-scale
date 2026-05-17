@@ -17,10 +17,13 @@ export default class extends Controller {
   static targets = ["commitForm", "helpBackdrop", "helpDialog"]
 
   handleKey(event) {
-    // 도움말 overlay가 열려 있으면 Esc만 처리
-    if (this.helpOpen() && event.key === "Escape") {
-      event.preventDefault()
-      this.hideHelp()
+    // 도움말 overlay가 열려 있으면 Esc만 처리, 다른 키는 background로 새지 않게 차단
+    // (Codex PR #184 P2: modal 의미 보존).
+    if (this.helpOpen()) {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        this.hideHelp()
+      }
       return
     }
 
@@ -74,8 +77,13 @@ export default class extends Controller {
   showHelp(event) {
     event?.preventDefault()
     if (!this.hasHelpDialogTarget) return
+    // Codex PR #184 P2: aria-modal a11y — 이전 focus 저장 후 dialog 안 첫
+    // 인터랙티브 element(닫기 버튼)로 focus 이동.
+    this.previousFocus = document.activeElement
     this.helpBackdropTarget.classList.remove("hidden")
     this.helpDialogTarget.classList.remove("hidden")
+    const firstButton = this.helpDialogTarget.querySelector("button")
+    if (firstButton) firstButton.focus()
   }
 
   hideHelp(event) {
@@ -83,6 +91,11 @@ export default class extends Controller {
     if (!this.hasHelpDialogTarget) return
     this.helpBackdropTarget.classList.add("hidden")
     this.helpDialogTarget.classList.add("hidden")
+    // 이전 focus 복원 — dialog 외부 컨텍스트로 자연스럽게 돌아가도록.
+    if (this.previousFocus && typeof this.previousFocus.focus === "function") {
+      this.previousFocus.focus()
+    }
+    this.previousFocus = null
   }
 
   helpOpen() {
