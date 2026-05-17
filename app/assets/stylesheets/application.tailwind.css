@@ -54,7 +54,10 @@
   /* === Semantic action (각 토큰은 단 하나의 의미만 — X5/ADR-0006) === */
   --color-action:         light-dark(#4f46e5, #818cf8);
   --color-action-hover:   light-dark(#4338ca, #6366f1);
-  --color-action-on:      #ffffff;
+  /* Codex PR #213 P1: dark mode에서 --color-action이 light purple(#818cf8)로
+     바뀌므로 on 토큰이 항상 흰색이면 white-on-light가 되어 WCAG AA 미만.
+     light-dark()로 분기해 dark에서는 어두운 텍스트로 대비 확보. */
+  --color-action-on:      light-dark(#ffffff, #0a0a0a);
   --color-action-subtle:  light-dark(#eef2ff, #312e81);
 
   --color-positive:        light-dark(#15803d, #4ade80);

@@ -5,7 +5,7 @@
       <% current_source = params[:source] || "all" %>
       <%= link_to "전체",
             workspace_category_mappings_path(@workspace, source: "all"),
-            class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'all' ? 'bg-primary text-action-on' : 'bg-elev text-secondary hover:bg-divider'}",
+            class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'all' ? 'bg-primary text-inverse' : 'bg-elev text-secondary hover:bg-divider'}",
             data: { turbo_frame: "category-mappings-panel" } %>
       <%# ADR-0011 §Decision 5: 매핑 출처 어휘 동기화. %>
       <%= link_to t("category_mappings.source.manual"),
