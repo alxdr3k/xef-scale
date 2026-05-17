@@ -111,6 +111,28 @@ class ImportIssueResolutionServiceTest < ActiveSupport::TestCase
     assert_equal 7_000, @issue.amount
   end
 
+  test "promotion creates DuplicateConfirmation when repaired row matches existing transaction" do
+    @workspace.transactions.create!(
+      date: Date.new(2026, 5, 1),
+      merchant: "스타벅스강남점",
+      amount: 5_000,
+      status: "committed"
+    )
+
+    result = ImportIssueResolutionService.new(@issue, user: @user).update_missing_fields!(
+      date: Date.new(2026, 5, 1),
+      merchant: "스타벅스강남점",
+      amount: 5_000
+    )
+
+    assert result.success?
+    assert_equal :promoted, result.status
+    dup = @session.duplicate_confirmations.last
+    assert_not_nil dup
+    assert_equal "pending", dup.status
+    assert_equal result.transaction.id, dup.new_transaction_id
+  end
+
   test "promotion failure surfaces validation message without changing status" do
     # Force transaction validation failure by passing a date that's somehow
     # invalid after normalization. Use blank date string — normalize should

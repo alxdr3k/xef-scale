@@ -72,14 +72,26 @@ class ImportIssueResolutionService
       source_type: @issue.source_type
     )
 
-    ActiveRecord::Base.transaction do
-      candidate.save!
-      @issue.update!(
-        status: "resolved",
-        resolved_transaction: candidate,
-        missing_fields: []
+    candidate.save!
+    # Run the same duplicate detection the parse jobs run so repaired rows
+    # cannot bypass the duplicate-review guard. A match becomes a pending
+    # DuplicateConfirmation that the user must resolve before commit_all!.
+    match = DuplicateDetector.new(@workspace, candidate).find_match
+    if match
+      @issue.parsing_session.duplicate_confirmations.create!(
+        original_transaction: match.transaction,
+        new_transaction: candidate,
+        status: "pending",
+        match_confidence: match.confidence,
+        match_score: match.score
       )
     end
+
+    @issue.update!(
+      status: "resolved",
+      resolved_transaction: candidate,
+      missing_fields: []
+    )
 
     Result.new(status: :promoted, message: "결제 내역에 반영했습니다.", transaction: candidate)
   rescue ActiveRecord::RecordInvalid => e
