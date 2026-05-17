@@ -185,41 +185,55 @@ class DashboardsController < ApplicationController
                                 .count
   end
 
-  # Phase 4 slice 2: VarianceCard 데이터.
-  # - 현재 월(`year/month`)의 진행 중인 시점(today)까지 누적 vs 전월 같은 일자까지 누적
-  # - variance_pct = round((current - prior) / prior * 100)
-  # - projected: 현재 페이스를 그대로 유지했을 때 월말 예상 (today < month_end일 때만)
+  # Phase 4 slice 2: VarianceCard 데이터 (Codex PR #178 후속 fix).
+  # 비교 정확성을 위해 *반드시 동일한 일수 window*로 양쪽 누적을 계산한다:
+  #   - cutoff_day = min(today.day, prior_month.end.day)
+  #   - prior: prior_month 1..cutoff_day 까지 누적
+  #   - current: current_month 1..cutoff_day 까지 누적 (`@total_spending` 사용 금지 —
+  #     미래일자 commit이 포함되면 부정확)
   #
-  # 현재 보고 있는 월이 `Date.current`의 (year, month)가 아니거나, 데이터가
-  # 비교 불가능한 경우(prior 0건 등) nil 반환 — view는 카드 자체를 미렌더.
-  def monthly_variance!(year, month, current_month_total)
+  # nil 반환 조건 (view 카드 미렌더):
+  #   - 보고 있는 month가 `Date.current`의 (year, month)가 아님
+  #   - 월의 마지막 날 (페이스 의미 없음)
+  #   - prior_total <= 0 (cancellation 등 음수면 분모 sign 뒤집힘 위험)
+  def monthly_variance!(year, month, _legacy_total = nil)
     today = Date.current
     return nil unless today.year == year && today.month == month
 
-    day_of_month = today.day
     start_of_month = Date.new(year, month, 1)
     end_of_month = start_of_month.end_of_month
-    return nil if day_of_month >= end_of_month.day # 마지막 날 — 페이스 의미 없음
+    return nil if today.day >= end_of_month.day
 
     prior_start = start_of_month.prev_month
-    prior_end = [ prior_start + (day_of_month - 1), prior_start.end_of_month ].min
+    prior_end_of_month = prior_start.end_of_month
+    # 두 기간을 같은 일수로 정렬. prior가 짧으면 current도 cutoff_day까지만.
+    cutoff_day = [ today.day, prior_end_of_month.day ].min
+
+    current_cutoff = Date.new(year, month, cutoff_day)
+    prior_cutoff   = prior_start + (cutoff_day - 1)
+
+    current_mtd_total = @workspace.transactions
+                                  .active
+                                  .excluding_coupon
+                                  .where(date: start_of_month..current_cutoff)
+                                  .sum(:amount)
     prior_total = @workspace.transactions
                             .active
                             .excluding_coupon
-                            .where(date: prior_start..prior_end)
+                            .where(date: prior_start..prior_cutoff)
                             .sum(:amount)
 
-    return nil if prior_total.zero?
+    return nil if prior_total <= 0
 
-    variance_pct = (((current_month_total - prior_total).to_f / prior_total) * 100).round
-    projected_end = ((current_month_total.to_f / day_of_month) * end_of_month.day).round
+    variance_pct = (((current_mtd_total - prior_total).to_f / prior_total) * 100).round
+    projected_end = ((current_mtd_total.to_f / cutoff_day) * end_of_month.day).round
 
     {
       prior_total: prior_total,
-      current_total: current_month_total,
+      current_total: current_mtd_total,
       variance_pct: variance_pct,
       projected_end: projected_end,
-      compared_until_day: day_of_month
+      compared_until_day: cutoff_day
     }
   end
 
