@@ -70,7 +70,7 @@
     <% unless read_only || transaction.deleted? %>
       data-action="click->bulk-select#toggleRow"
     <% end %>
-    class="group/row <%= 'bg-red-50 opacity-60' if transaction.deleted? %>
+    class="group/row <%= 'bg-danger-subtle opacity-60' if transaction.deleted? %>
            transition-colors duration-150
            <%= 'cursor-pointer' unless read_only || transaction.deleted? %>">
 
