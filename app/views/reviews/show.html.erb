@@ -1,4 +1,7 @@
-<div class="max-w-7xl mx-auto" data-controller="bulk-select note-panel comment-panel" data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick click@document->comment-panel#handleOutsideClick">
+<%# Phase 5 slice 3: review-keyboard 컨트롤러로 j/k row navigation (ADR-0008 / ui-redesign-plan §3.3). %>
+<div class="max-w-7xl mx-auto"
+     data-controller="bulk-select note-panel comment-panel review-keyboard"
+     data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick click@document->comment-panel#handleOutsideClick keydown@window->review-keyboard#handleKey">
   <%= link_to '← 업로드 목록', workspace_parsing_sessions_path(@workspace),
       class: 'text-indigo-600 hover:text-indigo-800 mb-4 inline-block' %>
 

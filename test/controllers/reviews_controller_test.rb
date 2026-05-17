@@ -674,4 +674,21 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_equal target.id, tx.category_id
     assert_equal "mapping_match", tx.classification_source
   end
+
+  # Phase 5 slice 3: 검토함 키보드 단축키 (j/k navigation).
+  test "show wires review-keyboard controller and tabindex on rows" do
+    @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "KB_SHORTCUT",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_response :success
+    # 컨트롤러 attach + window keydown 액션 등록
+    assert_match(/data-controller="[^"]*review-keyboard/, response.body)
+    assert_match(/keydown@window->review-keyboard#handleKey/, response.body)
+    # 거래 row에 tabindex=0 — j/k 이동 후 focus 받을 수 있어야
+    assert_select "tr[data-transaction-id][tabindex='0']", minimum: 1
+  end
 end

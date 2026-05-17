@@ -31,6 +31,9 @@
     data-bulk-select-target="row"
     data-transaction-id="<%= transaction.id %>"
     data-deleted="<%= transaction.deleted? %>"
+    <%# Phase 5 slice 3: review-keyboard j/k 네비게이션을 위해 tabindex=0.
+        focus 시 :focus-visible 글로벌 outline이 적용된다. %>
+    tabindex="0"
     <% unless read_only || transaction.deleted? %>
       data-action="click->bulk-select#toggleRow"
     <% end %>

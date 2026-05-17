@@ -34,6 +34,9 @@ application.register("input-sheet", InputSheetController)
 import ThemeController from "./theme_controller"
 application.register("theme", ThemeController)
 
+import ReviewKeyboardController from "./review_keyboard_controller"
+application.register("review-keyboard", ReviewKeyboardController)
+
 import CategorySelectorController from "./category_selector_controller"
 application.register("category-selector", CategorySelectorController)
 
