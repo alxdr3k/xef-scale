@@ -74,6 +74,19 @@ class ImportIssueResolutionServiceTest < ActiveSupport::TestCase
     assert_match(/이미 처리/, result.message)
   end
 
+  test "blank form submission (all keys present but empty) is rejected as no input" do
+    # 브라우저 폼은 항상 3 키를 보내므로 모두 빈 값일 때 "수정할 값을 입력해 주세요"로 반려해야 함
+    result = ImportIssueResolutionService.new(@issue, user: @user).update_missing_fields!(
+      date: "", merchant: "", amount: ""
+    )
+
+    assert_not result.success?
+    assert_match(/수정할 값/, result.message)
+    @issue.reload
+    assert_equal "open", @issue.status
+    assert_nil @issue.merchant
+  end
+
   test "resolution rejected when parsing session is no longer pending_review" do
     @session.update!(review_status: "committed", committed_at: Time.current, committed_by: @user)
 

@@ -44,6 +44,10 @@ class ImportIssueResolutionService
       @issue.assign_attributes(submitted.merge(missing_fields: []))
       return promote_completed_issue!
     end
+  rescue ActiveRecord::RecordInvalid => e
+    # Let the transaction roll back first; then surface the message as a
+    # failure Result so the partial candidate transaction does not leak.
+    failure(e.record.errors.full_messages.to_sentence.presence || e.message)
   end
 
   def dismiss!
@@ -94,20 +98,32 @@ class ImportIssueResolutionService
     )
 
     Result.new(status: :promoted, message: "결제 내역에 반영했습니다.", transaction: candidate)
-  rescue ActiveRecord::RecordInvalid => e
-    failure(e.record.errors.full_messages.to_sentence.presence || e.message)
   end
 
-  # Only normalize fields the caller actually submitted. PATCH semantics:
-  # an omitted key must NOT overwrite the persisted value with nil.
+  # Only normalize fields the caller actually submitted with a real value.
+  # Browser forms always include the date/merchant/amount keys even when
+  # blank, so we treat blank input as "not submitted" — keeping the persisted
+  # value untouched (matches PATCH-omitted semantics). Repair never needs to
+  # explicitly clear a value to nil.
   def pick_submitted(attrs)
     raw = attrs.to_h.symbolize_keys
     out = {}
-    out[:date] = normalize_date(raw[:date]) if raw.key?(:date)
-    if raw.key?(:merchant)
-      out[:merchant] = raw[:merchant].is_a?(String) ? raw[:merchant].strip.presence : raw[:merchant]
+
+    if raw.key?(:date)
+      date = normalize_date(raw[:date])
+      out[:date] = date if date.present?
     end
-    out[:amount] = normalize_amount(raw[:amount]) if raw.key?(:amount)
+
+    if raw.key?(:merchant)
+      merchant = raw[:merchant].is_a?(String) ? raw[:merchant].strip.presence : raw[:merchant]
+      out[:merchant] = merchant if merchant.present?
+    end
+
+    if raw.key?(:amount)
+      amount = normalize_amount(raw[:amount])
+      out[:amount] = amount if amount.present? && amount.to_i != 0
+    end
+
     out
   end
 
