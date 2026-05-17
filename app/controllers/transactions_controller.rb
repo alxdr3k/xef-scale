@@ -434,35 +434,10 @@ class TransactionsController < ApplicationController
   end
 
   # ADR-0011 §Decision 3 (Codex hotfix B): merchant가 바뀌면 새 merchant 기준
-  # provenance를 *반드시* 재평가한다. 과거 코드는 "새 매핑이 있고 그것이 *다른*
-  # 카테고리"일 때만 갱신했는데, 그 경우:
-  #   - 새 merchant에 대한 매핑이 없고 기존 카테고리만 남은 케이스 → 기존
-  #     classification_source(mapping_match/keyword_match/gemini_batch)가 새
-  #     merchant와는 무관한 stale provenance로 남는다.
-  #   - 새 매핑이 같은 카테고리로 끝난 경우도 source는 *새* merchant 기준의
-  #     매핑이라는 사실을 반영해 mapping_match로 갱신해야 의미가 일치한다.
-  #
-  # 정책:
-  #   1) 새 매핑 hit & 다른 카테고리: category·source 모두 mapping_match로 갱신
-  #   2) 새 매핑 hit & 같은 카테고리: source만 mapping_match로 갱신
-  #   3) 매핑 없음 & 카테고리 present: 사용자 보존 카테고리로 간주 → manual_set
-  #   4) 매핑 없음 & 카테고리 nil: source nil
+  # provenance를 재평가. 정책은 MerchantRematchPolicy 서비스로 추출되어
+  # ReviewsController와 공유한다 — review/ledger 양쪽 경로가 같은 의미를 가져야 함.
   def apply_merchant_rematch_policy!(transaction)
-    new_category = CategoryMapping.find_category_for_merchant_and_description(
-      @workspace, transaction.merchant, transaction.description
-    )
-
-    if new_category
-      if transaction.category_id != new_category.id
-        transaction.update(category: new_category, classification_source: "mapping_match")
-      elsif transaction.classification_source != "mapping_match"
-        transaction.update_column(:classification_source, "mapping_match")
-      end
-    elsif transaction.category_id.present?
-      transaction.update_column(:classification_source, "manual_set") if transaction.classification_source != "manual_set"
-    else
-      transaction.update_column(:classification_source, nil) if transaction.classification_source.present?
-    end
+    MerchantRematchPolicy.apply!(@workspace, transaction)
   end
 
   # ADR-0007 §4: 카테고리 변경 시 학습은 explicit opt-in으로만 일어난다.
