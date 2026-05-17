@@ -237,19 +237,22 @@ class ParsingSession < ApplicationRecord
   end
 
   def broadcast_status_update
+    # Single-session broadcast paths: compute the open ImportIssue count once
+    # so both partials reflect repair state without a full page reload.
+    issue_count = open_import_issues.size
     # Desktop table row
     broadcast_replace_to(
       workspace,
       target: dom_id(self),
       partial: "parsing_sessions/parsing_session_row",
-      locals: { parsing_session: self, workspace: workspace }
+      locals: { parsing_session: self, workspace: workspace, open_issue_count: issue_count }
     )
     # Mobile card
     broadcast_replace_to(
       workspace,
       target: "#{dom_id(self)}_card",
       partial: "parsing_sessions/parsing_session_card",
-      locals: { parsing_session: self, workspace: workspace }
+      locals: { parsing_session: self, workspace: workspace, open_issue_count: issue_count }
     )
   end
 end
