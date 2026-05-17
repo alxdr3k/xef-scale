@@ -24,6 +24,14 @@ class CategoriesController < ApplicationController
     @category = @workspace.categories.build
     @slideover = params[:slideover] == "true"
     @transaction_id = params[:transaction_id]
+    # Same fail-fast contract as create: an invalid parsing_session_id must
+    # 404 here too, otherwise the slideover form renders with the id
+    # silently dropped and the subsequent POST bypasses the review-context
+    # guard by going to workspace scope.
+    if @slideover && params[:parsing_session_id].present?
+      @parsing_session = load_review_parsing_session(params[:parsing_session_id])
+      raise ActiveRecord::RecordNotFound if @parsing_session.nil?
+    end
 
     if @slideover
       render partial: "slideover_form", layout: false
@@ -34,13 +42,29 @@ class CategoriesController < ApplicationController
     @category = @workspace.categories.build(category_params)
     @slideover = params[:slideover] == "true"
     @transaction_id = params[:transaction_id]
+    # Codex hotfix A: 슬라이드오버가 review 화면에서 열렸으면 parsing_session_id가
+    # query string으로 따라온다. row re-render가 review context를 잃으면 이후
+    # 인라인 편집/카테고리 변경이 session-scoped guard(reject_if_finalized)를
+    # 우회하므로 반드시 보존해야 한다. invalid id면 silent fallback 대신 404로
+    # 거부해서 session-scoped contract를 강하게 유지.
+    if @slideover && params[:parsing_session_id].present?
+      @parsing_session = load_review_parsing_session(params[:parsing_session_id])
+      raise ActiveRecord::RecordNotFound if @parsing_session.nil?
+    end
+
+    # Validate transaction scope BEFORE persisting the category so a failed
+    # scope check does not leave an orphan category in the workspace.
+    if @slideover && @transaction_id.present?
+      scope = @parsing_session ? @parsing_session.transactions : @workspace.transactions
+      @transaction = scope.find(@transaction_id) # 404s if the transaction is
+      # not part of the chosen scope.
+    end
 
     if @category.save
       if @slideover && @transaction_id.present?
         # Assign category to transaction and return turbo stream.
         # ADR-0011 §Decision 3: 슬라이드오버 "+ 새 카테고리 만들기"는 사용자가
         # 명시적으로 새 카테고리를 만들고 거래에 적용한 흐름이므로 manual_set.
-        @transaction = @workspace.transactions.find(@transaction_id)
         @transaction.update(category_id: @category.id, classification_source: "manual_set")
         @categories = @workspace.categories.order(:name)
         flash.now[:notice] = "카테고리가 추가되고 거래에 적용되었습니다."
@@ -51,8 +75,18 @@ class CategoriesController < ApplicationController
             category_broadcast_name_value: @category.name,
             category_broadcast_color_value: @category.color
           })
+        row_locals = { transaction: @transaction }
+        if @parsing_session
+          # Re-render with review-context locals so inline edit URL / category
+          # selector URL remain session-scoped on the replaced row.
+          row_locals.merge!(
+            read_only: false,
+            reviewable: true,
+            categories: @categories
+          )
+        end
         render turbo_stream: [
-          turbo_stream.replace(dom_id(@transaction), partial: "transactions/transaction_row", locals: { transaction: @transaction }),
+          turbo_stream.replace(dom_id(@transaction), partial: "transactions/transaction_row", locals: row_locals),
           turbo_stream.update("flash", partial: "shared/flash"),
           turbo_stream.append("slideover-content", broadcast_html + '<div data-controller="slideover-close"></div>'.html_safe)
         ]
@@ -95,6 +129,11 @@ class CategoriesController < ApplicationController
   end
 
   private
+
+  def load_review_parsing_session(id)
+    return nil if id.blank?
+    @workspace.parsing_sessions.find_by(id: id)
+  end
 
   def set_category
     @category = @workspace.categories.find(params[:id])

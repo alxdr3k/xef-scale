@@ -866,6 +866,104 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/<tr[^>]*data-transaction-id="#{tx.id}"[^>]*tabindex="0"/, response.body)
   end
 
+  # Codex hotfix A — review row context contract.
+  # PR #168~#182 누적 리뷰에서 발견된 권한/상태 계약 leak.
+
+  test "show is reachable by member_read on pending session" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    sign_out @user
+    sign_in users(:reader)
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_response :success
+  end
+
+  test "show hides write affordances for member_read on pending session" do
+    # member_read는 read 접근은 되지만 commit/discard/bulk toolbar/category-selector/
+    # inline edit URL이 보이면 안 된다 (dead-end UI 방지).
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    @parsing_session.transactions.create!(
+      workspace: @workspace, date: Date.current, amount: 1000,
+      merchant: "READER_GATED", status: "pending_review"
+    )
+    sign_out @user
+    sign_in users(:reader)
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    # commit 버튼 없음 — 키보드 도움말 overlay (#184)에도 "결제 내역 반영 (commit)"
+    # 문자열이 포함되므로 string 비교 대신 actual form action으로 검증.
+    commit_path = commit_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_no_match(/action="#{Regexp.escape(commit_path)}"/, response.body)
+    # 전체 취소 / 가져오기 되돌리기 없음
+    assert_no_match(/전체 취소/, response.body)
+    assert_no_match(/가져오기 되돌리기/, response.body)
+    # bulk toolbar 없음
+    assert_no_match(/data-bulk-select-target="toolbar"/, response.body)
+    # category selector controller 없음
+    assert_no_match(/data-controller="category-selector"/, response.body)
+    # 상태는 '읽기 전용'
+    assert_match(/읽기 전용/, response.body)
+  end
+
+  test "show shows write affordances for writer on pending session" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    @parsing_session.transactions.create!(
+      workspace: @workspace, date: Date.current, amount: 1000,
+      merchant: "WRITER_AFFORDANCE", status: "pending_review"
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    assert_match(/결제 내역 반영/, response.body)
+    assert_match(/data-bulk-select-target="toolbar"/, response.body)
+    assert_match(/data-controller="category-selector"/, response.body)
+  end
+
+  test "index hides input_sheet trigger from member_read" do
+    sign_out @user
+    sign_in users(:reader)
+
+    get workspace_reviews_path(@workspace)
+
+    assert_response :success
+    assert_no_match(/data-input-sheet-target="trigger"/, response.body)
+  end
+
+  test "show category-selector URL is session-scoped (no workspace quick_update leak)" do
+    # P0/P1 BLOCKER fix: 검토 화면의 category dropdown이 workspace-level
+    # quick_update_category로 새 나가면 reject_if_finalized 가드를 우회한다.
+    # category_selector의 update URL은 session-scoped update_transaction이어야.
+    tx = @parsing_session.transactions.create!(
+      workspace: @workspace, date: Date.current, amount: 1000,
+      merchant: "REVIEW_CATEGORY_URL", status: "pending_review"
+    )
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    expected = update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id)
+    assert_match(/data-category-selector-update-url-value="#{Regexp.escape(expected)}"/, response.body)
+    # request style은 review 컨텍스트에서 "field" (field=category_id, value=...)
+    assert_match(/data-category-selector-request-style-value="field"/, response.body)
+  end
+
+  test "show category-selector data passes parsing_session_id for slideover preservation" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    @parsing_session.transactions.create!(
+      workspace: @workspace, date: Date.current, amount: 1000,
+      merchant: "SLIDEOVER_CTX", status: "pending_review"
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    assert_match(/data-category-selector-parsing-session-id-value="#{@parsing_session.id}"/, response.body)
+  end
+
   # Codex PR #182 P2: 공유 partial이 transactions/index에서도 사용되므로
   # tabindex=0이 reviewable 컨텍스트에서만 적용돼야 한다.
   test "transactions/index does not make row tabindex=0 (shared partial gating)" do

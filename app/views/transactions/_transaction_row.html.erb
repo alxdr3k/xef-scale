@@ -2,38 +2,62 @@
   Unified transaction row — transactions/index, reviews/show, 양쪽 turbo_stream
   응답에서 공통 사용 (ADR-0003 / ui-redesign-plan §4.2).
 
-  과거에는 transactions/_transaction_row와 reviews/_transaction_row가 거의 동일한
-  partial로 분기되어 있어 변경 시 두 곳을 동기화해야 했다. shared/transaction_cells/*
-  를 이미 공유하던 차이를 정리해 단일 partial로 통합한다.
+  Context 의존 URL 처리:
+    update_url           — 인라인 편집(merchant/date/amount) endpoint
+    category_update_url  — 카테고리 selector endpoint
+    category_request_style — "id" | "field" (selector controller request shape)
+    parsing_session_id   — review context에서 slideover에 보존되어 row re-render가
+                           workspace route로 변질되는 것을 막는다.
+
+  호출자는 명시 locals로 위 값을 넘기는 게 가장 안전하다. 명시되지 않으면
+  `@parsing_session` ivar 존재 여부로 review/ledger를 추론하지만, 이 추론은
+  CategoriesController slideover 같은 cross-controller re-render에서 누락되기
+  쉽다 (Codex hotfix A). 새 호출자는 explicit locals를 권장.
 
   Locals:
     transaction (Transaction, required)
     read_only   (Boolean, default false) — true면 인라인 편집 비활성, 클릭 핸들러 없음.
     categories  (Enumerable, optional)   — 카테고리 드롭다운 옵션. 미지정 시 @categories.
-
-  업데이트 URL은 @parsing_session 인스턴스 변수 유무로 분기한다:
-    있음 → update_transaction_workspace_parsing_session_path (검토 세션 스코프).
-    없음 → inline_update_workspace_transaction_path (워크스페이스 스코프).
-  read_only 또는 deleted 행에서는 update_url이 nil로 셀에 전달되어 인라인 편집이 닫힌다.
+    reviewable  (Boolean, default 자동추론) — review 키보드 navigation tabindex 적용 여부.
 %>
 <% read_only  = local_assigns.fetch(:read_only, false) %>
 <% categories = local_assigns.fetch(:categories, nil) || @categories %>
 <% editable   = !read_only && !transaction.deleted? %>
-<% update_url = if editable
-                  if @parsing_session
+
+<%# Inline edit URL (merchant/date/amount). Explicit local 우선; 미지정시 @parsing_session
+    존재로 review/ledger 추론. read_only 또는 deleted면 nil → 셀이 편집 비활성 처리. %>
+<% update_url = local_assigns.fetch(:update_url, nil) %>
+<% if update_url.nil? && editable %>
+  <% update_url = if @parsing_session
                     update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: transaction.id)
                   else
                     inline_update_workspace_transaction_path(@workspace, transaction)
-                  end
-                end %>
+                  end %>
+<% end %>
+
+<%# Category selector URL — inline 편집 endpoint와 *다른* endpoint를 쓸 수 있다.
+    workspace는 quick_update_category, review는 update_transaction(field=category_id).
+    한 controller가 두 contract를 모두 지원하면 update_url과 동일하게 둘 수 있다. %>
+<% category_update_url = local_assigns.fetch(:category_update_url, nil) %>
+<% category_request_style = local_assigns.fetch(:category_request_style, nil) %>
+<% if editable && category_update_url.nil? %>
+  <% if @parsing_session %>
+    <% category_update_url = update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: transaction.id) %>
+    <% category_request_style ||= "field" %>
+  <% else %>
+    <% category_update_url = quick_update_category_workspace_transaction_path(@workspace, transaction) %>
+    <% category_request_style ||= "id" %>
+  <% end %>
+<% end %>
+<% category_request_style ||= "id" %>
+
+<% parsing_session_id = local_assigns.fetch(:parsing_session_id, nil) || @parsing_session&.id %>
 
 <%# Phase 5 slice 3 (Codex PR #182 후속): 이 partial은 reviews/show와
     transactions/index 둘 다에서 사용된다. tabindex=0을 무조건 부여하면
     거래 목록 페이지에서 매 row가 tab stop이 되어 a11y가 저하된다.
     호출자가 `reviewable:`을 명시하지 않으면 *transaction 상태*로 자동 추론:
-    pending_review + parsing_session 있는 거래는 검토 컨텍스트로 간주.
-    이렇게 하면 turbo_stream re-render 경로마다 reviewable: true를 일일이
-    전달할 필요 없이 row의 tabindex가 보존된다. %>
+    pending_review + parsing_session 있는 거래는 검토 컨텍스트로 간주. %>
 <% reviewable = local_assigns.fetch(
      :reviewable,
      transaction.pending_review? && transaction.parsing_session_id.present?
@@ -53,7 +77,15 @@
   <%= render 'shared/transaction_cells/date_cell', transaction: transaction, editable: editable, update_url: update_url %>
   <%= render 'shared/transaction_cells/merchant_cell', transaction: transaction, editable: editable, update_url: update_url %>
   <%= render 'shared/transaction_cells/amount_cell', transaction: transaction, editable: editable, update_url: update_url %>
-  <%= render 'shared/transaction_cells/category_cell', transaction: transaction, editable: editable, categories: categories, show_management_links: editable, workspace: @workspace %>
+  <%= render 'shared/transaction_cells/category_cell',
+        transaction: transaction,
+        editable: editable,
+        categories: categories,
+        show_management_links: editable,
+        workspace: @workspace,
+        update_url: category_update_url,
+        request_style: category_request_style,
+        parsing_session_id: parsing_session_id %>
   <%= render 'shared/transaction_cells/source_metadata_cell', transaction: transaction %>
   <%= render 'shared/transaction_cells/comment_badge_cell', transaction: transaction %>
 </tr>

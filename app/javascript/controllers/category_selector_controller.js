@@ -1,11 +1,31 @@
 import { Controller } from "@hotwired/stimulus"
 
+// CategorySelectorController — 거래 row의 카테고리 드롭다운.
+//
+// Context-aware update URL: workspace ledger와 review session-scope 두 경로가
+// 같은 partial을 공유한다. 과거에는 `/workspaces/:ws/transactions/:tx/quick_update_category`
+// 를 hard-code해서 review 화면의 row도 workspace 라우트로 PATCH가 새 나갔다.
+// 결과: `ReviewsController#reject_if_finalized` 가드를 우회하고, finalized 세션
+// 에서도 카테고리 변경이 통과될 수 있었다.
+//
+// 이 컨트롤러는 이제 update URL과 request body shape을 explicit data value로
+// 받는다:
+//   data-category-selector-update-url-value  (필수)
+//   data-category-selector-request-style-value
+//     "id"    → POST body { category_id: id }    (workspace#quick_update_category)
+//     "field" → POST body { field: "category_id", value: id } (reviews#update_transaction)
+//
+// 새 카테고리 슬라이드오버 URL도 review context를 보존해야 하므로 parsing_session_id
+// 가 있으면 query string에 함께 실어 보낸다.
 export default class extends Controller {
   static targets = ["dropdown", "badge", "list"]
   static values = {
     transactionId: Number,
     workspaceId: Number,
-    currentCategoryId: Number
+    currentCategoryId: Number,
+    updateUrl: String,
+    requestStyle: { type: String, default: "id" },
+    parsingSessionId: { type: String, default: "" }
   }
 
   connect() {
@@ -118,15 +138,22 @@ export default class extends Controller {
 
     this.close()
 
+    const url = this.updateUrlValue ||
+      `/workspaces/${this.workspaceIdValue}/transactions/${this.transactionIdValue}/quick_update_category`
+
+    const body = this.requestStyleValue === "field"
+      ? { field: "category_id", value: categoryId || "" }
+      : { category_id: categoryId || null }
+
     try {
-      const response = await fetch(`/workspaces/${this.workspaceIdValue}/transactions/${this.transactionIdValue}/quick_update_category`, {
+      const response = await fetch(url, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           "Accept": "text/vnd.turbo-stream.html",
           "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
         },
-        body: JSON.stringify({ category_id: categoryId || null })
+        body: JSON.stringify(body)
       })
 
       if (response.ok) {
@@ -142,10 +169,19 @@ export default class extends Controller {
     event.preventDefault()
     this.close()
 
-    // Dispatch event to open slideover with category form
+    const params = new URLSearchParams({
+      slideover: "true",
+      transaction_id: String(this.transactionIdValue)
+    })
+    if (this.parsingSessionIdValue) {
+      // Review context: slideover create must re-render the row with session-scoped
+      // URLs so subsequent edits keep hitting ReviewsController guards.
+      params.set("parsing_session_id", this.parsingSessionIdValue)
+    }
+
     const slideoverEvent = new CustomEvent("slideover:open", {
       detail: {
-        url: `/workspaces/${this.workspaceIdValue}/categories/new?slideover=true&transaction_id=${this.transactionIdValue}`
+        url: `/workspaces/${this.workspaceIdValue}/categories/new?${params.toString()}`
       },
       bubbles: true
     })
