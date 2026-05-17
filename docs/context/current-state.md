@@ -104,7 +104,8 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 | `Category` / `CategoryMapping` | 카테고리 + 학습된 매핑 (4단계 우선순위) |
 | `ParsingSession` | 파싱 작업 컨테이너, `source_type: file_upload \| text_paste`, 검토 상태 머신 보유 |
 | `ProcessedFile` | 업로드된 이미지 파일 — 이미지 외 거부 |
-| `DuplicateConfirmation` | 중복 후보 + 결정 (`pending` / `keep_both` / `keep_original` / `keep_new`) |
+| `DuplicateConfirmation` | 중복 후보 + 결정 (`pending` / `keep_both` / `keep_original` / `keep_new`). 중복 의심 흐름의 authoritative source — 본 모델만 commit gate에 들어감 |
+| `ImportIssue` | 가져오기 예외 (`open` / `resolved` / `dismissed`). 현재 `missing_required_fields`만 operational. 사용자가 채우면 새 `pending_review` Transaction으로 승격, 제외 시 `dismissed`. 본 모델도 commit gate 차단 (해당 타입에 한정). `ambiguous_duplicate` 분기는 현재 미생성 — D1 정책에 따라 중복은 `DuplicateConfirmation`에 위임 |
 | `Notification` | 인앱 알림 (파싱 완료/실패 등) |
 | `Comment` | 거래별 댓글 |
 | `AllowanceTransaction` | 거래를 사용자 용돈으로 마킹 |
@@ -131,6 +132,16 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 - Phase C 수익 모델 (구독/광고/AI 분석) — 별도 설계 예정.
 
 이 우선순위는 시간이 지나면 빠르게 stale 됩니다. 현재 권위 있는 우선순위는 `PRD.md` + 머지된 ADR + 최근 커밋입니다.
+
+### 가져오기 예외 처리 정책 (2026-05-17, B1~B4 완료)
+
+본 라운드(#188~#192)로 incomplete row → `ImportIssue` 분기와 사용자 수리 흐름이 들어왔습니다. 현재 상태:
+
+- `ImportIssue`는 **`missing_required_fields` 한 타입만 operational**. parser가 반환한 row 중 date/merchant/amount가 비어 있는 것을 review queue가 아닌 별도 record로 분기 (#190). 사용자는 review 화면의 수리 섹션(#191/#192)에서 채우거나 제외할 수 있고, 채워진 row는 새 `pending_review` Transaction으로 승격되어 정상 review/commit 흐름에 합류합니다.
+- **중복 의심 (`ambiguous_duplicate`) ImportIssue는 현재 생성하지 않습니다 (D1 정책)**. 기존 `DuplicateConfirmation`이 그대로 authoritative source. 둘이 동시에 같은 문제를 표현하면 sync drift가 생기므로 D2(dual marker) / D3(완전 이관)는 채택하지 않음. 본 정책은 [Issue #187](https://github.com/alxdr3k/xef-scale/issues/187) 데이터 검토(2026-07) 결과에 따라 재평가합니다.
+- 정상 row의 `auto-post` 여부도 같은 데이터(review에서 commit 전 distinct transaction 기준 수정 비율)로 결정합니다. 그때까지 mandatory review 유지 (Policy B).
+
+review 행동 baseline은 `ImportReviewEvent`(#189)로 수집 중. metric 추출은 `lib/tasks/import_review_metrics.rake` (후속 PR).
 
 Phase 1·2·3(`ui-redesign-plan §6`)는 main에 머지됨. preflight([`docs/discovery/2026-05-15-phase-3-ia-preflight.md`](../discovery/2026-05-15-phase-3-ia-preflight.md))의 Bucket A1·A2(ADR-0011)·A3·A4·A5(PR B IA Skeleton)·Phase 3.3 검토함 시트 통합·Phase 3.2 classification_source set 로직·Phase 3.4 카테고리+학습된 매핑 결합·Phase 3.5 더보기 전용 페이지 closure 완료. Phase 4 완료 — Hero stat 채택 + ReviewInboxCard + VarianceCard + RecurringPaymentCard. Phase 5 진행 중 — `User#theme` (settings JSON, auto/light/dark) + 더보기 페이지 테마 토글 + `html[data-theme]` 활성화 (ADR-0008) + 글로벌 `:focus-visible` 룰(시맨틱 `--color-focus` 토큰) + 검토함 키보드 단축키 (j/k navigation + c commit + ? help overlay). 컨트라스트 감사 + 추가 단축키(d/x/enter)는 후속 슬라이스. 다음 사이클은 Phase 5 다크 모드 & a11y / Phase 6 i18n / Phase 7 메트릭.
 
