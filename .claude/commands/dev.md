@@ -34,10 +34,11 @@ pkill -f "solid_queue:start" 2>/dev/null && echo "Solid Queue stopped" || echo "
 Rails 서버와 Solid Queue를 시작합니다:
 
 1. 먼저 기존 프로세스 확인 후 중복 시작 방지
-2. 백그라운드에서 각각 시작:
+2. 최초 1회 `doppler setup --no-interactive`으로 repo root의 `doppler.yaml` 설정 적용
+3. 백그라운드에서 각각 시작:
    - `doppler run -- bin/rails server`
    - `doppler run -- bin/rails solid_queue:start`
-3. 5초 후 상태 확인
+4. 5초 후 상태 확인
 
 ### restart
 

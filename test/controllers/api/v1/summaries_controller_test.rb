@@ -17,6 +17,17 @@ module Api
         assert_response :unauthorized
       end
 
+      test "monthly requires read scope" do
+        write_only_key = ApiKey.generate(workspace: @workspace, name: "Write Only Key", scopes: "write")
+        write_only_header = { "Authorization" => "Bearer #{write_only_key.raw_key}" }
+
+        get monthly_api_v1_summaries_path, headers: write_only_header
+        assert_response :forbidden
+
+        json = JSON.parse(response.body)
+        assert_match(/read/, json["error"])
+      end
+
       test "monthly returns summary for current month" do
         get monthly_api_v1_summaries_path, headers: @auth_header
         assert_response :success
@@ -57,6 +68,17 @@ module Api
       test "yearly requires authentication" do
         get yearly_api_v1_summaries_path
         assert_response :unauthorized
+      end
+
+      test "yearly requires read scope" do
+        write_only_key = ApiKey.generate(workspace: @workspace, name: "Write Only Key", scopes: "write")
+        write_only_header = { "Authorization" => "Bearer #{write_only_key.raw_key}" }
+
+        get yearly_api_v1_summaries_path, headers: write_only_header
+        assert_response :forbidden
+
+        json = JSON.parse(response.body)
+        assert_match(/read/, json["error"])
       end
 
       test "yearly returns summary for current year" do

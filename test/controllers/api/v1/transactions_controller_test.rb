@@ -22,6 +22,17 @@ module Api
         assert_response :unauthorized
       end
 
+      test "index requires read scope" do
+        write_only_key = ApiKey.generate(workspace: @workspace, name: "Write Only Key", scopes: "write")
+        write_only_header = { "Authorization" => "Bearer #{write_only_key.raw_key}" }
+
+        get api_v1_transactions_path, headers: write_only_header
+        assert_response :forbidden
+
+        json = JSON.parse(response.body)
+        assert_match(/read/, json["error"])
+      end
+
       test "index returns transactions with valid API key" do
         get api_v1_transactions_path, headers: @auth_header
         assert_response :success
@@ -123,6 +134,19 @@ module Api
 
         json = JSON.parse(response.body)
         assert_equal tx.id, json["data"]["id"]
+      end
+
+      test "show requires read scope" do
+        tx = transactions(:food_transaction)
+        tx.update_column(:status, "committed")
+        write_only_key = ApiKey.generate(workspace: @workspace, name: "Write Only Key", scopes: "write")
+        write_only_header = { "Authorization" => "Bearer #{write_only_key.raw_key}" }
+
+        get api_v1_transaction_path(tx), headers: write_only_header
+        assert_response :forbidden
+
+        json = JSON.parse(response.body)
+        assert_match(/read/, json["error"])
       end
 
       test "show returns 404 for nonexistent transaction" do
