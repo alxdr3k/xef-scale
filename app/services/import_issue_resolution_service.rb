@@ -126,7 +126,14 @@ class ImportIssueResolutionService
   # parse jobs would have run if the row had been complete in the first place.
   def transaction_attrs_for_promotion
     payload = (@issue.raw_payload || {}).with_indifferent_access
-    match = match_category(@issue.merchant, amount: @issue.amount)
+    # Mirror the path-specific category matching of FileParsingJob (passes
+    # amount) and AiTextParsingJob (does not). Keeps repaired-row categorization
+    # consistent with how the same row would have been categorized at ingest.
+    match = if @issue.image_upload?
+      match_category(@issue.merchant, amount: @issue.amount)
+    else
+      match_category(@issue.merchant)
+    end
 
     {
       date: @issue.date,
@@ -136,6 +143,9 @@ class ImportIssueResolutionService
       payment_type: payload[:payment_type].presence || "lump_sum",
       installment_month: payload[:installment_month],
       installment_total: payload[:installment_total],
+      original_amount: payload[:original_amount],
+      benefit_type: payload[:benefit_type],
+      benefit_amount: payload[:benefit_amount],
       status: "pending_review",
       parsing_session: @issue.parsing_session,
       source_type: @issue.source_type,
@@ -146,8 +156,6 @@ class ImportIssueResolutionService
     }
   end
 
-  # Mirror FileParsingJob/AiTextParsingJob#match_category — pass amount so
-  # amount-specific CategoryMapping rules apply to repaired rows too.
   def match_category(merchant, amount: nil)
     return { category: nil, source: nil } if merchant.blank?
 
