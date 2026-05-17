@@ -292,6 +292,37 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/▲ 100%/, response.body)
   end
 
+  # Phase 5 slice 11: dashboards/calendar 시맨틱 토큰 마이그레이션 회귀 차단.
+  # Codex PR #207 P2/P3: ring-indigo / border-indigo도 가드. Stimulus controller
+  # (calendar_controller.js)도 함께 검사 — interactive class toggle도 시맨틱
+  # 토큰을 써야 템플릿 초기 selected와 mismatch가 안 난다.
+  test "calendar view + Stimulus use semantic tokens (no hardcoded palette, no undefined tokens)" do
+    template = File.read(Rails.root.join("app/views/dashboards/calendar.html.erb"))
+    controller = File.read(Rails.root.join("app/javascript/controllers/calendar_controller.js"))
+    sources = { "calendar.html.erb" => template, "calendar_controller.js" => controller }
+
+    stale_palette = %w[
+      bg-indigo-600 ring-indigo-600 border-indigo-600 border-indigo-300
+      text-gray-900 text-gray-500 text-gray-700 bg-white
+      bg-red-50 bg-amber-50 bg-red-100 bg-amber-100
+    ]
+    sources.each do |name, src|
+      stale_palette.each do |stale|
+        assert_no_match(/\b#{Regexp.escape(stale)}\b/, src,
+                        "#{name}에 옛 팔레트 #{stale} 잔존")
+      end
+    end
+
+    %w[border-default divide-default text-action-strong].each do |undef_token|
+      assert_no_match(/\b#{Regexp.escape(undef_token)}\b/, template,
+                      "calendar.html.erb에 정의되지 않은 토큰 #{undef_token}")
+    end
+    assert_match(/\bbg-surface\b/, template)
+    assert_match(/\btext-primary\b/, template)
+    # Stimulus도 시맨틱 토큰을 토글해야 템플릿 초기 selected와 일치.
+    assert_match(/\b(border|ring)-action\b/, controller)
+  end
+
   test "variance card uses positive tone when spending decreased" do
     Transaction.where(workspace: @workspace).destroy_all
     today = Date.current
