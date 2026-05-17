@@ -96,7 +96,7 @@
                 <% if membership.user.avatar_url.present? %>
                   <img src="<%= membership.user.avatar_url %>" class="w-8 h-8 rounded-full mr-3">
                 <% else %>
-                  <span class="w-8 h-8 rounded-full bg-action-subtle0 flex items-center justify-center text-action-on text-sm font-medium mr-3">
+                  <span class="w-8 h-8 rounded-full bg-action flex items-center justify-center text-action-on text-sm font-medium mr-3">
                     <%= membership.user.name&.first&.upcase || membership.user.email&.first&.upcase %>
                   </span>
                 <% end %>
