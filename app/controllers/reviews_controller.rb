@@ -406,25 +406,11 @@ class ReviewsController < ApplicationController
   end
 
   # ADR-0011 §Decision 3 (Codex hotfix B): merchant가 바뀌면 새 merchant 기준
-  # provenance를 재평가. 정책은 TransactionsController#apply_merchant_rematch_policy!
-  # 와 동일하다 (review/ledger 양쪽 경로 모두 같은 의미를 가져야 함). 둘은 분리된
-  # controller라 helper를 중복 정의 — 추출은 후속.
+  # provenance를 재평가. 정책은 MerchantRematchPolicy 서비스로 추출되어
+  # TransactionsController와 공유한다 — review/ledger 양쪽 경로가 같은 의미를
+  # 가져야 함.
   def apply_merchant_rematch_policy!(transaction)
-    new_category = CategoryMapping.find_category_for_merchant_and_description(
-      @workspace, transaction.merchant, transaction.description
-    )
-
-    if new_category
-      if transaction.category_id != new_category.id
-        transaction.update(category: new_category, classification_source: "mapping_match")
-      elsif transaction.classification_source != "mapping_match"
-        transaction.update_column(:classification_source, "mapping_match")
-      end
-    elsif transaction.category_id.present?
-      transaction.update_column(:classification_source, "manual_set") if transaction.classification_source != "manual_set"
-    else
-      transaction.update_column(:classification_source, nil) if transaction.classification_source.present?
-    end
+    MerchantRematchPolicy.apply!(@workspace, transaction)
   end
 
   # Once a parsing session has been committed / rolled back / discarded, the
