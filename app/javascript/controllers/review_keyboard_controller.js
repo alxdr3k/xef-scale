@@ -6,15 +6,18 @@ import { Controller } from "@hotwired/stimulus"
 //   j   — 다음 거래 행 focus
 //   k   — 이전 거래 행 focus
 //   c   — 현재 파싱 세션 commit (commitForm target)
+//   d   — 현재 focused row를 이번 가져오기에서 *제외* (Phase 5 slice 6).
+//         기존 bulk_update delete path를 그대로 재사용 — transaction_excluded
+//         ImportReviewEvent 기록 + reject_if_finalized 가드 자동 적용.
 //   ?   — 단축키 도움말 overlay 토글 (Shift+/)
 //   Esc — 도움말 overlay 열려 있으면 닫기
 //
 // 텍스트 입력 중에는 단축키 무시 (event.code/key 모두 layout-independent).
 //
-// 추가 단축키(d=discard / x=duplicate / enter=select)는 후속 슬라이스.
+// 추가 단축키(x=duplicate / enter=select)는 후속 슬라이스.
 export default class extends Controller {
   static values = { rowSelector: { type: String, default: "tr[data-transaction-id]" } }
-  static targets = ["commitForm", "helpBackdrop", "helpDialog"]
+  static targets = ["commitForm", "excludeForm", "helpBackdrop", "helpDialog"]
 
   handleKey(event) {
     // 도움말 overlay가 열려 있으면 Esc/?/Tab만 처리, 다른 키는 background로 새지 않게 차단
@@ -55,6 +58,9 @@ export default class extends Controller {
         event.preventDefault()
         this.commitFormTarget.requestSubmit()
       }
+    } else if (event.code === "KeyD" || event.key === "d") {
+      event.preventDefault()
+      this.excludeCurrentRow()
     } else if (isHelpToggle) {
       event.preventDefault()
       this.toggleHelp()
@@ -107,6 +113,40 @@ export default class extends Controller {
 
   helpOpen() {
     return this.hasHelpDialogTarget && !this.helpDialogTarget.classList.contains("hidden")
+  }
+
+  // Phase 5 slice 6: 현재 focused row를 이번 가져오기에서 제외.
+  // 기존 bulk_update delete path 재사용 — transaction_excluded ImportReviewEvent
+  // 기록 + reject_if_finalized 가드 자동 적용.
+  //
+  // 비활성 조건 (모두 no-op):
+  //   - excludeForm target 부재 (read_only 또는 member_read — view에서 `unless @read_only`로
+  //     이미 form 자체가 미렌더, write 권한 없는 member_read는 controller가 redirect)
+  //   - 현재 focus가 row 안이 아님
+  //   - row가 이미 deleted(rolled_back) — data-deleted="true"
+  excludeCurrentRow() {
+    if (!this.hasExcludeFormTarget) return
+
+    const active = document.activeElement
+    const row = active?.closest(this.rowSelectorValue)
+    if (!row) return
+
+    if (row.dataset.deleted === "true") return
+
+    const id = row.dataset.transactionId
+    if (!id) return
+
+    // Lightweight guard — 실수로 d를 누른 사용자에게 한 번 더 확인.
+    if (!window.confirm("이 거래를 이번 가져오기에서 제외하시겠습니까?")) return
+
+    const form = this.excludeFormTarget
+    const idsInput = form.querySelector("input[name='transaction_ids']")
+    const actionInput = form.querySelector("input[name='bulk_action']")
+    if (!idsInput || !actionInput) return
+
+    idsInput.value = id
+    actionInput.value = "delete"
+    form.requestSubmit()
   }
 
   // Codex PR #184 P2: aria-modal focus trap.
