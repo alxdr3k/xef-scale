@@ -189,9 +189,9 @@ class ReviewsController < ApplicationController
       # 않는다. bulk action은 파괴 범위가 크므로 422/alert로 막는다.
       err = if params[:category_id].blank?
               "카테고리를 선택해 주세요."
-            elsif !(category = @workspace.categories.find_by(id: params[:category_id]))
+      elsif !(category = @workspace.categories.find_by(id: params[:category_id]))
               "유효하지 않은 카테고리입니다."
-            end
+      end
       if err
         respond_to do |format|
           format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), alert: err }
