@@ -22,7 +22,9 @@
         "AI" → "AI 학습 매핑"). 색상은 의미 신호 유지. %>
     <% case mapping.source %>
     <% when "manual" %>
-      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-action-subtle text-action"><%= t("category_mappings.source.manual") %></span>
+      <%# Codex PR #217 P2: action-subtle/action 페어는 dark mode에서 #818cf8/#312e81 ≈ 3.83:1로 AA 미달.
+          filled (bg-action + text-action-on)으로 contrast 확보 — 색상 신호(indigo) 유지. %>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-action text-action-on"><%= t("category_mappings.source.manual") %></span>
     <% when "import" %>
       <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-positive-subtle text-positive"><%= t("category_mappings.source.import") %></span>
     <% when "gemini" %>

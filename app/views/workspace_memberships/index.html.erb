@@ -15,8 +15,9 @@
         <% @memberships.each do |membership| %>
           <tr>
             <td class="px-6 py-4 text-sm text-primary"><%= membership.user.name %></td>
-            <td class="px-6 py-4 text-sm text-tertiary"><%= membership.user.email %></td>
-            <td class="px-6 py-4 text-sm text-tertiary">
+            <%# Codex PR #217 P2: email/role은 본문 데이터라 text-secondary로 AA contrast. text-tertiary는 uppercase th 같은 보조 라벨용. %>
+            <td class="px-6 py-4 text-sm text-secondary"><%= membership.user.email %></td>
+            <td class="px-6 py-4 text-sm text-secondary">
               <%= membership.role %>
             </td>
             <td class="px-6 py-4 text-right text-sm">

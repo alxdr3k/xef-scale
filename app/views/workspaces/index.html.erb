@@ -20,7 +20,7 @@
           </div>
           <% if current_user.admin_of?(workspace) %>
             <%= link_to '설정', settings_workspace_path(workspace),
-                class: 'text-disabled hover:text-secondary' %>
+                class: 'text-secondary hover:text-primary' %>
           <% end %>
         </div>
       </div>
