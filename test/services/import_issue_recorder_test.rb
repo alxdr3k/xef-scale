@@ -33,10 +33,11 @@ class ImportIssueRecorderTest < ActiveSupport::TestCase
       processed_file: @processed_file
     )
 
-    remaining, incomplete_count = recorder.split_and_record([ complete, no_merchant, no_amount, no_date ])
+    remaining, recorded, failed = recorder.split_and_record([ complete, no_merchant, no_amount, no_date ])
 
     assert_equal [ complete ], remaining
-    assert_equal 3, incomplete_count
+    assert_equal 3, recorded
+    assert_equal 0, failed
     assert_equal 3, @file_session.import_issues.count
 
     types = @file_session.import_issues.pluck(:issue_type).uniq
@@ -55,10 +56,11 @@ class ImportIssueRecorderTest < ActiveSupport::TestCase
       processed_file: @processed_file
     )
 
-    remaining, incomplete_count = recorder.split_and_record(rows)
+    remaining, recorded, failed = recorder.split_and_record(rows)
 
     assert_equal rows, remaining
-    assert_equal 0, incomplete_count
+    assert_equal 0, recorded
+    assert_equal 0, failed
     assert_equal 0, @file_session.import_issues.count
   end
 
@@ -70,10 +72,11 @@ class ImportIssueRecorderTest < ActiveSupport::TestCase
       source_type: "text_paste"
     )
 
-    remaining, incomplete_count = recorder.split_and_record(rows)
+    remaining, recorded, failed = recorder.split_and_record(rows)
 
     assert_empty remaining
-    assert_equal 1, incomplete_count
+    assert_equal 1, recorded
+    assert_equal 0, failed
 
     issue = @text_session.import_issues.first
     assert_equal "text_paste", issue.source_type
@@ -81,7 +84,7 @@ class ImportIssueRecorderTest < ActiveSupport::TestCase
     assert_includes issue.missing_fields, "merchant"
   end
 
-  test "persistence failure logs and returns rows as if incomplete" do
+  test "persistence failure logs and is counted as failed" do
     output = StringIO.new
     original_logger = Rails.logger
     Rails.logger = Logger.new(output)
@@ -98,10 +101,11 @@ class ImportIssueRecorderTest < ActiveSupport::TestCase
       processed_file: @processed_file
     )
 
-    remaining, incomplete_count = recorder.split_and_record([ { date: nil, merchant: "x", amount: 100 } ])
+    remaining, recorded, failed = recorder.split_and_record([ { date: nil, merchant: "x", amount: 100 } ])
 
     assert_empty remaining
-    assert_equal 1, incomplete_count
+    assert_equal 0, recorded
+    assert_equal 1, failed
     assert_includes output.string, "[ImportIssueRecorder]"
     assert_equal 0, other_session.import_issues.count
   ensure

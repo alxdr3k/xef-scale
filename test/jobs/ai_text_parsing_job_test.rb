@@ -88,13 +88,16 @@ class AiTextParsingJobTest < ActiveJob::TestCase
     end
   end
 
-  test "perform fails session when all transactions error out" do
+  test "perform completes session as repairable when all rows are incomplete" do
+    # Policy B (Issue #187): incomplete rows are diverted to ImportIssue,
+    # not silently lost. The session itself should remain reachable so the
+    # user can repair the rows from the review/repair surface.
     fake_result = {
       transactions: [
         {
           date: Date.new(2026, 3, 15),
-          merchant: nil,       # nil merchant will cause create! to fail
-          amount: nil,         # nil amount will cause validation failure
+          merchant: nil,
+          amount: nil,
           institution: nil,
           payment_type: "lump_sum",
           installment_month: nil,
@@ -118,8 +121,12 @@ class AiTextParsingJobTest < ActiveJob::TestCase
       AiTextParser.define_method(:parse, original_parse)
     end
 
-    # session should be failed (success == 0)
-    assert @parsing_session.reload.failed?, "success==0이면 세션이 failed 상태여야 함"
+    @parsing_session.reload
+    assert @parsing_session.completed?, "all-incomplete import도 ImportIssue로 수리 가능하므로 completed여야 함"
+    assert_equal 1, @parsing_session.import_issues.count
+    issue = @parsing_session.import_issues.first
+    assert_equal "text_paste", issue.source_type
+    assert_equal %w[merchant amount].sort, issue.missing_fields.sort
   end
 
   test "perform persists cancellation transactions with negative amount instead of skipping" do

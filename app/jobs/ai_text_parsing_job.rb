@@ -20,9 +20,14 @@ class AiTextParsingJob < ApplicationJob
         parsing_session: parsing_session,
         source_type: "text_paste"
       )
-      complete_rows, incomplete_count = recorder.split_and_record(result[:transactions] || [])
+      complete_rows, recorded_issue_count, failed_issue_count = recorder.split_and_record(result[:transactions] || [])
 
-      stats = { total: complete_rows.size + incomplete_count, success: 0, duplicate: 0, error: incomplete_count }
+      stats = {
+        total: complete_rows.size + recorded_issue_count + failed_issue_count,
+        success: 0,
+        duplicate: 0,
+        error: failed_issue_count
+      }
 
       complete_rows.each do |tx_data|
         begin
@@ -47,7 +52,10 @@ class AiTextParsingJob < ApplicationJob
         end
       end
 
-      if stats[:total].zero? || stats[:success].zero?
+      # Policy B: a session with only ImportIssues (no committed transactions)
+      # is still a successful import — the user needs the repair surface.
+      no_outcome = stats[:success] + recorded_issue_count == 0
+      if stats[:total].zero? || no_outcome
         parsing_session.fail!
         create_failure_notifications(parsing_session)
       else

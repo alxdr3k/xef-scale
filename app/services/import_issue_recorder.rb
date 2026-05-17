@@ -9,11 +9,17 @@ class ImportIssueRecorder
     @processed_file = processed_file
   end
 
-  # Returns [complete_rows, incomplete_count]
+  # Returns [complete_rows, recorded_count, failed_count]
+  # - recorded_count: ImportIssues actually persisted (incomplete row recovered)
+  # - failed_count: incomplete rows we could not persist (silent data loss)
   def split_and_record(rows)
     incomplete, complete = rows.partition { |row| missing_fields_for(row).any? }
-    incomplete.each { |row| record_incomplete(row) }
-    [ complete, incomplete.size ]
+    recorded = 0
+    failed = 0
+    incomplete.each do |row|
+      record_incomplete(row) ? recorded += 1 : failed += 1
+    end
+    [ complete, recorded, failed ]
   end
 
   private
@@ -27,7 +33,7 @@ class ImportIssueRecorder
 
   def record_incomplete(row)
     missing = missing_fields_for(row)
-    return if missing.empty?
+    return false if missing.empty?
 
     @parsing_session.import_issues.create!(
       workspace: @parsing_session.workspace,
@@ -39,11 +45,13 @@ class ImportIssueRecorder
       missing_fields: missing,
       raw_payload: payload_for(row)
     )
+    true
   rescue ActiveRecord::ActiveRecordError => e
     Rails.logger.warn(
       "[ImportIssueRecorder] failed to record incomplete row " \
       "(session=#{@parsing_session.id}, source=#{@source_type}): #{e.class}: #{e.message}"
     )
+    false
   end
 
   def fetch(row, field)
