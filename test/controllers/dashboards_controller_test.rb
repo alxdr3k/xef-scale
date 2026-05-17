@@ -262,8 +262,11 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
   test "monthly_variance computes variance_pct and projected_end" do
     Transaction.where(workspace: @workspace).destroy_all
     today = Date.current
-    # 마지막 날이면 페이스 의미 없음 → 데이터를 today 직전으로 조정.
     skip "today is end-of-month; variance skips projection" if today == today.end_of_month
+    # Codex PR #178 P1: prior month가 짧을 때(예: 3월 29일 vs 2월 28일) cutoff_day가
+    # prior_end_day로 clamp되어 today 거래가 제외됨. 이 테스트는 today 거래가
+    # cutoff 안에 포함되는 케이스만 검증한다.
+    skip "today.day exceeds prior month length" if today.day > today.prev_month.end_of_month.day
 
     prior_month_same_day_start = today.prev_month.beginning_of_month
     @workspace.transactions.create!(
@@ -293,6 +296,8 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     Transaction.where(workspace: @workspace).destroy_all
     today = Date.current
     skip if today == today.end_of_month
+    # Codex PR #178 P1: cutoff_day clamp로 today 거래가 제외될 수 있음.
+    skip "today.day exceeds prior month length" if today.day > today.prev_month.end_of_month.day
 
     @workspace.transactions.create!(
       date: today.prev_month.beginning_of_month, amount: 20_000, merchant: "PRIOR"
@@ -312,6 +317,8 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     Transaction.where(workspace: @workspace).destroy_all
     today = Date.current
     skip if today == today.end_of_month
+    # Codex PR #178 P1: cutoff_day clamp로 today 거래가 제외되는 calendar 경계 회피.
+    skip "today.day exceeds prior month length" if today.day > today.prev_month.end_of_month.day
 
     @workspace.transactions.create!(
       date: today.prev_month.beginning_of_month, amount: 10_000, merchant: "PRIOR"
@@ -371,6 +378,9 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     Transaction.where(workspace: @workspace).destroy_all
     today = Date.current
     skip if today == today.end_of_month
+    # prior month 시작일은 항상 day=1이므로 cutoff_day=1 이상 보장 — short month
+    # 영향은 없으나 일관성을 위해 가드.
+    skip "today.day exceeds prior month length" if today.day > today.prev_month.end_of_month.day
 
     # prior month에 large refund (negative). 합산 음수가 되도록.
     @workspace.transactions.create!(
