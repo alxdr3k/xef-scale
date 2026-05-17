@@ -1,39 +1,39 @@
 <div class="space-y-2">
   <% @category_breakdown.each do |category| %>
     <% if category[:id] %>
-      <div class="flex items-center h-8 gap-3 cursor-pointer rounded-lg px-2 -mx-2 hover:bg-gray-50 transition-colors"
+      <div class="flex items-center h-8 gap-3 cursor-pointer rounded-lg px-2 -mx-2 hover:bg-elev transition-colors"
            data-dashboard-category-target="categoryBar"
            data-category-id="<%= category[:id] %>"
            data-action="click->dashboard-category#selectCategory">
         <span class="text-sm font-medium w-28 truncate" style="color: <%= category[:color] %>"><%= category[:name] %></span>
-        <div class="flex-1 h-full bg-gray-100 rounded-lg overflow-hidden flex justify-end">
+        <div class="flex-1 h-full bg-elev rounded-lg overflow-hidden flex justify-end">
           <div class="h-full rounded-lg transition-all duration-300 ease-in-out"
                style="width: <%= category[:percentage] %>%; background-color: <%= category[:color] %>">
           </div>
         </div>
         <div class="flex items-center space-x-2">
-          <span class="text-sm font-semibold text-gray-900 w-20 text-right"><%= number_to_currency(category[:amount], unit: '₩', precision: 0) %></span>
-          <span class="text-sm text-gray-500 font-medium w-12 text-right"><%= category[:percentage] %>%</span>
+          <span class="text-sm font-semibold text-primary w-20 text-right"><%= number_to_currency(category[:amount], unit: '₩', precision: 0) %></span>
+          <span class="text-sm text-tertiary font-medium w-12 text-right"><%= category[:percentage] %>%</span>
         </div>
       </div>
     <% else %>
       <%# 미분류 카테고리는 클릭 비활성화 %>
       <div class="flex items-center h-8 gap-3 px-2 -mx-2">
         <span class="text-sm font-medium w-28 truncate" style="color: <%= category[:color] %>"><%= category[:name] %></span>
-        <div class="flex-1 h-full bg-gray-100 rounded-lg overflow-hidden flex justify-end">
+        <div class="flex-1 h-full bg-elev rounded-lg overflow-hidden flex justify-end">
           <div class="h-full rounded-lg transition-all duration-300 ease-in-out"
                style="width: <%= category[:percentage] %>%; background-color: <%= category[:color] %>">
           </div>
         </div>
         <div class="flex items-center space-x-2">
-          <span class="text-sm font-semibold text-gray-900 w-20 text-right"><%= number_to_currency(category[:amount], unit: '₩', precision: 0) %></span>
-          <span class="text-sm text-gray-500 font-medium w-12 text-right"><%= category[:percentage] %>%</span>
+          <span class="text-sm font-semibold text-primary w-20 text-right"><%= number_to_currency(category[:amount], unit: '₩', precision: 0) %></span>
+          <span class="text-sm text-tertiary font-medium w-12 text-right"><%= category[:percentage] %>%</span>
         </div>
       </div>
     <% end %>
   <% end %>
 
   <% if @category_breakdown.empty? %>
-    <p class="text-gray-500 text-center py-4">결제 내역이 없습니다.</p>
+    <p class="text-tertiary text-center py-4">결제 내역이 없습니다.</p>
   <% end %>
 </div>
