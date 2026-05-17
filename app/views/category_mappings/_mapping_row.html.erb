@@ -1,11 +1,11 @@
 <tr id="<%= dom_id(mapping) %>">
-  <td class="px-6 py-4 text-sm text-gray-900"><%= mapping.merchant_pattern %></td>
-  <td class="px-6 py-4 text-sm text-gray-500"><%= mapping.match_type_label %></td>
-  <td class="px-6 py-4 text-sm text-gray-500">
+  <td class="px-6 py-4 text-sm text-primary"><%= mapping.merchant_pattern %></td>
+  <td class="px-6 py-4 text-sm text-tertiary"><%= mapping.match_type_label %></td>
+  <td class="px-6 py-4 text-sm text-tertiary">
     <% if mapping.amount.present? %>
       <%= number_with_delimiter(mapping.amount) %>원
     <% else %>
-      <span class="text-gray-400">모든 금액</span>
+      <span class="text-disabled">모든 금액</span>
     <% end %>
   </td>
   <td class="px-6 py-4 text-sm">
@@ -22,21 +22,21 @@
         "AI" → "AI 학습 매핑"). 색상은 의미 신호 유지. %>
     <% case mapping.source %>
     <% when "manual" %>
-      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"><%= t("category_mappings.source.manual") %></span>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-action-subtle text-action"><%= t("category_mappings.source.manual") %></span>
     <% when "import" %>
-      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800"><%= t("category_mappings.source.import") %></span>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-positive-subtle text-positive"><%= t("category_mappings.source.import") %></span>
     <% when "gemini" %>
-      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"><%= t("category_mappings.source.gemini") %></span>
+      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-warning-subtle text-warning"><%= t("category_mappings.source.gemini") %></span>
     <% end %>
   </td>
   <td class="px-6 py-4 text-right text-sm">
     <%= link_to '수정',
           edit_workspace_category_mapping_path(@workspace, mapping),
-          class: 'text-indigo-600 hover:text-indigo-900 mr-3',
+          class: 'text-action hover:text-action mr-3',
           data: { action: "click->slideover#open", turbo_frame: "slideover-content" } %>
     <%= link_to '삭제',
           workspace_category_mapping_path(@workspace, mapping),
           data: { turbo_method: :delete, turbo_confirm: '이 분류 규칙을 삭제하시겠습니까?' },
-          class: 'text-red-600 hover:text-red-900' %>
+          class: 'text-danger hover:text-danger' %>
   </td>
 </tr>

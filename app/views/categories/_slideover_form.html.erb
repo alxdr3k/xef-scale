@@ -1,5 +1,5 @@
 <turbo-frame id="slideover-content">
-  <h2 class="text-lg font-semibold text-gray-900 mb-6">새 카테고리</h2>
+  <h2 class="text-lg font-semibold text-primary mb-6">새 카테고리</h2>
 
   <%# Preserve review-context binding in the create POST. Without
       parsing_session_id the controller falls back to workspace scope and the
@@ -11,8 +11,8 @@
         data: { turbo_frame: '_top' } do |f| %>
 
     <% if @category.errors.any? %>
-      <div class="bg-red-50 border border-red-200 rounded-md p-4">
-        <ul class="text-sm text-red-700 list-disc list-inside">
+      <div class="bg-danger-subtle border border-danger rounded-md p-4">
+        <ul class="text-sm text-danger list-disc list-inside">
           <% @category.errors.full_messages.each do |message| %>
             <li><%= message %></li>
           <% end %>
@@ -21,30 +21,30 @@
     <% end %>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">이름 *</label>
+      <label class="block text-sm font-medium text-secondary mb-1">이름 *</label>
       <%= f.text_field :name,
-            class: 'block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+            class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
             placeholder: '예: 식비, 교통비, 쇼핑',
             autofocus: true %>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">자동 분류 키워드</label>
+      <label class="block text-sm font-medium text-secondary mb-1">자동 분류 키워드</label>
       <%= f.text_field :keyword,
-            class: 'block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+            class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
             placeholder: '쉼표로 구분 (예: 스타벅스, 카페)' %>
-      <p class="mt-1 text-xs text-gray-500">결제 내역에 이 키워드가 포함되면 자동으로 분류됩니다.</p>
+      <p class="mt-1 text-xs text-tertiary">결제 내역에 이 키워드가 포함되면 자동으로 분류됩니다.</p>
     </div>
 
     <%= render 'shared/color_picker', form: f %>
 
-    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+    <div class="flex justify-end gap-3 pt-4 border-t border-divider">
       <button type="button"
               data-action="click->slideover#close"
-              class="px-4 py-2 text-gray-700 hover:text-gray-900">
+              class="px-4 py-2 text-secondary hover:text-primary">
         취소
       </button>
-      <%= f.submit '저장', class: 'bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 cursor-pointer' %>
+      <%= f.submit '저장', class: 'bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover cursor-pointer' %>
     </div>
   <% end %>
 </turbo-frame>

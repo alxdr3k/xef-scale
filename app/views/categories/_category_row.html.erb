@@ -2,10 +2,10 @@
   <td class="px-6 py-4">
     <div class="w-6 h-6 rounded-full" style="background-color: <%= category.color %>"></div>
   </td>
-  <td class="px-6 py-4 text-sm text-gray-900"><%= category.name %></td>
-  <td class="px-6 py-4 text-sm text-gray-500"><%= category.keyword %></td>
+  <td class="px-6 py-4 text-sm text-primary"><%= category.name %></td>
+  <td class="px-6 py-4 text-sm text-tertiary"><%= category.keyword %></td>
   <td class="px-6 py-4 text-right text-sm">
-    <%= link_to '수정', edit_workspace_category_path(@workspace, category), class: 'text-indigo-600 hover:text-indigo-900 mr-3' %>
-    <%= link_to '삭제', workspace_category_path(@workspace, category), data: { turbo_method: :delete, turbo_confirm: '정말 삭제하시겠습니까?' }, class: 'text-red-600 hover:text-red-900' %>
+    <%= link_to '수정', edit_workspace_category_path(@workspace, category), class: 'text-action hover:text-action mr-3' %>
+    <%= link_to '삭제', workspace_category_path(@workspace, category), data: { turbo_method: :delete, turbo_confirm: '정말 삭제하시겠습니까?' }, class: 'text-danger hover:text-danger' %>
   </td>
 </tr>
