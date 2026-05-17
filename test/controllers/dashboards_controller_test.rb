@@ -373,6 +373,38 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
                  "cutoff_day 이후 거래는 정렬로 제외돼야"
   end
 
+  # Phase 4 slice 3: RecurringPaymentCard.
+  test "monthly dashboard renders RecurringPaymentCard when patterns detected" do
+    Transaction.where(workspace: @workspace).destroy_all
+    today = Date.current
+    # 2개월 연속 동일 merchant — MIN_OCCURRENCES=2 충족.
+    @workspace.transactions.create!(
+      date: today.prev_month.beginning_of_month, amount: 11_000, merchant: "넷플릭스"
+    )
+    @workspace.transactions.create!(
+      date: today, amount: 11_000, merchant: "넷플릭스"
+    )
+
+    get monthly_dashboard_path
+    assert_response :success
+    assert_match(/반복 결제/, response.body)
+    assert_includes response.body, "넷플릭스"
+    # CTA가 recurring 상세 페이지로 이동.
+    assert_includes response.body, recurring_dashboard_path
+  end
+
+  test "monthly dashboard omits RecurringPaymentCard when no patterns" do
+    Transaction.where(workspace: @workspace).destroy_all
+    @workspace.transactions.create!(
+      date: Date.current, amount: 5_000, merchant: "ONE_OFF"
+    )
+
+    get monthly_dashboard_path
+    assert_response :success
+    # 반복 결제 카드 자체가 없음 — h2 "반복 결제"가 미렌더.
+    assert_select "h2", text: "반복 결제", count: 0
+  end
+
   # Codex PR #178: prior_total ≤ 0 (cancellation 등) 가드.
   test "monthly_variance returns nil when prior_total is negative" do
     Transaction.where(workspace: @workspace).destroy_all
