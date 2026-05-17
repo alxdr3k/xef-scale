@@ -112,4 +112,52 @@ class RecurringPaymentDetectorTest < ActiveSupport::TestCase
     totals = results.map { |r| r[:total_spent] }
     assert_equal totals, totals.sort.reverse
   end
+
+  # Codex hotfix D: 음수 환불/취소·coupon 거래를 제외한다.
+
+  test "ignores transactions with non-positive amount (refund/cancellation)" do
+    # 같은 merchant에 환불(음수)만 있으면 반복 결제로 보지 않는다.
+    3.times do |i|
+      Transaction.create!(
+        workspace: @workspace, merchant: "음수환불상점",
+        amount: -5000, date: Date.current - i.months,
+        status: "committed", deleted: false
+      )
+    end
+
+    detector = RecurringPaymentDetector.new(@workspace)
+    merchants = detector.detect.map { |r| r[:merchant] }
+    assert_not_includes merchants, "음수환불상점"
+  end
+
+  test "average and last_amount exclude refund rows from same merchant" do
+    # 양수 17000원 거래가 매월 있고, 가장 최근에 환불(음수)이 추가된 경우.
+    # last_amount는 환불이 아니라 가장 최근 양수 거래의 amount여야 한다.
+    Transaction.create!(
+      workspace: @workspace, merchant: "넷플릭스",
+      amount: -17000, date: Date.current + 1.day, # 가장 최근 (환불)
+      status: "committed", deleted: false
+    )
+
+    detector = RecurringPaymentDetector.new(@workspace)
+    netflix = detector.detect.find { |r| r[:merchant] == "넷플릭스" }
+    assert_not_nil netflix
+    assert_equal 17000, netflix[:average_amount], "음수가 평균에 섞이면 안 됨"
+    assert_equal 17000, netflix[:last_amount], "last_amount는 가장 최근 양수 거래"
+  end
+
+  test "excludes coupon payment_type from aggregation" do
+    3.times do |i|
+      Transaction.create!(
+        workspace: @workspace, merchant: "쿠폰상점",
+        amount: 10000, date: Date.current - i.months,
+        payment_type: "coupon",
+        status: "committed", deleted: false
+      )
+    end
+
+    detector = RecurringPaymentDetector.new(@workspace)
+    merchants = detector.detect.map { |r| r[:merchant] }
+    assert_not_includes merchants, "쿠폰상점"
+  end
 end
