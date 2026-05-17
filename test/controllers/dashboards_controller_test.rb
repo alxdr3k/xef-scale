@@ -292,6 +292,21 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/▲ 100%/, response.body)
   end
 
+  # Phase 5 slice 11: dashboards/calendar 시맨틱 토큰 마이그레이션 회귀 차단.
+  test "calendar view template uses semantic tokens (no hardcoded palette, no undefined tokens)" do
+    src = File.read(Rails.root.join("app/views/dashboards/calendar.html.erb"))
+    %w[bg-indigo-600 text-gray-900 text-gray-500 text-gray-700 bg-white bg-red-50 bg-amber-50 bg-red-100 bg-amber-100].each do |stale|
+      assert_no_match(/\b#{Regexp.escape(stale)}\b/, src,
+                      "dashboards/calendar.html.erb에 옛 팔레트 #{stale} 잔존")
+    end
+    %w[border-default divide-default text-action-strong].each do |undef_token|
+      assert_no_match(/\b#{Regexp.escape(undef_token)}\b/, src,
+                      "dashboards/calendar.html.erb에 정의되지 않은 토큰 #{undef_token}")
+    end
+    assert_match(/\bbg-surface\b/, src)
+    assert_match(/\btext-primary\b/, src)
+  end
+
   test "variance card uses positive tone when spending decreased" do
     Transaction.where(workspace: @workspace).destroy_all
     today = Date.current
