@@ -1,8 +1,12 @@
 <turbo-frame id="slideover-content">
   <h2 class="text-lg font-semibold text-gray-900 mb-6">새 카테고리</h2>
 
+  <%# Preserve review-context binding in the create POST. Without
+      parsing_session_id the controller falls back to workspace scope and the
+      re-rendered row uses workspace-level update endpoints, leaking past
+      ReviewsController#reject_if_finalized for subsequent edits. %>
   <%= form_with model: [@workspace, @category],
-        url: workspace_categories_path(@workspace, slideover: true, transaction_id: @transaction_id),
+        url: workspace_categories_path(@workspace, slideover: true, transaction_id: @transaction_id, parsing_session_id: @parsing_session&.id),
         class: 'space-y-4',
         data: { turbo_frame: '_top' } do |f| %>
 

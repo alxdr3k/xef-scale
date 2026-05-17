@@ -169,6 +169,46 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_match(/data-category-selector-request-style-value="field"/, response.body)
   end
 
+  test "create via slideover rejects invalid parsing_session_id (no silent fallback)" do
+    initial_count = @workspace.categories.count
+    foreign_tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "OK_TX",
+      status: "pending_review", parsing_session: parsing_sessions(:completed_session)
+    )
+
+    post workspace_categories_path(@workspace), params: {
+      category: { name: "쓰레기카테고리", color: "#000000" },
+      slideover: "true",
+      transaction_id: foreign_tx.id,
+      parsing_session_id: 999_999_999 # 존재하지 않는 세션
+    }, as: :turbo_stream
+
+    assert_response :not_found
+    # 카테고리도 생성되면 안 됨 (orphan 방지)
+    assert_equal initial_count, @workspace.categories.count
+  end
+
+  test "create via slideover does not persist category when transaction scope check fails" do
+    ps = parsing_sessions(:completed_session)
+    ps.update!(review_status: "pending_review")
+    initial_count = @workspace.categories.count
+    foreign_tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "FOREIGN_TX",
+      status: "committed"
+    )
+
+    post workspace_categories_path(@workspace), params: {
+      category: { name: "오펀카테고리", color: "#000000" },
+      slideover: "true",
+      transaction_id: foreign_tx.id,
+      parsing_session_id: ps.id
+    }, as: :turbo_stream
+
+    assert_response :not_found
+    # 분기 검증 실패 시 category가 persist되지 않아야 함 — orphan 방지
+    assert_equal initial_count, @workspace.categories.count
+  end
+
   test "create via slideover rejects transaction not belonging to parsing_session" do
     ps = parsing_sessions(:completed_session)
     ps.update!(review_status: "pending_review")
