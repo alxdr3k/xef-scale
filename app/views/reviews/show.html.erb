@@ -142,9 +142,11 @@
   <% end %>
 
   <% unless @read_only %>
-    <%# 숨겨진 일괄 처리 폼 %>
+    <%# 숨겨진 일괄 처리 폼 — Phase 5 slice 6: 'd' 키 단축키도 이 폼을 재사용해
+        transaction_excluded event 기록을 포함한 기존 bulk_update delete path를
+        그대로 사용한다. %>
     <%= form_with url: bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
-        method: :post, data: { turbo: false, bulk_form: true } do %>
+        method: :post, data: { turbo: false, bulk_form: true, review_keyboard_target: "excludeForm" } do %>
       <input type="hidden" name="transaction_ids" data-bulk-select-target="ids" value="">
       <input type="hidden" name="bulk_action" value="">
       <input type="hidden" name="category_id" value="">

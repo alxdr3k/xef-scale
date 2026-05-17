@@ -855,6 +855,64 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/data-review-keyboard-target="commitForm"/, response.body)
   end
 
+  # Phase 5 slice 6: d 키 단축키 — bulk_update delete path 재사용.
+  test "show wires bulk_update form as review-keyboard excludeForm target for writer" do
+    @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "D_SHORTCUT_SESSION",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_response :success
+    # bulk form이 excludeForm target — d 단축키가 transaction_ids/bulk_action 채워 submit.
+    assert_match(/data-review-keyboard-target="excludeForm"/, response.body)
+    # help overlay에 d 항목 노출.
+    assert_select "kbd", text: "d"
+  end
+
+  test "show omits excludeForm target for read-only member (member_read)" do
+    @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "D_READONLY",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    sign_out @user
+    sign_in users(:reader)
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_response :success
+    # read_only로 가드되어 bulk form 자체가 미렌더 → excludeForm target 부재.
+    # JS controller가 hasExcludeFormTarget 가드로 no-op.
+    assert_no_match(/data-review-keyboard-target="excludeForm"/, response.body)
+  end
+
+  test "show omits excludeForm target on finalized (committed) session" do
+    @parsing_session.update!(status: "completed", review_status: "committed", committed_at: Time.current)
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_response :success
+    # @read_only=true → bulk form 미렌더.
+    assert_no_match(/data-review-keyboard-target="excludeForm"/, response.body)
+  end
+
+  test "bulk_update delete via d-shortcut form path excludes pending_review and records transaction_excluded" do
+    # d 단축키는 bulk_update?bulk_action=delete를 POST. 이미 기존 테스트가 delete를
+    # 검증하지만, transaction_excluded event 기록까지 명시 확인.
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "D_EVENT",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+
+    assert_difference -> { ImportReviewEvent.where(event_type: "transaction_excluded").count }, 1 do
+      post bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+           params: { transaction_ids: tx.id.to_s, bulk_action: "delete" }
+    end
+
+    tx.reload
+    assert tx.rolled_back?, "pending_review row가 rolled_back 상태로 전이"
+  end
+
   test "quick_update_category turbo_stream re-render preserves tabindex on review row" do
     tx = @workspace.transactions.create!(
       date: Date.current, amount: 1000, merchant: "REVIEW_QUICK",
