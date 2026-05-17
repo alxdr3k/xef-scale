@@ -43,4 +43,16 @@ class UserSettingsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "dark", @user.reload.theme,
                  "theme이 폼에 없으면 기존 값 보존"
   end
+
+  # Codex PR #180 P1: turbo_stream 응답이 명시적 render를 가짐 (implicit
+  # update.turbo_stream.erb 템플릿 부재 시 MissingTemplate 회피).
+  test "update responds successfully to turbo_stream Accept (theme form path)" do
+    patch user_settings_path,
+          params: { user: { theme: "dark" } },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_equal "text/vnd.turbo-stream.html; charset=utf-8", response.content_type
+    assert_equal "dark", @user.reload.theme
+  end
 end
