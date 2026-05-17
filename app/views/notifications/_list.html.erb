@@ -42,7 +42,7 @@
             </div>
             <div class="flex items-center space-x-2">
               <% if notification.unread? %>
-                <span class="h-2 w-2 bg-info-subtle0 rounded-full"></span>
+                <span class="h-2 w-2 bg-info rounded-full"></span>
                 <%= link_to mark_read_notification_path(notification), method: :post,
                     class: 'text-xs text-tertiary hover:text-secondary',
                     data: { turbo_method: :post } do %>
