@@ -1,8 +1,16 @@
 <turbo-frame id="slideover-content">
   <h2 class="text-lg font-semibold text-gray-900 mb-6">새 카테고리</h2>
 
+  <%# Codex hotfix A 후속 (#185 P1): review 화면에서 슬라이드오버를 열면 GET단엔
+      parsing_session_id가 query string으로 따라오지만, 폼 action에 포함시키지 않으면
+      POST 시점에 context가 사라져 CategoriesController#create가 workspace scope으로
+      fallback한다 → row가 finalized-session 가드를 우회하는 endpoint로 변질된다.
+      review context에서 진입한 경우(@parsing_session present) action URL에 함께 실어 보낸다. %>
   <%= form_with model: [@workspace, @category],
-        url: workspace_categories_path(@workspace, slideover: true, transaction_id: @transaction_id),
+        url: workspace_categories_path(@workspace,
+              slideover: true,
+              transaction_id: @transaction_id,
+              parsing_session_id: @parsing_session&.id),
         class: 'space-y-4',
         data: { turbo_frame: '_top' } do |f| %>
 

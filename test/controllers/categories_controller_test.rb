@@ -169,6 +169,43 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_match(/data-category-selector-request-style-value="field"/, response.body)
   end
 
+  # Codex review (#185 P1, line 56): #new GET이 parsing_session_id를 받았다면 그것이
+  # #create POST action URL에도 들어가 있어야 한다. 누락되면 POST는 @parsing_session=nil
+  # 로 들어와 workspace scope으로 fallback → row가 workspace endpoint로 변질된다.
+  test "new slideover form carries parsing_session_id into POST action URL" do
+    ps = parsing_sessions(:completed_session)
+    ps.update!(review_status: "pending_review")
+    tx = ps.transactions.create!(
+      workspace: @workspace, date: Date.current, amount: 1000,
+      merchant: "FORM_ACTION", status: "pending_review"
+    )
+
+    get new_workspace_category_path(@workspace),
+        params: { slideover: "true", transaction_id: tx.id, parsing_session_id: ps.id }
+
+    assert_response :success
+    # form action에 parsing_session_id가 query param으로 들어 있어야 한다.
+    # 정확한 query 순서/HTML escape는 Rails에 맡기고 핵심 param 존재만 검증.
+    assert_select "form[action*=?]", "/workspaces/#{@workspace.id}/categories"
+    assert_select "form[action*=?]", "parsing_session_id=#{ps.id}"
+    assert_select "form[action*=?]", "transaction_id=#{tx.id}"
+    assert_select "form[action*=?]", "slideover=true"
+  end
+
+  test "new slideover with invalid parsing_session_id is rejected at GET time" do
+    # GET 단계에서도 fail-fast로 막아야 #create POST에 invalid id가 들어오는 일을 차단.
+    other_ws = workspaces(:other_workspace)
+    other_session = other_ws.parsing_sessions.create!(
+      source_type: "text_paste", status: "completed", review_status: "pending_review",
+      total_count: 0, success_count: 0, duplicate_count: 0, error_count: 0
+    )
+
+    get new_workspace_category_path(@workspace),
+        params: { slideover: "true", transaction_id: 1, parsing_session_id: other_session.id }
+
+    assert_response :not_found
+  end
+
   test "create via slideover rejects invalid parsing_session_id (no workspace fallback)" do
     # Codex review (#185 P1): parsing_session_id가 *주어졌지만* workspace에 없으면
     # find_by → nil fallback이 @workspace.transactions로 떨어지면서 hotfix가 막으려던

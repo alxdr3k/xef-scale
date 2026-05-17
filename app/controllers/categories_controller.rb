@@ -24,6 +24,15 @@ class CategoriesController < ApplicationController
     @category = @workspace.categories.build
     @slideover = params[:slideover] == "true"
     @transaction_id = params[:transaction_id]
+    # Codex hotfix A 후속 (#185 P1, line 56): slideover form은 #new GET으로 로드된
+    # 뒤 #create POST로 제출되므로 review context를 폼 자체에 함께 실어 보내야 한다.
+    # 이 단계에서 누락되면 #create는 @parsing_session=nil로 진입해 workspace
+    # scope으로 fallback되고, row re-render가 finalized 가드 바깥의 endpoint를
+    # emit한다. parsing_session_id가 주어지면 workspace 소속을 검증해 둔다 — invalid이면
+    # 404로 fail-fast.
+    if @slideover && params[:parsing_session_id].present?
+      @parsing_session = @workspace.parsing_sessions.find(params[:parsing_session_id])
+    end
 
     if @slideover
       render partial: "slideover_form", layout: false
