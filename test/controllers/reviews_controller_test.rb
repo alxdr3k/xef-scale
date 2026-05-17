@@ -866,6 +866,10 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
   test "show hides write affordances for member_read on pending session" do
     # member_read는 read 접근은 되지만 commit/discard/bulk toolbar/category-selector/
     # inline edit URL이 보이면 안 된다 (dead-end UI 방지).
+    #
+    # 주의: '결제 내역 반영' 문자열은 shared/keyboard_shortcuts_help 도움말
+    # 다이얼로그(c 단축키 설명)에도 등장하므로 본문 substring으로 단언하면 안 된다.
+    # 실제 commit/discard/rollback action을 form action URL로 좁혀 검증한다.
     @parsing_session.update!(status: "completed", review_status: "pending_review")
     @parsing_session.transactions.create!(
       workspace: @workspace, date: Date.current, amount: 1000,
@@ -877,11 +881,10 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     get review_workspace_parsing_session_path(@workspace, @parsing_session)
 
     assert_response :success
-    # commit 버튼 없음
-    assert_no_match(/결제 내역 반영/, response.body)
-    # 전체 취소 / 가져오기 되돌리기 없음
-    assert_no_match(/전체 취소/, response.body)
-    assert_no_match(/가져오기 되돌리기/, response.body)
+    # commit/discard/rollback form action URL 모두 부재해야 한다 (write action).
+    assert_no_match(/action="#{Regexp.escape(commit_workspace_parsing_session_path(@workspace, @parsing_session))}"/, response.body)
+    assert_no_match(/action="#{Regexp.escape(discard_workspace_parsing_session_path(@workspace, @parsing_session))}"/, response.body)
+    assert_no_match(/action="#{Regexp.escape(rollback_workspace_parsing_session_path(@workspace, @parsing_session))}"/, response.body)
     # bulk toolbar 없음
     assert_no_match(/data-bulk-select-target="toolbar"/, response.body)
     # category selector controller 없음
@@ -900,7 +903,10 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     get review_workspace_parsing_session_path(@workspace, @parsing_session)
 
     assert_response :success
-    assert_match(/결제 내역 반영/, response.body)
+    # commit/discard form action URL이 *존재*해야 한다 — '결제 내역 반영' substring은
+    # 키보드 도움말에도 들어가므로 form action으로 좁혀서 검증.
+    assert_match(/action="#{Regexp.escape(commit_workspace_parsing_session_path(@workspace, @parsing_session))}"/, response.body)
+    assert_match(/action="#{Regexp.escape(discard_workspace_parsing_session_path(@workspace, @parsing_session))}"/, response.body)
     assert_match(/data-bulk-select-target="toolbar"/, response.body)
     assert_match(/data-controller="category-selector"/, response.body)
   end
