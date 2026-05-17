@@ -236,4 +236,19 @@ class ParsingSessionsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to workspace_parsing_sessions_path(@workspace)
     assert_equal "세션이 삭제되었습니다.", flash[:notice]
   end
+
+  # Phase 5 slice 10: parsing_sessions/index 시맨틱 토큰 마이그레이션.
+  test "index view template uses semantic tokens (no hardcoded palette, no undefined tokens)" do
+    src = File.read(Rails.root.join("app/views/parsing_sessions/index.html.erb"))
+    %w[bg-indigo-600 text-gray-900 text-gray-500 text-gray-700 bg-white bg-blue-50 bg-blue-100].each do |stale|
+      assert_no_match(/\b#{Regexp.escape(stale)}\b/, src,
+                      "parsing_sessions/index.html.erb에 옛 팔레트 #{stale} 잔존")
+    end
+    %w[border-default divide-default text-action-strong].each do |undef_token|
+      assert_no_match(/\b#{Regexp.escape(undef_token)}\b/, src,
+                      "parsing_sessions/index.html.erb에 정의되지 않은 토큰 #{undef_token}")
+    end
+    assert_match(/\bbg-surface\b/, src)
+    assert_match(/\btext-primary\b/, src)
+  end
 end
