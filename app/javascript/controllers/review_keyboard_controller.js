@@ -3,21 +3,40 @@ import { Controller } from "@hotwired/stimulus"
 // ReviewKeyboardController — Phase 5 검토함 키보드 단축키 (ADR-0008 / ui-redesign-plan §3.3).
 //
 // 검토함(reviews/show)에서:
-//   j  — 다음 거래 행 focus
-//   k  — 이전 거래 행 focus
-//   c  — 현재 파싱 세션 commit (data-review-keyboard-target="commitForm" 폼 submit)
+//   j   — 다음 거래 행 focus
+//   k   — 이전 거래 행 focus
+//   c   — 현재 파싱 세션 commit (commitForm target)
+//   ?   — 단축키 도움말 overlay 토글 (Shift+/)
+//   Esc — 도움말 overlay 열려 있으면 닫기
 //
-// 텍스트 입력(input/textarea/contenteditable) 중에는 무시 — 사용자가 카테고리·
-// 메모 등을 편집할 때가 글자 입력을 가로채면 안 된다.
+// 텍스트 입력 중에는 단축키 무시 (event.code/key 모두 layout-independent).
 //
-// 추가 단축키(d=discard / x=duplicate 해결 / enter=select / ?=help)는 후속 슬라이스.
+// 추가 단축키(d=discard / x=duplicate / enter=select)는 후속 슬라이스.
 export default class extends Controller {
   static values = { rowSelector: { type: String, default: "tr[data-transaction-id]" } }
-  static targets = ["commitForm"]
+  static targets = ["commitForm", "helpBackdrop", "helpDialog"]
 
   handleKey(event) {
-    // Modifier가 있으면 무시 (ctrl+j 등 다른 동작과 충돌 회피)
-    if (event.metaKey || event.ctrlKey || event.altKey) return
+    // 도움말 overlay가 열려 있으면 Esc/?/Tab만 처리, 다른 키는 background로 새지 않게 차단
+    // (Codex PR #184 P2: modal 의미 보존 + ? 토글 + focus trap).
+    if (this.helpOpen()) {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        this.hideHelp()
+      } else if (event.key === "?" || (event.code === "Slash" && event.shiftKey)) {
+        // Advertised 토글 behavior — ? 누르면 닫힘.
+        event.preventDefault()
+        this.hideHelp()
+      } else if (event.key === "Tab") {
+        // focus trap: dialog 안 focusable 사이만 순환.
+        this.trapTab(event)
+      }
+      return
+    }
+
+    // Modifier 가드 — ?(Shift+/)는 예외로 통과
+    const isHelpToggle = event.key === "?" || (event.code === "Slash" && event.shiftKey)
+    if ((event.metaKey || event.ctrlKey || event.altKey) && !isHelpToggle) return
 
     // 텍스트 입력 중이면 무시
     const target = event.target
@@ -25,9 +44,6 @@ export default class extends Controller {
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return
     if (target.isContentEditable) return
 
-    // Codex PR #182 P2: layout-independent 키 감지. 한글 IME 활성 상태에서
-    // event.key는 "ㅗ"/"ㅑ" 등이 되므로 event.code(물리키, "KeyJ"/"KeyK")로
-    // 매칭한다. event.key fallback은 IME가 꺼졌거나 비표준 환경 대비.
     if (event.code === "KeyJ" || event.key === "j") {
       event.preventDefault()
       this.focusRelative(1)
@@ -35,12 +51,13 @@ export default class extends Controller {
       event.preventDefault()
       this.focusRelative(-1)
     } else if (event.code === "KeyC" || event.key === "c") {
-      // Commit current parsing session — turbo_confirm dialog가 자동 트리거됨.
-      // commit form이 없으면(이미 commit/discard된 finalized 세션) no-op.
       if (this.hasCommitFormTarget) {
         event.preventDefault()
         this.commitFormTarget.requestSubmit()
       }
+    } else if (isHelpToggle) {
+      event.preventDefault()
+      this.toggleHelp()
     }
   }
 
@@ -51,13 +68,69 @@ export default class extends Controller {
     const active = document.activeElement
     let idx = rows.indexOf(active.closest(this.rowSelectorValue))
     if (idx < 0) {
-      // 현재 focus가 row가 아니면 가장 가까운(첫 또는 마지막) row
       idx = delta > 0 ? -1 : rows.length
     }
     const next = rows[Math.max(0, Math.min(rows.length - 1, idx + delta))]
     if (next) {
       next.focus({ preventScroll: false })
       next.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    }
+  }
+
+  toggleHelp() {
+    this.helpOpen() ? this.hideHelp() : this.showHelp()
+  }
+
+  showHelp(event) {
+    event?.preventDefault()
+    if (!this.hasHelpDialogTarget) return
+    // Codex PR #184 P2: aria-modal a11y — 이전 focus 저장 후 dialog 안 첫
+    // 인터랙티브 element(닫기 버튼)로 focus 이동.
+    this.previousFocus = document.activeElement
+    this.helpBackdropTarget.classList.remove("hidden")
+    this.helpDialogTarget.classList.remove("hidden")
+    const firstButton = this.helpDialogTarget.querySelector("button")
+    if (firstButton) firstButton.focus()
+  }
+
+  hideHelp(event) {
+    event?.preventDefault()
+    if (!this.hasHelpDialogTarget) return
+    this.helpBackdropTarget.classList.add("hidden")
+    this.helpDialogTarget.classList.add("hidden")
+    // 이전 focus 복원 — dialog 외부 컨텍스트로 자연스럽게 돌아가도록.
+    if (this.previousFocus && typeof this.previousFocus.focus === "function") {
+      this.previousFocus.focus()
+    }
+    this.previousFocus = null
+  }
+
+  helpOpen() {
+    return this.hasHelpDialogTarget && !this.helpDialogTarget.classList.contains("hidden")
+  }
+
+  // Codex PR #184 P2: aria-modal focus trap.
+  // Tab/Shift+Tab이 dialog 안 focusable 사이만 순환하도록.
+  trapTab(event) {
+    const focusables = this.helpDialogTarget.querySelectorAll(
+      "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"
+    )
+    if (focusables.length === 0) {
+      event.preventDefault()
+      return
+    }
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    } else if (!this.helpDialogTarget.contains(document.activeElement)) {
+      // 외부에서 dialog로 끌어와야 trap 의미 있음.
+      event.preventDefault()
+      first.focus()
     }
   }
 }

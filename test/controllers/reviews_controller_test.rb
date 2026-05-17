@@ -709,6 +709,21 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/<tr[^>]*data-transaction-id="#{tx.id}"[^>]*tabindex="0"/, response.body)
   end
 
+  # Phase 5 slice 5: ? 단축키 도움말 overlay.
+  test "show renders keyboard shortcuts help overlay (initially hidden)" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_response :success
+    # overlay 컨테이너가 review-keyboard target으로 등록되어야 ? 핸들러가 작동.
+    assert_match(/data-review-keyboard-target="helpDialog"/, response.body)
+    assert_match(/data-review-keyboard-target="helpBackdrop"/, response.body)
+    # 도움말 본문에 단축키 키들이 노출.
+    assert_select "kbd", text: "j"
+    assert_select "kbd", text: "k"
+    assert_select "kbd", text: "c"
+    assert_select "kbd", text: "?"
+  end
+
   # Phase 5 slice 4: c 단축키가 commit form을 trigger하려면 form에 target이 있어야.
   test "show wires commit form as review-keyboard target for c shortcut" do
     @workspace.transactions.create!(
