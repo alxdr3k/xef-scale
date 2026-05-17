@@ -61,10 +61,11 @@ class ScreenShellTest < ActionDispatch::IntegrationTest
     assert_match(/<html[^>]*data-theme="dark"/, response.body)
   end
 
-  test "html element omits data-theme when signed out" do
+  test "html element sets data-theme='auto' when signed out (Codex PR #180 P1 — Turbo Drive stale attribute)" do
     get new_user_session_path
     assert_response :success
-    assert_no_match(/<html[^>]*data-theme=/, response.body)
+    # Turbo Drive가 <html> 속성을 보존하므로 signed-out도 명시 set.
+    assert_match(/<html[^>]*data-theme="auto"/, response.body)
   end
 
   test "nav hides 카테고리 tab from non-admin (member_read) member" do

@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <%# Phase 5: 사용자 선택 테마(`User#theme`)를 data-theme로 반영.
     application.tailwind.css의 `html[data-theme=...]` 룰이 color-scheme 토글.
-    로그아웃 상태는 속성 없음 → system preference 따름. %>
-<html lang="ko"<%= user_signed_in? ? " data-theme=\"#{current_user.theme}\"".html_safe : "" %>>
+    Turbo Drive가 <html> 속성을 보존하므로 *항상* 명시적으로 set한다 (Codex
+    PR #180 P1): signed-out 상태도 "auto"를 명시해 이전 세션의 stale "dark"가
+    남는 것을 방지. %>
+<html lang="ko" data-theme="<%= user_signed_in? ? current_user.theme : "auto" %>">
   <head>
     <title><%= content_for(:title) || "지출 추적" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
