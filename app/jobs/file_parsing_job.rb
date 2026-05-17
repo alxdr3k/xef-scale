@@ -36,7 +36,23 @@ class FileParsingJob < ApplicationJob
 
       workspace = processed_file.workspace
 
-      stats = { total: result.size, success: 0, duplicate: 0, error: 0, gemini: 0 }
+      # Incomplete rows (missing date/merchant/amount) are diverted to
+      # ImportIssue instead of polluting the review queue with garbage
+      # transactions. Reviewable rows continue through the existing flow.
+      recorder = ImportIssueRecorder.new(
+        parsing_session: parsing_session,
+        source_type: "image_upload",
+        processed_file: processed_file
+      )
+      result, recorded_issue_count, failed_issue_count = recorder.split_and_record(result)
+
+      stats = {
+        total: result.size + recorded_issue_count + failed_issue_count,
+        success: 0,
+        duplicate: 0,
+        error: failed_issue_count,
+        gemini: 0
+      }
       uncategorized_transactions = []
 
       result.each do |tx_data|
@@ -69,7 +85,12 @@ class FileParsingJob < ApplicationJob
         stats[:gemini] = gemini_count
       end
 
-      if stats[:total].zero? || stats[:success].zero?
+      # Policy B: a session with only ImportIssues (no committed transactions)
+      # is still a successful import — the user needs the repair surface.
+      # Fail only when no outcome was produced at all (no transactions AND no
+      # persisted issues).
+      no_outcome = stats[:success] + recorded_issue_count == 0
+      if stats[:total].zero? || no_outcome
         parsing_session.fail!
         processed_file.mark_failed!
         create_failure_notifications(parsing_session)

@@ -13,10 +13,23 @@ class AiTextParsingJob < ApplicationJob
       parser = AiTextParser.new
       result = parser.parse(parsing_session.notes)
 
-      stats = { total: 0, success: 0, duplicate: 0, error: 0 }
+      # Incomplete rows (missing date/merchant/amount) are diverted to
+      # ImportIssue instead of polluting the review queue. text_paste has
+      # no processed_file so it stays nil per the ImportIssue contract.
+      recorder = ImportIssueRecorder.new(
+        parsing_session: parsing_session,
+        source_type: "text_paste"
+      )
+      complete_rows, recorded_issue_count, failed_issue_count = recorder.split_and_record(result[:transactions] || [])
 
-      result[:transactions].each do |tx_data|
-        stats[:total] += 1
+      stats = {
+        total: complete_rows.size + recorded_issue_count + failed_issue_count,
+        success: 0,
+        duplicate: 0,
+        error: failed_issue_count
+      }
+
+      complete_rows.each do |tx_data|
         begin
           transaction = create_transaction(workspace, tx_data, parsing_session)
 
@@ -39,7 +52,10 @@ class AiTextParsingJob < ApplicationJob
         end
       end
 
-      if stats[:total].zero? || stats[:success].zero?
+      # Policy B: a session with only ImportIssues (no committed transactions)
+      # is still a successful import — the user needs the repair surface.
+      no_outcome = stats[:success] + recorded_issue_count == 0
+      if stats[:total].zero? || no_outcome
         parsing_session.fail!
         create_failure_notifications(parsing_session)
       else

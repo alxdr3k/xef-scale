@@ -231,4 +231,37 @@ class FileParsingJobTest < ActiveJob::TestCase
     # At minimum, we verified the job runs
     assert_operator ParsingSession.count, :>=, initial_session_count - 1
   end
+
+  test "perform completes session as repairable when image parser returns only incomplete rows" do
+    # Policy B (Issue #187): all-incomplete image imports become ImportIssue
+    # records, and the session/file remain reachable for repair.
+    processed_file = processed_files(:pending_file)
+    processed_file.parsing_session&.destroy
+
+    fake_rows = [
+      { date: Date.new(2026, 3, 15), merchant: "", amount: 0,
+        payment_type: "lump_sum", description: "" }
+    ]
+
+    original_new = ImageStatementParser.method(:new)
+    original_parse = ImageStatementParser.instance_method(:parse)
+    ImageStatementParser.define_singleton_method(:new) { |*, **| allocate }
+    ImageStatementParser.define_method(:parse) { fake_rows }
+
+    begin
+      FileParsingJob.perform_now(processed_file.id)
+    ensure
+      ImageStatementParser.define_singleton_method(:new, original_new)
+      ImageStatementParser.define_method(:parse, original_parse)
+    end
+
+    processed_file.reload
+    parsing_session = processed_file.parsing_session
+    assert parsing_session.completed?, "all-incomplete image import도 repair surface 유지가 필요해 completed여야 함"
+    assert processed_file.completed?, "ProcessedFile도 failed가 아니라 completed여야 함"
+    assert_equal 1, parsing_session.import_issues.count
+    issue = parsing_session.import_issues.first
+    assert_equal "image_upload", issue.source_type
+    assert_equal %w[merchant amount].sort, issue.missing_fields.sort
+  end
 end
