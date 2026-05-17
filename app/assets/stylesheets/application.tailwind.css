@@ -151,6 +151,23 @@
     scrollbar-gutter: stable;
   }
 
+  /*
+   * Phase 5 (ADR-0008 / ui-redesign-plan §6): a11y focus ring 통일.
+   * 인터랙티브 요소가 키보드 포커스를 받으면 시맨틱 --color-focus 토큰으로
+   * 2px outline을 그린다. 마우스 포커스(:focus만)는 영향 없음 (:focus-visible).
+   *
+   * 기존 view가 inline `focus:ring-*` Tailwind utility를 사용하는 경우, 그 utility
+   * 가 우선이라 본 룰은 *override되지 않은* 요소에만 적용된다 — view 점진
+   * 마이그레이션 안전.
+   *
+   * outline-offset 2px로 backdrop과 분리 → 다크 모드에서도 시인성 확보.
+   */
+  :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
   /* iOS Safari safe area for fixed bottom nav */
   .mobile-bottom-nav {
     padding-bottom: env(safe-area-inset-bottom, 0px);
