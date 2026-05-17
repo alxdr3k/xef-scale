@@ -1,0 +1,60 @@
+<%#
+  RecurringPaymentCard — 반복 결제 Top N 요약 (ui-redesign-plan §3.1, Phase 4).
+  RecurringPaymentDetector 결과를 dashboards/monthly에 카드로 노출.
+
+  Locals:
+    patterns         (Array<Hash>, required) — detector.detect 결과의 일부 (이미 limit)
+    total_count      (Integer, required) — 감지된 전체 패턴 수 (more 안내용)
+    monthly_estimate (Integer, required) — 평균 금액 합계 (월 예상)
+    manage_path      (String, required) — "관리 →" CTA 링크 (= recurring_dashboard_path)
+
+  patterns가 빈 배열이면 카드 자체 미렌더.
+%>
+<% patterns         = local_assigns.fetch(:patterns) %>
+<% total_count      = local_assigns.fetch(:total_count).to_i %>
+<% monthly_estimate = local_assigns.fetch(:monthly_estimate).to_i %>
+<% manage_path      = local_assigns.fetch(:manage_path) %>
+
+<% if patterns.any? %>
+  <section class="bg-surface rounded-lg shadow-card p-5" aria-label="반복 결제 요약">
+    <div class="flex items-baseline justify-between mb-3">
+      <h2 class="text-base font-semibold text-primary">반복 결제</h2>
+      <%= link_to '관리 →', manage_path,
+            class: 'text-meta font-medium text-action hover:text-action-hover' %>
+    </div>
+    <p class="text-meta text-secondary mb-3">
+      월 예상 합계 <span class="text-primary font-medium tabular-nums">₩<%= number_with_delimiter(monthly_estimate) %></span>
+      · <%= total_count %>개 감지
+    </p>
+
+    <ul class="divide-y divide-default">
+      <% patterns.each do |pattern| %>
+        <li class="py-2 flex items-center justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium text-primary truncate"><%= pattern[:merchant] %></p>
+            <p class="text-meta text-secondary mt-0.5">
+              <%= pattern[:occurrence_count] %>개월 연속 ·
+              마지막 <%= pattern[:last_date].strftime("%Y.%m.%d") %>
+            </p>
+          </div>
+          <div class="shrink-0 text-right">
+            <p class="text-sm font-semibold text-primary tabular-nums">
+              ₩<%= number_with_delimiter(pattern[:average_amount]) %>/월
+            </p>
+            <% if pattern[:consistent_amount] %>
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-meta font-medium bg-positive-subtle text-positive">정액</span>
+            <% else %>
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-meta font-medium bg-warning-subtle text-warning">변동</span>
+            <% end %>
+          </div>
+        </li>
+      <% end %>
+    </ul>
+
+    <% if total_count > patterns.size %>
+      <p class="text-meta text-tertiary text-center mt-3">
+        상위 <%= patterns.size %>개 표시. 전체 <%= total_count %>개 — 관리 페이지에서 확인.
+      </p>
+    <% end %>
+  </section>
+<% end %>

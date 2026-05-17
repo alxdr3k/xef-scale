@@ -22,6 +22,7 @@ class DashboardsController < ApplicationController
     @daily_average = @daily_average_denominator.zero? ? 0 : (@total_spending / @daily_average_denominator)
     review_inbox_counts!
     @variance = monthly_variance!(@year, @month, @total_spending)
+    recurring_payments_summary!
 
     render :monthly
   end
@@ -183,6 +184,17 @@ class DashboardsController < ApplicationController
                                 .merge(ParsingSession.needs_review)
                                 .where(parsing_sessions: { workspace_id: @workspace.id })
                                 .count
+  end
+
+  # Phase 4 slice 3: monthly에서 노출할 반복 결제 요약. 전체 리스트는
+  # `/dashboard/recurring`에 유지 — 카드는 상위 N개 미리보기만.
+  RECURRING_PREVIEW_LIMIT = 5
+
+  def recurring_payments_summary!
+    patterns = RecurringPaymentDetector.new(@workspace).detect
+    @recurring_total_count = patterns.size
+    @recurring_monthly_estimate = patterns.sum { |p| p[:average_amount].to_i }
+    @recurring_preview = patterns.first(RECURRING_PREVIEW_LIMIT)
   end
 
   # Phase 4 slice 2: VarianceCard 데이터 (Codex PR #178 후속 fix).

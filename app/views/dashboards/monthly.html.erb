@@ -52,11 +52,20 @@
   <% end %>
 
   <%# Phase 4: ReviewInboxCard — N>0일 때만 노출. 사용자 행동 압력. %>
-  <div class="mb-6">
+  <div class="mb-4">
     <%= render 'shared/review_inbox_card',
         workspace: @workspace,
         pending_count: @pending_review_count,
         duplicate_count: @pending_duplicate_count %>
+  </div>
+
+  <%# Phase 4 slice 3: 반복 결제 요약 — patterns 있을 때만 노출. %>
+  <div class="mb-6">
+    <%= render 'shared/recurring_payment_card',
+        patterns: @recurring_preview,
+        total_count: @recurring_total_count,
+        monthly_estimate: @recurring_monthly_estimate,
+        manage_path: recurring_dashboard_path %>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
