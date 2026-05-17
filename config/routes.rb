@@ -54,6 +54,9 @@ Rails.application.routes.draw do
       resource :category_learning_suggestion, only: :create, controller: "category_learning_suggestions"
     end
 
+    # Import issue resolution (B4): repair missing required fields or dismiss
+    resources :import_issues, only: [ :update ]
+
     # Categories within workspace
     resources :categories, except: [ :show ]
 

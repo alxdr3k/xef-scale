@@ -336,6 +336,53 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert_equal 0, summary[:originals_replaced]
   end
 
+  test "can_commit? is false while open missing_required_fields ImportIssues remain" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    workspace.transactions.create!(
+      date: Date.current, amount: 1_000, status: "pending_review",
+      parsing_session: session
+    )
+    assert session.can_commit?
+
+    session.import_issues.create!(
+      workspace: workspace,
+      source_type: "image_upload",
+      missing_fields: %w[merchant]
+    )
+
+    assert_not session.can_commit?, "open missing_required_fields가 남아 있으면 commit 불가여야 함"
+  end
+
+  test "can_commit? ignores ambiguous_duplicate issues (no user-resolvable UI yet)" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    workspace.transactions.create!(
+      date: Date.current, amount: 1_000, status: "pending_review",
+      parsing_session: session
+    )
+    duplicate_tx = workspace.transactions.create!(
+      date: Date.current, merchant: "스타벅스", amount: 5_000, status: "committed"
+    )
+    session.import_issues.create!(
+      workspace: workspace,
+      source_type: "image_upload",
+      issue_type: "ambiguous_duplicate",
+      duplicate_transaction: duplicate_tx,
+      missing_fields: []
+    )
+
+    assert session.can_commit?, "B4 UI가 처리할 수 없는 ambiguous_duplicate는 commit 가드 대상이 아님"
+  end
+
   # --- Review behavior instrumentation (Issue #187 baseline) ---
 
   test "commit_all! records a session_committed review event" do

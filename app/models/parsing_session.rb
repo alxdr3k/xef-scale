@@ -87,6 +87,14 @@ class ParsingSession < ApplicationRecord
     pending_duplicates.exists?
   end
 
+  # Only block commit on issue types the user can actually resolve from the
+  # current UI (B4 ships missing_required_fields resolution; ambiguous
+  # duplicates have no user-resolvable surface yet — blocking on them would
+  # create a workflow dead-end).
+  def has_open_import_issues?
+    import_issues.where(status: "open", issue_type: "missing_required_fields").exists?
+  end
+
   def review_pending?
     review_status == "pending_review"
   end
@@ -104,7 +112,10 @@ class ParsingSession < ApplicationRecord
   end
 
   def can_commit?
-    completed? && review_pending? && !has_unresolved_duplicates?
+    completed? &&
+      review_pending? &&
+      !has_unresolved_duplicates? &&
+      !has_open_import_issues?
   end
 
   def can_rollback?

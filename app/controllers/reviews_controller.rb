@@ -77,12 +77,19 @@ class ReviewsController < ApplicationController
                                                  new_transaction: [ :category ]
                                                )
                                                .order(:created_at)
+    @open_import_issues = @parsing_session.open_import_issues.to_a
   end
 
   def commit
     if @parsing_session.has_unresolved_duplicates?
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
                   alert: "중복으로 의심되는 거래가 남아 있습니다. 먼저 처리해 주세요."
+      return
+    end
+
+    if @parsing_session.has_open_import_issues?
+      redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
+                  alert: "수리 필요한 항목이 남아 있습니다. 먼저 채우거나 제외해 주세요."
       return
     end
 
