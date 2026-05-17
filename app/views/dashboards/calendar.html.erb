@@ -93,7 +93,7 @@
               },
               class: "block min-h-[88px] p-2 rounded-md border text-left text-xs transition-colors " \
                      "#{in_month ? 'bg-surface' : 'bg-elev text-tertiary'} " \
-                     "#{selected ? 'border-action ring-1 ring-indigo-600' : 'border-divider hover:border-action'}" do %>
+                     "#{selected ? 'border-action ring-1 ring-action' : 'border-divider hover:border-action'}" do %>
             <div class="flex items-center justify-between">
               <span class="font-medium <%= today ? 'text-action' : '' %>"><%= day.day %></span>
               <% if in_month && total.positive? %>
