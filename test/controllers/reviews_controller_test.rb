@@ -871,6 +871,14 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_select "kbd", text: "d"
   end
 
+  # Phase 5 slice 7: Enter 키 row 선택.
+  test "show help overlay exposes Enter shortcut for row selection" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_response :success
+    assert_select "kbd", text: "Enter"
+  end
+
   test "show omits excludeForm target for read-only member (member_read)" do
     @workspace.transactions.create!(
       date: Date.current, amount: 1000, merchant: "D_READONLY",

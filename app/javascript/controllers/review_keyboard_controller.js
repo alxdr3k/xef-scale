@@ -3,18 +3,18 @@ import { Controller } from "@hotwired/stimulus"
 // ReviewKeyboardController — Phase 5 검토함 키보드 단축키 (ADR-0008 / ui-redesign-plan §3.3).
 //
 // 검토함(reviews/show)에서:
-//   j   — 다음 거래 행 focus
-//   k   — 이전 거래 행 focus
-//   c   — 현재 파싱 세션 commit (commitForm target)
-//   d   — 현재 focused row를 이번 가져오기에서 *제외* (Phase 5 slice 6).
-//         기존 bulk_update delete path를 그대로 재사용 — transaction_excluded
-//         ImportReviewEvent 기록 + reject_if_finalized 가드 자동 적용.
-//   ?   — 단축키 도움말 overlay 토글 (Shift+/)
-//   Esc — 도움말 overlay 열려 있으면 닫기
+//   j     — 다음 거래 행 focus
+//   k     — 이전 거래 행 focus
+//   c     — 현재 파싱 세션 commit (commitForm target)
+//   d     — 현재 focused row를 이번 가져오기에서 *제외* (bulk_update delete)
+//   Enter — 현재 focused row 선택 토글 (Phase 5 slice 7). bulk-select 컨트롤러
+//           이 click 이벤트를 처리하므로 row.click()으로 dispatch.
+//   ?     — 단축키 도움말 overlay 토글 (Shift+/)
+//   Esc   — 도움말 overlay 열려 있으면 닫기
 //
 // 텍스트 입력 중에는 단축키 무시 (event.code/key 모두 layout-independent).
 //
-// 추가 단축키(x=duplicate / enter=select)는 후속 슬라이스.
+// 추가 단축키(x=duplicate)는 후속 슬라이스.
 export default class extends Controller {
   static values = { rowSelector: { type: String, default: "tr[data-transaction-id]" } }
   static targets = ["commitForm", "excludeForm", "helpBackdrop", "helpDialog"]
@@ -61,6 +61,14 @@ export default class extends Controller {
     } else if (event.code === "KeyD" || event.key === "d") {
       event.preventDefault()
       this.excludeCurrentRow()
+    } else if (event.key === "Enter") {
+      // Enter: 현재 row의 click을 dispatch → bulk-select 컨트롤러의 toggleRow 핸들러가
+      // 자동으로 선택 토글. row가 부재하거나 deleted면 no-op.
+      const row = document.activeElement?.closest(this.rowSelectorValue)
+      if (row && row.dataset.deleted !== "true") {
+        event.preventDefault()
+        row.click()
+      }
     } else if (isHelpToggle) {
       event.preventDefault()
       this.toggleHelp()
