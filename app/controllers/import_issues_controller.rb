@@ -8,10 +8,16 @@ class ImportIssuesController < ApplicationController
   def update
     service = ImportIssueResolutionService.new(@import_issue, user: current_user)
     result =
-      if params[:resolution_action].to_s == "dismiss"
+      case params[:resolution_action].to_s
+      when "", "update"
+        service.update_missing_fields!(import_issue_params)
+      when "dismiss"
         service.dismiss!
       else
-        service.update_missing_fields!(import_issue_params)
+        ImportIssueResolutionService::Result.new(
+          status: :failed,
+          message: "알 수 없는 처리 방식입니다."
+        )
       end
 
     redirect_path = review_workspace_parsing_session_path(@workspace, @import_issue.parsing_session)

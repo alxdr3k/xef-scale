@@ -336,6 +336,28 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert_equal 0, summary[:originals_replaced]
   end
 
+  test "can_commit? is false while open ImportIssues remain" do
+    workspace = workspaces(:main_workspace)
+    session = workspace.parsing_sessions.create!(
+      source_type: "file_upload",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    workspace.transactions.create!(
+      date: Date.current, amount: 1_000, status: "pending_review",
+      parsing_session: session
+    )
+    assert session.can_commit?
+
+    session.import_issues.create!(
+      workspace: workspace,
+      source_type: "image_upload",
+      missing_fields: %w[merchant]
+    )
+
+    assert_not session.can_commit?, "open ImportIssue가 남아 있으면 commit 불가여야 함"
+  end
+
   # --- Review behavior instrumentation (Issue #187 baseline) ---
 
   test "commit_all! records a session_committed review event" do

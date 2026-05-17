@@ -87,6 +87,12 @@ class ReviewsController < ApplicationController
       return
     end
 
+    if @parsing_session.has_open_import_issues?
+      redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
+                  alert: "수리 필요한 항목이 남아 있습니다. 먼저 채우거나 제외해 주세요."
+      return
+    end
+
     if @parsing_session.commit_all!(current_user)
       check_budget_alerts
       summary = @parsing_session.commit_summary

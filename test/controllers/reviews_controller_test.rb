@@ -417,6 +417,24 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, review_workspace_parsing_session_path(@workspace, @parsing_session)
   end
 
+  test "commit is blocked while open import issues remain" do
+    # setup의 pending DuplicateConfirmation을 정리해야 issue 가드를 검증할 수 있다.
+    @parsing_session.duplicate_confirmations.destroy_all
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    @parsing_session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      missing_fields: %w[merchant]
+    )
+
+    post commit_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_redirected_to review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_match(/수리 필요/, flash[:alert].to_s)
+    assert_equal "pending_review", @parsing_session.reload.review_status,
+                 "수리 미완료 상태에서는 commit이 진행되어서는 안 됨"
+  end
+
   test "index shows '수리 필요 N건' for sessions with open ImportIssues" do
     @parsing_session.update!(
       status: "completed",

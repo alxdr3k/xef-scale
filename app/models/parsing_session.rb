@@ -87,6 +87,10 @@ class ParsingSession < ApplicationRecord
     pending_duplicates.exists?
   end
 
+  def has_open_import_issues?
+    import_issues.where(status: "open").exists?
+  end
+
   def review_pending?
     review_status == "pending_review"
   end
@@ -104,7 +108,10 @@ class ParsingSession < ApplicationRecord
   end
 
   def can_commit?
-    completed? && review_pending? && !has_unresolved_duplicates?
+    completed? &&
+      review_pending? &&
+      !has_unresolved_duplicates? &&
+      !has_open_import_issues?
   end
 
   def can_rollback?

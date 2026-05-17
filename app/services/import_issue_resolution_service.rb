@@ -126,7 +126,7 @@ class ImportIssueResolutionService
   # parse jobs would have run if the row had been complete in the first place.
   def transaction_attrs_for_promotion
     payload = (@issue.raw_payload || {}).with_indifferent_access
-    match = match_category(@issue.merchant)
+    match = match_category(@issue.merchant, amount: @issue.amount)
 
     {
       date: @issue.date,
@@ -146,10 +146,12 @@ class ImportIssueResolutionService
     }
   end
 
-  def match_category(merchant)
+  # Mirror FileParsingJob/AiTextParsingJob#match_category — pass amount so
+  # amount-specific CategoryMapping rules apply to repaired rows too.
+  def match_category(merchant, amount: nil)
     return { category: nil, source: nil } if merchant.blank?
 
-    mapping = CategoryMapping.find_for_merchant(@workspace, merchant)
+    mapping = CategoryMapping.find_for_merchant(@workspace, merchant, amount: amount)
     return { category: mapping.category, source: "mapping_match" } if mapping
 
     keyword_category = @workspace.categories.find { |c| c.matches?(merchant) }
@@ -160,7 +162,9 @@ class ImportIssueResolutionService
 
   def source_metadata_for(payload)
     meta = {}
-    meta["source_channel"] = @issue.text_paste? ? "pasted_text" : "image_upload"
+    # Match the existing parse-job convention: image path uses "screenshot",
+    # text paste uses "pasted_text". Analytics consumers split on this.
+    meta["source_channel"] = @issue.text_paste? ? "pasted_text" : "screenshot"
     if (raw = payload[:source_institution_raw] || payload[:institution]).present?
       meta["source_institution_raw"] = raw.to_s.strip
     end
