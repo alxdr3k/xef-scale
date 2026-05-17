@@ -169,6 +169,19 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_match(/data-category-selector-request-style-value="field"/, response.body)
   end
 
+  test "new slideover rejects invalid parsing_session_id (no rendered form)" do
+    # 위조/stale parsing_session_id로 slideover 폼이 렌더되면 후속 POST가 id를
+    # drop한 채 workspace scope로 폴백 → review-context guard 우회. new에서
+    # 막아야 함.
+    get new_workspace_category_path(@workspace), params: {
+      slideover: "true",
+      transaction_id: 1,
+      parsing_session_id: 999_999_999
+    }
+
+    assert_response :not_found
+  end
+
   test "create via slideover rejects invalid parsing_session_id (no silent fallback)" do
     initial_count = @workspace.categories.count
     foreign_tx = @workspace.transactions.create!(

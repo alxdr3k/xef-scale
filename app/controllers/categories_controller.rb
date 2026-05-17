@@ -24,7 +24,14 @@ class CategoriesController < ApplicationController
     @category = @workspace.categories.build
     @slideover = params[:slideover] == "true"
     @transaction_id = params[:transaction_id]
-    @parsing_session = load_review_parsing_session(params[:parsing_session_id]) if @slideover
+    # Same fail-fast contract as create: an invalid parsing_session_id must
+    # 404 here too, otherwise the slideover form renders with the id
+    # silently dropped and the subsequent POST bypasses the review-context
+    # guard by going to workspace scope.
+    if @slideover && params[:parsing_session_id].present?
+      @parsing_session = load_review_parsing_session(params[:parsing_session_id])
+      raise ActiveRecord::RecordNotFound if @parsing_session.nil?
+    end
 
     if @slideover
       render partial: "slideover_form", layout: false
