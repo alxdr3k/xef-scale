@@ -1,9 +1,9 @@
 <%# 5탭 IA (ADR-0004) — 홈/거래/검토함/카테고리/더보기.
     "더보기"는 user_settings_path로 임시 매핑 (전용 페이지는 후속 PR / preflight §3.5). %>
-<nav class="mobile-bottom-nav fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 sm:hidden z-40">
+<nav class="mobile-bottom-nav fixed bottom-0 inset-x-0 bg-surface border-t border-divider sm:hidden z-40">
   <div class="flex justify-around items-center h-16">
     <%# 홈 %>
-    <%= link_to dashboard_path, class: "flex flex-col items-center justify-center w-full h-full #{request.path == dashboard_path || request.path.start_with?('/dashboard') ? 'text-indigo-600' : 'text-gray-500'}" do %>
+    <%= link_to dashboard_path, class: "flex flex-col items-center justify-center w-full h-full #{request.path == dashboard_path || request.path.start_with?('/dashboard') ? 'text-action' : 'text-tertiary'}" do %>
       <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" />
       </svg>
@@ -12,7 +12,7 @@
 
     <% if current_workspace %>
       <%# 거래 %>
-      <%= link_to workspace_transactions_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.include?('/transactions') ? 'text-indigo-600' : 'text-gray-500'}" do %>
+      <%= link_to workspace_transactions_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.include?('/transactions') ? 'text-action' : 'text-tertiary'}" do %>
         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
@@ -20,7 +20,7 @@
       <% end %>
 
       <%# 검토함 — ADR-0004 IA 1번 시민. /reviews 또는 parsing_sessions 경로에서 활성. %>
-      <%= link_to workspace_reviews_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.match?(/\/reviews\z|\/reviews\?|\/parsing_sessions/) ? 'text-indigo-600' : 'text-gray-500'}" do %>
+      <%= link_to workspace_reviews_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.match?(/\/reviews\z|\/reviews\?|\/parsing_sessions/) ? 'text-action' : 'text-tertiary'}" do %>
         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
@@ -30,7 +30,7 @@
       <%# 카테고리 — admin-only 게이트 (데스크탑 nav와 동일 규칙). preflight Bucket B / Phase 3.4에서
           non-admin 노출 결정 별도. %>
       <% if current_user.admin_of?(current_workspace) %>
-        <%= link_to workspace_categories_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.include?('/categories') || request.path.include?('/category_mappings') ? 'text-indigo-600' : 'text-gray-500'}" do %>
+        <%= link_to workspace_categories_path(current_workspace), class: "flex flex-col items-center justify-center w-full h-full #{request.path.include?('/categories') || request.path.include?('/category_mappings') ? 'text-action' : 'text-tertiary'}" do %>
           <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
           </svg>
@@ -41,7 +41,7 @@
 
     <%# Phase 3.5: 더보기 전용 페이지(`/workspaces/:id/more`). 워크스페이스가 없을 때만 폴백. %>
     <% more_path = current_workspace ? workspace_more_path(current_workspace) : user_settings_path %>
-    <%= link_to more_path, class: "flex flex-col items-center justify-center w-full h-full #{request.path == more_path || request.path == user_settings_path || request.path == allowances_path ? 'text-indigo-600' : 'text-gray-500'}" do %>
+    <%= link_to more_path, class: "flex flex-col items-center justify-center w-full h-full #{request.path == more_path || request.path == user_settings_path || request.path == allowances_path ? 'text-action' : 'text-tertiary'}" do %>
       <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <circle cx="5" cy="12" r="1.5" />
         <circle cx="12" cy="12" r="1.5" />
