@@ -141,7 +141,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 - **중복 의심 (`ambiguous_duplicate`) ImportIssue는 현재 생성하지 않습니다 (D1 정책)**. 기존 `DuplicateConfirmation`이 그대로 authoritative source. 둘이 동시에 같은 문제를 표현하면 sync drift가 생기므로 D2(dual marker) / D3(완전 이관)는 채택하지 않음. 본 정책은 [Issue #187](https://github.com/alxdr3k/xef-scale/issues/187) 데이터 검토(2026-07) 결과에 따라 재평가합니다.
 - 정상 row의 `auto-post` 여부도 같은 데이터(review에서 commit 전 distinct transaction 기준 수정 비율)로 결정합니다. 그때까지 mandatory review 유지 (Policy B).
 
-review 행동 baseline은 `ImportReviewEvent`(#189)로 수집 중. metric 추출은 `lib/tasks/import_review_metrics.rake` (후속 PR).
+review 행동 baseline은 `ImportReviewEvent`(#189)로 수집 중이며, metric 추출은 `lib/tasks/import_review_metrics.rake`(#194)로 제공한다 (status × review_status 분포 + 수정률 + 제외율 + commit latency + ImportIssue 분포).
 
 Phase 1·2·3(`ui-redesign-plan §6`)는 main에 머지됨. preflight([`docs/discovery/2026-05-15-phase-3-ia-preflight.md`](../discovery/2026-05-15-phase-3-ia-preflight.md))의 Bucket A1·A2(ADR-0011)·A3·A4·A5(PR B IA Skeleton)·Phase 3.3 검토함 시트 통합·Phase 3.2 classification_source set 로직·Phase 3.4 카테고리+학습된 매핑 결합·Phase 3.5 더보기 전용 페이지 closure 완료. Phase 4 완료 — Hero stat 채택 + ReviewInboxCard + VarianceCard + RecurringPaymentCard. Phase 5 진행 중 — `User#theme` (settings JSON, auto/light/dark) + 더보기 페이지 테마 토글 + `html[data-theme]` 활성화 (ADR-0008) + 글로벌 `:focus-visible` 룰(시맨틱 `--color-focus` 토큰) + 검토함 키보드 단축키 (j/k navigation + c commit + ? help overlay). 컨트라스트 감사 + 추가 단축키(d/x/enter)는 후속 슬라이스. 다음 사이클은 Phase 5 다크 모드 & a11y / Phase 6 i18n / Phase 7 메트릭.
 
