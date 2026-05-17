@@ -693,9 +693,9 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
   end
 
   # Codex PR #182 P1: turbo_stream row re-render에서 reviewable이 누락되면
-  # tabindex 손실 → j/k navigation 깨짐. update_transaction이 reviewable: true
-  # 명시 전달해야 한다.
-  test "update_transaction turbo_stream re-render preserves tabindex=0 (reviewable: true)" do
+  # tabindex 손실 → j/k navigation 깨짐. reviewable 자동 추론(pending_review +
+  # parsing_session) 덕에 호출자가 명시 안 해도 보존돼야 한다.
+  test "update_transaction turbo_stream re-render preserves tabindex=0" do
     tx = @workspace.transactions.create!(
       date: Date.current, amount: 1000, merchant: "REVIEW_RERENDER",
       status: "pending_review", parsing_session: @parsing_session
@@ -706,7 +706,21 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
           as: :turbo_stream
 
     assert_response :success
-    # turbo_stream 응답 본문에 replace된 row가 tabindex=0을 가져야 함.
+    assert_match(/<tr[^>]*data-transaction-id="#{tx.id}"[^>]*tabindex="0"/, response.body)
+  end
+
+  test "quick_update_category turbo_stream re-render preserves tabindex on review row" do
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "REVIEW_QUICK",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    target = categories(:food)
+
+    patch quick_update_category_workspace_transaction_path(@workspace, tx),
+          params: { category_id: target.id },
+          as: :turbo_stream
+
+    assert_response :success
     assert_match(/<tr[^>]*data-transaction-id="#{tx.id}"[^>]*tabindex="0"/, response.body)
   end
 

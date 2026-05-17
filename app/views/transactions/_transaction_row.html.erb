@@ -27,11 +27,17 @@
                   end
                 end %>
 
-<%# Phase 5 slice 3 (Codex PR #182 P2 후속): 이 partial은 reviews/show와
+<%# Phase 5 slice 3 (Codex PR #182 후속): 이 partial은 reviews/show와
     transactions/index 둘 다에서 사용된다. tabindex=0을 무조건 부여하면
     거래 목록 페이지에서 매 row가 tab stop이 되어 a11y가 저하된다.
-    호출자가 `reviewable: true`를 명시할 때만 키보드 focusable로 만든다. %>
-<% reviewable = local_assigns.fetch(:reviewable, false) %>
+    호출자가 `reviewable:`을 명시하지 않으면 *transaction 상태*로 자동 추론:
+    pending_review + parsing_session 있는 거래는 검토 컨텍스트로 간주.
+    이렇게 하면 turbo_stream re-render 경로마다 reviewable: true를 일일이
+    전달할 필요 없이 row의 tabindex가 보존된다. %>
+<% reviewable = local_assigns.fetch(
+     :reviewable,
+     transaction.pending_review? && transaction.parsing_session_id.present?
+   ) %>
 <tr id="<%= dom_id(transaction) %>"
     data-bulk-select-target="row"
     data-transaction-id="<%= transaction.id %>"
