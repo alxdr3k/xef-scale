@@ -85,7 +85,7 @@
 
       <%# Parsing sessions (mobile) %>
       <% @parsing_sessions.each do |parsing_session| %>
-        <%= render partial: 'parsing_session_card', locals: { parsing_session: parsing_session, workspace: @workspace } %>
+        <%= render partial: 'parsing_session_card', locals: { parsing_session: parsing_session, workspace: @workspace, open_issue_count: @open_issue_counts[parsing_session.id] || 0 } %>
       <% end %>
 
       <% if @parsing_sessions.empty? && @pending_files.empty? %>
@@ -135,7 +135,7 @@
 
           <%# 기존 parsing_sessions %>
           <% @parsing_sessions.each do |parsing_session| %>
-            <%= render partial: 'parsing_session_row', locals: { parsing_session: parsing_session, workspace: @workspace } %>
+            <%= render partial: 'parsing_session_row', locals: { parsing_session: parsing_session, workspace: @workspace, open_issue_count: @open_issue_counts[parsing_session.id] || 0 } %>
           <% end %>
 
           <% if @parsing_sessions.empty? && @pending_files.empty? %>

@@ -37,6 +37,14 @@ class ParsingSessionsController < ApplicationController
 
     @pagy, @parsing_sessions = pagy(@parsing_sessions, limit: 20)
 
+    # Preload open ImportIssue counts for the visible sessions so the card+row
+    # partials don't fire `parsing_session.open_import_issues.size` per row.
+    session_ids = @parsing_sessions.map(&:id)
+    @open_issue_counts = ImportIssue
+                           .where(parsing_session_id: session_ids, status: "open")
+                           .group(:parsing_session_id)
+                           .count
+
     # 아직 parsing_session이 생성되지 않은 pending/processing 파일들
     @pending_files = @workspace.processed_files
                                .left_joins(:parsing_session)
