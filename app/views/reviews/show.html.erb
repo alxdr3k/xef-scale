@@ -232,8 +232,10 @@
         </thead>
         <tbody class="divide-y divide-gray-200" id="transactions-review-list">
           <% @transactions.each do |tx| %>
+            <%# Phase 5 slice 3: reviewable: true → row가 tabindex=0으로 키보드 focusable.
+                review-keyboard 컨트롤러의 j/k navigation 대상. %>
             <%= render 'transactions/transaction_row', transaction: tx, read_only: @read_only,
-                categories: @categories %>
+                categories: @categories, reviewable: true %>
           <% end %>
         </tbody>
       </table>

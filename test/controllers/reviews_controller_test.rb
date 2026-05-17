@@ -691,4 +691,20 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     # 거래 row에 tabindex=0 — j/k 이동 후 focus 받을 수 있어야
     assert_select "tr[data-transaction-id][tabindex='0']", minimum: 1
   end
+
+  # Codex PR #182 P2: 공유 partial이 transactions/index에서도 사용되므로
+  # tabindex=0이 reviewable 컨텍스트에서만 적용돼야 한다.
+  test "transactions/index does not make row tabindex=0 (shared partial gating)" do
+    @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "INDEX_NO_TABINDEX",
+      status: "committed"
+    )
+
+    get workspace_transactions_path(@workspace)
+    assert_response :success
+    # 거래 row는 있지만 tabindex=0은 *없어야*.
+    assert_select "tr[data-transaction-id]", minimum: 1
+    assert_select "tr[data-transaction-id][tabindex='0']", count: 0,
+                  message: "reviews/show 외에서는 row tabindex 미부여"
+  end
 end

@@ -23,10 +23,13 @@ export default class extends Controller {
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return
     if (target.isContentEditable) return
 
-    if (event.key === "j") {
+    // Codex PR #182 P2: layout-independent 키 감지. 한글 IME 활성 상태에서
+    // event.key는 "ㅗ"/"ㅑ" 등이 되므로 event.code(물리키, "KeyJ"/"KeyK")로
+    // 매칭한다. event.key fallback은 IME가 꺼졌거나 비표준 환경 대비.
+    if (event.code === "KeyJ" || event.key === "j") {
       event.preventDefault()
       this.focusRelative(1)
-    } else if (event.key === "k") {
+    } else if (event.code === "KeyK" || event.key === "k") {
       event.preventDefault()
       this.focusRelative(-1)
     }

@@ -27,13 +27,16 @@
                   end
                 end %>
 
+<%# Phase 5 slice 3 (Codex PR #182 P2 후속): 이 partial은 reviews/show와
+    transactions/index 둘 다에서 사용된다. tabindex=0을 무조건 부여하면
+    거래 목록 페이지에서 매 row가 tab stop이 되어 a11y가 저하된다.
+    호출자가 `reviewable: true`를 명시할 때만 키보드 focusable로 만든다. %>
+<% reviewable = local_assigns.fetch(:reviewable, false) %>
 <tr id="<%= dom_id(transaction) %>"
     data-bulk-select-target="row"
     data-transaction-id="<%= transaction.id %>"
     data-deleted="<%= transaction.deleted? %>"
-    <%# Phase 5 slice 3: review-keyboard j/k 네비게이션을 위해 tabindex=0.
-        focus 시 :focus-visible 글로벌 outline이 적용된다. %>
-    tabindex="0"
+    <% if reviewable %>tabindex="0"<% end %>
     <% unless read_only || transaction.deleted? %>
       data-action="click->bulk-select#toggleRow"
     <% end %>
