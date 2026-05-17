@@ -46,7 +46,7 @@
               sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
               sm:rounded-2xl sm:w-full sm:max-w-2xl
               bg-surface shadow-xl max-h-[90vh] overflow-y-auto">
-    <div class="sticky top-0 bg-surface border-b border-default px-5 py-4 flex items-center justify-between">
+    <div class="sticky top-0 bg-surface border-b border-divider px-5 py-4 flex items-center justify-between">
       <h2 id="input-sheet-title" class="text-base font-semibold text-primary">새로 가져오기</h2>
       <button type="button"
               data-action="click->input-sheet#close"
@@ -70,7 +70,7 @@
       <% end %>
 
       <%# 1) 문자 붙여넣기 %>
-      <section class="border border-default rounded-lg p-4">
+      <section class="border border-divider rounded-lg p-4">
         <%= form_with url: text_parse_workspace_parsing_sessions_path(workspace), method: :post, local: true, class: 'space-y-3' do %>
           <div class="flex items-center gap-2">
             <svg class="w-5 h-5 text-action" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
@@ -79,7 +79,7 @@
             <h3 class="text-sm font-medium text-primary">문자 붙여넣기</h3>
           </div>
           <textarea name="text" id="text" rows="4"
-                    class="block w-full rounded-md border-default shadow-sm focus:border-action focus:ring-action text-sm"
+                    class="block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action text-sm"
                     placeholder="[Web발신]&#10;신한체크 승인 홍*동&#10;50,000원 일시불&#10;03/15 14:30 스타벅스강남점"></textarea>
           <p class="text-meta text-secondary">
             카드 승인 문자·은행 출금 알림 등을 붙여넣으세요. 여러 건을 한 번에 붙여넣어도 됩니다.
@@ -92,7 +92,7 @@
       </section>
 
       <%# 2) 스크린샷 업로드 %>
-      <section class="border border-default rounded-lg p-4">
+      <section class="border border-divider rounded-lg p-4">
         <%= form_with url: workspace_parsing_sessions_path(workspace), method: :post, multipart: true, local: true, class: 'space-y-3' do |f| %>
           <div class="flex items-center gap-2">
             <svg class="w-5 h-5 text-action" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
@@ -103,7 +103,7 @@
           </div>
           <input type="hidden" name="institution_identifier" value="shinhan_card">
           <%= f.file_field :files, multiple: true, accept: "image/jpeg,image/png,image/webp,image/heic",
-                class: 'block w-full text-sm text-secondary file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-action-subtle file:text-action-strong hover:file:bg-elev' %>
+                class: 'block w-full text-sm text-secondary file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-action-subtle file:text-action hover:file:bg-elev' %>
           <p class="text-meta text-secondary">
             신한카드 이용대금 명세서 스크린샷(JPG·PNG·WEBP·HEIC)을 올리면 AI가 거래를 인식합니다.
             확정 전까지 거래에 반영되지 않습니다.
@@ -116,7 +116,7 @@
       </section>
 
       <%# 3) 직접 입력 — 시트 안 폼이 아니라 별도 페이지로 이동 (즉시 committed) %>
-      <section class="border border-default rounded-lg p-4">
+      <section class="border border-divider rounded-lg p-4">
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-2">
             <svg class="w-5 h-5 text-action" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">

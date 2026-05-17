@@ -20,7 +20,7 @@
     </div>
 
     <div class="bg-surface rounded-lg shadow-sm overflow-hidden">
-      <table class="min-w-full divide-y divide-default">
+      <table class="min-w-full divide-y divide-divider">
         <thead class="bg-elev">
           <tr>
             <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">색상</th>
@@ -29,7 +29,7 @@
             <th class="px-6 py-3 text-right text-xs font-medium text-secondary uppercase">작업</th>
           </tr>
         </thead>
-        <tbody id="categories-list" class="bg-surface divide-y divide-default">
+        <tbody id="categories-list" class="bg-surface divide-y divide-divider">
           <% @categories.each do |category| %>
             <%= render 'category_row', category: category %>
           <% end %>
@@ -54,7 +54,7 @@
 
     <% if @recent_mappings.any? %>
       <div class="bg-surface rounded-lg shadow-sm overflow-hidden">
-        <table class="min-w-full divide-y divide-default">
+        <table class="min-w-full divide-y divide-divider">
           <thead class="bg-elev">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">가맹점 패턴</th>
@@ -63,7 +63,7 @@
               <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">최근 갱신</th>
             </tr>
           </thead>
-          <tbody class="bg-surface divide-y divide-default">
+          <tbody class="bg-surface divide-y divide-divider">
             <% @recent_mappings.each do |mapping| %>
               <tr id="<%= dom_id(mapping, :preview) %>">
                 <td class="px-6 py-3 text-sm text-primary"><%= mapping.merchant_pattern %></td>
