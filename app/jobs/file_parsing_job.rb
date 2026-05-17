@@ -36,7 +36,17 @@ class FileParsingJob < ApplicationJob
 
       workspace = processed_file.workspace
 
-      stats = { total: result.size, success: 0, duplicate: 0, error: 0, gemini: 0 }
+      # Incomplete rows (missing date/merchant/amount) are diverted to
+      # ImportIssue instead of polluting the review queue with garbage
+      # transactions. Reviewable rows continue through the existing flow.
+      recorder = ImportIssueRecorder.new(
+        parsing_session: parsing_session,
+        source_type: "image_upload",
+        processed_file: processed_file
+      )
+      result, incomplete_count = recorder.split_and_record(result)
+
+      stats = { total: result.size + incomplete_count, success: 0, duplicate: 0, error: incomplete_count, gemini: 0 }
       uncategorized_transactions = []
 
       result.each do |tx_data|

@@ -13,10 +13,18 @@ class AiTextParsingJob < ApplicationJob
       parser = AiTextParser.new
       result = parser.parse(parsing_session.notes)
 
-      stats = { total: 0, success: 0, duplicate: 0, error: 0 }
+      # Incomplete rows (missing date/merchant/amount) are diverted to
+      # ImportIssue instead of polluting the review queue. text_paste has
+      # no processed_file so it stays nil per the ImportIssue contract.
+      recorder = ImportIssueRecorder.new(
+        parsing_session: parsing_session,
+        source_type: "text_paste"
+      )
+      complete_rows, incomplete_count = recorder.split_and_record(result[:transactions] || [])
 
-      result[:transactions].each do |tx_data|
-        stats[:total] += 1
+      stats = { total: complete_rows.size + incomplete_count, success: 0, duplicate: 0, error: incomplete_count }
+
+      complete_rows.each do |tx_data|
         begin
           transaction = create_transaction(workspace, tx_data, parsing_session)
 
