@@ -2,16 +2,18 @@ import { Controller } from "@hotwired/stimulus"
 
 // ReviewKeyboardController — Phase 5 검토함 키보드 단축키 (ADR-0008 / ui-redesign-plan §3.3).
 //
-// 검토함(reviews/show)에서 거래 행 사이 네비게이션:
+// 검토함(reviews/show)에서:
 //   j  — 다음 거래 행 focus
 //   k  — 이전 거래 행 focus
+//   c  — 현재 파싱 세션 commit (data-review-keyboard-target="commitForm" 폼 submit)
 //
 // 텍스트 입력(input/textarea/contenteditable) 중에는 무시 — 사용자가 카테고리·
-// 메모 등을 편집할 때 j/k가 글자 입력을 가로채면 안 된다.
+// 메모 등을 편집할 때가 글자 입력을 가로채면 안 된다.
 //
-// 추가 단축키(c=commit / d=discard / x=duplicate 해결 등)는 후속 슬라이스.
+// 추가 단축키(d=discard / x=duplicate 해결 / enter=select / ?=help)는 후속 슬라이스.
 export default class extends Controller {
   static values = { rowSelector: { type: String, default: "tr[data-transaction-id]" } }
+  static targets = ["commitForm"]
 
   handleKey(event) {
     // Modifier가 있으면 무시 (ctrl+j 등 다른 동작과 충돌 회피)
@@ -32,6 +34,13 @@ export default class extends Controller {
     } else if (event.code === "KeyK" || event.key === "k") {
       event.preventDefault()
       this.focusRelative(-1)
+    } else if (event.code === "KeyC" || event.key === "c") {
+      // Commit current parsing session — turbo_confirm dialog가 자동 트리거됨.
+      // commit form이 없으면(이미 commit/discard된 finalized 세션) no-op.
+      if (this.hasCommitFormTarget) {
+        event.preventDefault()
+        this.commitFormTarget.requestSubmit()
+      }
     }
   }
 

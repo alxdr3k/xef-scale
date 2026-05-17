@@ -709,6 +709,20 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/<tr[^>]*data-transaction-id="#{tx.id}"[^>]*tabindex="0"/, response.body)
   end
 
+  # Phase 5 slice 4: c 단축키가 commit form을 trigger하려면 form에 target이 있어야.
+  test "show wires commit form as review-keyboard target for c shortcut" do
+    @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "C_SHORTCUT_SESSION",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_response :success
+    # commit form이 review-keyboard target 속성을 가져야 c 단축키가 submit 가능.
+    assert_match(/data-review-keyboard-target="commitForm"/, response.body)
+  end
+
   test "quick_update_category turbo_stream re-render preserves tabindex on review row" do
     tx = @workspace.transactions.create!(
       date: Date.current, amount: 1000, merchant: "REVIEW_QUICK",
