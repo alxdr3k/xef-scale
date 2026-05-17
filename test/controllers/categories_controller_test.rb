@@ -141,4 +141,57 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_equal new_cat.id, tx.category_id
     assert_equal "manual_set", tx.classification_source
   end
+
+  # Codex hotfix A: 슬라이드오버가 review 화면에서 열렸으면 row re-render가 review
+  # 컨텍스트를 유지해야 한다 — workspace-level route로 변질되면 후속 inline 편집/
+  # category 변경이 reject_if_finalized 가드를 우회한다.
+  test "create via slideover preserves review context when parsing_session_id given" do
+    ps = parsing_sessions(:completed_session)
+    ps.update!(review_status: "pending_review")
+    tx = ps.transactions.create!(
+      workspace: @workspace, date: Date.current, amount: 1000,
+      merchant: "SLIDE_REVIEW", status: "pending_review"
+    )
+
+    post workspace_categories_path(@workspace), params: {
+      category: { name: "리뷰슬라이드", color: "#123456" },
+      slideover: "true",
+      transaction_id: tx.id,
+      parsing_session_id: ps.id
+    }, as: :turbo_stream
+
+    assert_response :success
+    # row re-render의 inline edit URL은 session-scoped여야 한다.
+    expected = update_transaction_workspace_parsing_session_path(@workspace, ps, transaction_id: tx.id)
+    assert_match(/data-inline-edit-url-value="#{Regexp.escape(expected)}"/, response.body)
+    # category selector도 session-scoped, request style은 "field"
+    assert_match(/data-category-selector-update-url-value="#{Regexp.escape(expected)}"/, response.body)
+    assert_match(/data-category-selector-request-style-value="field"/, response.body)
+  end
+
+  test "create via slideover rejects transaction not belonging to parsing_session" do
+    ps = parsing_sessions(:completed_session)
+    ps.update!(review_status: "pending_review")
+    # transaction은 parsing_session에 속하지 않음 (committed, parsing_session_id nil)
+    foreign_tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "FOREIGN_TX",
+      status: "committed"
+    )
+    initial_category_id = foreign_tx.category_id
+
+    post workspace_categories_path(@workspace), params: {
+      category: { name: "이상한카테고리", color: "#000000" },
+      slideover: "true",
+      transaction_id: foreign_tx.id,
+      parsing_session_id: ps.id
+    }, as: :turbo_stream
+
+    # Rails rescues ActiveRecord::RecordNotFound → 404. Transaction은 변경되지 않아야.
+    assert_response :not_found
+    if initial_category_id.nil?
+      assert_nil foreign_tx.reload.category_id
+    else
+      assert_equal initial_category_id, foreign_tx.reload.category_id
+    end
+  end
 end

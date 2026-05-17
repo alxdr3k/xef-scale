@@ -587,6 +587,16 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "manual_set", @transaction.classification_source
   end
 
+  # Codex hotfix A: ledger row의 category-selector URL은 workspace-level
+  # quick_update_category로 가야 한다. (review row는 session-scoped — reviews_controller_test 참조.)
+  test "index category-selector URL is workspace-level quick_update_category" do
+    get workspace_transactions_path(@workspace)
+    assert_response :success
+    expected = quick_update_category_workspace_transaction_path(@workspace, @transaction)
+    assert_match(/data-category-selector-update-url-value="#{Regexp.escape(expected)}"/, response.body)
+    assert_match(/data-category-selector-request-style-value="id"/, response.body)
+  end
+
   test "inline_update merchant change with mapping hit sets mapping_match" do
     target = categories(:food)
     CategoryMapping.create!(
