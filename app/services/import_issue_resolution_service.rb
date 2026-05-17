@@ -12,18 +12,20 @@ class ImportIssueResolutionService
   end
 
   def update_missing_fields!(attributes)
-    session_guard = guard_session_open
-    return session_guard if session_guard
-
     return failure("필수값 누락 항목만 수정할 수 있습니다.") unless @issue.missing_required_fields?
 
     submitted = pick_submitted(attributes)
     return failure("수정할 값을 입력해 주세요.") if submitted.empty?
 
-    # Lock the row so concurrent resolvers cannot both pass the open? check
-    # and each create a pending_review transaction. We re-read status inside
-    # the lock to defeat the open→resolved race.
+    # Lock session first (consistent ordering with commit_all!/rollback_all!),
+    # then the issue. Re-verify state inside the locked transaction so a
+    # concurrent commit/discard cannot flip review_status between the guard
+    # and the mutation.
     ActiveRecord::Base.transaction do
+      session = @issue.parsing_session
+      session&.lock!
+      return failure("이 가져오기는 이미 마감되어 수리할 수 없습니다.") unless session&.review_pending?
+
       @issue.lock!
       return failure("이미 처리된 항목입니다.") unless @issue.open?
 
@@ -45,10 +47,11 @@ class ImportIssueResolutionService
   end
 
   def dismiss!
-    session_guard = guard_session_open
-    return session_guard if session_guard
-
     ActiveRecord::Base.transaction do
+      session = @issue.parsing_session
+      session&.lock!
+      return failure("이 가져오기는 이미 마감되어 수리할 수 없습니다.") unless session&.review_pending?
+
       @issue.lock!
       return failure("이미 처리된 항목입니다.") unless @issue.open?
 
@@ -104,11 +107,6 @@ class ImportIssueResolutionService
     }
   end
 
-  def guard_session_open
-    return nil if @issue.parsing_session&.review_pending?
-
-    failure("이 가져오기는 이미 마감되어 수리할 수 없습니다.")
-  end
 
   def normalize_date(value)
     return value if value.is_a?(Date)
