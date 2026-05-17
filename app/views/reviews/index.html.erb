@@ -69,6 +69,10 @@
                   <% if dup_count.positive? %>
                     · 중복 의심 <%= dup_count %>건
                   <% end %>
+                  <% issue_count = @open_issue_counts[session.id] || 0 %>
+                  <% if issue_count.positive? %>
+                    · 수리 필요 <%= issue_count %>건
+                  <% end %>
                   · <%= time_ago_in_words(session.created_at) %> 전
                 </p>
               </div>
