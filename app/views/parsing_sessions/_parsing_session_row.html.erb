@@ -5,19 +5,19 @@
       data-action="click->bulk-select#toggleRow"
     <% end %>
     class="group/row transition-colors duration-150 <%= 'cursor-pointer' if parsing_session.can_discard? %>">
-  <td class="px-2 py-4 text-center text-sm text-gray-400 font-mono">
+  <td class="px-2 py-4 text-center text-sm text-tertiary font-mono">
     #<%= parsing_session.id %>
   </td>
-  <td class="px-4 py-4 text-sm text-gray-900">
+  <td class="px-4 py-4 text-sm text-primary">
     <div class="whitespace-nowrap overflow-hidden text-ellipsis">
       <span class="align-middle">
         <% if parsing_session.text_paste? %>
-          <span class="text-gray-600">텍스트 붙여넣기</span>
+          <span class="text-secondary">텍스트 붙여넣기</span>
         <% elsif parsing_session.processed_file %>
           <%= parsing_session.processed_file.original_filename %>
           <%= render "shared/blob_purged_badge", processed_file: parsing_session.processed_file %>
         <% else %>
-          <span class="text-gray-400">파일 정보 없음</span>
+          <span class="text-tertiary">파일 정보 없음</span>
         <% end %>
       </span>
       <% if parsing_session.notes.present? %>
@@ -29,7 +29,7 @@
               data-note-panel-amount-param="<%= "성공 #{parsing_session.success_count}건" %>"
               data-note-panel-row-id-param="<%= dom_id(parsing_session) %>"
               data-note-panel-trigger
-              class="cursor-pointer hover:bg-amber-100 ml-1.5 align-middle inline-block">
+              class="cursor-pointer hover:bg-warning-subtle ml-1.5 align-middle inline-block">
           <%= render 'shared/notes_badge', notes: parsing_session.notes %>
         </span>
       <% else %>
@@ -41,7 +41,7 @@
               data-note-panel-amount-param="<%= "성공 #{parsing_session.success_count}건" %>"
               data-note-panel-row-id-param="<%= dom_id(parsing_session) %>"
               data-note-panel-trigger
-              class="cursor-pointer text-gray-400 hover:text-blue-500 opacity-0 group-hover/row:opacity-100 transition-opacity ml-1.5 align-middle inline-block"
+              class="cursor-pointer text-tertiary hover:text-info opacity-0 group-hover/row:opacity-100 transition-opacity ml-1.5 align-middle inline-block"
               title="메모 추가">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
@@ -56,7 +56,7 @@
       <span class="ml-1"><%= render 'shared/status_badge', status: parsing_session.review_status, type: :review %></span>
     <% end %>
   </td>
-  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+  <td class="px-4 py-4 whitespace-nowrap text-sm text-tertiary">
     <% if parsing_session.completed? %>
       성공 <%= parsing_session.success_count %>건
       <% pending_dup_count = parsing_session.duplicate_confirmations.select { |dc| dc.status == "pending" }.size %>
@@ -71,30 +71,30 @@
       <% end %>
     <% end %>
   </td>
-  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+  <td class="px-4 py-4 whitespace-nowrap text-sm text-tertiary">
     <%= time_ago_in_words(parsing_session.created_at) %> 전
   </td>
   <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
     <% if parsing_session.completed? %>
       <% if parsing_session.review_pending? %>
         <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
-            class: 'text-indigo-600 hover:text-indigo-900 font-medium' %>
+            class: 'text-action hover:text-action-hover font-medium' %>
       <% else %>
         <%= link_to '상세보기', review_workspace_parsing_session_path(workspace, parsing_session),
-            class: 'text-gray-600 hover:text-gray-900' %>
+            class: 'text-secondary hover:text-primary' %>
       <% end %>
     <% elsif parsing_session.has_duplicates? && parsing_session.pending_duplicates.any? %>
       <%= link_to '중복 확인', workspace_parsing_session_path(workspace, parsing_session),
-          class: 'text-indigo-600 hover:text-indigo-900' %>
+          class: 'text-action hover:text-action-hover' %>
     <% elsif parsing_session.failed? %>
       <div class="flex items-center justify-end gap-2">
         <%= button_to '재시도', retry_workspace_parsing_session_path(workspace, parsing_session),
             method: :post,
-            class: 'text-indigo-600 hover:text-indigo-900 font-medium text-sm bg-transparent border-0 cursor-pointer p-0' %>
+            class: 'text-action hover:text-action-hover font-medium text-sm bg-transparent border-0 cursor-pointer p-0' %>
         <%= button_to '삭제', workspace_parsing_session_path(workspace, parsing_session),
             method: :delete,
             form: { data: { turbo_confirm: "이 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다." } },
-            class: 'text-red-600 hover:text-red-900 text-sm bg-transparent border-0 cursor-pointer p-0' %>
+            class: 'text-danger hover:text-danger text-sm bg-transparent border-0 cursor-pointer p-0' %>
       </div>
     <% end %>
   </td>
