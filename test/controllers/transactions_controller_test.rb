@@ -719,4 +719,19 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal target.id, @transaction.category_id
     assert_equal "mapping_match", @transaction.classification_source
   end
+
+  # Phase 5 contrast 감사: transactions/index.html.erb 자체가 시맨틱 토큰만
+  # 사용해야 한다 (ADR-0008). 본 테스트는 *view 파일의 source*를 직접 grep해서
+  # 회귀를 잡는다 — partial들에 남은 옛 token은 별도 슬라이스에서 처리.
+  test "index view template uses semantic tokens (no hardcoded palette)" do
+    src = File.read(Rails.root.join("app/views/transactions/index.html.erb"))
+    %w[bg-indigo-600 text-gray-900 text-gray-500 text-gray-700 bg-white].each do |stale|
+      assert_no_match(/\b#{Regexp.escape(stale)}\b/, src,
+                      "transactions/index.html.erb에 옛 팔레트 #{stale}이 남아 있음 (시맨틱 토큰으로 마이그레이션 필요)")
+    end
+    # 시맨틱 토큰 흔적
+    assert_match(/\bbg-surface\b/, src)
+    assert_match(/\btext-primary\b/, src)
+    assert_match(/\bbg-action\b/, src)
+  end
 end
