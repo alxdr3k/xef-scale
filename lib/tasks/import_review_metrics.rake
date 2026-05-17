@@ -44,12 +44,21 @@ module ImportReviewMetricsCli
       when /\A--workspace=(\d+)\z/
         out[:workspace_id] = $1.to_i
       when /\A--since=(\d{4}-\d{2}-\d{2})\z/
-        out[:since] = Date.parse($1)
+        out[:since] = safe_date($1)
       when /\A--until=(\d{4}-\d{2}-\d{2})\z/
-        out[:until] = Date.parse($1)
+        out[:until] = safe_date($1)
       end
     end
     out
+  end
+
+  # Regex matches calendar shapes but not validity (e.g. 2026-02-31). Swallow
+  # invalid calendar dates and treat as "option not provided" so ad-hoc runs
+  # don't crash on a typo.
+  def safe_date(str)
+    Date.parse(str)
+  rescue Date::Error, ArgumentError
+    nil
   end
 end
 
@@ -106,17 +115,27 @@ class ImportReviewMetricsReport
     committed_ids = committed_sessions.pluck(:id)
     return "## Row modification rate\n  (no committed sessions in scope)" if committed_ids.empty?
 
+    # Align numerator + denominator with the codebase's `reviewable` scope
+    # (`deleted: false` AND `status != "rolled_back"`). Rows the user excluded
+    # mid-review or rows soft-deleted by retention should not skew the metric
+    # in either direction.
+    reviewable_per_session = Transaction
+                               .reviewable
+                               .where(parsing_session_id: committed_ids)
+                               .group(:parsing_session_id)
+                               .count
+
+    reviewable_tx_ids = Transaction
+                          .reviewable
+                          .where(parsing_session_id: committed_ids)
+                          .pluck(:id)
+
     modified_per_session = ImportReviewEvent
                              .where(parsing_session_id: committed_ids, event_type: "transaction_updated")
-                             .where.not(reviewed_transaction_id: nil)
+                             .where(reviewed_transaction_id: reviewable_tx_ids)
                              .distinct
                              .group(:parsing_session_id)
                              .count(:reviewed_transaction_id)
-
-    reviewable_per_session = Transaction
-                               .where(parsing_session_id: committed_ids, deleted: false)
-                               .group(:parsing_session_id)
-                               .count
 
     rates = committed_ids.filter_map do |sid|
       total = reviewable_per_session[sid] || 0
@@ -176,8 +195,8 @@ class ImportReviewMetricsReport
 
     avg = deltas.sum / deltas.size
     sorted = deltas.sort
-    p50 = sorted[(sorted.size * 0.5).floor]
-    p90 = sorted[[ (sorted.size * 0.9).floor, sorted.size - 1 ].min]
+    p50 = percentile(sorted, 0.5)
+    p90 = percentile(sorted, 0.9)
 
     [
       "## Commit latency (completed_at → committed_at)",
@@ -186,6 +205,18 @@ class ImportReviewMetricsReport
       "  p50:     #{humanize_duration(p50)}",
       "  p90:     #{humanize_duration(p90)}"
     ].join("\n")
+  end
+
+  # Nearest-rank percentile on a 0-indexed sorted array. For n=10, p=0.9 →
+  # idx = (9 * 0.9).round = 8 → sorted[8] (9th value). Avoids the off-by-one
+  # of `(n * p).floor` which picks sorted[9] (= max) when n*p is an integer.
+  def percentile(sorted, p)
+    return nil if sorted.empty?
+    return sorted.first if sorted.size == 1
+
+    idx = ((sorted.size - 1) * p).round
+    idx = sorted.size - 1 if idx > sorted.size - 1
+    sorted[idx]
   end
 
   def humanize_duration(seconds)
