@@ -14,13 +14,13 @@
           data-note-panel-trigger
           data-controller="truncate-tooltip"
           data-action="click->note-panel#open:stop mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
-          class="cursor-pointer hover:bg-blue-50 hover:text-blue-700 px-1 -mx-1 rounded text-sm inline-block truncate max-w-full align-middle
-                 <%= transaction.notes.present? ? 'text-gray-700' : 'text-gray-400 italic' %>">
+          class="cursor-pointer hover:bg-action-subtle hover:text-action px-1 -mx-1 rounded text-sm inline-block truncate max-w-full align-middle
+                 <%= transaction.notes.present? ? 'text-secondary' : 'text-disabled italic' %>">
       <%= transaction.notes.presence || '메모 추가...' %>
     </span>
   <% else %>
     <span data-controller="truncate-tooltip"
           data-action="mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
-          class="text-sm text-gray-600 inline-block truncate max-w-full align-middle"><%= transaction.notes %></span>
+          class="text-sm text-secondary inline-block truncate max-w-full align-middle"><%= transaction.notes %></span>
   <% end %>
 </td>

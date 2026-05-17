@@ -589,14 +589,14 @@ export default class extends Controller {
 
   enableUndoButton() {
     this.undoBtnTarget.disabled = false
-    this.undoBtnTarget.classList.remove("text-gray-300", "opacity-50", "cursor-not-allowed")
-    this.undoBtnTarget.classList.add("text-gray-600", "hover:text-gray-900", "hover:bg-gray-100", "cursor-pointer")
+    this.undoBtnTarget.classList.remove("text-disabled", "opacity-50", "cursor-not-allowed")
+    this.undoBtnTarget.classList.add("text-secondary", "hover:text-primary", "hover:bg-elev", "cursor-pointer")
   }
 
   disableUndoButton() {
     this.undoBtnTarget.disabled = true
-    this.undoBtnTarget.classList.add("text-gray-300", "opacity-50", "cursor-not-allowed")
-    this.undoBtnTarget.classList.remove("text-gray-600", "hover:text-gray-900", "hover:bg-gray-100", "cursor-pointer")
+    this.undoBtnTarget.classList.add("text-disabled", "opacity-50", "cursor-not-allowed")
+    this.undoBtnTarget.classList.remove("text-secondary", "hover:text-primary", "hover:bg-elev", "cursor-pointer")
   }
 
   next() {
