@@ -11,6 +11,7 @@ class Workspace < ApplicationRecord
   has_many :parsing_sessions, dependent: :destroy
   has_many :api_keys, dependent: :destroy
   has_many :import_issues, dependent: :destroy
+  has_many :import_review_events, dependent: :destroy
   has_one :budget, dependent: :destroy
 
   validates :name, presence: true

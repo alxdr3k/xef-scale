@@ -11,6 +11,7 @@ class ParsingSession < ApplicationRecord
   has_many :notifications, as: :notifiable, dependent: :destroy
   has_many :import_issues, dependent: :destroy
   has_many :open_import_issues, -> { open.order(:created_at) }, class_name: "ImportIssue"
+  has_many :import_review_events, dependent: :destroy
 
   STATUSES = %w[pending processing completed failed].freeze
   REVIEW_STATUSES = %w[pending_review committed rolled_back discarded].freeze
@@ -130,6 +131,9 @@ class ParsingSession < ApplicationRecord
         committed_by: user
       )
     end
+    ImportReviewEventRecorder.record(
+      workspace: workspace, parsing_session: self, event_type: "session_committed"
+    )
     true
   end
 
@@ -145,6 +149,9 @@ class ParsingSession < ApplicationRecord
         rolled_back_by: user
       )
     end
+    ImportReviewEventRecorder.record(
+      workspace: workspace, parsing_session: self, event_type: "session_rolled_back"
+    )
     true
   end
 
@@ -157,6 +164,9 @@ class ParsingSession < ApplicationRecord
       transactions.pending_review.destroy_all
       update!(review_status: "discarded", discarded_at: Time.current)
     end
+    ImportReviewEventRecorder.record(
+      workspace: workspace, parsing_session: self, event_type: "session_discarded"
+    )
     true
   end
 
