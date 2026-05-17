@@ -156,9 +156,93 @@ class ImportReviewMetricsReportTest < ActiveSupport::TestCase
       options: { workspace_id: @workspace.id }
     ).render
 
+    # nearest-rank with ceil: n=10, p=0.9 → rank = ceil(9) = 9 → sorted[8] = 9s.
+    # p=0.5 → rank = ceil(5) = 5 → sorted[4] = 5s (lower median).
     assert_match(/p90:\s+9s/, report)
     refute_match(/p90:\s+10s/, report)
-    assert_match(/p50:\s+6s/, report)
+    assert_match(/p50:\s+5s/, report)
+  end
+
+  test "percentile uses ceil-based nearest-rank for tiny samples" do
+    # n=2, p=0.5 → ceil(1) = 1 → sorted[0] (lower median). round-based 구현은
+    # sorted[1] (=max)을 골라 latency 과대 보고했음 — 회귀 가드.
+    base = 1.hour.ago
+    [ 2, 10 ].each do |delta|
+      @workspace.parsing_sessions.create!(
+        source_type: "file_upload", status: "completed",
+        review_status: "committed",
+        completed_at: base, committed_at: base + delta.seconds
+      )
+    end
+
+    report = ImportReviewMetricsReport.new(
+      sessions: @workspace.parsing_sessions,
+      options: { workspace_id: @workspace.id }
+    ).render
+
+    assert_match(/p50:\s+2s/, report)
+    refute_match(/p50:\s+10s/, report)
+  end
+
+  test "exclusion rate counts rolled_back rows (covers duplicate keep_original)" do
+    # 중복 결정이 새 row를 rolled_back으로 만들면 transaction_excluded 이벤트
+    # 없이도 분자에 잡혀야 함. status: rolled_back으로 numerator 산출.
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload", status: "completed",
+      review_status: "committed",
+      completed_at: 2.minutes.ago, committed_at: 1.minute.ago
+    )
+    @workspace.transactions.create!(date: Date.current, amount: 1, status: "committed", parsing_session: session)
+    # 중복 결정으로 rolled_back된 행 — 이벤트 없음
+    @workspace.transactions.create!(date: Date.current, amount: 2, status: "rolled_back", parsing_session: session)
+
+    report = ImportReviewMetricsReport.new(
+      sessions: @workspace.parsing_sessions.where(id: session.id),
+      options: {}
+    ).render
+
+    # 후보 2건, 제외 1건 → 50% (이벤트 없어도 잡혀야 함)
+    assert_match(/Row exclusion rate.*?average exclusion rate: 50\.0%/m, report)
+  end
+
+  test "exclusion denominator includes soft-deleted rows (stability)" do
+    # 사용자가 commit 후 일부 row를 TransactionsController#destroy로 soft-delete
+    # 해도 baseline rate가 retroactively drift하지 않아야 함.
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload", status: "completed",
+      review_status: "committed",
+      completed_at: 2.minutes.ago, committed_at: 1.minute.ago
+    )
+    soft_deleted = @workspace.transactions.create!(date: Date.current, amount: 1, status: "committed", parsing_session: session)
+    @workspace.transactions.create!(date: Date.current, amount: 2, status: "committed", parsing_session: session)
+    @workspace.transactions.create!(date: Date.current, amount: 3, status: "rolled_back", parsing_session: session)
+
+    # 사후 soft-delete
+    soft_deleted.update!(deleted: true)
+
+    report = ImportReviewMetricsReport.new(
+      sessions: @workspace.parsing_sessions.where(id: session.id),
+      options: {}
+    ).render
+
+    # 후보 3건 (soft-deleted 포함), 제외 1건 → 33.3% (deleted: false만 보면 50%로 drift)
+    assert_match(/Row exclusion rate.*?average exclusion rate: 33\.3%/m, report)
+  end
+
+  test "status distribution sort is nil-safe" do
+    # 정상적으로는 nil status가 들어가지 않지만 historical row가 있을 수 있음.
+    # 분포 출력이 ArgumentError로 터지지 않는지 회귀 가드.
+    @workspace.parsing_sessions.create!(source_type: "file_upload", status: "completed", review_status: "committed")
+    @workspace.parsing_sessions.create!(source_type: "file_upload", status: "failed", review_status: "pending_review")
+
+    # rake task는 무관 — 보고서 클래스가 직접 group/sort 처리 검증
+    report = ImportReviewMetricsReport.new(
+      sessions: @workspace.parsing_sessions,
+      options: { workspace_id: @workspace.id }
+    ).render
+
+    assert_match(/Session status distribution/, report)
+    refute_match(/ArgumentError/, report)
   end
 
   test "computes distinct-transaction modification rate per session" do

@@ -47,9 +47,11 @@ class ImportReviewMetricsReport
     return "## Session status distribution\n  (no sessions in scope)" if total.zero?
 
     lines = [ "## Session status distribution (status × review_status)" ]
-    rows.sort_by { |k, _| k }.each do |(status, review_status), n|
+    # Historical rows may have nil status/review_status; coerce to "" before
+    # sorting so Ruby does not raise ArgumentError comparing nil with String.
+    rows.sort_by { |(status, review_status), _| [ status.to_s, review_status.to_s ] }.each do |(status, review_status), n|
       pct = (100.0 * n / total).round(1)
-      label = "#{status} / #{review_status}".ljust(32)
+      label = "#{status || '(nil)'} / #{review_status || '(nil)'}".ljust(32)
       lines << "  #{label} #{n.to_s.rjust(6)}  (#{pct}%)"
     end
     lines.join("\n")
@@ -92,23 +94,30 @@ class ImportReviewMetricsReport
   # rate means the user actively rejects rows. auto-post would still ship
   # unwanted rows to the ledger.
   #
-  # Denominator: all non-deleted session transactions (including rolled_back).
-  # Excluded rows are rolled_back and therefore drop out of `reviewable`, so
-  # using the reviewable scope would understate the candidate pool.
+  # We read excluded rows from authoritative Transaction state (status:
+  # rolled_back) instead of the transaction_excluded event log. This captures
+  # every exclusion path — including duplicate decisions that flip a row to
+  # rolled_back without emitting an event (ParsingSession#apply_duplicate_decisions!
+  # for keep_original / keep_neither) — and is stable against later edits
+  # because rolled_back rows do not get soft-deleted.
+  #
+  # Denominator covers every row the session ever created (including later
+  # soft-deletes via TransactionsController#destroy), so the rate does not
+  # drift up retroactively as users prune the ledger.
   def exclusion_rate
     return "## Row exclusion rate\n  (no committed sessions in scope)" if committed_ids.empty?
 
     candidate_per_session = Transaction
-                              .where(parsing_session_id: committed_ids, deleted: false)
+                              .unscoped
+                              .where(parsing_session_id: committed_ids)
                               .group(:parsing_session_id)
                               .count
 
-    excluded_per_session = ImportReviewEvent
-                             .where(parsing_session_id: committed_ids, event_type: "transaction_excluded")
-                             .where.not(reviewed_transaction_id: nil)
-                             .distinct
+    excluded_per_session = Transaction
+                             .unscoped
+                             .where(parsing_session_id: committed_ids, status: "rolled_back")
                              .group(:parsing_session_id)
-                             .count(:reviewed_transaction_id)
+                             .count
 
     rates = committed_ids.filter_map do |sid|
       total = candidate_per_session[sid] || 0
@@ -117,6 +126,7 @@ class ImportReviewMetricsReport
     end
 
     return "## Row exclusion rate\n  (no candidate transactions in committed sessions)" if rates.empty?
+
 
     format_rate_section(
       title: "Row exclusion rate (distinct excluded transaction / candidate)",
@@ -136,8 +146,8 @@ class ImportReviewMetricsReport
     end
 
     lines = [ "## ImportIssue distribution (source × type × status)" ]
-    rows.sort_by { |k, _| k }.each do |(source, type, status), n|
-      lines << "  #{source.ljust(13)} #{type.ljust(25)} #{status.ljust(10)} #{n.to_s.rjust(5)}"
+    rows.sort_by { |(source, type, status), _| [ source.to_s, type.to_s, status.to_s ] }.each do |(source, type, status), n|
+      lines << "  #{source.to_s.ljust(13)} #{type.to_s.ljust(25)} #{status.to_s.ljust(10)} #{n.to_s.rjust(5)}"
     end
     lines.join("\n")
   end
@@ -199,16 +209,18 @@ class ImportReviewMetricsReport
     buckets
   end
 
-  # Nearest-rank percentile on a 0-indexed sorted array. For n=10, p=0.9 →
-  # idx = (9 * 0.9).round = 8 → sorted[8] (9th value). Avoids the off-by-one
-  # of `(n * p).floor` which picks sorted[9] (= max) when n*p is an integer.
+  # Standard nearest-rank percentile (1-indexed: rank = ceil(p * n)), then
+  # converted to a 0-indexed array index. For n=10, p=0.9 → ceil(9) = 9 →
+  # sorted[8]. For n=2, p=0.5 → ceil(1) = 1 → sorted[0] (lower median), which
+  # `round`-based indexing would have biased to the max.
   def percentile(sorted, p)
     return nil if sorted.empty?
     return sorted.first if sorted.size == 1
 
-    idx = ((sorted.size - 1) * p).round
-    idx = sorted.size - 1 if idx > sorted.size - 1
-    sorted[idx]
+    rank = (sorted.size * p).ceil
+    rank = 1 if rank < 1
+    rank = sorted.size if rank > sorted.size
+    sorted[rank - 1]
   end
 
   def humanize_duration(seconds)
