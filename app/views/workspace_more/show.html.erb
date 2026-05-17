@@ -46,6 +46,31 @@
   <section class="mb-6">
     <h2 class="text-sm font-semibold text-secondary uppercase tracking-wider mb-2 px-1">내 계정</h2>
     <div class="bg-surface rounded-lg shadow-sm overflow-hidden divide-y divide-default">
+      <%# Phase 5: 화면 테마 — User#theme. 라디오 폼이 user_settings#update에 POST. %>
+      <%= form_with url: user_settings_path, method: :patch,
+            data: { controller: "theme", action: "change->theme#submit" } do |f| %>
+        <fieldset class="px-4 py-3">
+          <legend class="text-primary font-medium mb-2">화면 테마</legend>
+          <div class="flex gap-2" role="radiogroup" aria-label="화면 테마">
+            <% User::THEMES.each do |theme| %>
+              <% checked = current_user.theme == theme %>
+              <label class="flex-1 cursor-pointer">
+                <input type="radio" name="user[theme]" value="<%= theme %>" class="sr-only peer"
+                       <%= 'checked' if checked %>
+                       data-theme-target="input"
+                       data-action="change->theme#apply">
+                <span class="block text-center text-sm py-2 rounded-md border border-default peer-checked:border-action peer-checked:bg-action-subtle peer-checked:text-action-strong">
+                  <%= case theme
+                      when "auto" then "자동 (시스템)"
+                      when "light" then "라이트"
+                      when "dark" then "다크"
+                      end %>
+                </span>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+      <% end %>
       <%= link_to user_settings_path, class: "flex items-center justify-between px-4 py-3 hover:bg-elev" do %>
         <span class="text-primary">계정 설정</span>
         <%= render 'shared/chevron' %>

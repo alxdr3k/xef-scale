@@ -54,4 +54,21 @@ class User < ApplicationRecord
     self.settings ||= {}
     self.settings["excluded_merchants"] = text.to_s.split("\n").map(&:strip).reject(&:blank?)
   end
+
+  # ADR-0008 / Phase 5: 다크 모드 선호도. `users.settings` JSON에 저장
+  # ("auto" / "light" / "dark"). 기본 `auto` — OS prefers-color-scheme 따름.
+  # 다른 저장 위치(별도 users.theme 컬럼) 대신 JSON에 둔 이유: open-questions Q4
+  # 결정. 별도 컬럼은 마이그레이션 비용 있고, 같은 settings JSON에 이미
+  # excluded_merchants가 있으므로 user 단위 환경설정의 일관성을 위해 동일 위치.
+  THEMES = %w[auto light dark].freeze
+
+  def theme
+    raw = settings&.dig("theme")
+    THEMES.include?(raw) ? raw : "auto"
+  end
+
+  def theme=(value)
+    self.settings ||= {}
+    self.settings["theme"] = THEMES.include?(value.to_s) ? value.to_s : "auto"
+  end
 end
