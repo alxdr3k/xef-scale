@@ -124,6 +124,53 @@ class ImportIssueResolutionServiceTest < ActiveSupport::TestCase
     assert_equal 7_000, @issue.amount
   end
 
+  test "promotion preserves parsed metadata (payment_type, installment, source) from raw_payload" do
+    # ImportIssueRecorder는 row의 채워진 필드(date/amount)를 컬럼에도 set하고
+    # missing_fields는 빈 필드만 나열한다. 본 테스트는 그 실 사용 패턴을 반영.
+    issue = @workspace.import_issues.create!(
+      parsing_session: @session,
+      source_type: "image_upload",
+      missing_fields: %w[merchant],
+      date: Date.new(2026, 5, 1),
+      amount: 60_000,
+      raw_payload: {
+        "date" => "2026-05-01",
+        "amount" => 60_000,
+        "payment_type" => "installment",
+        "installment_month" => 1,
+        "installment_total" => 3,
+        "source_institution_raw" => "신한카드",
+        "parser_confidence" => 0.92
+      }
+    )
+
+    result = ImportIssueResolutionService.new(issue, user: @user).update_missing_fields!(
+      merchant: "베스트샵"
+    )
+
+    assert result.success?
+    assert_equal :promoted, result.status
+    tx = result.transaction
+    assert_equal "installment", tx.payment_type
+    assert_equal 1, tx.installment_month
+    assert_equal 3, tx.installment_total
+    assert_equal "신한카드", tx.source_metadata["source_institution_raw"]
+    assert_in_delta 0.92, tx.parse_confidence, 0.01
+  end
+
+  test "promotion applies category matching via keyword" do
+    category = @workspace.categories.create!(name: "카페", keyword: "스타벅스")
+
+    result = ImportIssueResolutionService.new(@issue, user: @user).update_missing_fields!(
+      date: Date.current, merchant: "스타벅스 강남점", amount: 5_000
+    )
+
+    assert result.success?
+    tx = result.transaction
+    assert_equal category.id, tx.category_id
+    assert_equal "keyword_match", tx.classification_source
+  end
+
   test "promotion creates DuplicateConfirmation when repaired row matches existing transaction" do
     @workspace.transactions.create!(
       date: Date.new(2026, 5, 1),

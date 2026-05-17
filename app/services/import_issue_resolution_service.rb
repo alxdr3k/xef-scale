@@ -67,15 +67,7 @@ class ImportIssueResolutionService
   private
 
   def promote_completed_issue!
-    candidate = @workspace.transactions.build(
-      date: @issue.date,
-      merchant: @issue.merchant,
-      amount: @issue.amount,
-      status: "pending_review",
-      parsing_session: @issue.parsing_session,
-      source_type: @issue.source_type
-    )
-
+    candidate = @workspace.transactions.build(transaction_attrs_for_promotion)
     candidate.save!
     # Run the same duplicate detection the parse jobs run so repaired rows
     # cannot bypass the duplicate-review guard. A match becomes a pending
@@ -125,6 +117,60 @@ class ImportIssueResolutionService
     end
 
     out
+  end
+
+  # Build the attribute set for the promoted transaction. We start from the
+  # parser's original tx_data captured in raw_payload (so installment metadata,
+  # source_metadata, payment_type, etc. survive repair), then overlay the
+  # user-supplied date/merchant/amount and apply the same category match the
+  # parse jobs would have run if the row had been complete in the first place.
+  def transaction_attrs_for_promotion
+    payload = (@issue.raw_payload || {}).with_indifferent_access
+    match = match_category(@issue.merchant)
+
+    {
+      date: @issue.date,
+      merchant: @issue.merchant,
+      amount: @issue.amount,
+      description: payload[:description].presence || "",
+      payment_type: payload[:payment_type].presence || "lump_sum",
+      installment_month: payload[:installment_month],
+      installment_total: payload[:installment_total],
+      status: "pending_review",
+      parsing_session: @issue.parsing_session,
+      source_type: @issue.source_type,
+      category: match[:category],
+      classification_source: match[:source],
+      source_metadata: source_metadata_for(payload),
+      parse_confidence: payload[:parser_confidence] || payload[:confidence]
+    }
+  end
+
+  def match_category(merchant)
+    return { category: nil, source: nil } if merchant.blank?
+
+    mapping = CategoryMapping.find_for_merchant(@workspace, merchant)
+    return { category: mapping.category, source: "mapping_match" } if mapping
+
+    keyword_category = @workspace.categories.find { |c| c.matches?(merchant) }
+    return { category: keyword_category, source: "keyword_match" } if keyword_category
+
+    { category: nil, source: nil }
+  end
+
+  def source_metadata_for(payload)
+    meta = {}
+    meta["source_channel"] = @issue.text_paste? ? "pasted_text" : "image_upload"
+    if (raw = payload[:source_institution_raw] || payload[:institution]).present?
+      meta["source_institution_raw"] = raw.to_s.strip
+    end
+    if (raw_app = payload[:source_app_raw]).present?
+      meta["source_app_raw"] = raw_app.to_s
+    end
+    if (conf = payload[:parser_confidence] || payload[:confidence]).present?
+      meta["parser_confidence"] = conf.to_f
+    end
+    meta
   end
 
   def submitted_with_existing(submitted)
