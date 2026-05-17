@@ -105,8 +105,23 @@ class SqliteBackupService
     validate_restore_quiescence!(quiesced)
     integrity_check!(source_path)
     FileUtils.mkdir_p(database_path.dirname)
-    copy_database(source_path: source_path, destination_path: database_path)
-    integrity = integrity_check!(database_path)
+
+    temp_path = database_path.dirname.join(
+      ".#{database_path.basename}.restore-#{SecureRandom.hex(8)}.tmp"
+    )
+
+    begin
+      copy_database(source_path: source_path, destination_path: temp_path)
+      integrity = integrity_check!(temp_path)
+
+      File.rename(temp_path, database_path)
+      # WAL/SHM sidecars belong to the previous DB; remove them so SQLite does
+      # not replay a stale journal against the restored file. Safe because
+      # validate_restore_quiescence! asserts no live writers.
+      FileUtils.rm_f([ "#{database_path}-wal", "#{database_path}-shm" ])
+    ensure
+      FileUtils.rm_f(temp_path) if File.exist?(temp_path)
+    end
 
     RestoreResult.new(
       environment: environment,

@@ -132,6 +132,29 @@ class SqliteBackupServiceTest < ActiveSupport::TestCase
     end
   end
 
+  test "restore failure mid-copy preserves existing target database" do
+    with_tmpdir do |dir|
+      database_path = dir.join("target.sqlite3")
+      backup_path = dir.join("backup.sqlite3")
+      create_database(database_path, [ "old1", "old2" ])
+      create_large_database(backup_path, rows: 250)
+
+      assert_raises(SqliteBackupService::BackupError) do
+        SqliteBackupService.new(
+          environment: "test",
+          role: :primary,
+          database_path: database_path,
+          backup_dir: dir.join("backups"),
+          clock: -> { FIXED_TIME },
+          backup_max_steps: 1
+        ).restore(backup_path, quiesced: true)
+      end
+
+      assert_equal [ "old1", "old2" ], read_entries(database_path)
+      assert_empty Dir.glob(dir.join(".target.sqlite3.restore-*.tmp"))
+    end
+  end
+
   test "backup continues when source checkpoint is busy" do
     with_tmpdir do |dir|
       database_path = dir.join("source.sqlite3")
@@ -160,37 +183,13 @@ class SqliteBackupServiceTest < ActiveSupport::TestCase
     end
   end
 
-  test "restore aborts when target writer lock is active" do
-    with_tmpdir do |dir|
-      database_path = dir.join("target.sqlite3")
-      backup_path = dir.join("backup.sqlite3")
-      create_database(database_path, [ "old" ])
-      create_database(backup_path, [ "new" ])
+  # Atomic restore (temp file + rename) means a stale target writer no longer
+  # blocks restore the way in-place copy did. The contract for callers stays:
+  # quiesce all DB access before restore. If they lie, their orphaned writer
+  # is silently dropped but the restored DB integrity is intact. See
+  # `restore requires explicit quiescence before copying backup` for the gate.
 
-      writer = SQLite3::Database.new(database_path.to_s)
-      writer.execute("BEGIN IMMEDIATE")
-      writer.execute("INSERT INTO entries (name) VALUES (?)", "uncommitted")
-
-      assert_raises(SqliteBackupService::BackupError) do
-        SqliteBackupService.new(
-          environment: "test",
-          role: :primary,
-          database_path: database_path,
-          backup_dir: dir.join("backups"),
-          clock: -> { FIXED_TIME },
-          busy_timeout_ms: 50,
-          backup_retry_attempts: 1,
-          backup_retry_delay: 0.01
-        ).restore(backup_path, quiesced: true)
-      end
-    ensure
-      writer&.execute("ROLLBACK") unless writer&.closed?
-      writer&.close unless writer&.closed?
-      assert_equal [ "old" ], read_entries(database_path) if database_path
-    end
-  end
-
-  test "restore retries transient target writer lock" do
+  test "restore is unaffected by transient writer activity on target" do
     with_tmpdir do |dir|
       database_path = dir.join("target.sqlite3")
       backup_path = dir.join("backup.sqlite3")
