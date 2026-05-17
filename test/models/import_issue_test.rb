@@ -78,13 +78,107 @@ class ImportIssueTest < ActiveSupport::TestCase
   test "ambiguous duplicate requires duplicate transaction" do
     issue = @workspace.import_issues.build(
       parsing_session: @session,
-      source_type: "text_paste",
+      source_type: "image_upload",
       issue_type: "ambiguous_duplicate",
       missing_fields: []
     )
 
     assert_not issue.valid?
     assert_includes issue.errors[:duplicate_transaction].join, "must be present"
+  end
+
+  test "ambiguous duplicate remains updatable after duplicate transaction is destroyed" do
+    duplicate = @workspace.transactions.create!(
+      date: Date.current,
+      merchant: "스타벅스",
+      amount: 5_000,
+      status: "committed"
+    )
+    issue = @workspace.import_issues.create!(
+      parsing_session: @session,
+      duplicate_transaction: duplicate,
+      source_type: "image_upload",
+      issue_type: "ambiguous_duplicate",
+      missing_fields: []
+    )
+
+    duplicate.destroy!
+    issue.reload
+
+    assert_nil issue.duplicate_transaction_id
+    assert issue.update(status: "dismissed"), issue.errors.full_messages.to_sentence
+  end
+
+  test "image upload issue requires file upload parsing session" do
+    text_session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    issue = @workspace.import_issues.build(
+      parsing_session: text_session,
+      source_type: "image_upload",
+      missing_fields: [ "date" ]
+    )
+
+    assert_not issue.valid?
+    assert_includes issue.errors[:source_type].join, "file upload"
+  end
+
+  test "text paste issue requires text paste parsing session" do
+    issue = @workspace.import_issues.build(
+      parsing_session: @session,
+      source_type: "text_paste",
+      missing_fields: [ "date" ]
+    )
+
+    assert_not issue.valid?
+    assert_includes issue.errors[:source_type].join, "text paste"
+  end
+
+  test "text paste issue rejects processed file" do
+    text_session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste",
+      status: "completed",
+      review_status: "pending_review"
+    )
+    processed_file = @workspace.processed_files.create!(
+      filename: "stray.png",
+      original_filename: "stray.png",
+      status: "completed"
+    )
+    issue = @workspace.import_issues.build(
+      parsing_session: text_session,
+      processed_file: processed_file,
+      source_type: "text_paste",
+      missing_fields: [ "date" ]
+    )
+
+    assert_not issue.valid?
+    assert_includes issue.errors[:processed_file_id].join, "blank"
+  end
+
+  test "image upload issue processed file must match parsing session" do
+    session_file = @workspace.processed_files.create!(
+      filename: "statement.png",
+      original_filename: "statement.png",
+      status: "completed"
+    )
+    @session.update!(processed_file: session_file)
+    other_file = @workspace.processed_files.create!(
+      filename: "other.png",
+      original_filename: "other.png",
+      status: "completed"
+    )
+    issue = @workspace.import_issues.build(
+      parsing_session: @session,
+      processed_file: other_file,
+      source_type: "image_upload",
+      missing_fields: [ "date" ]
+    )
+
+    assert_not issue.valid?
+    assert_includes issue.errors[:processed_file_id].join, "match the parsing session"
   end
 
   test "rejects unsupported missing fields" do

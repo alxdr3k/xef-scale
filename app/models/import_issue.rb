@@ -23,6 +23,8 @@ class ImportIssue < ApplicationRecord
   validate :missing_fields_present
   validate :missing_fields_are_required_fields
   validate :duplicate_transaction_present_for_ambiguous_duplicate
+  validate :source_matches_parsing_session
+  validate :processed_file_matches_parsing_session
   validate :associations_belong_to_workspace
 
   scope :open, -> { where(status: "open") }
@@ -79,10 +81,40 @@ class ImportIssue < ApplicationRecord
   end
 
   def duplicate_transaction_present_for_ambiguous_duplicate
-    return unless ambiguous_duplicate?
+    # Only enforce while the issue is open; resolved/dismissed issues remain
+    # auditable even after their referenced transaction is destroyed (the
+    # foreign key is nullified). Without this gate, stale audit records could
+    # not be updated for status transitions.
+    return unless ambiguous_duplicate? && open?
     return if duplicate_transaction.present?
 
-    errors.add(:duplicate_transaction, "must be present for ambiguous duplicates")
+    errors.add(:duplicate_transaction, "must be present for open ambiguous duplicates")
+  end
+
+  def source_matches_parsing_session
+    return unless parsing_session
+
+    if image_upload? && parsing_session.source_type != "file_upload"
+      errors.add(:source_type, "must match a file upload parsing session")
+    end
+
+    if text_paste? && parsing_session.source_type != "text_paste"
+      errors.add(:source_type, "must match a text paste parsing session")
+    end
+  end
+
+  def processed_file_matches_parsing_session
+    return unless parsing_session
+
+    if text_paste? && processed_file.present?
+      errors.add(:processed_file_id, "must be blank for text paste issues")
+      return
+    end
+
+    return if processed_file.blank?
+    return if parsing_session.processed_file_id == processed_file_id
+
+    errors.add(:processed_file_id, "must match the parsing session processed file")
   end
 
   def associations_belong_to_workspace
