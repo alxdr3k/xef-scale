@@ -77,6 +77,7 @@ class ReviewsController < ApplicationController
                                                  new_transaction: [ :category ]
                                                )
                                                .order(:created_at)
+    @open_import_issues = @parsing_session.open_import_issues.to_a
   end
 
   def commit

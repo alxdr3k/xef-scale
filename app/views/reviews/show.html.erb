@@ -53,6 +53,13 @@
     </div>
   </div>
 
+  <!-- Import Issue Repair Section (B4) -->
+  <% unless @read_only %>
+    <%= render "reviews/import_issues_section",
+        open_import_issues: @open_import_issues,
+        workspace: @workspace %>
+  <% end %>
+
   <!-- Duplicate Section -->
   <% unless @read_only %>
     <%= render "reviews/duplicate_section",

@@ -1,0 +1,68 @@
+<%# Import issue repair surface (B4).
+    Each open `missing_required_fields` issue gets a small inline form so the
+    user can fill the missing values and promote the row into the pending
+    review queue. Ambiguous duplicate issues are handled by the existing
+    DuplicateConfirmation flow today; rendered as info-only here. %>
+<% return if open_import_issues.blank? %>
+
+<div class="bg-white rounded-lg shadow mb-6">
+  <div class="px-4 py-3 border-b border-gray-200">
+    <h2 class="text-base font-semibold text-gray-900">
+      수정 필요 항목 <span class="ml-1 text-gray-500"><%= open_import_issues.size %>건</span>
+    </h2>
+    <p class="text-xs text-gray-500 mt-1">
+      파싱 결과 중 날짜·가맹점·금액 같은 필수값이 비어 있는 항목입니다. 채워서 결제 내역에 반영하거나 제외할 수 있습니다.
+    </p>
+  </div>
+
+  <ul class="divide-y divide-gray-200">
+    <% open_import_issues.each do |issue| %>
+      <li class="px-4 py-3">
+        <% if issue.missing_required_fields? %>
+          <%= form_with url: workspace_import_issue_path(workspace, issue), method: :patch, local: true,
+                        class: "grid grid-cols-1 md:grid-cols-4 gap-2 items-end" do |f| %>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">날짜</label>
+              <%= f.date_field "import_issue[date]", value: issue.date,
+                    class: "w-full px-2 py-1 border border-gray-300 rounded text-sm",
+                    required: issue.missing_fields.include?("date") %>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">가맹점</label>
+              <%= f.text_field "import_issue[merchant]", value: issue.merchant,
+                    class: "w-full px-2 py-1 border border-gray-300 rounded text-sm",
+                    placeholder: "예: 스타벅스" %>
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 mb-1">금액</label>
+              <%= f.number_field "import_issue[amount]", value: issue.amount,
+                    class: "w-full px-2 py-1 border border-gray-300 rounded text-sm",
+                    placeholder: "0" %>
+            </div>
+            <div class="flex items-center gap-2">
+              <%= f.submit "반영", class: "px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 cursor-pointer" %>
+              <%= button_to "제외", workspace_import_issue_path(workspace, issue),
+                    method: :patch,
+                    params: { resolution_action: "dismiss" },
+                    class: "px-3 py-1 border border-gray-300 text-gray-600 text-sm rounded hover:bg-gray-50",
+                    data: { turbo_confirm: "이 항목을 제외하시겠습니까?" } %>
+            </div>
+          <% end %>
+          <% if issue.missing_fields.any? %>
+            <p class="text-xs text-amber-600 mt-1">
+              누락: <%= issue.missing_fields.map { |f| { "date" => "날짜", "merchant" => "가맹점", "amount" => "금액" }[f] || f }.join(", ") %>
+            </p>
+          <% end %>
+        <% else %>
+          <%# Ambiguous duplicate or other types — not user-resolvable in B4 yet. %>
+          <p class="text-sm text-gray-700">
+            <%= issue.merchant.presence || "가맹점 미상" %> · <%= issue.amount %>원
+          </p>
+          <p class="text-xs text-gray-500 mt-0.5">
+            중복 의심 — 중복 검토 화면에서 처리해 주세요.
+          </p>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+</div>
