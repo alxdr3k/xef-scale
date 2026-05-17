@@ -64,8 +64,13 @@ export default class extends Controller {
     } else if (event.key === "Enter") {
       // Enter: 현재 row의 click을 dispatch → bulk-select 컨트롤러의 toggleRow 핸들러가
       // 자동으로 선택 토글. row가 부재하거나 deleted면 no-op.
-      const row = document.activeElement?.closest(this.rowSelectorValue)
-      if (row && row.dataset.deleted !== "true") {
+      //
+      // Codex PR #200 P1: row 자체에 focus 있을 때만 toggle. row 안 interactive
+      // descendant(category 버튼, 관리 링크 등)에 focus 있을 때는 그 control의
+      // native Enter 처리에 맡겨야 컨트롤 활성화가 보존된다.
+      const active = document.activeElement
+      const row = active?.closest(this.rowSelectorValue)
+      if (row && active === row && row.dataset.deleted !== "true") {
         event.preventDefault()
         row.click()
       }
