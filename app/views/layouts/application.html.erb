@@ -1,19 +1,34 @@
 <!DOCTYPE html>
 <%# Phase 5: 사용자 선택 테마(`User#theme`)를 data-theme로 반영.
     application.tailwind.css의 `html[data-theme=...]` 룰이 color-scheme 토글.
-    Turbo Drive가 <html> 속성을 보존하므로 *항상* 명시적으로 set한다 (Codex
-    PR #180 P1): signed-out 상태도 "auto"를 명시해 이전 세션의 stale "dark"가
-    남는 것을 방지. %>
-<html lang="ko" data-theme="<%= user_signed_in? ? current_user.theme : "auto" %>">
+    Turbo Drive가 <html> 자체를 보존하므로 initial render만으로는 부족 — 매
+    turbo navigation에서 meta[user-theme] 값을 documentElement에 동기화한다
+    (Codex PR #180 P1). %>
+<% current_theme = user_signed_in? ? current_user.theme : "auto" %>
+<html lang="ko" data-theme="<%= current_theme %>">
   <head>
     <title><%= content_for(:title) || "지출 추적" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="application-name" content="지출 추적">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="user-theme" content="<%= current_theme %>">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <meta name="turbo-cache-control" content="no-cache">
+    <%# Phase 5: Turbo Drive는 <html>을 보존하므로, 매 페이지 로드마다
+        meta[user-theme]을 documentElement.dataset.theme에 sync. 인라인 script
+        (Stimulus 부트 전이라도 동작). %>
+    <script>
+      (function () {
+        function syncTheme() {
+          var m = document.querySelector('meta[name="user-theme"]');
+          if (m) document.documentElement.dataset.theme = m.content;
+        }
+        document.addEventListener("turbo:load", syncTheme);
+        document.addEventListener("turbo:render", syncTheme);
+      })();
+    </script>
 
     <%= yield :head %>
 

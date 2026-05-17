@@ -66,6 +66,16 @@ class ScreenShellTest < ActionDispatch::IntegrationTest
     assert_response :success
     # Turbo Drive가 <html> 속성을 보존하므로 signed-out도 명시 set.
     assert_match(/<html[^>]*data-theme="auto"/, response.body)
+    # 매 turbo navigation 시 sync용 meta tag도 같이 노출.
+    assert_match(/<meta name="user-theme" content="auto"/, response.body)
+  end
+
+  test "head includes meta[user-theme] matching current user (Codex PR #180 P1 — Turbo Drive sync)" do
+    @user.update!(settings: { "theme" => "dark" })
+    sign_in @user
+    get dashboard_path
+    assert_response :success
+    assert_match(/<meta name="user-theme" content="dark"/, response.body)
   end
 
   test "nav hides 카테고리 tab from non-admin (member_read) member" do
