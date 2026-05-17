@@ -17,8 +17,11 @@
         파싱 결과를 확인하고 중복을 정리한 뒤 거래 내역에 반영하세요.
       </p>
     </div>
-    <%# Phase 3.3: "+ 새로 가져오기"는 시트를 연다. parsing_sessions/index로의 하드 링크는 폐기. %>
-    <%= render 'shared/input_sheet', workspace: @workspace %>
+    <%# Phase 3.3: "+ 새로 가져오기"는 시트를 연다. parsing_sessions/index로의 하드 링크는 폐기.
+        Codex hotfix A: import은 write action이므로 read-only 멤버에게 노출 금지. %>
+    <% if current_user.can_write?(@workspace) %>
+      <%= render 'shared/input_sheet', workspace: @workspace %>
+    <% end %>
   </div>
 
   <%# 세그먼트 탭 — segmented_tabs 채택은 Phase 3.x. 본 PR은 인라인. %>

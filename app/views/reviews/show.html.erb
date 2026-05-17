@@ -120,11 +120,14 @@
           <%= link_to '결제 내역 보기',
               workspace_transactions_path(@workspace, year: Date.current.year, month: Date.current.month),
               class: 'px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700' %>
-          <%= form_with url: rollback_workspace_parsing_session_path(@workspace, @parsing_session),
-              method: :post, class: 'inline-block', data: { turbo_confirm: '이번 가져오기를 모두 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.' } do %>
-            <button type="submit" class="px-4 py-2 bg-white border border-red-600 text-red-600 rounded-lg hover:bg-red-50">
-              가져오기 되돌리기
-            </button>
+          <%# rollback은 write 권한 action — member_read는 dead-end 버튼이 안 보여야. %>
+          <% if current_user.can_write?(@workspace) %>
+            <%= form_with url: rollback_workspace_parsing_session_path(@workspace, @parsing_session),
+                method: :post, class: 'inline-block', data: { turbo_confirm: '이번 가져오기를 모두 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.' } do %>
+              <button type="submit" class="px-4 py-2 bg-white border border-red-600 text-red-600 rounded-lg hover:bg-red-50">
+                가져오기 되돌리기
+              </button>
+            <% end %>
           <% end %>
         </div>
       </div>

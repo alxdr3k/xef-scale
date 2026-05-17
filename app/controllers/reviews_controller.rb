@@ -65,7 +65,16 @@ class ReviewsController < ApplicationController
     @total_commit_count = @parsing_session.transactions.pending_review.where(deleted: false).count
     @pagy, @transactions = pagy(@transactions, limit: 50)
     @categories = @workspace.categories.order(:name)
-    @read_only = @parsing_session.review_committed? || @parsing_session.review_rolled_back? || @parsing_session.review_discarded?
+    # ADR-0004 §"필수": show는 read 권한이면 접근 가능 (member_read 포함).
+    # 편집 가능 여부는 *write 권한 + 미finalized* 의 결합이며, view는 단일 플래그
+    # `@read_only` 만으로 write affordance(commit/discard/bulk toolbar/inline edit
+    # URL/카테고리 selector)를 분기한다. 이 두 조건을 분리하지 않으면 read-only
+    # member에게 dead-end 편집 UI가 노출된다 (Codex hotfix A).
+    @session_finalized = @parsing_session.review_committed? ||
+                         @parsing_session.review_rolled_back? ||
+                         @parsing_session.review_discarded?
+    @can_edit_review = current_user.can_write?(@workspace) && !@session_finalized
+    @read_only = !@can_edit_review
     @duplicate_confirmations = @parsing_session.duplicate_confirmations
                                                .pending
                                                .includes(
