@@ -132,6 +132,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_022650) do
     t.index ["identifier"], name: "index_financial_institutions_on_identifier", unique: true
   end
 
+  create_table "import_issues", force: :cascade do |t|
+    t.integer "amount"
+    t.datetime "created_at", null: false
+    t.date "date"
+    t.integer "duplicate_transaction_id"
+    t.string "issue_type", default: "missing_required_fields", null: false
+    t.string "merchant"
+    t.text "missing_fields", default: "[]", null: false
+    t.integer "parsing_session_id", null: false
+    t.integer "processed_file_id"
+    t.text "raw_payload"
+    t.integer "resolved_transaction_id"
+    t.string "source_type", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "updated_at", null: false
+    t.integer "workspace_id", null: false
+    t.index ["duplicate_transaction_id"], name: "index_import_issues_on_duplicate_transaction_id"
+    t.index ["issue_type", "status"], name: "index_import_issues_on_issue_type_and_status"
+    t.index ["parsing_session_id", "status"], name: "index_import_issues_on_parsing_session_id_and_status"
+    t.index ["parsing_session_id"], name: "index_import_issues_on_parsing_session_id"
+    t.index ["processed_file_id"], name: "index_import_issues_on_processed_file_id"
+    t.index ["resolved_transaction_id"], name: "index_import_issues_on_resolved_transaction_id"
+    t.index ["source_type", "status"], name: "index_import_issues_on_source_type_and_status"
+    t.index ["workspace_id", "status"], name: "index_import_issues_on_workspace_id_and_status"
+    t.index ["workspace_id"], name: "index_import_issues_on_workspace_id"
+  end
+
   create_table "notifications", force: :cascade do |t|
     t.string "action_url"
     t.datetime "created_at", null: false
@@ -303,6 +330,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_022650) do
   add_foreign_key "duplicate_confirmations", "parsing_sessions"
   add_foreign_key "duplicate_confirmations", "transactions", column: "new_transaction_id"
   add_foreign_key "duplicate_confirmations", "transactions", column: "original_transaction_id"
+  add_foreign_key "import_issues", "parsing_sessions"
+  add_foreign_key "import_issues", "processed_files"
+  add_foreign_key "import_issues", "transactions", column: "duplicate_transaction_id"
+  add_foreign_key "import_issues", "transactions", column: "resolved_transaction_id"
+  add_foreign_key "import_issues", "workspaces"
   add_foreign_key "notifications", "users"
   add_foreign_key "notifications", "workspaces"
   add_foreign_key "parsing_sessions", "processed_files"
