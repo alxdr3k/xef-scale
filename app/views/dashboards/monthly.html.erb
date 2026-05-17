@@ -2,8 +2,8 @@
      data-dashboard-category-year-value="<%= @year %>"
      data-dashboard-category-month-value="<%= @month %>">
   <div class="mb-8">
-    <h1 class="text-2xl font-bold text-gray-900">대시보드</h1>
-    <p class="text-gray-600"><%= @workspace.name %> - <%= @year %>년 <%= @month %>월</p>
+    <h1 class="text-2xl font-bold text-primary">대시보드</h1>
+    <p class="text-secondary"><%= @workspace.name %> - <%= @year %>년 <%= @month %>월</p>
   </div>
 
   <%= render 'tabs' %>
@@ -13,14 +13,14 @@
     <% prev_month = @month == 1 ? 12 : @month - 1 %>
     <% prev_year = @month == 1 ? @year - 1 : @year %>
     <%= link_to '← 이전 달', monthly_dashboard_path(year: prev_year, month: prev_month),
-        class: 'text-indigo-600 hover:text-indigo-800' %>
+        class: 'text-action hover:text-action-hover' %>
 
     <%= render 'shared/month_picker', year: @year, month: @month, base_path: monthly_dashboard_path %>
 
     <% next_month = @month == 12 ? 1 : @month + 1 %>
     <% next_year = @month == 12 ? @year + 1 : @year %>
     <%= link_to '다음 달 →', monthly_dashboard_path(year: next_year, month: next_month),
-        class: 'text-indigo-600 hover:text-indigo-800' %>
+        class: 'text-action hover:text-action-hover' %>
   </div>
 
   <%# Phase 4: shared/_hero_stat 채택 (ADR-0003 / ADR-0006 시맨틱 토큰).
@@ -70,12 +70,12 @@
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     <!-- Category Breakdown -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="bg-surface rounded-lg shadow p-6">
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-semibold text-gray-900">카테고리별 지출</h2>
-        <%= link_to '카테고리 관리', workspace_categories_path(@workspace), class: 'text-sm text-indigo-600 hover:text-indigo-800' %>
+        <h2 class="text-lg font-semibold text-primary">카테고리별 지출</h2>
+        <%= link_to '카테고리 관리', workspace_categories_path(@workspace), class: 'text-sm text-action hover:text-action-hover' %>
       </div>
-      <p class="text-sm text-gray-500 mb-4">카테고리를 클릭하면 해당 결제를 볼 수 있습니다</p>
+      <p class="text-sm text-tertiary mb-4">카테고리를 클릭하면 해당 결제를 볼 수 있습니다</p>
       <%= render 'category_breakdown' %>
     </div>
 
