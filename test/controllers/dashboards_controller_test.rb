@@ -235,4 +235,167 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     # 검토함 진입 CTA가 없음 (카드 자체 미렌더).
     assert_no_match(/지금 검토/, response.body)
   end
+
+  # Phase 4 slice 2: VarianceCard 데이터 흐름.
+  test "monthly_variance returns nil when viewing a non-current month" do
+    @workspace.transactions.create!(
+      date: 2.months.ago.beginning_of_month, amount: 5000, merchant: "OLD"
+    )
+    # 2개월 전 month로 직접 진입 — today와 month가 다르므로 variance nil.
+    past = 2.months.ago
+    get monthly_dashboard_path, params: { year: past.year, month: past.month }
+    assert_response :success
+    assert_nil controller.instance_variable_get(:@variance)
+  end
+
+  test "monthly_variance returns nil when prior month has no spending" do
+    # 현재 month 데이터는 있지만 전월 spending 0 → 비교 불가.
+    Transaction.where(workspace: @workspace).destroy_all
+    @workspace.transactions.create!(
+      date: Date.current, amount: 10_000, merchant: "NOW"
+    )
+    get monthly_dashboard_path
+    assert_response :success
+    assert_nil controller.instance_variable_get(:@variance)
+  end
+
+  test "monthly_variance computes variance_pct and projected_end" do
+    Transaction.where(workspace: @workspace).destroy_all
+    today = Date.current
+    skip "today is end-of-month; variance skips projection" if today == today.end_of_month
+    # Codex PR #178 P1: prior month가 짧을 때(예: 3월 29일 vs 2월 28일) cutoff_day가
+    # prior_end_day로 clamp되어 today 거래가 제외됨. 이 테스트는 today 거래가
+    # cutoff 안에 포함되는 케이스만 검증한다.
+    skip "today.day exceeds prior month length" if today.day > today.prev_month.end_of_month.day
+
+    prior_month_same_day_start = today.prev_month.beginning_of_month
+    @workspace.transactions.create!(
+      date: prior_month_same_day_start, amount: 10_000, merchant: "PRIOR"
+    )
+    @workspace.transactions.create!(
+      date: today, amount: 20_000, merchant: "CURRENT"
+    )
+
+    get monthly_dashboard_path
+    assert_response :success
+    variance = controller.instance_variable_get(:@variance)
+    assert_not_nil variance
+    assert_equal 10_000, variance[:prior_total]
+    assert_equal 20_000, variance[:current_total]
+    assert_equal 100, variance[:variance_pct], "current가 prior의 2배 → +100%"
+    expected_projected = ((20_000.to_f / today.day) * today.end_of_month.day).round
+    assert_equal expected_projected, variance[:projected_end]
+    # 비교 기간 표시
+    assert_equal today.day, variance[:compared_until_day]
+    # 화면에 노출
+    assert_match(/지난달 같은 시점 대비/, response.body)
+    assert_match(/▲ 100%/, response.body)
+  end
+
+  test "variance card uses positive tone when spending decreased" do
+    Transaction.where(workspace: @workspace).destroy_all
+    today = Date.current
+    skip if today == today.end_of_month
+    # Codex PR #178 P1: cutoff_day clamp로 today 거래가 제외될 수 있음.
+    skip "today.day exceeds prior month length" if today.day > today.prev_month.end_of_month.day
+
+    @workspace.transactions.create!(
+      date: today.prev_month.beginning_of_month, amount: 20_000, merchant: "PRIOR"
+    )
+    @workspace.transactions.create!(
+      date: today, amount: 10_000, merchant: "CURRENT"
+    )
+
+    get monthly_dashboard_path
+    assert_response :success
+    # decreased = positive tone (ADR-0006 의미축: 지출 감소가 긍정).
+    assert_match(/text-positive[^<]*▼ 50%/m, response.body)
+  end
+
+  # Codex PR #178: variance가 month-to-date만 사용해야 함 (미래일자 commit 제외).
+  test "monthly_variance excludes future-dated current-month transactions from current_total" do
+    Transaction.where(workspace: @workspace).destroy_all
+    today = Date.current
+    skip if today == today.end_of_month
+    # Codex PR #178 P1: cutoff_day clamp로 today 거래가 제외되는 calendar 경계 회피.
+    skip "today.day exceeds prior month length" if today.day > today.prev_month.end_of_month.day
+
+    @workspace.transactions.create!(
+      date: today.prev_month.beginning_of_month, amount: 10_000, merchant: "PRIOR"
+    )
+    @workspace.transactions.create!(
+      date: today, amount: 10_000, merchant: "TODAY"
+    )
+    # 미래일자 거래 — variance가 잘못 포함하면 anomaly.
+    @workspace.transactions.create!(
+      date: today + 5.days, amount: 50_000, merchant: "FUTURE_INFLATE"
+    )
+
+    get monthly_dashboard_path
+    assert_response :success
+    variance = controller.instance_variable_get(:@variance)
+    assert_not_nil variance
+    assert_equal 10_000, variance[:current_total],
+                 "미래일자 거래(₩50,000)가 current_total에 포함되면 안 됨"
+    assert_equal 0, variance[:variance_pct], "today까지만 비교하면 prior와 동일 → 0%"
+  end
+
+  # Codex PR #178: prior month가 짧을 때 두 기간을 같은 cutoff_day로 정렬.
+  test "monthly_variance aligns prior and current windows when prior month is shorter" do
+    Transaction.where(workspace: @workspace).destroy_all
+    today = Date.current
+    skip if today == today.end_of_month
+    prior_end_day = today.prev_month.end_of_month.day
+
+    # today.day가 prior month last day보다 작으면 정렬 effect가 없으므로 가정 skip.
+    skip "prior month length not shorter than today.day in this scenario" if today.day <= prior_end_day
+
+    # 양쪽 동일 prefix(day=1)에만 거래 → 정렬되면 같은 amount.
+    @workspace.transactions.create!(
+      date: today.prev_month.beginning_of_month, amount: 5_000, merchant: "PRIOR"
+    )
+    @workspace.transactions.create!(
+      date: today.beginning_of_month, amount: 5_000, merchant: "CURRENT_DAY_1"
+    )
+    # current month의 *prior_end_day 이후* 거래 — clamp로 제외돼야.
+    @workspace.transactions.create!(
+      date: today, amount: 100_000, merchant: "CURRENT_PAST_PRIOR_END"
+    )
+
+    get monthly_dashboard_path
+    assert_response :success
+    variance = controller.instance_variable_get(:@variance)
+    assert_not_nil variance
+    assert_equal prior_end_day, variance[:compared_until_day],
+                 "cutoff_day = min(today.day, prior_end_day) = prior_end_day"
+    assert_equal 5_000, variance[:prior_total]
+    assert_equal 5_000, variance[:current_total],
+                 "cutoff_day 이후 거래는 정렬로 제외돼야"
+  end
+
+  # Codex PR #178: prior_total ≤ 0 (cancellation 등) 가드.
+  test "monthly_variance returns nil when prior_total is negative" do
+    Transaction.where(workspace: @workspace).destroy_all
+    today = Date.current
+    skip if today == today.end_of_month
+    # prior month 시작일은 항상 day=1이므로 cutoff_day=1 이상 보장 — short month
+    # 영향은 없으나 일관성을 위해 가드.
+    skip "today.day exceeds prior month length" if today.day > today.prev_month.end_of_month.day
+
+    # prior month에 large refund (negative). 합산 음수가 되도록.
+    @workspace.transactions.create!(
+      date: today.prev_month.beginning_of_month, amount: 5_000, merchant: "OLD_BUY"
+    )
+    @workspace.transactions.create!(
+      date: today.prev_month.beginning_of_month, amount: -20_000, merchant: "OLD_REFUND"
+    )
+    @workspace.transactions.create!(
+      date: today, amount: 10_000, merchant: "CURRENT"
+    )
+
+    get monthly_dashboard_path
+    assert_response :success
+    assert_nil controller.instance_variable_get(:@variance),
+               "prior_total <= 0이면 분모 sign 뒤집힘 → 카드 자체 미렌더"
+  end
 end
