@@ -12,31 +12,48 @@ class ImportIssueResolutionService
   end
 
   def update_missing_fields!(attributes)
-    return failure("이미 처리된 항목입니다.") unless @issue.open?
+    session_guard = guard_session_open
+    return session_guard if session_guard
+
     return failure("필수값 누락 항목만 수정할 수 있습니다.") unless @issue.missing_required_fields?
 
-    normalized = normalize(attributes)
-    remaining = missing_fields_for(normalized)
+    submitted = pick_submitted(attributes)
+    return failure("수정할 값을 입력해 주세요.") if submitted.empty?
 
-    if remaining.any?
-      # Partial submission — keep the issue open with whatever the user typed
-      # and tell them which fields are still required.
-      @issue.assign_attributes(normalized.merge(missing_fields: remaining))
-      unless @issue.valid?
-        return failure(@issue.errors.full_messages.to_sentence.presence || "수정값을 확인해 주세요.")
+    # Lock the row so concurrent resolvers cannot both pass the open? check
+    # and each create a pending_review transaction. We re-read status inside
+    # the lock to defeat the open→resolved race.
+    ActiveRecord::Base.transaction do
+      @issue.lock!
+      return failure("이미 처리된 항목입니다.") unless @issue.open?
+
+      merged = submitted_with_existing(submitted)
+      remaining = missing_fields_for(merged)
+
+      if remaining.any?
+        @issue.assign_attributes(submitted.merge(missing_fields: remaining))
+        unless @issue.valid?
+          return failure(@issue.errors.full_messages.to_sentence.presence || "수정값을 확인해 주세요.")
+        end
+        @issue.save!
+        return Result.new(status: :updated, message: "수정값을 저장했습니다. 남은 필수값을 채워 주세요.")
       end
-      @issue.save!
-      return Result.new(status: :updated, message: "수정값을 저장했습니다. 남은 필수값을 채워 주세요.")
-    end
 
-    @issue.assign_attributes(normalized.merge(missing_fields: []))
-    promote_completed_issue!
+      @issue.assign_attributes(submitted.merge(missing_fields: []))
+      return promote_completed_issue!
+    end
   end
 
   def dismiss!
-    return failure("이미 처리된 항목입니다.") unless @issue.open?
+    session_guard = guard_session_open
+    return session_guard if session_guard
 
-    @issue.update!(status: "dismissed")
+    ActiveRecord::Base.transaction do
+      @issue.lock!
+      return failure("이미 처리된 항목입니다.") unless @issue.open?
+
+      @issue.update!(status: "dismissed")
+    end
     Result.new(status: :dismissed, message: "수정 필요 항목을 제외했습니다.")
   end
 
@@ -66,13 +83,31 @@ class ImportIssueResolutionService
     failure(e.record.errors.full_messages.to_sentence.presence || e.message)
   end
 
-  def normalize(attrs)
-    raw = attrs.to_h.symbolize_keys.slice(:date, :merchant, :amount)
+  # Only normalize fields the caller actually submitted. PATCH semantics:
+  # an omitted key must NOT overwrite the persisted value with nil.
+  def pick_submitted(attrs)
+    raw = attrs.to_h.symbolize_keys
+    out = {}
+    out[:date] = normalize_date(raw[:date]) if raw.key?(:date)
+    if raw.key?(:merchant)
+      out[:merchant] = raw[:merchant].is_a?(String) ? raw[:merchant].strip.presence : raw[:merchant]
+    end
+    out[:amount] = normalize_amount(raw[:amount]) if raw.key?(:amount)
+    out
+  end
+
+  def submitted_with_existing(submitted)
     {
-      date: normalize_date(raw[:date]),
-      merchant: raw[:merchant].is_a?(String) ? raw[:merchant].strip.presence : raw[:merchant],
-      amount: normalize_amount(raw[:amount])
+      date: submitted.key?(:date) ? submitted[:date] : @issue.date,
+      merchant: submitted.key?(:merchant) ? submitted[:merchant] : @issue.merchant,
+      amount: submitted.key?(:amount) ? submitted[:amount] : @issue.amount
     }
+  end
+
+  def guard_session_open
+    return nil if @issue.parsing_session&.review_pending?
+
+    failure("이 가져오기는 이미 마감되어 수리할 수 없습니다.")
   end
 
   def normalize_date(value)

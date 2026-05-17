@@ -74,6 +74,43 @@ class ImportIssueResolutionServiceTest < ActiveSupport::TestCase
     assert_match(/이미 처리/, result.message)
   end
 
+  test "resolution rejected when parsing session is no longer pending_review" do
+    @session.update!(review_status: "committed", committed_at: Time.current, committed_by: @user)
+
+    result = ImportIssueResolutionService.new(@issue, user: @user).update_missing_fields!(
+      date: Date.current, merchant: "스타벅스", amount: 5_000
+    )
+
+    assert_not result.success?
+    assert_match(/마감|수리할 수 없/, result.message)
+    assert_equal "open", @issue.reload.status, "마감된 세션에서는 상태가 바뀌면 안 됨"
+  end
+
+  test "dismiss rejected when parsing session is no longer pending_review" do
+    @session.update!(review_status: "discarded", discarded_at: Time.current)
+
+    result = ImportIssueResolutionService.new(@issue, user: @user).dismiss!
+
+    assert_not result.success?
+    assert_equal "open", @issue.reload.status
+  end
+
+  test "partial patch preserves previously stored values for omitted fields" do
+    # 처음에 가맹점만 채움
+    ImportIssueResolutionService.new(@issue, user: @user).update_missing_fields!(merchant: "스타벅스")
+    @issue.reload
+    assert_equal "스타벅스", @issue.merchant
+    assert_includes @issue.missing_fields, "amount"
+
+    # 그 다음 amount만 보내고 merchant는 omit
+    result = ImportIssueResolutionService.new(@issue, user: @user).update_missing_fields!(amount: 7_000)
+
+    assert result.success?
+    @issue.reload
+    assert_equal "스타벅스", @issue.merchant, "omit한 merchant가 nil로 덮어쓰여서는 안 됨"
+    assert_equal 7_000, @issue.amount
+  end
+
   test "promotion failure surfaces validation message without changing status" do
     # Force transaction validation failure by passing a date that's somehow
     # invalid after normalization. Use blank date string — normalize should
