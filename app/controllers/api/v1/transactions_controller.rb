@@ -80,6 +80,10 @@ module Api
           amount: t.amount,
           category: t.category&.name,
           category_id: t.category_id,
+          # ADR-0011 §Decision 3 (Codex hotfix B): API create가 manual_set을 저장하기
+          # 때문에 응답에도 노출. mobile/API 클라이언트가 카테고리 결정 출처를
+          # 동일하게 다룰 수 있어야 한다.
+          classification_source: t.classification_source,
           payment_type: t.payment_type,
           notes: t.notes,
           source_institution_raw: t.source_institution_raw,
