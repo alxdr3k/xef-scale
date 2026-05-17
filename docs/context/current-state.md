@@ -132,7 +132,7 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 
 이 우선순위는 시간이 지나면 빠르게 stale 됩니다. 현재 권위 있는 우선순위는 `PRD.md` + 머지된 ADR + 최근 커밋입니다.
 
-Phase 1·2·3(`ui-redesign-plan §6`)는 main에 머지됨. preflight([`docs/discovery/2026-05-15-phase-3-ia-preflight.md`](../discovery/2026-05-15-phase-3-ia-preflight.md))의 Bucket A1·A2(ADR-0011)·A3·A4·A5(PR B IA Skeleton)·Phase 3.3 검토함 시트 통합·Phase 3.2 classification_source set 로직·Phase 3.4 카테고리+학습된 매핑 결합·Phase 3.5 더보기 전용 페이지 closure 완료. Phase 4 완료 — Hero stat 채택 + ReviewInboxCard + VarianceCard + RecurringPaymentCard. Phase 5 진행 중 — `User#theme` (settings JSON, auto/light/dark) + 더보기 페이지 테마 토글 + `html[data-theme]` 활성화 (ADR-0008) + 글로벌 `:focus-visible` 룰(시맨틱 `--color-focus` 토큰) + 검토함 키보드 단축키 (j/k navigation + c commit). 컨트라스트 감사 + 추가 단축키(d/x/enter/?)는 후속 슬라이스. 다음 사이클은 Phase 5 다크 모드 & a11y / Phase 6 i18n / Phase 7 메트릭.
+Phase 1·2·3(`ui-redesign-plan §6`)는 main에 머지됨. preflight([`docs/discovery/2026-05-15-phase-3-ia-preflight.md`](../discovery/2026-05-15-phase-3-ia-preflight.md))의 Bucket A1·A2(ADR-0011)·A3·A4·A5(PR B IA Skeleton)·Phase 3.3 검토함 시트 통합·Phase 3.2 classification_source set 로직·Phase 3.4 카테고리+학습된 매핑 결합·Phase 3.5 더보기 전용 페이지 closure 완료. Phase 4 완료 — Hero stat 채택 + ReviewInboxCard + VarianceCard + RecurringPaymentCard. Phase 5 진행 중 — `User#theme` (settings JSON, auto/light/dark) + 더보기 페이지 테마 토글 + `html[data-theme]` 활성화 (ADR-0008) + 글로벌 `:focus-visible` 룰(시맨틱 `--color-focus` 토큰) + 검토함 키보드 단축키 (j/k navigation + c commit + ? help overlay). 컨트라스트 감사 + 추가 단축키(d/x/enter)는 후속 슬라이스. 다음 사이클은 Phase 5 다크 모드 & a11y / Phase 6 i18n / Phase 7 메트릭.
 
 PR #168~#182 누적 adversarial review 후속 hotfix closure (단일 PR `claude/fix-transaction-data-leak-5fXBZ`):
 
