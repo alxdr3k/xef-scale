@@ -19,14 +19,14 @@
       <div>
         <label class="block text-sm font-medium text-secondary mb-1">연도</label>
         <%= select_tag :year, options_for_select((Date.current.year - 5..Date.current.year).to_a.reverse, @year),
-            class: 'block w-24 rounded-md border-default shadow-sm focus:border-action focus:ring-action',
+            class: 'block w-24 rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
             data: { action: 'change->auto-filter#submitForm' } %>
       </div>
 
       <div>
         <label class="block text-sm font-medium text-secondary mb-1">월</label>
         <%= select_tag :month, options_for_select([['-전체-', ''], *((1..12).map { |m| ["#{m}월", m] })], @month),
-            class: 'block w-24 rounded-md border-default shadow-sm focus:border-action focus:ring-action',
+            class: 'block w-24 rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
             data: { action: 'change->auto-filter#submitForm' } %>
       </div>
 
@@ -34,14 +34,14 @@
         <label class="block text-sm font-medium text-secondary mb-1">카테고리</label>
         <%= select_tag :category_id,
             options_for_select([['-전체-', ''], *@categories.map { |c| [c.name, c.id] }], params[:category_id]),
-            class: 'block w-32 rounded-md border-default shadow-sm focus:border-action focus:ring-action',
+            class: 'block w-32 rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
             data: { action: 'change->auto-filter#submitForm' } %>
       </div>
 
       <div class="flex-1">
         <label class="block text-sm font-medium text-secondary mb-1">검색</label>
         <%= text_field_tag :q, params[:q], placeholder: '내역 검색...',
-            class: 'block w-full rounded-md border-default shadow-sm focus:border-action focus:ring-action',
+            class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
             data: { action: 'input->auto-filter#debounceSubmit' } %>
       </div>
     <% end %>
@@ -76,12 +76,12 @@
 
   <!-- Selection Toolbar -->
   <div data-bulk-select-target="toolbar"
-       class="bg-surface rounded-t-lg shadow-sm border-b border-default px-4 py-2 flex items-center gap-2 min-h-[44px]">
+       class="bg-surface rounded-t-lg shadow-sm border-b border-divider px-4 py-2 flex items-center gap-2 min-h-[44px]">
     <%# 체크박스 %>
     <input type="checkbox"
            data-bulk-select-target="toolbarCheckbox"
            data-action="change->bulk-select#toggleSelectAll"
-           class="h-4 w-4 rounded border-default text-action focus:ring-action cursor-pointer">
+           class="h-4 w-4 rounded border-divider text-action focus:ring-action cursor-pointer">
 
     <%# 기본 상태 (선택 없음) %>
     <div data-bulk-select-target="toolbarDefault" class="flex items-center gap-1 text-sm text-tertiary">
@@ -116,7 +116,7 @@
 
       <%# 카테고리 변경 %>
       <div class="flex items-center gap-1">
-        <select name="category_id" class="text-xs rounded border-default py-1 pl-2 pr-6">
+        <select name="category_id" class="text-xs rounded border-divider py-1 pl-2 pr-6">
           <option value="">카테고리...</option>
           <% @categories.each do |cat| %>
             <option value="<%= cat.id %>"><%= cat.name %></option>
@@ -141,7 +141,7 @@
 
         <div data-bulk-select-target="moreMenu"
              class="hidden absolute top-full mt-1 right-0 z-10
-                    bg-surface rounded-lg shadow-xl border border-default
+                    bg-surface rounded-lg shadow-xl border border-divider
                     py-1 min-w-[160px] text-secondary">
           <button type="button" data-action="click->bulk-select#deselectAll"
                   class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 transition-colors">
@@ -154,7 +154,7 @@
 
   <!-- Transactions Table -->
   <div class="bg-surface rounded-b-lg shadow overflow-visible">
-    <table class="w-full table-fixed divide-y divide-default">
+    <table class="w-full table-fixed divide-y divide-divider">
       <thead class="bg-elev">
         <tr>
           <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider w-36">날짜</th>
@@ -165,7 +165,7 @@
           <th class="px-4 py-3 text-center text-xs font-medium text-tertiary uppercase tracking-wider w-16">댓글</th>
         </tr>
       </thead>
-      <tbody class="bg-surface divide-y divide-default" id="transactions-list">
+      <tbody class="bg-surface divide-y divide-divider" id="transactions-list">
         <% @transactions.each do |tx| %>
           <%# Phase 5 slice 3 (Codex PR #182 P2 defense-in-depth): 거래 목록은
               검토 컨텍스트가 아니므로 reviewable: false를 명시. 자동 추론은

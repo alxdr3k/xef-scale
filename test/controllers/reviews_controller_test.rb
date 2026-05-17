@@ -879,6 +879,23 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_select "kbd", text: "Enter"
   end
 
+  # Phase 5 slice 9: 컨트라스트 감사 — reviews/show 시맨틱 토큰.
+  # Codex PR #203 P2: border-default / divide-default / text-action-strong은
+  # @theme에 정의되지 않은 토큰. 정의된 border-divider/divide-divider/text-action만 사용.
+  test "show view template uses semantic tokens (no hardcoded palette, no undefined tokens)" do
+    src = File.read(Rails.root.join("app/views/reviews/show.html.erb"))
+    %w[bg-indigo-600 text-gray-900 text-gray-500 text-gray-700 bg-white bg-gray-100].each do |stale|
+      assert_no_match(/\b#{Regexp.escape(stale)}\b/, src,
+                      "reviews/show.html.erb에 옛 팔레트 #{stale} 잔존")
+    end
+    %w[border-default divide-default text-action-strong].each do |undef_token|
+      assert_no_match(/\b#{Regexp.escape(undef_token)}\b/, src,
+                      "reviews/show.html.erb에 정의되지 않은 토큰 #{undef_token} 사용 (정의된 *-divider / text-action 사용해야)")
+    end
+    assert_match(/\bbg-surface\b/, src)
+    assert_match(/\btext-primary\b/, src)
+  end
+
   test "show omits excludeForm target for read-only member (member_read)" do
     @workspace.transactions.create!(
       date: Date.current, amount: 1000, merchant: "D_READONLY",
