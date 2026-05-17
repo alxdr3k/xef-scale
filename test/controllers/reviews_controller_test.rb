@@ -674,4 +674,69 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_equal target.id, tx.category_id
     assert_equal "mapping_match", tx.classification_source
   end
+
+  # Phase 5 slice 3: 검토함 키보드 단축키 (j/k navigation).
+  test "show wires review-keyboard controller and tabindex on rows" do
+    @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "KB_SHORTCUT",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_response :success
+    # 컨트롤러 attach + window keydown 액션 등록
+    assert_match(/data-controller="[^"]*review-keyboard/, response.body)
+    assert_match(/keydown@window->review-keyboard#handleKey/, response.body)
+    # 거래 row에 tabindex=0 — j/k 이동 후 focus 받을 수 있어야
+    assert_select "tr[data-transaction-id][tabindex='0']", minimum: 1
+  end
+
+  # Codex PR #182 P1: turbo_stream row re-render에서 reviewable이 누락되면
+  # tabindex 손실 → j/k navigation 깨짐. reviewable 자동 추론(pending_review +
+  # parsing_session) 덕에 호출자가 명시 안 해도 보존돼야 한다.
+  test "update_transaction turbo_stream re-render preserves tabindex=0" do
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "REVIEW_RERENDER",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { merchant: "REVIEW_RERENDER_NEW" } },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_match(/<tr[^>]*data-transaction-id="#{tx.id}"[^>]*tabindex="0"/, response.body)
+  end
+
+  test "quick_update_category turbo_stream re-render preserves tabindex on review row" do
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "REVIEW_QUICK",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    target = categories(:food)
+
+    patch quick_update_category_workspace_transaction_path(@workspace, tx),
+          params: { category_id: target.id },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_match(/<tr[^>]*data-transaction-id="#{tx.id}"[^>]*tabindex="0"/, response.body)
+  end
+
+  # Codex PR #182 P2: 공유 partial이 transactions/index에서도 사용되므로
+  # tabindex=0이 reviewable 컨텍스트에서만 적용돼야 한다.
+  test "transactions/index does not make row tabindex=0 (shared partial gating)" do
+    @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "INDEX_NO_TABINDEX",
+      status: "committed"
+    )
+
+    get workspace_transactions_path(@workspace)
+    assert_response :success
+    # 거래 row는 있지만 tabindex=0은 *없어야*.
+    assert_select "tr[data-transaction-id]", minimum: 1
+    assert_select "tr[data-transaction-id][tabindex='0']", count: 0,
+                  message: "reviews/show 외에서는 row tabindex 미부여"
+  end
 end

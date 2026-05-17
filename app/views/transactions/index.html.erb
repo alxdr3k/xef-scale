@@ -167,7 +167,10 @@
       </thead>
       <tbody class="bg-white divide-y divide-gray-200" id="transactions-list">
         <% @transactions.each do |tx| %>
-          <%= render 'transaction_row', transaction: tx %>
+          <%# Phase 5 slice 3 (Codex PR #182 P2 defense-in-depth): 거래 목록은
+              검토 컨텍스트가 아니므로 reviewable: false를 명시. 자동 추론은
+              active scope(committed only)에 의존하지만 명시 전달이 더 robust. %>
+          <%= render 'transaction_row', transaction: tx, reviewable: false %>
         <% end %>
 
         <% if @transactions.empty? %>
