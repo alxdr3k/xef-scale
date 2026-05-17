@@ -31,6 +31,10 @@
         <% if pending_dup_count > 0 %>
           · 중복 <%= pending_dup_count %>건
         <% end %>
+        <% open_issue_count = parsing_session.open_import_issues.size %>
+        <% if open_issue_count > 0 %>
+          · 수리 <%= open_issue_count %>건
+        <% end %>
         <% if parsing_session.error_count.to_i > 0 %>
           · 오류 <%= parsing_session.error_count %>건
         <% end %>

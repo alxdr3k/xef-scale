@@ -417,6 +417,33 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, review_workspace_parsing_session_path(@workspace, @parsing_session)
   end
 
+  test "index shows '수리 필요 N건' for sessions with open ImportIssues" do
+    @parsing_session.update!(
+      status: "completed",
+      review_status: "pending_review",
+      source_type: "file_upload"
+    )
+    @parsing_session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      missing_fields: [ "merchant" ]
+    )
+
+    get workspace_reviews_path(@workspace)
+
+    assert_response :success
+    assert_match(/수리 필요\s*1건/, response.body)
+  end
+
+  test "index does not show repair stat when no open ImportIssues exist" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get workspace_reviews_path(@workspace)
+
+    assert_response :success
+    assert_no_match(/수리 필요/, response.body)
+  end
+
   # Phase 3.3: 검토함의 "+ 새로 가져오기"는 input_sheet 시트를 연다.
   # 이전(PR B)의 parsing_sessions/index 하드 링크는 폐기.
   test "index embeds input sheet trigger (sheet contains 3-way forms)" do

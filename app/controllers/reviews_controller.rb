@@ -57,6 +57,10 @@ class ReviewsController < ApplicationController
                             .where(parsing_session_id: session_ids, status: "pending")
                             .group(:parsing_session_id)
                             .count
+    @open_issue_counts = ImportIssue
+                           .where(parsing_session_id: session_ids, status: "open")
+                           .group(:parsing_session_id)
+                           .count
   end
 
   def show
