@@ -692,6 +692,24 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_select "tr[data-transaction-id][tabindex='0']", minimum: 1
   end
 
+  # Codex PR #182 P1: turbo_stream row re-render에서 reviewable이 누락되면
+  # tabindex 손실 → j/k navigation 깨짐. update_transaction이 reviewable: true
+  # 명시 전달해야 한다.
+  test "update_transaction turbo_stream re-render preserves tabindex=0 (reviewable: true)" do
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "REVIEW_RERENDER",
+      status: "pending_review", parsing_session: @parsing_session
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { merchant: "REVIEW_RERENDER_NEW" } },
+          as: :turbo_stream
+
+    assert_response :success
+    # turbo_stream 응답 본문에 replace된 row가 tabindex=0을 가져야 함.
+    assert_match(/<tr[^>]*data-transaction-id="#{tx.id}"[^>]*tabindex="0"/, response.body)
+  end
+
   # Codex PR #182 P2: 공유 partial이 transactions/index에서도 사용되므로
   # tabindex=0이 reviewable 컨텍스트에서만 적용돼야 한다.
   test "transactions/index does not make row tabindex=0 (shared partial gating)" do

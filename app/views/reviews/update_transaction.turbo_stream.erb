@@ -4,5 +4,6 @@
     locals: {
       transaction: @transaction,
       categories: @workspace.categories.order(:name),
-      read_only: false
+      read_only: false,
+      reviewable: true # Phase 5 slice 3 (Codex PR #182 P1): turbo re-render에서 tabindex 보존
     } %>
