@@ -134,6 +134,13 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 
 Phase 1·2·3(`ui-redesign-plan §6`)는 main에 머지됨. preflight([`docs/discovery/2026-05-15-phase-3-ia-preflight.md`](../discovery/2026-05-15-phase-3-ia-preflight.md))의 Bucket A1·A2(ADR-0011)·A3·A4·A5(PR B IA Skeleton)·Phase 3.3 검토함 시트 통합·Phase 3.2 classification_source set 로직·Phase 3.4 카테고리+학습된 매핑 결합·Phase 3.5 더보기 전용 페이지 closure 완료. Phase 4 완료 — Hero stat 채택 + ReviewInboxCard + VarianceCard + RecurringPaymentCard. Phase 5 진행 중 — `User#theme` (settings JSON, auto/light/dark) + 더보기 페이지 테마 토글 + `html[data-theme]` 활성화 (ADR-0008) + 글로벌 `:focus-visible` 룰(시맨틱 `--color-focus` 토큰) + 검토함 키보드 단축키 (j/k navigation + c commit). 컨트라스트 감사 + 추가 단축키(d/x/enter/?)는 후속 슬라이스. 다음 사이클은 Phase 5 다크 모드 & a11y / Phase 6 i18n / Phase 7 메트릭.
 
+PR #168~#182 누적 adversarial review 후속 hotfix closure (단일 PR `claude/fix-transaction-data-leak-5fXBZ`):
+
+- **A**: review row의 category dropdown이 workspace-level `quick_update_category`로 PATCH해서 `ReviewsController#reject_if_finalized` 가드를 우회하던 leak 정리. `category_selector_controller.js`는 URL과 request body shape("id"/"field")을 data value로 받고, `_transaction_row`는 `update_url`/`category_update_url`/`parsing_session_id`를 explicit locals로 받는다. `@can_edit_review = can_write? && !finalized`로 분리해 member_read는 pending session에서도 commit/discard/bulk toolbar/inline edit URL/category selector를 보지 않는다. `reviews#index`/`parsing_sessions#index`의 input_sheet trigger도 write 권한 gate. `CategoriesController#create` 슬라이드오버는 `parsing_session_id`를 보존해 row re-render가 review context를 유지한다.
+- **B**: `classification_source`(ADR-0011 §Decision 3) 의미 정리. category clear → source nil; merchant 변경 시 새 merchant 기준 provenance 재평가(매핑 hit → mapping_match, 매핑 없음 & 카테고리 present → manual_set, 둘 다 없음 → nil); bulk `change_category`의 blank/invalid category_id는 alert/422로 차단; API serializer에 `classification_source` 추가. PR #174의 "재매칭 same category → manual_set 유지"는 supersede.
+- **C**: `_input_sheet` dialog에 focus trap/restore + Tab cycle + before-cache cleanup. dark mode 노출 회수는 본 hotfix scope 밖 (별도 마이그레이션 슬라이스).
+- **D**: `RecurringPaymentDetector`에 `amount > 0` 필터 + last_amounts subquery를 동일 필터로 정합. 환불/취소·coupon이 평균/last_amount를 오염시키지 않게 한다. 매 monthly 요청 aggregate cost는 follow-up slice (cache 또는 lazy-load).
+
 ## Needs audit
 
 다음 항목은 본 PR에서 검증하지 못했거나, 추가 확인이 필요합니다.
