@@ -52,6 +52,21 @@ class ScreenShellTest < ActionDispatch::IntegrationTest
     assert_includes response.body, workspace_more_path(@workspace)
   end
 
+  # Phase 5: html data-theme이 user.theme을 반영.
+  test "html element exposes data-theme when signed in" do
+    @user.update!(settings: { "theme" => "dark" })
+    sign_in @user
+    get dashboard_path
+    assert_response :success
+    assert_match(/<html[^>]*data-theme="dark"/, response.body)
+  end
+
+  test "html element omits data-theme when signed out" do
+    get new_user_session_path
+    assert_response :success
+    assert_no_match(/<html[^>]*data-theme=/, response.body)
+  end
+
   test "nav hides 카테고리 tab from non-admin (member_read) member" do
     sign_in users(:reader)
     get dashboard_path

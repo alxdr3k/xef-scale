@@ -109,4 +109,34 @@ class UserTest < ActiveSupport::TestCase
     user = users(:admin)
     assert_includes user.workspaces, workspaces(:main_workspace)
   end
+
+  # Phase 5: 다크 모드 theme 선호도 (User#settings JSON).
+  test "theme defaults to auto when not set" do
+    user = users(:admin)
+    user.settings = nil
+    assert_equal "auto", user.theme
+  end
+
+  test "theme accepts auto/light/dark" do
+    user = users(:admin)
+    %w[auto light dark].each do |value|
+      user.theme = value
+      assert_equal value, user.theme
+    end
+  end
+
+  test "theme normalizes invalid values to auto" do
+    user = users(:admin)
+    user.theme = "purple"
+    assert_equal "auto", user.theme
+    user.theme = ""
+    assert_equal "auto", user.theme
+  end
+
+  test "theme survives save and reload" do
+    user = users(:admin)
+    user.theme = "dark"
+    user.save!
+    assert_equal "dark", User.find(user.id).theme
+  end
 end

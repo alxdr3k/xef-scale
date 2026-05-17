@@ -1,5 +1,8 @@
 <!DOCTYPE html>
-<html lang="ko">
+<%# Phase 5: 사용자 선택 테마(`User#theme`)를 data-theme로 반영.
+    application.tailwind.css의 `html[data-theme=...]` 룰이 color-scheme 토글.
+    로그아웃 상태는 속성 없음 → system preference 따름. %>
+<html lang="ko"<%= user_signed_in? ? " data-theme=\"#{current_user.theme}\"".html_safe : "" %>>
   <head>
     <title><%= content_for(:title) || "지출 추적" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">

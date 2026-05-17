@@ -134,18 +134,18 @@
 
 @layer base {
   /*
-   * color-scheme opt-in은 Phase 5 (`UserSetting#theme` 토글 + 뷰 마이그레이션)에서 함께 활성화한다.
-   * 지금 :root에 `color-scheme: light dark` 를 켜면 OS-다크 사용자 환경에서 브라우저 UA가
-   * 스크롤바/폼 컨트롤을 다크 팔레트로 렌더하지만 앱 배경은 여전히 라이트 회색(bg-gray-50)이라
-   * mixed-theme regression이 발생한다. light-dark() 분기는 consumer가 아직 없으므로 dead 상태
-   * 그대로 두는 것이 안전.
+   * Phase 5: User#theme(settings JSON 저장)에 따라 `color-scheme`을 토글한다.
+   * application.html.erb의 <html> 태그가 data-theme="auto|light|dark"를 set한다.
+   * data-theme 미존재(예: 로그아웃 상태)는 system preference를 따른다.
    *
-   * Phase 5에서 도입할 패턴(예시):
-   *   html[data-theme="auto"]  { color-scheme: light dark; }
-   *   html[data-theme="light"] { color-scheme: light; }
-   *   html[data-theme="dark"]  { color-scheme: dark; }
-   * Stimulus theme_controller가 UserSetting#theme 값에 따라 data-theme 속성을 설정.
+   * `light-dark()` CSS 함수가 color-scheme을 따르므로 @theme 토큰의 분기가 활성화된다.
+   * theme_controller.js가 사용자 선택을 즉시 반영한다.
    */
+  html {
+    color-scheme: light dark;
+  }
+  html[data-theme="light"] { color-scheme: light; }
+  html[data-theme="dark"]  { color-scheme: dark; }
 
   html {
     scrollbar-gutter: stable;
