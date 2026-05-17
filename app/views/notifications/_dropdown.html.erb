@@ -3,7 +3,7 @@
     <% notifications.limit(5).each do |notification| %>
       <% if notification.action_url.present? %>
         <%= link_to notification.action_url,
-            class: "block px-4 py-3 hover:bg-gray-50 #{notification.unread? ? 'bg-blue-50' : ''}",
+            class: "block px-4 py-3 hover:bg-elev #{notification.unread? ? 'bg-info-subtle' : ''}",
             data: { action: 'click->notifications#markRead', notification_id: notification.id } do %>
           <div class="flex items-start">
             <div class="flex-shrink-0">
@@ -15,34 +15,34 @@
               <% end %>
             </div>
             <div class="ml-3 flex-1">
-              <p class="text-sm font-medium text-gray-900"><%= notification.title %></p>
-              <p class="text-xs text-gray-500 line-clamp-2"><%= notification.message %></p>
-              <p class="text-xs text-gray-400 mt-1"><%= time_ago_in_words(notification.created_at) %> 전</p>
+              <p class="text-sm font-medium text-primary"><%= notification.title %></p>
+              <p class="text-xs text-tertiary line-clamp-2"><%= notification.message %></p>
+              <p class="text-xs text-disabled mt-1"><%= time_ago_in_words(notification.created_at) %> 전</p>
             </div>
             <% if notification.unread? %>
               <div class="flex-shrink-0 ml-2">
-                <span class="h-2 w-2 bg-blue-500 rounded-full inline-block"></span>
+                <span class="h-2 w-2 bg-info rounded-full inline-block"></span>
               </div>
             <% end %>
           </div>
         <% end %>
       <% else %>
-        <div class="block px-4 py-3 <%= notification.unread? ? 'bg-blue-50' : '' %>">
+        <div class="block px-4 py-3 <%= notification.unread? ? 'bg-info-subtle' : '' %>">
           <div class="flex items-start">
             <div class="flex-shrink-0">
               <span class="text-xl">🔔</span>
             </div>
             <div class="ml-3 flex-1">
-              <p class="text-sm font-medium text-gray-900"><%= notification.title %></p>
-              <p class="text-xs text-gray-500"><%= notification.message %></p>
-              <p class="text-xs text-gray-400 mt-1"><%= time_ago_in_words(notification.created_at) %> 전</p>
+              <p class="text-sm font-medium text-primary"><%= notification.title %></p>
+              <p class="text-xs text-tertiary"><%= notification.message %></p>
+              <p class="text-xs text-disabled mt-1"><%= time_ago_in_words(notification.created_at) %> 전</p>
             </div>
           </div>
         </div>
       <% end %>
     <% end %>
   <% else %>
-    <div class="px-4 py-8 text-center text-gray-500 text-sm">
+    <div class="px-4 py-8 text-center text-tertiary text-sm">
       알림이 없습니다.
     </div>
   <% end %>
