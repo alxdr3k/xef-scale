@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_16_022650) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_17_090000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -157,6 +157,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_022650) do
     t.index ["source_type", "status"], name: "index_import_issues_on_source_type_and_status"
     t.index ["workspace_id", "status"], name: "index_import_issues_on_workspace_id_and_status"
     t.index ["workspace_id"], name: "index_import_issues_on_workspace_id"
+  end
+
+  create_table "import_review_events", force: :cascade do |t|
+    t.text "changed_fields", default: "[]", null: false
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.integer "parsing_session_id", null: false
+    t.integer "reviewed_transaction_id"
+    t.datetime "updated_at", null: false
+    t.integer "workspace_id", null: false
+    t.index ["parsing_session_id", "event_type"], name: "idx_on_parsing_session_id_event_type_09cd947422"
+    t.index ["parsing_session_id"], name: "index_import_review_events_on_parsing_session_id"
+    t.index ["reviewed_transaction_id"], name: "index_import_review_events_on_reviewed_transaction_id"
+    t.index ["workspace_id", "created_at"], name: "index_import_review_events_on_workspace_id_and_created_at"
+    t.index ["workspace_id"], name: "index_import_review_events_on_workspace_id"
   end
 
   create_table "notifications", force: :cascade do |t|
@@ -335,6 +350,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_16_022650) do
   add_foreign_key "import_issues", "transactions", column: "duplicate_transaction_id"
   add_foreign_key "import_issues", "transactions", column: "resolved_transaction_id"
   add_foreign_key "import_issues", "workspaces"
+  add_foreign_key "import_review_events", "parsing_sessions"
+  add_foreign_key "import_review_events", "transactions", column: "reviewed_transaction_id"
+  add_foreign_key "import_review_events", "workspaces"
   add_foreign_key "notifications", "users"
   add_foreign_key "notifications", "workspaces"
   add_foreign_key "parsing_sessions", "processed_files"

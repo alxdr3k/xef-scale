@@ -335,4 +335,31 @@ class ParsingSessionTest < ActiveSupport::TestCase
     assert_equal 1, summary[:originals_kept]
     assert_equal 0, summary[:originals_replaced]
   end
+
+  # --- Review behavior instrumentation (Issue #187 baseline) ---
+
+  test "commit_all! records a session_committed review event" do
+    session, = build_session_with_duplicate(decision: "keep_new")
+
+    assert_difference -> { session.import_review_events.where(event_type: "session_committed").count }, 1 do
+      session.commit_all!(users(:admin))
+    end
+  end
+
+  test "rollback_all! records a session_rolled_back review event" do
+    session, = build_session_with_duplicate(decision: "keep_new")
+    session.commit_all!(users(:admin))
+
+    assert_difference -> { session.import_review_events.where(event_type: "session_rolled_back").count }, 1 do
+      session.rollback_all!(users(:admin))
+    end
+  end
+
+  test "discard_all! records a session_discarded review event" do
+    session, = build_session_with_duplicate(decision: "keep_new")
+
+    assert_difference -> { session.import_review_events.where(event_type: "session_discarded").count }, 1 do
+      session.discard_all!
+    end
+  end
 end

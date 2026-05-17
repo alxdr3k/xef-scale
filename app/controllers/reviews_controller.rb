@@ -240,6 +240,10 @@ class ReviewsController < ApplicationController
       end
 
       if @transaction.update(field => value)
+        # Capture user-driven field changes before system follow-ups overwrite
+        # saved_changes (auto-categorization, classification_source update).
+        record_review_event(@transaction.saved_changes.keys - [ "updated_at" ])
+
         # ADR-0011 §Decision 3 (Codex PR #174 follow-up): inline category_id 편집은
         # 실제 category가 *변동*했을 때만 manual_set으로 잠근다. 같은 값 재전송은
         # no-op이므로 기존 provenance(mapping_match 등) 보존.
@@ -281,6 +285,10 @@ class ReviewsController < ApplicationController
                             params[:transaction].key?(:category_id)
 
     if @transaction.update(transaction_params)
+      # Capture user-driven field changes before system follow-ups overwrite
+      # saved_changes (classification_source, auto re-categorization).
+      record_review_event(@transaction.saved_changes.keys - [ "updated_at" ])
+
       # ADR-0011 §Decision 3 (Codex PR #174 follow-up): 검토 폼도 collection_select로
       # category_id를 항상 보낼 수 있으므로 키 존재만으로는 부족. 실제 category_id가
       # *변동*한 경우에만 manual_set 잠금 — 동일 카테고리는 기존 provenance 보존.
@@ -327,6 +335,20 @@ class ReviewsController < ApplicationController
   end
 
   private
+
+  # Records the user-driven field changes that landed on @transaction. Skips
+  # if nothing changed (no-op submit) so we don't pollute the metric.
+  def record_review_event(changed_fields)
+    return if changed_fields.blank?
+
+    ImportReviewEventRecorder.record(
+      workspace: @workspace,
+      parsing_session: @parsing_session,
+      reviewed_transaction: @transaction,
+      event_type: "transaction_updated",
+      changed_fields: changed_fields
+    )
+  end
 
   def set_workspace
     @workspace = current_user.workspaces.find(params[:workspace_id])

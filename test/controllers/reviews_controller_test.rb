@@ -119,6 +119,25 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_equal(-30000, tx.reload.amount)
   end
 
+  test "update_transaction records a transaction_updated review event with changed fields" do
+    tx = @workspace.transactions.create!(
+      date: Date.current,
+      amount: 50000,
+      status: "pending_review",
+      parsing_session: @parsing_session
+    )
+
+    assert_difference -> { @parsing_session.import_review_events.where(event_type: "transaction_updated").count }, 1 do
+      patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+            params: { field: "merchant", value: "스타벅스" },
+            as: :turbo_stream
+    end
+
+    event = @parsing_session.import_review_events.where(event_type: "transaction_updated").last
+    assert_includes event.changed_fields, "merchant"
+    assert_equal tx.id, event.reviewed_transaction_id
+  end
+
   test "update_transaction rejects zero amount" do
     tx = @workspace.transactions.create!(
       date: Date.current,
