@@ -102,6 +102,8 @@ module Api
         assert tx.key?("payment_type")
         assert tx.key?("notes")
         assert tx.key?("created_at")
+        # Codex hotfix B: classification_source는 API에도 노출 (ADR-0011).
+        assert tx.key?("classification_source")
       end
 
       test "index does not return other workspace transactions" do
@@ -215,6 +217,22 @@ module Api
         json = JSON.parse(response.body)
         assert_equal "점심", json["data"]["notes"]
         assert_equal category.id, json["data"]["category_id"]
+        # Codex hotfix B: API create가 category 지정 시 classification_source=manual_set을
+        # 저장 & 응답에 노출 (ADR-0011 §Decision 3).
+        assert_equal "manual_set", json["data"]["classification_source"]
+      end
+
+      test "create without category leaves classification_source nil in response" do
+        write_key = ApiKey.generate(workspace: @workspace, name: "Write Key", scopes: "read,write")
+        write_header = { "Authorization" => "Bearer #{write_key.raw_key}" }
+
+        post api_v1_transactions_path, headers: write_header, params: {
+          transaction: { date: "2026-03-31", merchant: "noCat", amount: 1000 }
+        }
+        assert_response :created
+
+        json = JSON.parse(response.body)
+        assert_nil json["data"]["classification_source"]
       end
 
       test "create scoped to api key workspace" do

@@ -576,7 +576,9 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "manual_set", @transaction.reload.classification_source
   end
 
-  test "update (edit page) explicit clear (category_id='') sets manual_set" do
+  test "update (edit page) explicit clear (category_id='') sets source nil" do
+    # Codex hotfix B: category=nil이면 classification_source도 nil이어야 한다.
+    # 과거에는 manual_set으로 남아 category 없는 상태에 stale provenance가 붙었음.
     @transaction.update!(category: categories(:food), classification_source: "mapping_match")
 
     patch workspace_transaction_path(@workspace, @transaction),
@@ -584,7 +586,107 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
 
     @transaction.reload
     assert_nil @transaction.category_id
-    assert_equal "manual_set", @transaction.classification_source
+    assert_nil @transaction.classification_source
+  end
+
+  # Codex hotfix B — classification_source semantics.
+
+  test "quick_update_category clearing category sets source nil" do
+    @transaction.update!(category: categories(:food), classification_source: "mapping_match")
+
+    patch quick_update_category_workspace_transaction_path(@workspace, @transaction),
+          params: { category_id: "" }, as: :json
+
+    assert_response :success
+    @transaction.reload
+    assert_nil @transaction.category_id
+    assert_nil @transaction.classification_source
+  end
+
+  test "bulk_update change_category with blank category_id is rejected" do
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "BULK_BLANK",
+      category: categories(:food), status: "committed",
+      classification_source: "mapping_match"
+    )
+
+    post bulk_update_workspace_transactions_path(@workspace),
+         params: { bulk_action: "change_category", category_id: "", transaction_ids: tx.id.to_s }
+
+    assert_redirected_to workspace_transactions_path(@workspace)
+    assert_match(/카테고리를 선택/, flash[:alert])
+    # 카테고리/소스 변경 없음
+    tx.reload
+    assert_equal categories(:food).id, tx.category_id
+    assert_equal "mapping_match", tx.classification_source
+  end
+
+  test "bulk_update change_category with invalid category_id is rejected (no silent clear)" do
+    foreign = categories(:other_category)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "BULK_FOREIGN",
+      category: categories(:food), status: "committed",
+      classification_source: "mapping_match"
+    )
+
+    post bulk_update_workspace_transactions_path(@workspace),
+         params: { bulk_action: "change_category", category_id: foreign.id, transaction_ids: tx.id.to_s }
+
+    assert_redirected_to workspace_transactions_path(@workspace)
+    assert_match(/유효하지 않은 카테고리/, flash[:alert])
+    tx.reload
+    assert_equal categories(:food).id, tx.category_id
+    assert_equal "mapping_match", tx.classification_source
+  end
+
+  test "inline_update merchant change with no new mapping converts mapping_match to manual_set" do
+    # Codex hotfix B: 핵심 의미 fix. merchant가 바뀌면 기존 mapping_match는 새
+    # merchant와 무관한 stale provenance. 새 매핑이 없으면 manual_set으로 전환.
+    @transaction.update!(merchant: "이전가맹점", category: categories(:food),
+                         classification_source: "mapping_match")
+
+    patch inline_update_workspace_transaction_path(@workspace, @transaction),
+          params: { field: "merchant", value: "전혀새로운가맹점_NO_MAPPING" }, as: :json
+
+    assert_response :success
+    @transaction.reload
+    assert_equal "전혀새로운가맹점_NO_MAPPING", @transaction.merchant
+    assert_equal categories(:food).id, @transaction.category_id, "카테고리는 사용자 보존 의도로 유지"
+    assert_equal "manual_set", @transaction.classification_source,
+                 "새 merchant에 매핑이 없고 카테고리는 남았으므로 manual_set"
+  end
+
+  test "inline_update merchant change to merchant without mapping AND no category sets source nil" do
+    @transaction.update!(merchant: "이전가맹점", category: nil, classification_source: nil)
+
+    patch inline_update_workspace_transaction_path(@workspace, @transaction),
+          params: { field: "merchant", value: "또다른가맹점_NO_MAPPING" }, as: :json
+
+    assert_response :success
+    @transaction.reload
+    assert_nil @transaction.category_id
+    assert_nil @transaction.classification_source
+  end
+
+  test "inline_update merchant change to merchant with mapping to same category refreshes source" do
+    # Codex hotfix B: 새 merchant 기준 매핑이 결과적으로 같은 카테고리여도, 그
+    # 매핑은 *새* merchant 기반이므로 source=mapping_match로 의미 갱신.
+    target = categories(:food)
+    CategoryMapping.create!(
+      workspace: @workspace, merchant_pattern: "NEW_SAME_CAT_MERCHANT",
+      match_type: "exact", source: "manual", category: target
+    )
+    @transaction.update!(merchant: "이전가맹점", category: target,
+                         classification_source: "manual_set")
+
+    patch inline_update_workspace_transaction_path(@workspace, @transaction),
+          params: { field: "merchant", value: "NEW_SAME_CAT_MERCHANT" }, as: :json
+
+    assert_response :success
+    @transaction.reload
+    assert_equal target.id, @transaction.category_id
+    assert_equal "mapping_match", @transaction.classification_source,
+                 "새 merchant 기준 매핑으로 갱신"
   end
 
   # Codex hotfix A: ledger row의 category-selector URL은 workspace-level

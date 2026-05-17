@@ -500,9 +500,9 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "manual_set", tx.reload.classification_source
   end
 
-  test "update_transaction explicit clear (category_id='') sets manual_set and prevents auto-rematch" do
-    # Codex PR #174 — 폼에서 사용자가 의도적으로 카테고리를 *해제*("")한 경우.
-    # 1) classification_source는 manual_set으로 잠겨야 한다.
+  test "update_transaction explicit clear (category_id='') sets source nil and prevents auto-rematch" do
+    # Codex hotfix B — 폼에서 사용자가 의도적으로 카테고리를 *해제*("")한 경우.
+    # 1) classification_source는 nil이어야 한다 (category=nil이면 source 의미 없음).
     # 2) 같은 요청에서 merchant도 바뀌면 자동 재매칭이 *동작하지 않아야* 한다
     #    (사용자의 명시적 해제 의도를 존중).
     target_for_rematch = categories(:food)
@@ -527,8 +527,8 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     tx.reload
     assert_nil tx.category_id, "사용자가 빈 문자열로 카테고리를 해제했으므로 nil이어야 함"
-    assert_equal "manual_set", tx.classification_source,
-                 "category_id 키가 폼에 포함되었으므로 manual_set"
+    assert_nil tx.classification_source,
+               "category_id=nil이면 classification_source도 nil (의미 정합)"
   end
 
   test "update_transaction inline category_id no-op preserves classification_source" do
@@ -621,9 +621,13 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "mapping_match", tx.reload.classification_source
   end
 
-  test "update_transaction merchant change preserves classification_source when rematch resolves to same category" do
-    # Codex PR #174: 재매칭이 *같은* 카테고리로 끝나면 의미상 분류 변동이 없으므로
-    # 기존 manual_set 같은 사용자 의도 provenance를 silent overwrite하면 안 된다.
+  test "update_transaction merchant change refreshes source to mapping_match when new merchant has matching mapping" do
+    # Codex hotfix B (supersedes PR #174 same-category preservation):
+    # PR #174는 "재매칭이 같은 카테고리면 source 유지"로 코드를 두었지만, 결과적으로
+    # source의 의미가 모호해진다 — source=manual_set이 "사용자가 이 거래에 X로 직접
+    # 지정"인지 "이전 merchant의 manual 흔적"인지 구분이 안 됨.
+    # 새 policy: merchant가 바뀌면 새 merchant 기준으로 source를 재평가.
+    # mapping hit이면 mapping_match로 갱신 (카테고리 자체는 동일).
     target = categories(:food)
     CategoryMapping.create!(
       workspace: @workspace,
@@ -634,9 +638,9 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     )
     tx = @workspace.transactions.create!(
       date: Date.current, amount: 1000, merchant: "초기 가맹점",
-      category: target, # 이미 같은 카테고리
+      category: target,
       status: "pending_review", parsing_session: @parsing_session,
-      classification_source: "manual_set" # 사용자가 이전에 직접 지정
+      classification_source: "manual_set"
     )
 
     patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
@@ -646,8 +650,8 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     tx.reload
     assert_equal target.id, tx.category_id, "카테고리 자체는 그대로"
-    assert_equal "manual_set", tx.classification_source,
-                 "재매칭이 같은 카테고리면 provenance 유지"
+    assert_equal "mapping_match", tx.classification_source,
+                 "새 merchant 기준 매핑 hit — source는 mapping_match로 갱신"
   end
 
   test "update_transaction merchant change with mapping hit sets mapping_match" do
@@ -736,6 +740,100 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_match(/<tr[^>]*data-transaction-id="#{tx.id}"[^>]*tabindex="0"/, response.body)
+  end
+
+  # Codex hotfix B — classification_source semantics in review path.
+
+  test "update_transaction inline category clear sets source nil" do
+    target = categories(:food)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "REV_CLEAR",
+      category: target, status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { field: "category_id", value: "" }, as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_nil tx.category_id
+    assert_nil tx.classification_source
+  end
+
+  test "update_transaction inline merchant change with no new mapping converts to manual_set" do
+    # Codex hotfix B: 핵심 review path stale provenance fix.
+    target = categories(:food)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "이전가맹점",
+      category: target, status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { field: "merchant", value: "REV_NO_MAPPING_NEW" }, as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_equal "REV_NO_MAPPING_NEW", tx.merchant
+    assert_equal target.id, tx.category_id, "카테고리는 보존"
+    assert_equal "manual_set", tx.classification_source,
+                 "새 merchant에 매핑이 없고 카테고리는 남았으므로 manual_set"
+  end
+
+  test "update_transaction form merchant change with no new mapping converts to manual_set" do
+    # Form 경로(collection_select가 category_id 그대로 보냄)에서도 동일.
+    target = categories(:food)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "이전가맹점_F",
+      category: target, status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+
+    patch update_transaction_workspace_parsing_session_path(@workspace, @parsing_session, transaction_id: tx.id),
+          params: { transaction: { merchant: "FORM_NO_MAPPING_NEW", category_id: target.id } },
+          as: :turbo_stream
+
+    assert_response :success
+    tx.reload
+    assert_equal "FORM_NO_MAPPING_NEW", tx.merchant
+    assert_equal target.id, tx.category_id
+    assert_equal "manual_set", tx.classification_source
+  end
+
+  test "bulk_update change_category with blank category_id is rejected" do
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "REV_BULK_BLANK",
+      category: categories(:food), status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+
+    post bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+         params: { bulk_action: "change_category", category_id: "", transaction_ids: tx.id.to_s }
+
+    assert_redirected_to review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_match(/카테고리를 선택/, flash[:alert])
+    tx.reload
+    assert_equal categories(:food).id, tx.category_id
+    assert_equal "mapping_match", tx.classification_source
+  end
+
+  test "bulk_update change_category with invalid category_id is rejected" do
+    foreign = categories(:other_category)
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "REV_BULK_FOREIGN",
+      category: categories(:food), status: "pending_review", parsing_session: @parsing_session,
+      classification_source: "mapping_match"
+    )
+
+    post bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+         params: { bulk_action: "change_category", category_id: foreign.id, transaction_ids: tx.id.to_s }
+
+    assert_redirected_to review_workspace_parsing_session_path(@workspace, @parsing_session)
+    assert_match(/유효하지 않은/, flash[:alert])
+    tx.reload
+    assert_equal categories(:food).id, tx.category_id
+    assert_equal "mapping_match", tx.classification_source
   end
 
   # Codex hotfix A — review row context contract.

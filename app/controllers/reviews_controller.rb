@@ -185,13 +185,29 @@ class ReviewsController < ApplicationController
       end
       notice = "#{count}건의 거래가 용돈에서 해제되었습니다."
     when "change_category"
-      category = @workspace.categories.find_by(id: params[:category_id])
+      # Codex hotfix B: invalid/blank category_id를 nil clear로 silent 해석하지
+      # 않는다. bulk action은 파괴 범위가 크므로 422/alert로 막는다.
+      err = if params[:category_id].blank?
+              "카테고리를 선택해 주세요."
+            elsif !(category = @workspace.categories.find_by(id: params[:category_id]))
+              "유효하지 않은 카테고리입니다."
+            end
+      if err
+        respond_to do |format|
+          format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), alert: err }
+          format.turbo_stream do
+            flash.now[:alert] = err
+            render turbo_stream: turbo_stream.update("flash", partial: "shared/flash"), status: :unprocessable_entity
+          end
+        end
+        return
+      end
       count = 0
       transactions.find_each do |tx|
-        # ADR-0011 §Decision 3 (Codex PR #174 follow-up): per-row 가드 — 실제 category
-        # 변동시에만 manual_set 잠금. 이미 같은 카테고리인 rows는 provenance 보존.
-        attrs = { category_id: category&.id }
-        attrs[:classification_source] = "manual_set" if tx.category_id != category&.id
+        # ADR-0011 §Decision 3: per-row 가드 — 실제 category 변동시에만 manual_set.
+        # 이미 같은 카테고리인 rows는 provenance 보존.
+        attrs = { category_id: category.id }
+        attrs[:classification_source] = "manual_set" if tx.category_id != category.id
         tx.update!(attrs)
         count += 1
       end
@@ -249,25 +265,19 @@ class ReviewsController < ApplicationController
       end
 
       if @transaction.update(field => value)
-        # ADR-0011 §Decision 3 (Codex PR #174 follow-up): inline category_id 편집은
-        # 실제 category가 *변동*했을 때만 manual_set으로 잠근다. 같은 값 재전송은
-        # no-op이므로 기존 provenance(mapping_match 등) 보존.
+        # ADR-0011 §Decision 3 (Codex hotfix B): inline category_id 편집은 실제
+        # category가 *변동*했을 때만 provenance 갱신. category가 nil로 변하면
+        # source도 nil (미분류 상태에 manual_set이 남으면 의미 오염).
         if field == "category_id" && @transaction.category_id != old_category_id
-          @transaction.update_column(:classification_source, "manual_set")
+          new_source = @transaction.category_id.present? ? "manual_set" : nil
+          @transaction.update_column(:classification_source, new_source)
         end
 
-        # If merchant changed, try to auto-categorize
-        if field == "merchant"
-          new_category = CategoryMapping.find_category_for_merchant_and_description(
-            @workspace,
-            @transaction.merchant,
-            @transaction.description
-          )
-          if new_category && new_category.id != old_category_id
-            # ADR-0011 §Decision 3: merchant 변경으로 재매칭된 카테고리는 `mapping_match`.
-            @transaction.update(category: new_category, classification_source: "mapping_match")
-          end
-        end
+        # ADR-0011 §Decision 3 (Codex hotfix B): merchant가 바뀌면 새 merchant
+        # 기준으로 provenance를 *반드시* 재평가한다. 과거에는 새 매핑이 다른
+        # 카테고리를 가리킬 때만 갱신해서, 매핑이 없으면 기존 mapping_match가
+        # 새 merchant와 무관한 stale provenance로 남았다.
+        apply_merchant_rematch_policy!(@transaction) if field == "merchant"
 
         respond_to do |format|
           format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), notice: "거래가 수정되었습니다." }
@@ -290,34 +300,25 @@ class ReviewsController < ApplicationController
                             params[:transaction].key?(:category_id)
 
     if @transaction.update(transaction_params)
-      # ADR-0011 §Decision 3 (Codex PR #174 follow-up): 검토 폼도 collection_select로
-      # category_id를 항상 보낼 수 있으므로 키 존재만으로는 부족. 실제 category_id가
-      # *변동*한 경우에만 manual_set 잠금 — 동일 카테고리는 기존 provenance 보존.
-      if category_id_submitted && @transaction.category_id != old_category_id
-        @transaction.update_column(:classification_source, "manual_set")
+      # ADR-0011 §Decision 3 (Codex hotfix B): 폼이 category_id를 항상 보낼 수
+      # 있으므로 키 존재만으로는 부족. 실제 category_id가 *변동*한 경우에만
+      # provenance 갱신. category가 nil로 변하면 source도 nil — 미분류 상태에
+      # manual_set이 남으면 의미 오염.
+      category_changed = category_id_submitted && @transaction.category_id != old_category_id
+      if category_changed
+        new_source = @transaction.category_id.present? ? "manual_set" : nil
+        @transaction.update_column(:classification_source, new_source)
       end
 
-      # ADR-0011 §Decision 3 (Codex PR #174 follow-up): merchant 변경 + 결과적으로
-      # 카테고리가 nil(미분류)일 때 자동 재매칭. 단 사용자가 이번 요청에서
-      # *명시적으로 해제*한 경우(`category_intentionally_cleared`)는 그 의도를
-      # 존중해 rematch 금지.
+      # ADR-0011 §Decision 3 (Codex hotfix B): merchant 변경 시 정책.
+      #   - 사용자가 같은 요청에서 명시적으로 카테고리를 *변경*했으면 그 의도를
+      #     respect — rematch가 사용자의 선택을 덮어쓰지 않는다.
+      #   - 사용자가 명시적으로 *clear*한 경우도 respect (이미 source=nil로 정리됨).
+      #   - 그 외(카테고리 제출 안 했거나 동일 카테고리 no-op 제출): rematch로
+      #     새 merchant 기준 provenance 재평가. 매핑 없으면 manual_set 또는 nil.
       merchant_changed = old_merchant != @transaction.merchant
-      category_intentionally_cleared = category_id_submitted &&
-                                       old_category_id.present? &&
-                                       @transaction.category_id.blank?
-
-      if merchant_changed && @transaction.category_id.blank? && !category_intentionally_cleared
-        new_category = CategoryMapping.find_category_for_merchant_and_description(
-          @workspace,
-          @transaction.merchant,
-          @transaction.description
-        )
-        # ADR-0011 §Decision 3: 재매칭이 *다른* 카테고리를 가리킬 때만 mapping_match로
-        # 갱신한다. 같은 카테고리면 의미상 분류 변동이 없으므로 기존 classification_source
-        # (예: 사용자가 이전에 지정한 manual_set)를 silent overwrite하지 않는다.
-        if new_category && new_category.id != @transaction.category_id
-          @transaction.update(category: new_category, classification_source: "mapping_match")
-        end
+      if merchant_changed && !category_changed
+        apply_merchant_rematch_policy!(@transaction)
       end
 
       # ADR-0007 §4: 카테고리 변경 시 묵시적 CategoryMapping 생성은 금지.
@@ -354,6 +355,28 @@ class ReviewsController < ApplicationController
   def require_workspace_write_access
     unless current_user.can_write?(@workspace)
       redirect_to root_path, alert: "수정 권한이 없습니다."
+    end
+  end
+
+  # ADR-0011 §Decision 3 (Codex hotfix B): merchant가 바뀌면 새 merchant 기준
+  # provenance를 재평가. 정책은 TransactionsController#apply_merchant_rematch_policy!
+  # 와 동일하다 (review/ledger 양쪽 경로 모두 같은 의미를 가져야 함). 둘은 분리된
+  # controller라 helper를 중복 정의 — 추출은 후속.
+  def apply_merchant_rematch_policy!(transaction)
+    new_category = CategoryMapping.find_category_for_merchant_and_description(
+      @workspace, transaction.merchant, transaction.description
+    )
+
+    if new_category
+      if transaction.category_id != new_category.id
+        transaction.update(category: new_category, classification_source: "mapping_match")
+      elsif transaction.classification_source != "mapping_match"
+        transaction.update_column(:classification_source, "mapping_match")
+      end
+    elsif transaction.category_id.present?
+      transaction.update_column(:classification_source, "manual_set") if transaction.classification_source != "manual_set"
+    else
+      transaction.update_column(:classification_source, nil) if transaction.classification_source.present?
     end
   end
 
