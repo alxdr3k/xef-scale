@@ -17,12 +17,19 @@ export default class extends Controller {
   static targets = ["commitForm", "helpBackdrop", "helpDialog"]
 
   handleKey(event) {
-    // 도움말 overlay가 열려 있으면 Esc만 처리, 다른 키는 background로 새지 않게 차단
-    // (Codex PR #184 P2: modal 의미 보존).
+    // 도움말 overlay가 열려 있으면 Esc/?/Tab만 처리, 다른 키는 background로 새지 않게 차단
+    // (Codex PR #184 P2: modal 의미 보존 + ? 토글 + focus trap).
     if (this.helpOpen()) {
       if (event.key === "Escape") {
         event.preventDefault()
         this.hideHelp()
+      } else if (event.key === "?" || (event.code === "Slash" && event.shiftKey)) {
+        // Advertised 토글 behavior — ? 누르면 닫힘.
+        event.preventDefault()
+        this.hideHelp()
+      } else if (event.key === "Tab") {
+        // focus trap: dialog 안 focusable 사이만 순환.
+        this.trapTab(event)
       }
       return
     }
@@ -100,5 +107,30 @@ export default class extends Controller {
 
   helpOpen() {
     return this.hasHelpDialogTarget && !this.helpDialogTarget.classList.contains("hidden")
+  }
+
+  // Codex PR #184 P2: aria-modal focus trap.
+  // Tab/Shift+Tab이 dialog 안 focusable 사이만 순환하도록.
+  trapTab(event) {
+    const focusables = this.helpDialogTarget.querySelectorAll(
+      "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"
+    )
+    if (focusables.length === 0) {
+      event.preventDefault()
+      return
+    }
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    } else if (!this.helpDialogTarget.contains(document.activeElement)) {
+      // 외부에서 dialog로 끌어와야 trap 의미 있음.
+      event.preventDefault()
+      first.focus()
+    }
   }
 }
