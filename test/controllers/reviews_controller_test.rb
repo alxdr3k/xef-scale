@@ -138,6 +138,55 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_equal tx.id, event.reviewed_transaction_id
   end
 
+  test "bulk change_category records transaction_updated events only for actually changed rows" do
+    category_a = @workspace.categories.create!(name: "카페")
+    category_b = @workspace.categories.create!(name: "교통")
+    tx_unchanged = @workspace.transactions.create!(
+      date: Date.current, amount: 1_000,
+      status: "pending_review", parsing_session: @parsing_session,
+      category: category_b
+    )
+    tx_changed = @workspace.transactions.create!(
+      date: Date.current, amount: 2_000,
+      status: "pending_review", parsing_session: @parsing_session,
+      category: category_a
+    )
+
+    assert_difference -> { @parsing_session.import_review_events.transaction_updates.count }, 1 do
+      post bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+            params: {
+              transaction_ids: "#{tx_unchanged.id},#{tx_changed.id}",
+              bulk_action: "change_category",
+              category_id: category_b.id
+            },
+            as: :turbo_stream
+    end
+
+    event = @parsing_session.import_review_events.transaction_updates.last
+    assert_equal tx_changed.id, event.reviewed_transaction_id
+    assert_equal [ "category_id" ], event.changed_fields
+  end
+
+  test "bulk delete records transaction_excluded events" do
+    tx1 = @workspace.transactions.create!(
+      date: Date.current, amount: 1_000,
+      status: "pending_review", parsing_session: @parsing_session
+    )
+    tx2 = @workspace.transactions.create!(
+      date: Date.current, amount: 2_000,
+      status: "pending_review", parsing_session: @parsing_session
+    )
+
+    assert_difference -> { @parsing_session.import_review_events.transaction_exclusions.count }, 2 do
+      post bulk_update_workspace_parsing_session_path(@workspace, @parsing_session),
+            params: {
+              transaction_ids: "#{tx1.id},#{tx2.id}",
+              bulk_action: "delete"
+            },
+            as: :turbo_stream
+    end
+  end
+
   test "update_transaction rejects zero amount" do
     tx = @workspace.transactions.create!(
       date: Date.current,

@@ -153,6 +153,7 @@ class ReviewsController < ApplicationController
       transactions.find_each do |tx|
         if tx.pending_review?
           tx.rollback!
+          record_review_event_for(tx, "transaction_excluded")
           count += 1
         end
       end
@@ -181,9 +182,11 @@ class ReviewsController < ApplicationController
       transactions.find_each do |tx|
         # ADR-0011 §Decision 3 (Codex PR #174 follow-up): per-row 가드 — 실제 category
         # 변동시에만 manual_set 잠금. 이미 같은 카테고리인 rows는 provenance 보존.
+        category_changed = tx.category_id != category&.id
         attrs = { category_id: category&.id }
-        attrs[:classification_source] = "manual_set" if tx.category_id != category&.id
+        attrs[:classification_source] = "manual_set" if category_changed
         tx.update!(attrs)
+        record_review_event_for(tx, "transaction_updated", changed_fields: [ "category_id" ]) if category_changed
         count += 1
       end
       notice = "#{count}건의 거래 카테고리가 변경되었습니다."
@@ -346,6 +349,16 @@ class ReviewsController < ApplicationController
       parsing_session: @parsing_session,
       reviewed_transaction: @transaction,
       event_type: "transaction_updated",
+      changed_fields: changed_fields
+    )
+  end
+
+  def record_review_event_for(tx, event_type, changed_fields: [])
+    ImportReviewEventRecorder.record(
+      workspace: @workspace,
+      parsing_session: @parsing_session,
+      reviewed_transaction: tx,
+      event_type: event_type,
       changed_fields: changed_fields
     )
   end

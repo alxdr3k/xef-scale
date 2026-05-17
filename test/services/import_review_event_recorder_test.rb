@@ -26,7 +26,8 @@ class ImportReviewEventRecorderTest < ActiveSupport::TestCase
   test "records a transaction_updated event with changed fields" do
     transaction = @workspace.transactions.create!(
       date: Date.current,
-      amount: 1_000
+      amount: 1_000,
+      parsing_session: @session
     )
 
     event = ImportReviewEventRecorder.record(
