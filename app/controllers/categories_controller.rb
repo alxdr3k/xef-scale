@@ -37,10 +37,13 @@ class CategoriesController < ApplicationController
     # Codex hotfix A: 슬라이드오버가 review 화면에서 열렸으면 parsing_session_id가
     # query string으로 따라온다. row re-render가 review context를 잃으면 이후
     # 인라인 편집/카테고리 변경이 session-scoped guard(reject_if_finalized)를
-    # 우회하므로 반드시 보존해야 한다. workspace 소속/세션 소속을 검증한 뒤
-    # @parsing_session을 설정 → partial이 explicit URL을 emit한다.
+    # 우회하므로 반드시 보존해야 한다.
+    #
+    # Codex review (#185): parsing_session_id가 *주어졌는데* workspace에 없으면
+    # find_by → nil → @workspace.transactions fallback으로 떨어져 cross-session
+    # 경로가 다시 열린다. find로 바꿔 invalid id면 즉시 404로 막는다.
     if @slideover && params[:parsing_session_id].present?
-      @parsing_session = @workspace.parsing_sessions.find_by(id: params[:parsing_session_id])
+      @parsing_session = @workspace.parsing_sessions.find(params[:parsing_session_id])
     end
 
     if @category.save

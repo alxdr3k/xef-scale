@@ -169,6 +169,38 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_match(/data-category-selector-request-style-value="field"/, response.body)
   end
 
+  test "create via slideover rejects invalid parsing_session_id (no workspace fallback)" do
+    # Codex review (#185 P1): parsing_session_id가 *주어졌지만* workspace에 없으면
+    # find_by → nil fallback이 @workspace.transactions로 떨어지면서 hotfix가 막으려던
+    # cross-session 경로가 다시 열린다. find로 즉시 404.
+    other_ws = workspaces(:other_workspace)
+    other_session = other_ws.parsing_sessions.create!(
+      source_type: "text_paste", status: "completed", review_status: "pending_review",
+      total_count: 0, success_count: 0, duplicate_count: 0, error_count: 0
+    )
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "WS_FALLBACK",
+      status: "committed"
+    )
+    initial_category_id = tx.category_id
+
+    post workspace_categories_path(@workspace), params: {
+      category: { name: "교차세션침입", color: "#000000" },
+      slideover: "true",
+      transaction_id: tx.id,
+      parsing_session_id: other_session.id
+    }, as: :turbo_stream
+
+    assert_response :not_found
+    # 카테고리는 만들어지지 않아야 하고, transaction도 변경되지 않아야 한다.
+    assert_nil @workspace.categories.find_by(name: "교차세션침입")
+    if initial_category_id.nil?
+      assert_nil tx.reload.category_id
+    else
+      assert_equal initial_category_id, tx.reload.category_id
+    end
+  end
+
   test "create via slideover rejects transaction not belonging to parsing_session" do
     ps = parsing_sessions(:completed_session)
     ps.update!(review_status: "pending_review")
