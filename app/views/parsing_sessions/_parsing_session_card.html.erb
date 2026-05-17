@@ -6,14 +6,14 @@
     <% end %>
     class="px-4 py-3 <%= 'cursor-pointer' if parsing_session.can_discard? %>">
   <div class="flex items-center justify-between">
-    <span class="text-sm text-gray-900 truncate flex-1 mr-2">
+    <span class="text-sm text-primary truncate flex-1 mr-2">
       <% if parsing_session.text_paste? %>
-        <span class="text-gray-600">문자 입력</span>
+        <span class="text-secondary">문자 입력</span>
       <% elsif parsing_session.processed_file %>
         <%= parsing_session.processed_file.original_filename %>
         <%= render "shared/blob_purged_badge", processed_file: parsing_session.processed_file %>
       <% else %>
-        <span class="text-gray-400">파일 정보 없음</span>
+        <span class="text-tertiary">파일 정보 없음</span>
       <% end %>
     </span>
     <span class="flex-shrink-0">
@@ -24,7 +24,7 @@
     </span>
   </div>
   <div class="flex items-center justify-between mt-1">
-    <span class="text-xs text-gray-500">
+    <span class="text-xs text-tertiary">
       <% if parsing_session.completed? %>
         성공 <%= parsing_session.success_count %>건
         <% pending_dup_count = parsing_session.duplicate_confirmations.select { |dc| dc.status == "pending" }.size %>
@@ -39,32 +39,32 @@
         <% end %>
       <% end %>
     </span>
-    <span class="text-xs text-gray-400"><%= time_ago_in_words(parsing_session.created_at) %> 전</span>
+    <span class="text-xs text-tertiary"><%= time_ago_in_words(parsing_session.created_at) %> 전</span>
   </div>
   <% if parsing_session.completed? %>
     <div class="mt-2">
       <% if parsing_session.review_pending? %>
         <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
-            class: 'text-xs text-indigo-600 hover:text-indigo-900 font-medium' %>
+            class: 'text-xs text-action hover:text-action-hover font-medium' %>
       <% else %>
         <%= link_to '상세보기', review_workspace_parsing_session_path(workspace, parsing_session),
-            class: 'text-xs text-gray-600 hover:text-gray-900' %>
+            class: 'text-xs text-secondary hover:text-primary' %>
       <% end %>
     </div>
   <% elsif parsing_session.has_duplicates? && parsing_session.pending_duplicates.any? %>
     <div class="mt-2">
       <%= link_to '중복 확인', workspace_parsing_session_path(workspace, parsing_session),
-          class: 'text-xs text-indigo-600 hover:text-indigo-900' %>
+          class: 'text-xs text-action hover:text-action-hover' %>
     </div>
   <% elsif parsing_session.failed? %>
     <div class="mt-2 flex items-center gap-3">
       <%= button_to '재시도', retry_workspace_parsing_session_path(workspace, parsing_session),
           method: :post,
-          class: 'text-xs text-indigo-600 hover:text-indigo-900 font-medium bg-transparent border-0 cursor-pointer p-0' %>
+          class: 'text-xs text-action hover:text-action-hover font-medium bg-transparent border-0 cursor-pointer p-0' %>
       <%= button_to '삭제', workspace_parsing_session_path(workspace, parsing_session),
           method: :delete,
           form: { data: { turbo_confirm: "이 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다." } },
-          class: 'text-xs text-red-600 hover:text-red-900 bg-transparent border-0 cursor-pointer p-0' %>
+          class: 'text-xs text-danger hover:text-danger bg-transparent border-0 cursor-pointer p-0' %>
     </div>
   <% end %>
 </div>
