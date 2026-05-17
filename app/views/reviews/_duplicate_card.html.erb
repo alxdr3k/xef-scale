@@ -6,13 +6,13 @@
   <% confidence = confirmation.match_confidence.presence || "medium" %>
   <% confidence_label, confidence_classes = case confidence
                                             when "high"
-                                              [ "중복 가능성 높음", "bg-red-100 text-red-700 border-red-200" ]
+                                              [ "중복 가능성 높음", "bg-danger-subtle text-danger border-danger" ]
                                             when "low"
-                                              [ "중복 가능성 낮음", "bg-gray-100 text-gray-600 border-gray-200" ]
+                                              [ "중복 가능성 낮음", "bg-elev text-secondary border-divider" ]
                                             else
-                                              [ "중복 가능성 보통", "bg-amber-100 text-amber-700 border-amber-200" ]
+                                              [ "중복 가능성 보통", "bg-warning-subtle text-warning border-warning" ]
                                             end %>
-  <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden"
+  <div class="bg-surface rounded-lg border border-divider shadow-sm overflow-hidden"
        data-duplicate-review-target="card">
     <div class="px-4 pt-3 pb-1 flex items-center justify-between">
       <span class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border <%= confidence_classes %>">
@@ -23,11 +23,11 @@
       </span>
     </div>
     <!-- Comparison Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200">
+    <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-divider">
       <!-- Original Transaction (Left) -->
       <div class="p-4">
         <div class="flex items-center gap-2 mb-3">
-          <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">기존 결제</span>
+          <span class="text-xs font-medium text-tertiary uppercase tracking-wide">기존 결제</span>
           <% if original.parsing_session %>
             <% orig_session = original.parsing_session %>
             <% if orig_session.review_pending? || orig_session.review_committed? %>
@@ -39,13 +39,13 @@
           <% end %>
         </div>
         <div class="space-y-2">
-          <div class="font-medium text-lg truncate <%= merchant_diff ? 'text-amber-700 bg-amber-100 px-1 -mx-1 rounded' : 'text-gray-900' %>" title="<%= original.merchant %>">
+          <div class="font-medium text-lg truncate <%= merchant_diff ? 'text-warning bg-warning-subtle px-1 -mx-1 rounded' : 'text-primary' %>" title="<%= original.merchant %>">
             <%= original.merchant %>
           </div>
-          <div class="flex items-center gap-2 text-sm text-gray-600">
+          <div class="flex items-center gap-2 text-sm text-secondary">
             <span><%= original.date&.strftime('%Y.%m.%d') %></span>
-            <span class="text-gray-400">&middot;</span>
-            <span class="font-semibold text-gray-900"><%= number_to_currency(original.amount, unit: '₩', precision: 0) %></span>
+            <span class="text-tertiary">&middot;</span>
+            <span class="font-semibold text-primary"><%= number_to_currency(original.amount, unit: '₩', precision: 0) %></span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2">
             <%= render 'shared/category_badge', category: original.category, highlighted: category_diff %>
@@ -54,16 +54,16 @@
       </div>
 
       <!-- New Transaction (Right) - Highlighted -->
-      <div class="p-4 bg-amber-50">
-        <div class="text-xs font-medium text-amber-600 uppercase tracking-wide mb-3">새 결제</div>
+      <div class="p-4 bg-warning-subtle">
+        <div class="text-xs font-medium text-warning uppercase tracking-wide mb-3">새 결제</div>
         <div class="space-y-2">
-          <div class="font-medium text-lg truncate <%= merchant_diff ? 'text-amber-700 bg-amber-100 px-1 -mx-1 rounded' : 'text-gray-900' %>" title="<%= new_tx.merchant %>">
+          <div class="font-medium text-lg truncate <%= merchant_diff ? 'text-warning bg-warning-subtle px-1 -mx-1 rounded' : 'text-primary' %>" title="<%= new_tx.merchant %>">
             <%= new_tx.merchant %>
           </div>
-          <div class="flex items-center gap-2 text-sm text-gray-600">
+          <div class="flex items-center gap-2 text-sm text-secondary">
             <span><%= new_tx.date&.strftime('%Y.%m.%d') %></span>
-            <span class="text-gray-400">&middot;</span>
-            <span class="font-semibold text-gray-900"><%= number_to_currency(new_tx.amount, unit: '₩', precision: 0) %></span>
+            <span class="text-tertiary">&middot;</span>
+            <span class="font-semibold text-primary"><%= number_to_currency(new_tx.amount, unit: '₩', precision: 0) %></span>
           </div>
           <div class="flex flex-wrap gap-1.5 mt-2">
             <%= render 'shared/category_badge', category: new_tx.category, highlighted: category_diff %>
@@ -73,7 +73,7 @@
     </div>
 
     <!-- Action Buttons -->
-    <div class="bg-gray-50 px-4 py-3 border-t border-gray-200">
+    <div class="bg-elev px-4 py-3 border-t border-divider">
       <div class="flex items-center justify-end gap-2">
         <%= form_with url: workspace_parsing_session_duplicate_confirmation_path(workspace, parsing_session, confirmation),
             method: :patch,
@@ -82,7 +82,7 @@
           <!-- keep_original: drop the new transaction, leave the ledger unchanged -->
           <button type="submit" name="decision" value="keep_original"
                   title="새 결제를 제외하고 기존 결제를 그대로 둡니다. 총액은 변하지 않습니다."
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-divider text-secondary rounded-lg hover:bg-elev transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -97,7 +97,7 @@
           <!-- keep_both: both rows remain in the ledger, monthly total increases -->
           <button type="submit" name="decision" value="keep_both"
                   title="두 결제가 모두 장부에 남습니다. 이번 달 총액이 증가합니다."
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors">
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-info text-info rounded-lg hover:bg-info-subtle transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
@@ -112,7 +112,7 @@
           <!-- keep_new: hide the existing transaction and use the new one instead -->
           <button type="submit" name="decision" value="keep_new"
                   title="기존 결제를 숨기고 새 결제를 장부에 반영합니다."
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-action text-action-on rounded-lg hover:bg-action-hover transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
