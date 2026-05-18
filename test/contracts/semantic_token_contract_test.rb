@@ -56,14 +56,20 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
     \b
   /x
 
-  # #RGB / #RGBA / #RRGGBB / #RRGGBBAA — 코멘트와 allowlist는 따로 처리.
+  # CSS context는 short hex (#abc) / 8-digit hex 모두 색이라 #RGB..#RRGGBBAA 다 잡는다.
   RAW_HEX_RE = /#\h{3,8}(?:\b|(?=[^\h]))/
+  # 비-CSS source에서는 3/4-char hex가 PR reference (`#182`) 와 헷갈리므로 6/8 digit만.
+  RAW_HEX_NON_CSS_RE = /(?<![\w])#(?:\h{8}|\h{6})(?![\w])/
 
   # rgb(...), rgba(...).
   RAW_RGB_RE = /\brgba?\s*\(/
 
-  # 파일 경로별 allowlist. nil이면 전체 파일 통과, Array면 그 줄들은 무시 (1-indexed).
-  # 정확한 이유를 명시해서 추후 audit에서 의도가 보이도록 한다.
+  # Codex PR #224 P2 fallback: 토큰화 불가능한 line은 `semantic-allow` 마커로 면제.
+  # 예: chart_tabs_controller.js의 `_resolveCssVar` fallback hex.
+  ALLOW_LINE_MARKER = "semantic-allow"
+
+  # 파일 경로별 allowlist. :all 이면 전체 파일 통과, :token_definitions 면 token 영역
+  # (@theme { ... }) 를 stripping 후 검사. 정확한 이유를 코멘트에 명시.
   PATH_ALLOWLIST = {
     # 전체 페이지가 fixed gradient hero (theme 안 따라감) — PR #213 P1 결정.
     "app/views/pages/landing.html.erb" => :all,
@@ -74,29 +80,40 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
     # Category color swatch preset (사용자 정의 카테고리 hex) — 의도된 raw hex.
     "app/views/shared/_color_picker.html.erb" => :all,
 
+    # 임의 swatch 색 위의 contrast icon은 페이지 테마가 아니라 swatch 색에 대한
+    # contrast 계산이라 raw hex 필수 (Phase 5 cleanup C-3 #223에서 결정).
+    "app/javascript/controllers/color_picker_controller.js" => :all,
+
     # ADR-0008 semantic token 정의 자체가 light-dark()로 raw hex를 갖는다.
     "app/assets/stylesheets/application.tailwind.css" => :token_definitions
   }.freeze
 
-  # application.tailwind.css 안에서 token 정의 영역 (--color-*: light-dark(...)) 외의
-  # 부분만 검사. token 정의는 raw hex가 의도된 곳.
-  def assert_no_palette_in_css(file)
+  # Codex PR #224 P2 fix: token-definition stripping은 `@theme { ... }` 블록 안의
+  # 정의에만 적용. 다른 layer/scope에 `--foo: #hex;`를 박으면 그건 토큰이 아니므로
+  # raw hex로 잡혀야 한다.
+  def strip_theme_block(css_body)
+    # @theme { ... } 블록을 통째로 제거. CSS @theme 블록은 nested {} 없이 single level
+    # custom property 선언이므로 non-greedy match로 충분.
+    css_body.gsub(/@theme\s*\{[^}]*\}/m, "")
+  end
+
+  def assert_no_palette_in_css(file, rel_path)
     body = File.read(file)
-    # @theme 블록 안의 모든 -- 토큰 정의 (color/shadow/radius/transition/font 등)는
-    # raw hex/rgba()가 의도된 위치. line 단위로 제거.
-    stripped = body.gsub(/^\s*--[\w-]+:\s*[^;]*;.*$/, "")
-    # /* ... */ 코멘트도 제거 (의도 설명에 토큰 이름이 들어갈 수 있음).
+    # application.tailwind.css 만 @theme 블록을 stripping. 다른 stylesheet는 stripping
+    # 없이 전체 검사 (Codex PR #224 P2).
+    stripped = (PATH_ALLOWLIST[rel_path] == :token_definitions) ? strip_theme_block(body) : body
+    # /* ... */ 코멘트 제거 (의도 설명에 토큰 이름이 들어갈 수 있음).
     stripped = stripped.gsub(%r{/\*.*?\*/}m, "")
     assert_no_match PALETTE_UTILITY_RE, stripped,
-                    "#{file}: palette utility class found in CSS"
+                    "#{rel_path}: palette utility class found in CSS"
     assert_no_match TRUNCATION_ARTIFACT_RE, stripped,
-                    "#{file}: truncation artifact (bg-*-subtle0 등) found in CSS"
+                    "#{rel_path}: truncation artifact (bg-*-subtle0 등) found in CSS"
     # raw hex / rgb()는 token 정의 외에서는 의미 손실 — keyframes/utilities에서는
     # var(--color-*) + color-mix() 로만 가능.
     assert_no_match RAW_HEX_RE, stripped,
-                    "#{file}: raw hex found outside token definitions"
+                    "#{rel_path}: raw hex found outside token definitions"
     assert_no_match RAW_RGB_RE, stripped,
-                    "#{file}: raw rgb() found outside token definitions"
+                    "#{rel_path}: raw rgb() found outside token definitions"
   end
 
   # 코멘트 라인을 무시하기 위한 마스킹. ERB/JS/Ruby/CSS 코멘트 형식을 처리.
@@ -111,8 +128,10 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
       # 그러나 본 contract는 본문 클래스 추출용이라 안전한 쪽으로 코멘트 제거.
       content.gsub(/\/\/.*$/, "").gsub(%r{/\*.*?\*/}m, "")
     when ".rb"
-      # # ... 단일 라인 (string literal 안의 #도 제거되지만 본 contract는 본문 클래스 추출 목적)
-      content.gsub(/#.*$/, "")
+      # Codex PR #224 P2: 라인 시작 `#` 만 제거. `"#{interpolation}"` 안 `#`을
+      # 보호하기 위해서. inline `# comment`는 보존되지만 contract test 본문 검사
+      # 목적상 거짓 음성보다는 false positive 가능성을 받아들이는 게 안전.
+      content.gsub(/^\s*#.*$/, "")
     when ".css"
       content.gsub(%r{/\*.*?\*/}m, "")
     else
@@ -161,6 +180,44 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
         without a word boundary). Fix the truncated class to the intended token.
       MSG
     end
+
+    # Codex PR #224 P2: raw hex / rgb()도 비-CSS surface에서 검사. inline style 이나
+    # JS-generated string으로 raw color가 들어가는 케이스 차단. 임의 swatch 색 위
+    # contrast icon처럼 토큰으로 표현 불가능한 도메인 케이스는 path allowlist (:all)
+    # 또는 line-level `semantic-allow` 마커.
+    # 비-CSS는 PR reference (#123) 와 구분 위해 6/8 hex digit만.
+    if (m = match_with_allowlist(stripped, RAW_HEX_NON_CSS_RE, raw))
+      line = line_for_offset(stripped, m.begin(0))
+      flunk(<<~MSG)
+        #{rel_path}:#{line} — raw hex literal "#{m[0]}" found.
+        Use ADR-0008 semantic CSS var (var(--color-*)) or a tone className.
+        If this is a theme-independent contrast value (e.g. icon on arbitrary
+        user-chosen swatch), add the file to PATH_ALLOWLIST with :all,
+        or add an inline `#{ALLOW_LINE_MARKER}` comment on the offending line.
+      MSG
+    end
+    if (m = match_with_allowlist(stripped, RAW_RGB_RE, raw))
+      line = line_for_offset(stripped, m.begin(0))
+      flunk(<<~MSG)
+        #{rel_path}:#{line} — raw rgb() literal found.
+        Same rule as raw hex: use var(--color-*), path allowlist, or
+        `#{ALLOW_LINE_MARKER}` inline marker.
+      MSG
+    end
+  end
+
+  # 라인 단위 allowlist 마커 확인. stripped에서 패턴이 잡히더라도 같은 라인의
+  # raw 원본에 `semantic-allow` 마커가 있으면 무시한다.
+  def match_with_allowlist(stripped, regex, raw)
+    offset = 0
+    raw_lines = raw.lines
+    while (m = stripped.match(regex, offset))
+      line = line_for_offset(stripped, m.begin(0))
+      raw_line = raw_lines[line - 1] || ""
+      return m unless raw_line.include?(ALLOW_LINE_MARKER)
+      offset = m.end(0)
+    end
+    nil
   end
 
   test "ERB views use semantic tokens (no palette utility / no truncation artifact)" do
@@ -203,9 +260,19 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
     end
   end
 
-  test "application.tailwind.css uses only semantic var(--color-*) outside token definitions" do
-    file = ROOT.join("app/assets/stylesheets/application.tailwind.css")
-    assert_no_palette_in_css(file) if File.exist?(file)
+  test "all stylesheets use only semantic var(--color-*) outside token definitions" do
+    # Codex PR #224 P2 + P3: 전체 stylesheets 검사 + canonical 파일 누락 시 loud fail.
+    files = Dir.glob(ROOT.join("app/assets/stylesheets/**/*.css"))
+    assert files.any?, "no stylesheets found — glob mis-pointed?"
+
+    canonical = ROOT.join("app/assets/stylesheets/application.tailwind.css")
+    assert File.exist?(canonical),
+           "canonical stylesheet application.tailwind.css missing — contract test must not silently pass on path drift"
+
+    files.each do |file|
+      rel = Pathname.new(file).relative_path_from(ROOT).to_s
+      assert_no_palette_in_css(file, rel)
+    end
   end
 
   test "no truncation artifact across all four surfaces" do

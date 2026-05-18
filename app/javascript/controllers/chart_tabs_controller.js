@@ -71,7 +71,7 @@ export default class extends Controller {
     // getPropertyValue()로 직접 읽으면 그 raw 토큰이 그대로 반환되어 canvas가
     // 못 해석한다. probe element에 var() 를 적용한 뒤 computed style을 읽으면
     // 브라우저가 light-dark()를 resolve해서 rgb() 문자열을 돌려준다.
-    const surfaceColor = this._resolveCssVar('--color-surface', '#ffffff')
+    const surfaceColor = this._resolveCssVar('--color-surface', '#ffffff') // semantic-allow: CSS var resolve 실패 시 안전 fallback
 
     // Create sparkline for each category
     sortedDatasets.forEach(dataset => {
