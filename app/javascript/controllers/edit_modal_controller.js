@@ -76,11 +76,11 @@ export default class extends Controller {
           checkbox.id = "allowance"
           checkbox.value = "1"
           checkbox.checked = this.allowanceValue
-          checkbox.className = "h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+          checkbox.className = "h-4 w-4 text-action focus:ring-action border-divider rounded"
 
           const label = document.createElement("label")
           label.htmlFor = "allowance"
-          label.className = "ml-2 block text-sm text-gray-900"
+          label.className = "ml-2 block text-sm text-primary"
           label.textContent = "💰 용돈으로 표시"
 
           allowanceDiv.appendChild(checkbox)
@@ -94,7 +94,7 @@ export default class extends Controller {
     } catch (error) {
       console.error("Error loading form:", error)
       const errorDiv = document.createElement("div")
-      errorDiv.className = "text-red-600 text-center py-4"
+      errorDiv.className = "text-danger text-center py-4"
       errorDiv.textContent = "폼을 불러오는데 실패했습니다."
       this.contentElement.textContent = ""
       this.contentElement.appendChild(errorDiv)
@@ -105,7 +105,7 @@ export default class extends Controller {
     this.modalElement.classList.add("hidden")
     document.body.style.overflow = ""
     const loadingDiv = document.createElement("div")
-    loadingDiv.className = "text-center py-8 text-gray-500"
+    loadingDiv.className = "text-center py-8 text-tertiary"
     loadingDiv.textContent = "로딩 중..."
     this.contentElement.textContent = ""
     this.contentElement.appendChild(loadingDiv)

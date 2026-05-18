@@ -26,7 +26,7 @@ export default class extends Controller {
       requireSameFieldKey: ["select"], // Category can only drop on category
       classes: {
         dragging: "opacity-50",
-        dropTarget: ["ring-2", "ring-indigo-400", "bg-indigo-50"]
+        dropTarget: ["ring-2", "ring-action", "bg-action-subtle"]
       },
       onDrop: async (sourceData, targetData) => {
         const targetTx = targetData.context.tx
@@ -142,13 +142,16 @@ export default class extends Controller {
     const container = document.createElement("div")
     container.className = "grid grid-cols-[1fr_80px_1fr] gap-3"
 
-    // Left card
+    // Phase 5 cleanup (Scope C-3): bg-blue-50 + violet-50 카드 페어는 의미상
+    // info(기존)와 ai(새)로 매핑. _duplicate_modal.html.erb의 keep-left/keep-right
+    // CTA 색 (PR #214) 과도 정렬.
+    // Left card (기존 결제 = info tone)
     const leftCard = document.createElement("div")
-    leftCard.className = "bg-blue-50 border-2 border-blue-300 rounded-lg p-4"
+    leftCard.className = "bg-info-subtle border-2 border-info rounded-lg p-4"
 
     const leftHeader = document.createElement("div")
-    leftHeader.className = "text-center mb-3 pb-2 border-b border-blue-200"
-    leftHeader.innerHTML = `<span class="text-xs font-medium text-blue-700">등록: ${pair.left.created_at}</span>`
+    leftHeader.className = "text-center mb-3 pb-2 border-b border-info"
+    leftHeader.innerHTML = `<span class="text-xs font-medium text-info">등록: ${pair.left.created_at}</span>`
     leftCard.appendChild(leftHeader)
 
     const leftFields = document.createElement("div")
@@ -165,13 +168,13 @@ export default class extends Controller {
     const labelsContainer = document.createElement("div")
     labelsContainer.className = "space-y-2"
 
-    // Right card
+    // Right card (새 결제 = ai tone, purple)
     const rightCard = document.createElement("div")
-    rightCard.className = "bg-violet-50 border-2 border-violet-300 rounded-lg p-4"
+    rightCard.className = "bg-ai-subtle border-2 border-ai-border rounded-lg p-4"
 
     const rightHeader = document.createElement("div")
-    rightHeader.className = "text-center mb-3 pb-2 border-b border-violet-200"
-    rightHeader.innerHTML = `<span class="text-xs font-medium text-violet-700">등록: ${pair.right.created_at}</span>`
+    rightHeader.className = "text-center mb-3 pb-2 border-b border-ai-border"
+    rightHeader.innerHTML = `<span class="text-xs font-medium text-ai">등록: ${pair.right.created_at}</span>`
     rightCard.appendChild(rightHeader)
 
     const rightFields = document.createElement("div")
@@ -183,21 +186,22 @@ export default class extends Controller {
       const rightVal = pair.right[field.key]
       const isDifferent = leftVal !== rightVal
 
+      // Phase 5 cleanup (Scope C-3): diff highlight는 의미상 warning tone.
       // Left value
       const leftRow = document.createElement("div")
-      leftRow.className = `text-right py-1.5 px-2 rounded ${isDifferent ? "bg-amber-100 ring-1 ring-amber-300" : ""}`
+      leftRow.className = `text-right py-1.5 px-2 rounded ${isDifferent ? "bg-warning-subtle ring-1 ring-warning" : ""}`
       leftRow.appendChild(this.createValueCell(pair.left, field, "left", isDifferent))
       leftFields.appendChild(leftRow)
 
       // Center label
       const labelRow = document.createElement("div")
-      labelRow.className = `text-center text-sm py-1.5 ${isDifferent ? "font-semibold text-amber-700" : "text-gray-500"}`
+      labelRow.className = `text-center text-sm py-1.5 ${isDifferent ? "font-semibold text-warning" : "text-tertiary"}`
       labelRow.textContent = field.label
       labelsContainer.appendChild(labelRow)
 
       // Right value
       const rightRow = document.createElement("div")
-      rightRow.className = `text-left py-1.5 px-2 rounded ${isDifferent ? "bg-amber-100 ring-1 ring-amber-300" : ""}`
+      rightRow.className = `text-left py-1.5 px-2 rounded ${isDifferent ? "bg-warning-subtle ring-1 ring-warning" : ""}`
       rightRow.appendChild(this.createValueCell(pair.right, field, "right", isDifferent))
       rightFields.appendChild(rightRow)
     })
@@ -233,7 +237,7 @@ export default class extends Controller {
       }
     } else {
       const valueSpan = document.createElement("span")
-      valueSpan.className = `text-sm text-gray-900 ${isDifferent ? "font-semibold" : ""}`
+      valueSpan.className = `text-sm text-primary ${isDifferent ? "font-semibold" : ""}`
       valueSpan.textContent = displayValue
       container.appendChild(valueSpan)
     }
@@ -244,7 +248,7 @@ export default class extends Controller {
   createTextCell(container, tx, field, side, isDifferent, displayValue) {
     // Display value (clickable with hover underline, draggable)
     const valueSpan = document.createElement("span")
-    valueSpan.className = `text-sm text-gray-900 cursor-pointer border-b border-transparent hover:border-gray-400 hover:border-dashed transition-colors ${isDifferent ? "font-semibold" : ""}`
+    valueSpan.className = `text-sm text-primary cursor-pointer border-b border-transparent hover:border-edge hover:border-dashed transition-colors ${isDifferent ? "font-semibold" : ""}`
     valueSpan.textContent = displayValue
     valueSpan.dataset.display = "true"
 
@@ -269,16 +273,16 @@ export default class extends Controller {
     const input = document.createElement("input")
     input.type = "text"
     input.value = tx[field.key] || ""
-    input.className = "text-sm border-gray-300 rounded px-1 py-0.5 w-28 focus:ring-1 focus:ring-indigo-500"
+    input.className = "text-sm border-divider rounded px-1 py-0.5 w-28 focus:ring-1 focus:ring-action"
     input.dataset.input = "true"
 
     const saveBtn = document.createElement("button")
-    saveBtn.className = "text-green-600 hover:text-green-800"
+    saveBtn.className = "text-positive hover:text-positive"
     saveBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`
     saveBtn.addEventListener("click", () => this.saveEdit(container, tx, field, side))
 
     const cancelBtn = document.createElement("button")
-    cancelBtn.className = "text-gray-400 hover:text-gray-600"
+    cancelBtn.className = "text-disabled hover:text-secondary"
     cancelBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`
     cancelBtn.addEventListener("click", () => this.cancelEdit(container))
 
@@ -303,7 +307,7 @@ export default class extends Controller {
   createSelectCell(container, tx, field, side, isDifferent, displayValue) {
     // Display value (clickable with hover underline, draggable)
     const valueSpan = document.createElement("span")
-    valueSpan.className = `text-sm text-gray-900 cursor-pointer border-b border-transparent hover:border-gray-400 hover:border-dashed transition-colors ${isDifferent ? "font-semibold" : ""}`
+    valueSpan.className = `text-sm text-primary cursor-pointer border-b border-transparent hover:border-edge hover:border-dashed transition-colors ${isDifferent ? "font-semibold" : ""}`
     valueSpan.textContent = displayValue
     valueSpan.dataset.display = "true"
 
@@ -327,7 +331,7 @@ export default class extends Controller {
     editorDiv.dataset.editor = "true"
 
     const select = document.createElement("select")
-    select.className = "text-sm border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-indigo-500"
+    select.className = "text-sm border-divider rounded px-1 py-0.5 focus:ring-1 focus:ring-action"
     select.dataset.input = "true"
 
     // Add empty option
@@ -358,7 +362,7 @@ export default class extends Controller {
     })
 
     const cancelBtn = document.createElement("button")
-    cancelBtn.className = "text-gray-400 hover:text-gray-600"
+    cancelBtn.className = "text-disabled hover:text-secondary"
     cancelBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`
     cancelBtn.addEventListener("click", () => this.cancelEdit(container))
 
@@ -459,8 +463,8 @@ export default class extends Controller {
     } catch (error) {
       console.error("Error saving edit:", error)
       input.disabled = false
-      fieldDiv.classList.add("bg-red-100")
-      setTimeout(() => fieldDiv.classList.remove("bg-red-100"), 1000)
+      fieldDiv.classList.add("bg-danger-subtle")
+      setTimeout(() => fieldDiv.classList.remove("bg-danger-subtle"), 1000)
     }
   }
 
@@ -497,8 +501,8 @@ export default class extends Controller {
     } catch (error) {
       console.error("Error saving category:", error)
       select.disabled = false
-      fieldDiv.classList.add("bg-red-100")
-      setTimeout(() => fieldDiv.classList.remove("bg-red-100"), 1000)
+      fieldDiv.classList.add("bg-danger-subtle")
+      setTimeout(() => fieldDiv.classList.remove("bg-danger-subtle"), 1000)
     }
   }
 
@@ -622,7 +626,7 @@ export default class extends Controller {
     summaryDiv.className = "text-center py-8"
 
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
-    svg.setAttribute("class", "mx-auto h-16 w-16 text-green-500 mb-4")
+    svg.setAttribute("class", "mx-auto h-16 w-16 text-positive mb-4")
     svg.setAttribute("fill", "none")
     svg.setAttribute("stroke", "currentColor")
     svg.setAttribute("viewBox", "0 0 24 24")
@@ -634,26 +638,28 @@ export default class extends Controller {
     svg.appendChild(path)
 
     const h3 = document.createElement("h3")
-    h3.className = "text-xl font-semibold text-gray-900 mb-2"
+    h3.className = "text-xl font-semibold text-primary mb-2"
     h3.textContent = "중복 검사 완료"
 
     const p = document.createElement("p")
-    p.className = "text-gray-600 mb-6"
+    p.className = "text-secondary mb-6"
     p.textContent = `총 ${this.pairs.length}개 쌍을 검토했습니다`
 
     const statsGrid = document.createElement("div")
     statsGrid.className = "grid grid-cols-3 gap-4 max-w-md mx-auto mb-6"
 
-    const deletedStat = this.createStatBox(this.stats.deleted, "삭제됨", "red")
-    const keptStat = this.createStatBox(kept, "유지됨", "green")
-    const skippedStat = this.createStatBox(this.stats.skipped, "건너뛰기", "gray")
+    // Phase 5 cleanup (Scope C-3): bg-${color}-50 / text-${color}-600 template literal은
+    // Tailwind JIT가 못 잡을 수 있고 semantic 계약도 깨므로 STAT_TONES 맵으로 교체.
+    const deletedStat = this.createStatBox(this.stats.deleted, "삭제됨", "deleted")
+    const keptStat = this.createStatBox(kept, "유지됨", "kept")
+    const skippedStat = this.createStatBox(this.stats.skipped, "건너뛰기", "skipped")
 
     statsGrid.appendChild(deletedStat)
     statsGrid.appendChild(keptStat)
     statsGrid.appendChild(skippedStat)
 
     const closeBtn = document.createElement("button")
-    closeBtn.className = "px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+    closeBtn.className = "px-6 py-2 bg-action text-action-on rounded-lg hover:bg-action-hover"
     closeBtn.textContent = "닫기"
     closeBtn.addEventListener("click", () => this.close())
 
@@ -666,16 +672,26 @@ export default class extends Controller {
     this.summaryTarget.appendChild(summaryDiv)
   }
 
-  createStatBox(value, label, color) {
+  // Phase 5 cleanup (Scope C-3): semantic tone map — danger / positive / neutral.
+  // 기존 bg-${color}-50 / text-${color}-600 template literal은 Tailwind JIT scan에
+  // 안정적으로 잡히지 않으며 다크 모드/ADR-0008 계약도 깨졌다.
+  static STAT_TONES = {
+    deleted: { box: "bg-danger-subtle", value: "text-danger" },
+    kept:    { box: "bg-positive-subtle", value: "text-positive" },
+    skipped: { box: "bg-elev", value: "text-secondary" }
+  }
+
+  createStatBox(value, label, tone) {
+    const tones = this.constructor.STAT_TONES[tone] || this.constructor.STAT_TONES.skipped
     const box = document.createElement("div")
-    box.className = `bg-${color}-50 rounded-lg p-4`
+    box.className = `${tones.box} rounded-lg p-4`
 
     const valueDiv = document.createElement("div")
-    valueDiv.className = `text-2xl font-bold text-${color}-600`
+    valueDiv.className = `text-2xl font-bold ${tones.value}`
     valueDiv.textContent = value
 
     const labelDiv = document.createElement("div")
-    labelDiv.className = "text-sm text-gray-600"
+    labelDiv.className = "text-sm text-secondary"
     labelDiv.textContent = label
 
     box.appendChild(valueDiv)
