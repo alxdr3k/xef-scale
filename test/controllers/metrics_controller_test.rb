@@ -36,4 +36,15 @@ class MetricsControllerTest < ActionDispatch::IntegrationTest
     get workspace_metrics_path(@workspace, since: "not-a-date", until: "also-bad")
     assert_response :success
   end
+
+  # Codex PR #236 P2: ApplicationController#set_workspace 와 동일한 RecordNotFound
+  # rescue 흐름을 metrics에서도 강제 — invalid id 에 대해 404 예외 path 가 아니라
+  # workspaces_path 로 redirect.
+  test "show with non-member workspace id redirects to workspaces (no 404)" do
+    sign_in @admin
+    other = workspaces(:other_workspace) # admin은 other_workspace 멤버 아님
+    get workspace_metrics_path(other)
+    assert_response :redirect
+    assert_redirected_to workspaces_path
+  end
 end

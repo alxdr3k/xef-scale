@@ -25,9 +25,9 @@ class MetricsController < ApplicationController
 
   private
 
-  def set_workspace
-    @workspace = current_user.workspaces.find(params[:workspace_id])
-  end
+  # set_workspace 는 ApplicationController의 메서드를 그대로 사용 (Codex PR #236 P2):
+  # ActiveRecord::RecordNotFound rescue + workspaces_path redirect + 한국어 alert
+  # 흐름이 다른 workspace-scoped controllers 와 일치하도록.
 
   # YYYY-MM-DD 만 수용. 잘못된 형식은 nil로 무시 (사용자 입력 신뢰 안 함).
   def parse_date(raw)
