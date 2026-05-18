@@ -178,29 +178,32 @@
 }
 
 @layer utilities {
+  /* Phase 5 cleanup (Scope C-1): 고정 rgb()를 의미 토큰으로 교체.
+     box-shadow는 light-dark 가 직접 안 먹으므로 var(--color-action)을 srgb mix로
+     투명도를 적용한다. */
   .category-flash {
     animation: categoryFlash 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   @keyframes categoryFlash {
     0% {
-      box-shadow: 0 0 0 0 rgb(99 102 241 / 0.7);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-action) 70%, transparent);
       transform: scale(1);
     }
     25% {
-      box-shadow: 0 0 0 4px rgb(99 102 241 / 0.5);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-action) 50%, transparent);
       transform: scale(1.02);
     }
     50% {
-      box-shadow: 0 0 0 8px rgb(99 102 241 / 0.3);
+      box-shadow: 0 0 0 8px color-mix(in srgb, var(--color-action) 30%, transparent);
       transform: scale(1);
     }
     75% {
-      box-shadow: 0 0 0 4px rgb(99 102 241 / 0.15);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-action) 15%, transparent);
       transform: scale(1.01);
     }
     100% {
-      box-shadow: 0 0 0 0 rgb(99 102 241 / 0);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-action) 0%, transparent);
       transform: scale(1);
     }
   }
@@ -210,7 +213,7 @@
   }
 
   @keyframes inlineEditFlash {
-    0% { background-color: rgb(220 252 231); }
+    0% { background-color: var(--color-positive-subtle); }
     100% { background-color: transparent; }
   }
 
@@ -219,7 +222,7 @@
   }
 
   @keyframes inlineEditError {
-    0% { background-color: rgb(254 202 202); }
+    0% { background-color: var(--color-danger-subtle); }
     100% { background-color: transparent; }
   }
 }
@@ -237,6 +240,8 @@
 
 @layer components {
   /* 즉시 표시 툴팁 */
+  /* Phase 5 cleanup (Scope C-1): 페이지 대비 항상 high contrast 한 의미 토큰으로 교체.
+     light → 어두운 primary, dark → 밝은 primary + 반전 텍스트. */
   .tooltip {
     position: relative;
   }
@@ -247,8 +252,8 @@
     left: 50%;
     transform: translateX(-50%);
     padding: 4px 8px;
-    background: rgb(17 24 39); /* gray-900 */
-    color: white;
+    background: var(--color-primary);
+    color: var(--color-inverse);
     font-size: 12px;
     line-height: 1;
     border-radius: 4px;
@@ -262,13 +267,16 @@
   }
 
   /* 일괄 선택 - 행 호버/선택 상태 */
+  /* Phase 5 cleanup (Scope C-1): bulk_select_controller가 토글하는 tr.selected는
+     실제 사용자 상태 UI. 다크 모드에서도 작동하도록 의미 토큰으로 교체. */
   tr[data-bulk-select-target="row"]:hover {
-    background-color: rgb(249 250 251); /* bg-gray-50 */
+    background-color: var(--color-elev);
   }
   tr.selected {
-    background-color: rgb(238 242 255); /* bg-indigo-50 */
+    background-color: var(--color-action-subtle);
   }
   tr.selected:hover {
-    background-color: rgb(224 231 255); /* bg-indigo-100 */
+    /* subtle 위 hover는 약간 더 elev 쪽으로 mix해서 차이를 만든다 */
+    background-color: color-mix(in srgb, var(--color-action-subtle), var(--color-elev) 35%);
   }
 }
