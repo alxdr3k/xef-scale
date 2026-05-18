@@ -1,0 +1,41 @@
+<div class="bg-surface rounded-lg shadow p-4">
+  <h2 class="text-base font-semibold text-primary mb-1"><%= t("metrics.sections.classification_source.title") %></h2>
+  <p class="text-meta text-tertiary mb-3"><%= t("metrics.sections.classification_source.subtitle") %></p>
+
+  <% if section[:total].zero? %>
+    <p class="text-sm text-tertiary"><%= t("metrics.sections.classification_source.empty") %></p>
+  <% else %>
+    <%# AI 수용률 highlight stat %>
+    <% if section[:ai_acceptance_pct] %>
+      <div class="bg-action-subtle rounded p-3 mb-3">
+        <div class="text-xs text-tertiary mb-1"><%= t("metrics.sections.classification_source.ai_acceptance_label") %></div>
+        <div class="text-2xl font-bold text-action tabular-nums"><%= section[:ai_acceptance_pct] %>%</div>
+        <p class="text-meta text-tertiary mt-1"><%= t("metrics.sections.classification_source.ai_acceptance_hint") %></p>
+      </div>
+    <% end %>
+
+    <%# 분류 메커니즘 분포 %>
+    <div class="space-y-1.5">
+      <% section[:rows].each do |row| %>
+        <% tone_class = case row[:source]
+                       when "mapping_match" then "bg-positive"
+                       when "keyword_match" then "bg-info"
+                       when "gemini_batch"  then "bg-ai"
+                       when "manual_set"    then "bg-action"
+                       else                      "bg-elev"
+                       end %>
+        <% label_key = row[:source] ? "metrics.sections.classification_source.label.#{row[:source]}" : "metrics.sections.classification_source.label.none" %>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-28 text-xs text-secondary"><%= t(label_key) %></span>
+          <div class="flex-1 h-4 bg-elev rounded">
+            <div class="h-full rounded <%= tone_class %>" style="width: <%= row[:pct] %>%"></div>
+          </div>
+          <span class="w-12 text-right tabular-nums text-secondary"><%= row[:count] %></span>
+          <span class="w-14 text-right tabular-nums text-tertiary"><%= row[:pct] %>%</span>
+        </div>
+      <% end %>
+    </div>
+
+    <p class="text-meta text-tertiary mt-3"><%= t("metrics.sections.classification_source.total", count: section[:total]) %></p>
+  <% end %>
+</div>

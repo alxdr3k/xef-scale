@@ -108,7 +108,11 @@ class ImportReviewMetricsReportTest < ActiveSupport::TestCase
     ).render
 
     assert_match(/average modification rate: 0\.0%/, report)
-    refute_match(/Row modification rate.*100\.0%/m, report)
+    # Phase 7-3: 섹션을 빈 줄로 분리한 뒤 modification rate 섹션 안에만 100% 가
+    # 안 나오는지 검사. 이전 `/.../m` greedy 매치가 새 섹션의 100% 까지 도달하던
+    # 회귀 방지.
+    modification_section = report.split("\n\n").find { |s| s.include?("Row modification rate") }
+    refute_match(/100\.0%/, modification_section)
     assert excluded.rolled_back?
     assert keeper.committed?
   end

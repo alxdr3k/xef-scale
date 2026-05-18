@@ -11,6 +11,7 @@ class ImportReviewMetricsReport
       status_distribution,
       modification_rate,
       exclusion_rate,
+      classification_source_distribution,
       import_issue_distribution,
       commit_latency
     ].join("\n\n")
@@ -24,6 +25,7 @@ class ImportReviewMetricsReport
       status_distribution_section,
       rate_section(:modification),
       rate_section(:exclusion),
+      classification_source_distribution_section,
       import_issue_distribution_section,
       commit_latency_section
     ]
@@ -87,6 +89,57 @@ class ImportReviewMetricsReport
                       { source_type: source.to_s, issue_type: type.to_s, status: status.to_s, count: n }
                     }
     { type: :import_issues, rows: formatted }
+  end
+
+  # Phase 7-3: classification_source 분포 — 4 분류 메커니즘 비율 + AI 수용률 proxy.
+  # `gemini_batch` 비율이 곧 사용자가 AI 추천을 *변경 없이* commit 한 비율 (수용률).
+  # 분모는 committed sessions의 reviewable transaction 중 classification_source 가 *set 된* 거래.
+  # nil/blank source 는 분류되지 않은 거래 (예: 직접 입력 후 카테고리 미선택) 로 별도 집계.
+  def classification_source_distribution_section
+    counts = Transaction.reviewable
+                        .where(parsing_session_id: committed_ids)
+                        .group(:classification_source)
+                        .count
+    total = counts.values.sum
+    # 정렬: 비율 의미 순서. ADR-0007 §1.1 (1→2→3→manual).
+    keys = %w[mapping_match keyword_match gemini_batch manual_set]
+    rows = keys.map do |key|
+      n = counts[key].to_i
+      pct = total.zero? ? 0.0 : (100.0 * n / total).round(1)
+      { source: key, count: n, pct: pct }
+    end
+    nil_count = counts[nil].to_i
+    if nil_count.positive?
+      pct = total.zero? ? 0.0 : (100.0 * nil_count / total).round(1)
+      rows << { source: nil, count: nil_count, pct: pct }
+    end
+
+    gemini_count = counts["gemini_batch"].to_i
+    ai_acceptance_pct = total.zero? ? nil : (100.0 * gemini_count / total).round(1)
+
+    {
+      type: :classification_source_distribution,
+      total: total,
+      rows: rows,
+      ai_acceptance_pct: ai_acceptance_pct
+    }
+  end
+
+  def classification_source_distribution
+    section = classification_source_distribution_section
+    return "## Classification source distribution\n  (no committed reviewable transactions)" if section[:total].zero?
+
+    lines = [ "## Classification source distribution" ]
+    lines << "  total reviewable transactions: #{section[:total]}"
+    section[:rows].each do |row|
+      label = (row[:source] || "(none)").ljust(16)
+      lines << "  #{label} #{row[:count].to_s.rjust(6)}  (#{row[:pct]}%)"
+    end
+    if section[:ai_acceptance_pct]
+      lines << "  AI acceptance rate (gemini_batch / total): #{section[:ai_acceptance_pct]}%"
+      lines << "  사용자가 AI 추천 카테고리를 변경 없이 commit한 비율 — proxy. 정확한 수용률은 추천 시점 vs commit 시점 비교가 필요."
+    end
+    lines.join("\n")
   end
 
   def commit_latency_section
