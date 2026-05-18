@@ -12,21 +12,21 @@
     <div class="whitespace-nowrap overflow-hidden text-ellipsis">
       <span class="align-middle">
         <% if parsing_session.text_paste? %>
-          <span class="text-secondary">텍스트 붙여넣기</span>
+          <span class="text-secondary"><%= t("parsing_sessions.source_text_paste_alt") %></span>
         <% elsif parsing_session.processed_file %>
           <%= parsing_session.processed_file.original_filename %>
           <%= render "shared/blob_purged_badge", processed_file: parsing_session.processed_file %>
         <% else %>
-          <span class="text-tertiary">파일 정보 없음</span>
+          <span class="text-tertiary"><%= t("parsing_sessions.no_file_info") %></span>
         <% end %>
       </span>
       <% if parsing_session.notes.present? %>
         <span data-action="click->note-panel#open:stop"
               data-note-panel-url-param="<%= inline_update_workspace_parsing_session_path(workspace, parsing_session) %>"
               data-note-panel-original-param="<%= parsing_session.notes || '' %>"
-              data-note-panel-merchant-param="<%= parsing_session.processed_file&.original_filename || '텍스트 붙여넣기' %>"
+              data-note-panel-merchant-param="<%= parsing_session.processed_file&.original_filename || t("parsing_sessions.source_text_paste_alt") %>"
               data-note-panel-date-param="<%= parsing_session.created_at.strftime('%Y.%m.%d') %>"
-              data-note-panel-amount-param="<%= "성공 #{parsing_session.success_count}건" %>"
+              data-note-panel-amount-param="<%= t("parsing_sessions.note_panel.amount", count: parsing_session.success_count) %>"
               data-note-panel-row-id-param="<%= dom_id(parsing_session) %>"
               data-note-panel-trigger
               class="cursor-pointer hover:bg-warning-subtle ml-1.5 align-middle inline-block">
@@ -36,13 +36,13 @@
         <span data-action="click->note-panel#open:stop"
               data-note-panel-url-param="<%= inline_update_workspace_parsing_session_path(workspace, parsing_session) %>"
               data-note-panel-original-param=""
-              data-note-panel-merchant-param="<%= parsing_session.processed_file&.original_filename || '텍스트 붙여넣기' %>"
+              data-note-panel-merchant-param="<%= parsing_session.processed_file&.original_filename || t("parsing_sessions.source_text_paste_alt") %>"
               data-note-panel-date-param="<%= parsing_session.created_at.strftime('%Y.%m.%d') %>"
-              data-note-panel-amount-param="<%= "성공 #{parsing_session.success_count}건" %>"
+              data-note-panel-amount-param="<%= t("parsing_sessions.note_panel.amount", count: parsing_session.success_count) %>"
               data-note-panel-row-id-param="<%= dom_id(parsing_session) %>"
               data-note-panel-trigger
               class="cursor-pointer text-tertiary hover:text-info opacity-0 group-hover/row:opacity-100 transition-opacity ml-1.5 align-middle inline-block"
-              title="메모 추가">
+              title="<%= t("parsing_sessions.notes_add") %>">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
           </svg>
@@ -58,42 +58,42 @@
   </td>
   <td class="px-4 py-4 whitespace-nowrap text-sm text-tertiary">
     <% if parsing_session.completed? %>
-      성공 <%= parsing_session.success_count %>건
+      <%= t("parsing_sessions.success_count", count: parsing_session.success_count) %>
       <% pending_dup_count = parsing_session.duplicate_confirmations.select { |dc| dc.status == "pending" }.size %>
       <% if pending_dup_count > 0 %>
-        · 중복 <%= pending_dup_count %>건
+        <%= t("parsing_sessions.duplicate_count", count: pending_dup_count) %>
       <% end %>
       <% if local_assigns[:open_issue_count].to_i > 0 %>
-        · 수리 <%= local_assigns[:open_issue_count] %>건
+        <%= t("parsing_sessions.issue_count", count: local_assigns[:open_issue_count]) %>
       <% end %>
       <% if parsing_session.error_count.to_i > 0 %>
-        · 오류 <%= parsing_session.error_count %>건
+        <%= t("parsing_sessions.error_count", count: parsing_session.error_count) %>
       <% end %>
     <% end %>
   </td>
   <td class="px-4 py-4 whitespace-nowrap text-sm text-tertiary">
-    <%= time_ago_in_words(parsing_session.created_at) %> 전
+    <%= t("parsing_sessions.relative_time", relative: time_ago_in_words(parsing_session.created_at)) %>
   </td>
   <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
     <% if parsing_session.completed? %>
       <% if parsing_session.review_pending? %>
-        <%= link_to '검토하기', review_workspace_parsing_session_path(workspace, parsing_session),
+        <%= link_to t("parsing_sessions.actions.review"), review_workspace_parsing_session_path(workspace, parsing_session),
             class: 'text-action hover:text-action-hover font-medium' %>
       <% else %>
-        <%= link_to '상세보기', review_workspace_parsing_session_path(workspace, parsing_session),
+        <%= link_to t("parsing_sessions.actions.detail"), review_workspace_parsing_session_path(workspace, parsing_session),
             class: 'text-secondary hover:text-primary' %>
       <% end %>
     <% elsif parsing_session.has_duplicates? && parsing_session.pending_duplicates.any? %>
-      <%= link_to '중복 확인', workspace_parsing_session_path(workspace, parsing_session),
+      <%= link_to t("parsing_sessions.actions.check_duplicates"), workspace_parsing_session_path(workspace, parsing_session),
           class: 'text-action hover:text-action-hover' %>
     <% elsif parsing_session.failed? %>
       <div class="flex items-center justify-end gap-2">
-        <%= button_to '재시도', retry_workspace_parsing_session_path(workspace, parsing_session),
+        <%= button_to t("parsing_sessions.actions.retry"), retry_workspace_parsing_session_path(workspace, parsing_session),
             method: :post,
             class: 'text-action hover:text-action-hover font-medium text-sm bg-transparent border-0 cursor-pointer p-0' %>
-        <%= button_to '삭제', workspace_parsing_session_path(workspace, parsing_session),
+        <%= button_to t("parsing_sessions.actions.delete"), workspace_parsing_session_path(workspace, parsing_session),
             method: :delete,
-            form: { data: { turbo_confirm: "이 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다." } },
+            form: { data: { turbo_confirm: t("parsing_sessions.actions.delete_confirm") } },
             class: 'text-danger hover:text-danger text-sm bg-transparent border-0 cursor-pointer p-0' %>
       </div>
     <% end %>

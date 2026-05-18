@@ -306,6 +306,66 @@ ko:
       duplicate_hint: "중복 의심 — 중복 검토 화면에서 처리해 주세요."
 
   # ──────────────────────────────────────────────────
+  # 입력 기록 (Phase 6-5)
+  # ──────────────────────────────────────────────────
+  parsing_sessions:
+    source_text_paste: "문자 입력"
+    source_text_paste_alt: "텍스트 붙여넣기"
+    no_file_info: "파일 정보 없음"
+    success_count: "성공 %{count}건"
+    duplicate_count: "· 중복 %{count}건"
+    issue_count: "· 수리 %{count}건"
+    error_count: "· 오류 %{count}건"
+    relative_time: "%{relative} 전"
+    notes_add: "메모 추가"
+    note_panel:
+      # 본 값은 HTML attribute(data-note-panel-amount-param)에 그대로 들어간다.
+      # `_html` suffix는 Rails I18n이 HTML-safe로 마킹해 escape를 우회하므로
+      # 속성 주입 위험. plain key로 유지.
+      amount: "성공 %{count}건"
+    actions:
+      review: "검토하기"
+      detail: "상세보기"
+      check_duplicates: "중복 확인"
+      retry: "재시도"
+      delete: "삭제"
+      delete_confirm: "이 세션을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+    index:
+      title: "입력 기록"
+      subtitle_html: "가져오기 세션 목록입니다. 검토 흐름은 %{link}에서 진행합니다."
+      subtitle_link_text: "검토함"
+      section_title: "입력 기록"
+      pending_count: "%{count}개 처리 중"
+      bulk_select_all: "전체 선택"
+      bulk_count_suffix: "개 선택됨"
+      bulk_cancel: "취소"
+      bulk_cancel_label: "취소"
+      status_pending: "대기중"
+      status_processing: "처리중"
+      empty: "입력 기록이 없습니다."
+      th_input: "입력 내용"
+      th_status: "상태"
+      th_result: "결과"
+      th_time: "시간"
+    show:
+      back: "← 목록으로"
+      title: "파싱 결과"
+      stat_total: "전체"
+      stat_success: "성공"
+      stat_duplicate: "중복"
+      stat_error: "오류"
+      count_suffix: "%{count}건"
+      duplicate_section_title: "중복 확인"
+      duplicate_section_hint: "새로 추가된 결제와 기존 결제가 중복됩니다. 어떻게 처리할지 선택해 주세요."
+      duplicate_existing: "기존 결제"
+      duplicate_new: "새 결제"
+      keep_both: "둘 다 유지"
+      keep_existing: "기존 결제 유지"
+      keep_new: "새 결제로 교체"
+      processed_label: "처리됨:"
+      empty: "중복 결제가 없습니다."
+
+  # ──────────────────────────────────────────────────
   # ADR-0011 — Transaction 결정 메커니즘 / Mapping 출처
   # 결정 메커니즘(transactions.classification_source)과 매핑 출처(category_mappings.source)는
   # 어휘를 공유하지 않는다 — "학습 매핑" vs "직접 등록" 등 분리.
