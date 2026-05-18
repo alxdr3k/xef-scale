@@ -579,6 +579,188 @@ ko:
         back_to_sign_in: "로그인으로 돌아가기"
 
   # ──────────────────────────────────────────────────
+  # Shared partials (Phase 6-9)
+  # ──────────────────────────────────────────────────
+  shared:
+    common:
+      close: "닫기"
+      notification_close: "알림 닫기"
+    input_sheet:
+      trigger: "새로 가져오기"
+      title: "새로 가져오기"
+      close: "닫기"
+      consent_title: "외부 AI 사용 안내"
+      consent_body: "붙여넣는 SMS 본문과 업로드한 명세서 이미지는 외부 AI(Google Gemini)로 전송되어 거래로 변환됩니다."
+      consent_link: "워크스페이스 설정에서 동의 또는 비활성화"
+      text_paste_title: "문자 붙여넣기"
+      text_paste_placeholder: "[Web발신]\n신한체크 승인 홍*동\n50,000원 일시불\n03/15 14:30 스타벅스강남점"
+      text_paste_hint: "카드 승인 문자·은행 출금 알림 등을 붙여넣으세요. 여러 건을 한 번에 붙여넣어도 됩니다."
+      text_paste_submit: "문자로 추가"
+      image_upload_title: "스크린샷 업로드"
+      image_upload_hint: "신한카드 이용대금 명세서 스크린샷(JPG·PNG·WEBP·HEIC)을 올리면 AI가 거래를 인식합니다. 확정 전까지 거래에 반영되지 않습니다."
+      image_upload_submit: "스크린샷으로 추가"
+      manual_title: "직접 입력"
+      manual_hint: "금액·날짜·가맹점을 직접 기록합니다. 즉시 거래에 반영됩니다."
+      manual_cta: "직접 입력"
+    recurring_card:
+      aria: "반복 결제 요약"
+      title: "반복 결제"
+      manage: "관리 →"
+      monthly_sum: "월 예상 합계"
+      total_count: "· %{count}개 감지"
+      occurrence: "%{count}개월 연속 ·"
+      last_date_label: "마지막 %{date}"
+      per_month: "%{amount}/월"
+      fixed: "정액"
+      variable: "변동"
+      pagination: "상위 %{shown}개 표시. 전체 %{total}개 — 관리 페이지에서 확인."
+    keyboard_help:
+      title: "키보드 단축키"
+      close: "닫기"
+      j: "다음 거래로 이동"
+      k: "이전 거래로 이동"
+      c: "결제 내역 반영 (commit)"
+      d: "현재 거래를 이번 가져오기에서 제외"
+      space: "현재 거래 선택 토글 (일괄 작업용)"
+      qmark: "이 도움말 열기/닫기"
+      note: "텍스트 입력 중에는 단축키가 동작하지 않습니다."
+    status_badge:
+      review_pending: "검토 대기"
+      review_committed: "확정됨"
+      review_rolled_back: "롤백됨"
+      review_discarded: "취소됨"
+      processing_pending: "대기중"
+      processing_processing: "처리중"
+      processing_completed: "완료"
+      processing_failed: "실패"
+    category_source_chip:
+      uncategorized: "미분류"
+      mapping_aria: "학습됨"
+      mapping_title: "학습된 매핑으로 분류"
+      keyword_aria: "키워드"
+      keyword_title: "카테고리 키워드로 분류"
+      ai_aria: "AI 추천"
+      ai_title: "AI 추천 (검토 필요)"
+    variance_card:
+      aria: "이번 달 페이스"
+      label: "지난달 같은 시점 대비"
+      detail: "(D-%{day}까지 ₩%{prior} → ₩%{current})"
+      projection_html: "이 페이스 유지 시 예상 마감 약 <span class=\"text-primary font-medium tabular-nums\">₩%{amount}</span>"
+      detail_link: "상세 보기 →"
+    review_inbox:
+      aria: "검토 대기 안내"
+      pending: "검토 대기 %{count}건"
+      duplicate: "중복 후보 %{count}건"
+      description: "확정 전 거래를 검토하고 중복을 정리하세요."
+      cta: "지금 검토 →"
+    comment_panel:
+      title: "댓글"
+      empty: "아직 댓글이 없습니다"
+      placeholder: "댓글을 입력하세요..."
+      enter_send: "전송"
+      esc_close: "닫기"
+    note_panel:
+      title: "메모"
+      placeholder: "이 결제에 대한 메모를 입력하세요..."
+      esc_close: "닫기"
+      save_shortcut: "저장"
+      cancel: "취소"
+      save: "저장"
+    blob_purged:
+      title: "원본 이미지가 보존 기간을 경과하여 삭제되었습니다"
+      label: "원본 만료"
+    source_icon:
+      manual: "수기 입력"
+      text_paste: "문자 붙여넣기"
+      image_upload: "스크린샷"
+      api: "외부 API"
+      import: "가져오기"
+    pending_badge:
+      title: "검토 대기"
+    year_picker:
+      year_label: "%{year}년"
+      range_label: "%{start_year}년 - %{end_year}년"
+    month_picker:
+      year_month: "%{year}년 %{month}월"
+      year_label: "%{year}년"
+      month_label: "%{month}월"
+    color_picker:
+      label: "색상"
+      custom_title: "직접 선택"
+    cells:
+      source_metadata:
+        aria: "가져온 출처 보기"
+        heading: "가져온 출처"
+        input_method: "입력 방식:"
+        pasted_text: "텍스트 붙여넣기"
+        screenshot: "스크린샷"
+        manual: "직접 입력"
+        estimated_source: "추정 출처:"
+        original_institution: "원문 기관명:"
+        sender: "발신처:"
+        session: "세션:"
+        session_label_text: "텍스트"
+        session_label_file_fallback: "파일"
+        committed_at: "확정: %{date}"
+        privacy_note: "이 정보는 결제 분류나 예산 계산에 사용되지 않습니다."
+      amount:
+        cancel_badge: "취소"
+        discount_badge: "할인"
+        discount_tooltip: "이용금액 %{original} − 할인 %{benefit}"
+        installment: "할부"
+        installment_label: "할부 %{current}/%{total}"
+        lump_sum: "일시불"
+        coupon: "소비쿠폰"
+        coupon_tooltip: "합계에 포함되지 않습니다"
+        session_label: "회차"
+        cancel: "취소"
+        confirm: "확인"
+      institution:
+        unknown: "알수없음"
+        original_file: "원본 파일"
+        text_paste_fallback: "텍스트 붙여넣기"
+        file_fallback: "파일 업로드"
+        uploaded: "업로드 %{relative} 전"
+        committed: "확정됨"
+      category:
+        uncategorized_action: "미분류로 설정"
+        create_new: "+ 새 카테고리 만들기"
+        manage: "카테고리 관리"
+      payment_type:
+        lump_sum: "일시불"
+      notes:
+        add: "메모 추가..."
+      merchant:
+        add_note_title: "메모 추가"
+      date:
+        edit_hint: "날짜를 실제 결제일로 수정해주세요"
+
+  # ──────────────────────────────────────────────────
+  # 댓글 / 알림 (Phase 6-9)
+  # ──────────────────────────────────────────────────
+  comments:
+    badge:
+      title: "댓글"
+    comment:
+      edited: "(수정됨)"
+      edit: "수정"
+      delete: "삭제"
+      delete_confirm: "댓글을 삭제하시겠습니까?"
+      save: "저장"
+      cancel: "취소"
+
+  notifications_list:
+    title: "알림"
+    mark_all_read: "모두 읽음으로 표시"
+    relative_time: "%{relative} 전"
+    mark_read: "읽음"
+    empty: "알림이 없습니다."
+
+  notifications_dropdown:
+    relative_time: "%{relative} 전"
+    empty: "알림이 없습니다."
+
+  # ──────────────────────────────────────────────────
   # ADR-0011 — Transaction 결정 메커니즘 / Mapping 출처
   # 결정 메커니즘(transactions.classification_source)과 매핑 출처(category_mappings.source)는
   # 어휘를 공유하지 않는다 — "학습 매핑" vs "직접 등록" 등 분리.

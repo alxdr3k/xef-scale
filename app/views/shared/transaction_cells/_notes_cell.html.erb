@@ -16,7 +16,7 @@
           data-action="click->note-panel#open:stop mouseenter->truncate-tooltip#show mouseleave->truncate-tooltip#hide"
           class="cursor-pointer hover:bg-action-subtle hover:text-action px-1 -mx-1 rounded text-sm inline-block truncate max-w-full align-middle
                  <%= transaction.notes.present? ? 'text-secondary' : 'text-disabled italic' %>">
-      <%= transaction.notes.presence || '메모 추가...' %>
+      <%= transaction.notes.presence || t("shared.cells.notes.add") %>
     </span>
   <% else %>
     <span data-controller="truncate-tooltip"

@@ -3,7 +3,7 @@
   <button type="button"
           data-action="click->month-picker#toggle"
           class="flex items-center space-x-2 px-4 py-2 font-semibold text-lg text-primary hover:bg-elev rounded-lg transition-colors cursor-pointer">
-    <span data-month-picker-target="currentDisplay"><%= year %>년 <%= month %>월</span>
+    <span data-month-picker-target="currentDisplay"><%= t("shared.month_picker.year_month", year: year, month: month) %></span>
     <svg class="w-5 h-5 text-tertiary transition-transform" data-month-picker-target="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
     </svg>
@@ -23,7 +23,7 @@
         </svg>
       </button>
 
-      <span data-month-picker-target="yearDisplay" class="font-semibold text-primary"><%= year %>년</span>
+      <span data-month-picker-target="yearDisplay" class="font-semibold text-primary"><%= t("shared.month_picker.year_label", year: year) %></span>
 
       <button type="button"
               data-action="click->month-picker#nextYear"
@@ -42,7 +42,7 @@
                 data-month="<%= m %>"
                 class="px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer
                        <%= m == month ? 'bg-action text-action-on' : 'text-secondary hover:bg-elev' %>">
-          <%= m %>월
+          <%= t("shared.month_picker.month_label", month: m) %>
         </button>
       <% end %>
     </div>

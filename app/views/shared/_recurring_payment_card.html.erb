@@ -16,15 +16,15 @@
 <% manage_path      = local_assigns.fetch(:manage_path) %>
 
 <% if patterns.any? %>
-  <section class="bg-surface rounded-lg shadow-card p-5" aria-label="반복 결제 요약">
+  <section class="bg-surface rounded-lg shadow-card p-5" aria-label="<%= t("shared.recurring_card.aria") %>">
     <div class="flex items-baseline justify-between mb-3">
-      <h2 class="text-base font-semibold text-primary">반복 결제</h2>
-      <%= link_to '관리 →', manage_path,
+      <h2 class="text-base font-semibold text-primary"><%= t("shared.recurring_card.title") %></h2>
+      <%= link_to t("shared.recurring_card.manage"), manage_path,
             class: 'text-meta font-medium text-action hover:text-action-hover' %>
     </div>
     <p class="text-meta text-secondary mb-3">
-      월 예상 합계 <span class="text-primary font-medium tabular-nums">₩<%= number_with_delimiter(monthly_estimate) %></span>
-      · <%= total_count %>개 감지
+      <%= t("shared.recurring_card.monthly_sum") %> <span class="text-primary font-medium tabular-nums">₩<%= number_with_delimiter(monthly_estimate) %></span>
+      <%= t("shared.recurring_card.total_count", count: total_count) %>
     </p>
 
     <ul class="divide-y divide-divider">
@@ -33,18 +33,18 @@
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium text-primary truncate"><%= pattern[:merchant] %></p>
             <p class="text-meta text-secondary mt-0.5">
-              <%= pattern[:occurrence_count] %>개월 연속 ·
-              마지막 <%= pattern[:last_date].strftime("%Y.%m.%d") %>
+              <%= t("shared.recurring_card.occurrence", count: pattern[:occurrence_count]) %>
+              <%= t("shared.recurring_card.last_date_label", date: pattern[:last_date].strftime("%Y.%m.%d")) %>
             </p>
           </div>
           <div class="shrink-0 text-right">
             <p class="text-sm font-semibold text-primary tabular-nums">
-              ₩<%= number_with_delimiter(pattern[:average_amount]) %>/월
+              <%= t("shared.recurring_card.per_month", amount: "₩#{number_with_delimiter(pattern[:average_amount])}") %>
             </p>
             <% if pattern[:consistent_amount] %>
-              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-meta font-medium bg-positive-subtle text-positive">정액</span>
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-meta font-medium bg-positive-subtle text-positive"><%= t("shared.recurring_card.fixed") %></span>
             <% else %>
-              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-meta font-medium bg-warning-subtle text-warning">변동</span>
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-meta font-medium bg-warning-subtle text-warning"><%= t("shared.recurring_card.variable") %></span>
             <% end %>
           </div>
         </li>
@@ -53,7 +53,7 @@
 
     <% if total_count > patterns.size %>
       <p class="text-meta text-tertiary text-center mt-3">
-        상위 <%= patterns.size %>개 표시. 전체 <%= total_count %>개 — 관리 페이지에서 확인.
+        <%= t("shared.recurring_card.pagination", shown: patterns.size, total: total_count) %>
       </p>
     <% end %>
   </section>

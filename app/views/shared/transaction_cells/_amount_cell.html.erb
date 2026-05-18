@@ -6,10 +6,10 @@
   <% if editable && update_url %>
     <div class="flex items-center justify-end gap-2">
       <% if transaction.amount.to_i < 0 %>
-        <span class="px-1 py-0.5 text-[10px] leading-none rounded bg-danger-subtle text-danger">취소</span>
-      <% elsif transaction.benefit_type == "할인" && transaction.benefit_amount.to_i > 0 %>
-        <span class="relative group px-1 py-0.5 text-[10px] leading-none rounded bg-positive-subtle text-positive cursor-default">할인
-          <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-primary text-inverse whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">이용금액 <%= number_to_currency(transaction.amount + transaction.benefit_amount, unit: '₩', precision: 0) %> − 할인 <%= number_to_currency(transaction.benefit_amount, unit: '₩', precision: 0) %></span>
+        <span class="px-1 py-0.5 text-[10px] leading-none rounded bg-danger-subtle text-danger"><%= t("shared.cells.amount.cancel_badge") %></span>
+      <% elsif transaction.benefit_type == "할인" && transaction.benefit_amount.to_i > 0 # i18n-allow: model enum 값 비교 %>
+        <span class="relative group px-1 py-0.5 text-[10px] leading-none rounded bg-positive-subtle text-positive cursor-default"><%= t("shared.cells.amount.discount_badge") %>
+          <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-primary text-inverse whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10"><%= t("shared.cells.amount.discount_tooltip", original: number_to_currency(transaction.amount + transaction.benefit_amount, unit: '₩', precision: 0), benefit: number_to_currency(transaction.benefit_amount, unit: '₩', precision: 0)) %></span>
         </span>
       <% end %>
 
@@ -25,10 +25,10 @@
             installment_popover_installment_total_value: transaction.installment_total || 2,
             turbo_preserve_scroll: true
           }, class: 'inline-flex relative' do |f| %>
-        <% installment_label = transaction.installment? ? "할부 #{transaction.installment_month}/#{transaction.installment_total}" : '할부' %>
+        <% installment_label = transaction.installment? ? t("shared.cells.amount.installment_label", current: transaction.installment_month, total: transaction.installment_total) : t("shared.cells.amount.installment") %>
         <% lump_sum_classes = transaction.lump_sum? ? 'opacity-0 group-hover/row:opacity-100' : '' %>
         <%= f.select :payment_type,
-            [['일시불', 'lump_sum'], [installment_label, 'installment'], ['소비쿠폰', 'coupon']],
+            [[t("shared.cells.amount.lump_sum"), 'lump_sum'], [installment_label, 'installment'], [t("shared.cells.amount.coupon"), 'coupon']],
             {},
             class: "text-[11px] rounded border-0 bg-transparent py-0 pl-0 pr-4 cursor-pointer transition-all focus:ring-1 focus:ring-action focus:opacity-100 font-medium #{transaction.installment? ? 'text-category-7' : transaction.coupon? ? 'text-warning' : 'text-disabled hover:text-secondary'} #{lump_sum_classes}",
             data: { action: 'change->installment-popover#handleChange', installment_popover_target: 'select' } %>
@@ -45,11 +45,11 @@
                  value="<%= transaction.installment_total || 2 %>"
                  data-action="keydown->installment-popover#handleKeydown"
                  class="w-10 text-center text-xs border-divider rounded px-1 py-0.5 focus:ring-1 focus:ring-action">
-          <span class="text-xs text-tertiary">회차</span>
+          <span class="text-xs text-tertiary"><%= t("shared.cells.amount.session_label") %></span>
           <button type="button" data-action="click->installment-popover#cancel"
-                  class="text-[10px] text-disabled hover:text-secondary px-1">취소</button>
+                  class="text-[10px] text-disabled hover:text-secondary px-1"><%= t("shared.cells.amount.cancel") %></button>
           <button type="button" data-action="click->installment-popover#confirm"
-                  class="text-[10px] text-action-on bg-action hover:bg-action-hover rounded px-1.5 py-0.5">확인</button>
+                  class="text-[10px] text-action-on bg-action hover:bg-action-hover rounded px-1.5 py-0.5"><%= t("shared.cells.amount.confirm") %></button>
         </div>
       <% end %>
 
@@ -63,7 +63,7 @@
               class="relative group cursor-pointer hover:bg-elev px-1 -mx-1 rounded text-sm text-primary font-medium tabular-nums inline-block w-28 text-right">
           <span class="<%= 'border-b border-dashed border-divider' if transaction.coupon? %>"><%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %></span>
           <% if transaction.coupon? %>
-            <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-primary text-inverse whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">합계에 포함되지 않습니다</span>
+            <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-primary text-inverse whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10"><%= t("shared.cells.amount.coupon_tooltip") %></span>
           <% end %>
         </span>
         <div data-inline-edit-target="editor" class="hidden">
@@ -83,11 +83,11 @@
       <% end %>
       <% if transaction.coupon? %>
         <span class="text-[11px] font-medium text-warning">
-          소비쿠폰
+          <%= t("shared.cells.amount.coupon") %>
         </span>
         <span class="relative group text-sm text-primary font-medium tabular-nums inline-block w-28 text-right cursor-help">
           <span class="border-b border-dashed border-divider"><%= number_to_currency(transaction.amount, unit: '₩', precision: 0) %></span>
-          <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-primary text-inverse whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">합계에 포함되지 않습니다</span>
+          <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[11px] rounded bg-primary text-inverse whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10"><%= t("shared.cells.amount.coupon_tooltip") %></span>
         </span>
       <% else %>
         <span class="text-sm text-primary font-medium tabular-nums inline-block w-28 text-right">

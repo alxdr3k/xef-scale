@@ -40,21 +40,21 @@
           style="background-color: <%= category.color %>"></span>
     <span class="truncate"><%= category.name %></span>
   <% else %>
-    <span class="truncate">미분류</span>
+    <span class="truncate"><%= t("shared.category_source_chip.uncategorized") %></span>
   <% end %>
 
   <% case decision %>
   <% when :mapping_match %>
     <span class="text-tertiary shrink-0"
-          aria-label="학습됨"
-          title="학습된 매핑으로 분류">·</span>
+          aria-label="<%= t("shared.category_source_chip.mapping_aria") %>"
+          title="<%= t("shared.category_source_chip.mapping_title") %>">·</span>
   <% when :keyword_match %>
     <span class="text-tertiary shrink-0"
-          aria-label="키워드"
-          title="카테고리 키워드로 분류">·</span>
+          aria-label="<%= t("shared.category_source_chip.keyword_aria") %>"
+          title="<%= t("shared.category_source_chip.keyword_title") %>">·</span>
   <% when :gemini_batch %>
     <span class="text-ai shrink-0"
-          aria-label="AI 추천"
-          title="AI 추천 (검토 필요)">✨</span>
+          aria-label="<%= t("shared.category_source_chip.ai_aria") %>"
+          title="<%= t("shared.category_source_chip.ai_title") %>">✨</span>
   <% end %>
 </span>

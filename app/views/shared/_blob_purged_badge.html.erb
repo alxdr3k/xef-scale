@@ -4,7 +4,7 @@
 <%# that the original image is no longer available. %>
 <% if processed_file&.blob_purged? %>
   <span class="inline-flex items-center px-2 py-0.5 ml-1 text-xs rounded-full bg-elev text-secondary"
-        title="원본 이미지가 보존 기간을 경과하여 삭제되었습니다">
-    원본 만료
+        title="<%= t("shared.blob_purged.title") %>">
+    <%= t("shared.blob_purged.label") %>
   </span>
 <% end %>

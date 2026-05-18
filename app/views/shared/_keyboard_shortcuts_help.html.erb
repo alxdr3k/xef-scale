@@ -22,10 +22,10 @@
             sm:inset-auto sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
             bg-surface rounded-lg shadow-xl p-5">
   <div class="flex items-center justify-between mb-4">
-    <h2 id="keyboard-help-title" class="text-base font-semibold text-primary">키보드 단축키</h2>
+    <h2 id="keyboard-help-title" class="text-base font-semibold text-primary"><%= t("shared.keyboard_help.title") %></h2>
     <button type="button"
             data-action="click->review-keyboard#hideHelp"
-            aria-label="닫기"
+            aria-label="<%= t("shared.keyboard_help.close") %>"
             class="p-1.5 text-tertiary hover:text-primary hover:bg-elev rounded-md">
       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -36,31 +36,31 @@
   <dl class="space-y-2 text-sm">
     <div class="flex items-baseline gap-3">
       <dt><kbd class="inline-flex items-center px-2 py-1 rounded border border-divider bg-elev text-meta font-mono">j</kbd></dt>
-      <dd class="text-secondary">다음 거래로 이동</dd>
+      <dd class="text-secondary"><%= t("shared.keyboard_help.j") %></dd>
     </div>
     <div class="flex items-baseline gap-3">
       <dt><kbd class="inline-flex items-center px-2 py-1 rounded border border-divider bg-elev text-meta font-mono">k</kbd></dt>
-      <dd class="text-secondary">이전 거래로 이동</dd>
+      <dd class="text-secondary"><%= t("shared.keyboard_help.k") %></dd>
     </div>
     <div class="flex items-baseline gap-3">
       <dt><kbd class="inline-flex items-center px-2 py-1 rounded border border-divider bg-elev text-meta font-mono">c</kbd></dt>
-      <dd class="text-secondary">결제 내역 반영 (commit)</dd>
+      <dd class="text-secondary"><%= t("shared.keyboard_help.c") %></dd>
     </div>
     <div class="flex items-baseline gap-3">
       <dt><kbd class="inline-flex items-center px-2 py-1 rounded border border-divider bg-elev text-meta font-mono">d</kbd></dt>
-      <dd class="text-secondary">현재 거래를 이번 가져오기에서 제외</dd>
+      <dd class="text-secondary"><%= t("shared.keyboard_help.d") %></dd>
     </div>
     <div class="flex items-baseline gap-3">
       <dt><kbd class="inline-flex items-center px-2 py-1 rounded border border-divider bg-elev text-meta font-mono">Enter</kbd></dt>
-      <dd class="text-secondary">현재 거래 선택 토글 (일괄 작업용)</dd>
+      <dd class="text-secondary"><%= t("shared.keyboard_help.space") %></dd>
     </div>
     <div class="flex items-baseline gap-3">
       <dt><kbd class="inline-flex items-center px-2 py-1 rounded border border-divider bg-elev text-meta font-mono">?</kbd></dt>
-      <dd class="text-secondary">이 도움말 열기/닫기</dd>
+      <dd class="text-secondary"><%= t("shared.keyboard_help.qmark") %></dd>
     </div>
   </dl>
 
   <p class="mt-4 text-meta text-tertiary">
-    텍스트 입력 중에는 단축키가 동작하지 않습니다.
+    <%= t("shared.keyboard_help.note") %>
   </p>
 </div>

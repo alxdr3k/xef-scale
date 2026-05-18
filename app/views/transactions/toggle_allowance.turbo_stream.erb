@@ -8,7 +8,7 @@
         transaction: @transaction,
         categories: @categories,
         read_only: @read_only,
-        reviewable: true # Phase 5 slice 3 (Codex PR #182 P1): review 컨텍스트에서 tabindex 보존
+        reviewable: true # i18n-allow: Phase 5 slice 3 (Codex PR #182 P1) review 컨텍스트에서 tabindex 보존
       } %>
 <% else %>
   <%= turbo_stream.replace dom_id(@transaction),

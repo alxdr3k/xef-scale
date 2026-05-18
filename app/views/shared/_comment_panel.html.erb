@@ -10,7 +10,7 @@
     <%# Header %>
     <div class="flex items-start justify-between mb-3">
       <div class="flex-1 min-w-0">
-        <h3 class="text-sm font-semibold text-primary mb-0.5">댓글</h3>
+        <h3 class="text-sm font-semibold text-primary mb-0.5"><%= t("shared.comment_panel.title") %></h3>
         <p class="text-xs text-tertiary truncate" data-comment-panel-target="context"></p>
       </div>
       <button data-action="click->comment-panel#close"
@@ -33,7 +33,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
               d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
       </svg>
-      <p class="text-xs text-disabled">아직 댓글이 없습니다</p>
+      <p class="text-xs text-disabled"><%= t("shared.comment_panel.empty") %></p>
     </div>
   </div>
 
@@ -44,7 +44,7 @@
       <div class="flex gap-2 items-end">
         <textarea data-comment-form-target="input"
                   data-action="input->comment-form#autoResize keydown->comment-form#handleKeydown"
-                  placeholder="댓글을 입력하세요..."
+                  placeholder="<%= t("shared.comment_panel.placeholder") %>"
                   rows="1"
                   class="flex-1 text-sm border border-divider rounded-lg px-3 py-2
                          resize-none focus:ring-1 focus:ring-action focus:border-transparent
@@ -61,9 +61,9 @@
       </div>
     </form>
     <div class="text-[11px] text-disabled mt-1.5">
-      <kbd class="px-1 py-0.5 bg-elev rounded border border-divider text-[10px]">Enter</kbd> 전송
+      <kbd class="px-1 py-0.5 bg-elev rounded border border-divider text-[10px]">Enter</kbd> <%= t("shared.comment_panel.enter_send") %>
       <span class="mx-0.5">·</span>
-      <kbd class="px-1 py-0.5 bg-elev rounded border border-divider text-[10px]">ESC</kbd> 닫기
+      <kbd class="px-1 py-0.5 bg-elev rounded border border-divider text-[10px]">ESC</kbd> <%= t("shared.comment_panel.esc_close") %>
     </div>
   </div>
 </div>
