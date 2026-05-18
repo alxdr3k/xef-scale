@@ -1,5 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
+// Phase 5 cleanup (Scope C-2): tab active/inactive class + sparkline 카드 DOM을
+// ADR-0008 semantic 토큰으로 통일.
+const ACTIVE_TAB_CLASSES = ["text-action", "border-action"]
+const INACTIVE_TAB_CLASSES = ["text-secondary", "hover:text-primary", "border-transparent"]
+
 export default class extends Controller {
   static targets = ["tab", "integratedView", "trendView", "sparklineContainer"]
   static values = {
@@ -22,11 +27,11 @@ export default class extends Controller {
     // Update tab styles
     this.tabTargets.forEach(t => {
       if (t === tab) {
-        t.classList.remove('text-gray-500', 'hover:text-gray-700', 'border-transparent')
-        t.classList.add('text-indigo-600', 'border-indigo-600')
+        t.classList.remove(...INACTIVE_TAB_CLASSES)
+        t.classList.add(...ACTIVE_TAB_CLASSES)
       } else {
-        t.classList.remove('text-indigo-600', 'border-indigo-600')
-        t.classList.add('text-gray-500', 'hover:text-gray-700', 'border-transparent')
+        t.classList.remove(...ACTIVE_TAB_CLASSES)
+        t.classList.add(...INACTIVE_TAB_CLASSES)
       }
     })
 
@@ -61,13 +66,18 @@ export default class extends Controller {
       return sumB - sumA
     })
 
+    // Phase 5 cleanup (Scope C-2): Chart.js는 raw color string을 요구하므로
+    // semantic 토큰을 runtime에 resolve해서 다크 모드와 동기화.
+    const surfaceColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--color-surface').trim() || '#ffffff'
+
     // Create sparkline for each category
     sortedDatasets.forEach(dataset => {
       const total = dataset.data.reduce((acc, val) => acc + val, 0)
 
       // Create container
       const container = document.createElement('div')
-      container.className = 'bg-white rounded-lg shadow p-4'
+      container.className = 'bg-surface rounded-lg shadow p-4'
 
       // Category header
       const header = document.createElement('div')
@@ -81,14 +91,14 @@ export default class extends Controller {
       colorDot.style.backgroundColor = dataset.borderColor
 
       const categoryName = document.createElement('span')
-      categoryName.className = 'font-semibold text-gray-900'
+      categoryName.className = 'font-semibold text-primary'
       categoryName.textContent = dataset.label
 
       leftDiv.appendChild(colorDot)
       leftDiv.appendChild(categoryName)
 
       const amountSpan = document.createElement('span')
-      amountSpan.className = 'text-lg font-bold text-gray-900'
+      amountSpan.className = 'text-lg font-bold text-primary'
       amountSpan.textContent = `₩${total.toLocaleString()}`
 
       header.appendChild(leftDiv)
@@ -122,7 +132,7 @@ export default class extends Controller {
             pointRadius: 0,
             pointHoverRadius: 4,
             pointHoverBackgroundColor: dataset.borderColor,
-            pointHoverBorderColor: '#fff',
+            pointHoverBorderColor: surfaceColor,
             pointHoverBorderWidth: 2
           }]
         },

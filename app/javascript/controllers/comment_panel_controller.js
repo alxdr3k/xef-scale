@@ -31,7 +31,7 @@ export default class extends Controller {
 
     // 새 행 하이라이트
     const row = document.getElementById(rowId)
-    if (row) row.classList.add("bg-indigo-50/50")
+    if (row) row.classList.add("bg-action-subtle")
 
     // 패널 위치: 테이블 오른쪽 바로 옆, 행과 수직 정렬
     this._positionPanel(row)
@@ -129,7 +129,7 @@ export default class extends Controller {
     })
     .catch(() => {
       this.commentsContainerTarget.textContent = "댓글을 불러올 수 없습니다"
-      this.commentsContainerTarget.className = "text-sm text-red-500 text-center py-4"
+      this.commentsContainerTarget.className = "text-sm text-danger text-center py-4"
     })
   }
 
@@ -145,7 +145,7 @@ export default class extends Controller {
 
   _clearHighlight() {
     if (this._rowId) {
-      document.getElementById(this._rowId)?.classList.remove("bg-indigo-50/50")
+      document.getElementById(this._rowId)?.classList.remove("bg-action-subtle")
     }
   }
 }

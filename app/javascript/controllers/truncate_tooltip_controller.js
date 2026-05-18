@@ -16,8 +16,10 @@ export default class extends Controller {
 
     this.tooltip = document.createElement("div")
     this.tooltip.textContent = this.element.textContent.trim()
+    // Phase 5 cleanup (Scope C-2): bg-gray-800/text-white → semantic 다크 툴팁.
+    // light에서 어두운 tooltip, dark에서 밝은 tooltip — 페이지 대비 항상 high contrast.
     this.tooltip.className =
-      "fixed px-2 py-1 text-[11px] rounded bg-gray-800 text-white whitespace-nowrap pointer-events-none z-50 transition-opacity"
+      "fixed px-2 py-1 text-[11px] rounded bg-primary text-inverse whitespace-nowrap pointer-events-none z-50 transition-opacity"
     document.body.appendChild(this.tooltip)
 
     const rect = this.element.getBoundingClientRect()
