@@ -815,6 +815,19 @@ ko:
         average: "평균"
         p50: "p50"
         p90: "p90"
+      classification_source:
+        title: "분류 메커니즘 분포 (ADR-0007 §1.1)"
+        subtitle: "committed 세션의 reviewable 거래가 어떤 메커니즘으로 분류되었는가."
+        empty: "committed 세션의 reviewable 거래가 없습니다."
+        ai_acceptance_label: "AI 수용률 (proxy)"
+        ai_acceptance_hint: "사용자가 AI 추천 카테고리를 변경 없이 commit한 비율. 정확한 추적은 추천 시점 vs commit 시점 비교가 필요 (향후 슬라이스)."
+        total: "전체 reviewable 거래 %{count}개"
+        label:
+          mapping_match: "학습 매핑"
+          keyword_match: "키워드"
+          gemini_batch: "AI 추천"
+          manual_set: "사용자 지정"
+          none: "(미분류)"
 
   # ──────────────────────────────────────────────────
   # ADR-0011 — Transaction 결정 메커니즘 / Mapping 출처
