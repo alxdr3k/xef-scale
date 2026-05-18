@@ -1,46 +1,46 @@
 <div class="max-w-2xl mx-auto">
-  <h1 class="text-2xl font-bold text-primary mb-6">계정 설정</h1>
+  <h1 class="text-2xl font-bold text-primary mb-6"><%= t("user_settings.title") %></h1>
 
   <!-- 파싱 설정 -->
   <div class="bg-surface shadow rounded-lg p-6 mb-8">
-    <h2 class="text-lg font-semibold text-primary mb-2">파싱 설정</h2>
+    <h2 class="text-lg font-semibold text-primary mb-2"><%= t("user_settings.parsing_section") %></h2>
 
     <%= form_with url: user_settings_path, method: :patch, class: 'space-y-6' do |f| %>
       <!-- 제외 거래처 -->
       <div>
         <label class="block text-sm font-medium text-secondary mb-1">
-          제외할 거래처
+          <%= t("user_settings.excluded_merchants") %>
         </label>
         <textarea name="user[excluded_merchants]"
                   rows="4"
-                  placeholder="제외할 거래처를 줄바꿈으로 구분하여 입력&#10;예: 본인이체&#10;토스뱅크이자"
+                  placeholder="<%= t("user_settings.excluded_merchants_placeholder") %>"
                   class="w-full max-w-md rounded-md border-divider shadow-sm focus:border-action focus:ring-action text-sm"><%= current_user.excluded_merchants.join("\n") %></textarea>
         <p class="mt-1 text-xs text-tertiary">
-          파싱 시 제외할 거래처명을 줄바꿈으로 구분하여 입력하세요. 거래처명에 입력한 텍스트가 포함되면 제외됩니다.
+          <%= t("user_settings.excluded_merchants_hint") %>
         </p>
       </div>
 
       <div class="pt-2">
-        <%= f.submit '저장', class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
+        <%= f.submit t("user_settings.save"), class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
       </div>
     <% end %>
   </div>
 
   <!-- 스크린샷 업로드 가이드 -->
   <div class="bg-surface shadow rounded-lg p-6 mb-8">
-    <h2 class="text-lg font-semibold text-primary mb-2">스크린샷 업로드 가이드</h2>
+    <h2 class="text-lg font-semibold text-primary mb-2"><%= t("user_settings.screenshot_section") %></h2>
     <p class="text-sm text-tertiary mb-4">
-      현재 <strong>신한카드 이용대금 명세서</strong> 스크린샷을 지원합니다. 명세서를 열어 전체가 보이는 화면을 캡처한 뒤 <em>결제 추가</em>에서 이미지(JPG/PNG/WEBP/HEIC)로 업로드하세요.
+      <%= t("user_settings.screenshot_description_html").html_safe %>
     </p>
     <div class="text-sm text-secondary space-y-1">
-      <p><strong>신한카드:</strong> 신한SOL 앱 → 마이 → 이용내역 또는 청구서 → 화면 캡처 → 결제 추가에서 업로드</p>
-      <p class="text-xs text-tertiary">다른 기관 명세서는 금융 문자 복사 → <em>문자 붙여넣기</em> 입력창에 붙여넣어 주세요.</p>
+      <p><%= t("user_settings.screenshot_shinhan_html").html_safe %></p>
+      <p class="text-xs text-tertiary"><%= t("user_settings.screenshot_other_html").html_safe %></p>
     </div>
   </div>
 
   <!-- Account Info -->
   <div class="bg-surface shadow rounded-lg p-6">
-    <h2 class="text-lg font-semibold text-primary mb-4">계정 정보</h2>
+    <h2 class="text-lg font-semibold text-primary mb-4"><%= t("user_settings.account_section") %></h2>
     <div class="space-y-3">
       <div class="flex items-center">
         <% if current_user.avatar_url.present? %>
@@ -51,7 +51,7 @@
           </span>
         <% end %>
         <div>
-          <div class="font-medium text-primary"><%= current_user.name || "이름 없음" %></div>
+          <div class="font-medium text-primary"><%= current_user.name || t("user_settings.no_name") %></div>
           <div class="text-sm text-tertiary"><%= current_user.email %></div>
         </div>
       </div>

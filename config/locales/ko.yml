@@ -502,6 +502,83 @@ ko:
       empty: "초대 링크가 없습니다."
 
   # ──────────────────────────────────────────────────
+  # 계정 설정 (Phase 6-8)
+  # ──────────────────────────────────────────────────
+  user_settings:
+    title: "계정 설정"
+    parsing_section: "파싱 설정"
+    excluded_merchants: "제외할 거래처"
+    excluded_merchants_placeholder: "제외할 거래처를 줄바꿈으로 구분하여 입력\n예: 본인이체\n토스뱅크이자"
+    excluded_merchants_hint: "파싱 시 제외할 거래처명을 줄바꿈으로 구분하여 입력하세요. 거래처명에 입력한 텍스트가 포함되면 제외됩니다."
+    save: "저장"
+    screenshot_section: "스크린샷 업로드 가이드"
+    screenshot_description_html: "현재 <strong>신한카드 이용대금 명세서</strong> 스크린샷을 지원합니다. 명세서를 열어 전체가 보이는 화면을 캡처한 뒤 <em>결제 추가</em>에서 이미지(JPG/PNG/WEBP/HEIC)로 업로드하세요."
+    screenshot_shinhan_html: "<strong>신한카드:</strong> 신한SOL 앱 → 마이 → 이용내역 또는 청구서 → 화면 캡처 → 결제 추가에서 업로드"
+    screenshot_other_html: "다른 기관 명세서는 금융 문자 복사 → <em>문자 붙여넣기</em> 입력창에 붙여넣어 주세요."
+    account_section: "계정 정보"
+    no_name: "이름 없음"
+
+  # ──────────────────────────────────────────────────
+  # 용돈 (Phase 6-8)
+  # ──────────────────────────────────────────────────
+  allowances:
+    index:
+      title: "내 용돈"
+      subtitle: "다른 사람에게 보이지 않는 개인 지출 내역입니다."
+      prev_month: "← 이전 달"
+      next_month: "다음 달 →"
+      monthly_label: "이번 달 용돈 지출"
+      bulk_select_all: "전체 선택"
+      bulk_count_suffix: "개 선택됨"
+      bulk_unmark: "용돈 해제"
+      bulk_unmark_label: "용돈 해제"
+      th_date: "날짜"
+      th_merchant: "내역"
+      th_amount: "금액"
+      th_category: "카테고리"
+      empty: "이번 달 용돈 내역이 없습니다."
+      monthly_chart: "월별 용돈 지출"
+
+  # ──────────────────────────────────────────────────
+  # Devise (Phase 6-8)
+  # ──────────────────────────────────────────────────
+  devise:
+    sessions:
+      new:
+        title: "로그인"
+        subtitle: "계정에 로그인하세요"
+        google: "Google로 로그인"
+        or_email: "또는 이메일로"
+        email_label: "이메일"
+        password_label: "비밀번호"
+        remember_me: "로그인 유지"
+        forgot_password: "비밀번호 찾기"
+        submit: "로그인"
+        no_account: "계정이 없으신가요?"
+        sign_up: "회원가입"
+    registrations:
+      new:
+        title: "회원가입"
+        subtitle: "새 계정을 만드세요"
+        google: "Google로 가입하기"
+        or_email: "또는 이메일로"
+        email_label: "이메일"
+        password_label: "비밀번호"
+        password_min: "최소 %{count}자 이상"
+        password_confirmation_label: "비밀번호 확인"
+        submit: "가입하기"
+        existing_account: "이미 계정이 있으신가요?"
+        sign_in: "로그인"
+    passwords:
+      new:
+        title: "비밀번호 찾기"
+        subtitle: "비밀번호를 재설정합니다"
+        hint: "가입 시 사용한 이메일 주소를 입력하면 비밀번호 재설정 링크를 보내드립니다."
+        email_label: "이메일"
+        submit: "재설정 링크 보내기"
+        back_to_sign_in: "로그인으로 돌아가기"
+
+  # ──────────────────────────────────────────────────
   # ADR-0011 — Transaction 결정 메커니즘 / Mapping 출처
   # 결정 메커니즘(transactions.classification_source)과 매핑 출처(category_mappings.source)는
   # 어휘를 공유하지 않는다 — "학습 매핑" vs "직접 등록" 등 분리.
