@@ -1,9 +1,9 @@
 <%# Locals: notifications (required), pagy (optional) %>
 <div id="notification-list">
   <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-primary">알림</h1>
+    <h1 class="text-2xl font-bold text-primary"><%= t("notifications_list.title") %></h1>
     <% if notifications.any?(&:unread?) %>
-      <%= link_to '모두 읽음으로 표시', mark_all_read_notifications_path,
+      <%= link_to t("notifications_list.mark_all_read"), mark_all_read_notifications_path,
           method: :post, class: 'text-sm text-action hover:text-action',
           data: { turbo_method: :post } %>
     <% end %>
@@ -37,7 +37,7 @@
                   <p class="text-sm font-medium text-primary"><%= notification.title %></p>
                   <p class="text-sm text-tertiary mt-1"><%= notification.message %></p>
                 <% end %>
-                <p class="text-xs text-disabled mt-2"><%= time_ago_in_words(notification.created_at) %> 전</p>
+                <p class="text-xs text-disabled mt-2"><%= t("notifications_list.relative_time", relative: time_ago_in_words(notification.created_at)) %></p>
               </div>
             </div>
             <div class="flex items-center space-x-2">
@@ -46,7 +46,7 @@
                 <%= link_to mark_read_notification_path(notification), method: :post,
                     class: 'text-xs text-tertiary hover:text-secondary',
                     data: { turbo_method: :post } do %>
-                  읽음
+                  <%= t("notifications_list.mark_read") %>
                 <% end %>
               <% end %>
             </div>
@@ -63,7 +63,7 @@
   <% else %>
     <div class="bg-surface rounded-lg shadow p-12 text-center">
       <span class="text-4xl mb-4 block">🔔</span>
-      <p class="text-tertiary">알림이 없습니다.</p>
+      <p class="text-tertiary"><%= t("notifications_list.empty") %></p>
     </div>
   <% end %>
 </div>

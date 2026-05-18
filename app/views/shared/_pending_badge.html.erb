@@ -17,11 +17,11 @@
 
 <% if status == "pending_review" %>
   <span class="inline-flex items-center gap-1 text-warning text-caption <%= extra %>"
-        aria-label="검토 대기"
-        title="검토 대기">
+        aria-label="<%= t("shared.pending_badge.title") %>"
+        title="<%= t("shared.pending_badge.title") %>">
     <span aria-hidden="true" class="inline-block w-1.5 h-1.5 rounded-full bg-warning"></span>
     <% if with_label %>
-      <span>검토 대기</span>
+      <span><%= t("shared.pending_badge.title") %></span>
     <% end %>
   </span>
 <% end %>

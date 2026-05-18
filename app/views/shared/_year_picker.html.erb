@@ -9,7 +9,7 @@
   <button type="button"
           data-action="click->year-picker#toggle"
           class="flex items-center space-x-2 px-4 py-2 font-semibold text-lg text-primary hover:bg-elev rounded-lg transition-colors cursor-pointer">
-    <span data-year-picker-target="currentDisplay"><%= year %>년</span>
+    <span data-year-picker-target="currentDisplay"><%= t("shared.year_picker.year_label", year: year) %></span>
     <svg class="w-5 h-5 text-tertiary transition-transform" data-year-picker-target="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
     </svg>
@@ -30,7 +30,7 @@
       </button>
 
       <span data-year-picker-target="rangeDisplay" class="font-semibold text-primary">
-        <%= start_year %>년 - <%= end_year %>년
+        <%= t("shared.year_picker.range_label", start_year: start_year, end_year: end_year) %>
       </span>
 
       <button type="button"
@@ -50,7 +50,7 @@
                 data-year="<%= y %>"
                 class="px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer
                        <%= y == year ? 'bg-action text-action-on' : 'text-secondary hover:bg-elev' %>">
-          <%= y %>년
+          <%= t("shared.year_picker.year_label", year: y) %>
         </button>
       <% end %>
     </div>

@@ -16,11 +16,11 @@
 
 <%
   glyph, aria = case source_type
-                when "manual"       then ["✍",  "수기 입력"]
-                when "text_paste"   then ["\u{1F4AC}", "문자 붙여넣기"]
-                when "image_upload" then ["\u{1F4F7}", "스크린샷"]
-                when "api"          then ["\u{1F517}", "외부 API"]
-                when "import"       then ["\u{1F517}", "가져오기"]
+                when "manual"       then ["✍",  t("shared.source_icon.manual")]
+                when "text_paste"   then ["\u{1F4AC}", t("shared.source_icon.text_paste")]
+                when "image_upload" then ["\u{1F4F7}", t("shared.source_icon.image_upload")]
+                when "api"          then ["\u{1F517}", t("shared.source_icon.api")]
+                when "import"       then ["\u{1F517}", t("shared.source_icon.import")]
                 end
 %>
 

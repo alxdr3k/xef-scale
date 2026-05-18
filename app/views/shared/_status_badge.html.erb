@@ -5,17 +5,17 @@
   badge_config = case type.to_sym
   when :review
     case status.to_s
-    when 'pending_review' then { bg: 'bg-warning-subtle', text: 'text-warning', label: '검토 대기' }
-    when 'committed'      then { bg: 'bg-positive-subtle', text: 'text-positive',  label: '확정됨' }
-    when 'rolled_back'    then { bg: 'bg-danger-subtle',  text: 'text-danger',    label: '롤백됨' }
-    when 'discarded'      then { bg: 'bg-elev',   text: 'text-secondary',   label: '취소됨' }
+    when 'pending_review' then { bg: 'bg-warning-subtle', text: 'text-warning', label: t("shared.status_badge.review_pending") }
+    when 'committed'      then { bg: 'bg-positive-subtle', text: 'text-positive',  label: t("shared.status_badge.review_committed") }
+    when 'rolled_back'    then { bg: 'bg-danger-subtle',  text: 'text-danger',    label: t("shared.status_badge.review_rolled_back") }
+    when 'discarded'      then { bg: 'bg-elev',   text: 'text-secondary',   label: t("shared.status_badge.review_discarded") }
     end
   when :processing
     case status.to_s
-    when 'pending'    then { bg: 'bg-elev',  text: 'text-secondary',  label: '대기중' }
-    when 'processing' then { bg: 'bg-info-subtle',  text: 'text-info',  label: '처리중', spinner: true }
-    when 'completed'  then { bg: 'bg-positive-subtle', text: 'text-positive', label: '완료' }
-    when 'failed'     then { bg: 'bg-danger-subtle',  text: 'text-danger',   label: '실패' }
+    when 'pending'    then { bg: 'bg-elev',  text: 'text-secondary',  label: t("shared.status_badge.processing_pending") }
+    when 'processing' then { bg: 'bg-info-subtle',  text: 'text-info',  label: t("shared.status_badge.processing_processing"), spinner: true }
+    when 'completed'  then { bg: 'bg-positive-subtle', text: 'text-positive', label: t("shared.status_badge.processing_completed") }
+    when 'failed'     then { bg: 'bg-danger-subtle',  text: 'text-danger',   label: t("shared.status_badge.processing_failed") }
     end
   end
 %>

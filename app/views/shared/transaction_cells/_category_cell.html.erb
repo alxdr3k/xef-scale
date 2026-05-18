@@ -67,7 +67,7 @@
                     data-action="click->category-selector#selectCategory"
                     data-category-id=""
                     class="w-full text-left px-3 py-2 h-14 text-sm text-secondary hover:bg-elev">
-              미분류로 설정
+              <%= t("shared.cells.category.uncategorized_action") %>
             </button>
           <% end %>
         </div>
@@ -77,11 +77,11 @@
           <button type="button"
                   data-action="click->category-selector#openSlideover"
                   class="w-full text-left px-3 py-2 h-14 text-sm text-action hover:bg-action-subtle">
-            + 새 카테고리 만들기
+            <%= t("shared.cells.category.create_new") %>
           </button>
           <a href="<%= workspace_categories_path(workspace) %>"
              class="block px-3 py-2 h-14 text-sm text-action hover:bg-action-subtle">
-            카테고리 관리
+            <%= t("shared.cells.category.manage") %>
           </a>
         <% end %>
       </div>

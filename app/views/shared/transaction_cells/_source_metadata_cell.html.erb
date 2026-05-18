@@ -15,8 +15,8 @@
       <% source_icon_html = render('shared/source_icon', source_type: transaction.source_type) %>
       <button type="button"
               data-action="click->source-popover#toggle:stop"
-              aria-label="가져온 출처 보기"
-              title="가져온 출처 보기"
+              aria-label="<%= t("shared.cells.source_metadata.aria") %>"
+              title="<%= t("shared.cells.source_metadata.aria") %>"
               class="inline-flex items-center justify-center rounded-md p-1.5 text-disabled transition hover:bg-elev hover:text-secondary">
         <% if source_icon_html.to_s.strip.present? %>
           <%= source_icon_html %>
@@ -34,15 +34,15 @@
       <div data-source-popover-target="popover"
            data-action="click->source-popover#blockClick"
            class="hidden fixed z-50 bg-surface border border-divider rounded-lg shadow-lg p-3 w-60 text-left text-xs text-secondary space-y-1.5">
-        <div class="font-semibold text-secondary mb-1">가져온 출처</div>
+        <div class="font-semibold text-secondary mb-1"><%= t("shared.cells.source_metadata.heading") %></div>
 
         <% if channel.present? %>
           <div>
-            <span class="text-disabled">입력 방식:</span>
+            <span class="text-disabled"><%= t("shared.cells.source_metadata.input_method") %></span>
             <%= case channel
-                when "pasted_text" then "텍스트 붙여넣기"
-                when "screenshot" then "스크린샷"
-                when "manual" then "직접 입력"
+                when "pasted_text" then t("shared.cells.source_metadata.pasted_text")
+                when "screenshot" then t("shared.cells.source_metadata.screenshot")
+                when "manual" then t("shared.cells.source_metadata.manual")
                 when "api" then "API"
                 else channel
                 end %>
@@ -51,40 +51,40 @@
 
         <% if app_raw.present? %>
           <div>
-            <span class="text-disabled">추정 출처:</span>
+            <span class="text-disabled"><%= t("shared.cells.source_metadata.estimated_source") %></span>
             <%= app_raw %>
           </div>
         <% end %>
 
         <% if institution_raw.present? %>
           <div>
-            <span class="text-disabled">원문 기관명:</span>
+            <span class="text-disabled"><%= t("shared.cells.source_metadata.original_institution") %></span>
             <%= institution_raw %>
           </div>
         <% end %>
 
         <% if masked_sender.present? %>
           <div>
-            <span class="text-disabled">발신처:</span>
+            <span class="text-disabled"><%= t("shared.cells.source_metadata.sender") %></span>
             <%= masked_sender %>
           </div>
         <% end %>
 
         <% if ps.present? %>
           <div>
-            <span class="text-disabled">세션:</span>
-            <%= link_to "##{ps.id} #{ps.text_paste? ? '텍스트' : (ps.processed_file&.original_filename || '파일')}",
+            <span class="text-disabled"><%= t("shared.cells.source_metadata.session") %></span>
+            <%= link_to "##{ps.id} #{ps.text_paste? ? t("shared.cells.source_metadata.session_label_text") : (ps.processed_file&.original_filename || t("shared.cells.source_metadata.session_label_file_fallback"))}",
                 review_workspace_parsing_session_path(transaction.workspace, ps),
                 class: "text-action hover:underline",
                 data: { action: "click->source-popover#navigate:stop" } %>
           </div>
           <% if ps.committed_at.present? %>
-            <div class="text-disabled">확정: <%= ps.committed_at.strftime('%Y-%m-%d') %></div>
+            <div class="text-disabled"><%= t("shared.cells.source_metadata.committed_at", date: ps.committed_at.strftime('%Y-%m-%d')) %></div>
           <% end %>
         <% end %>
 
         <div class="pt-1 text-disabled border-t border-divider text-[10px] leading-tight">
-          이 정보는 결제 분류나 예산 계산에 사용되지 않습니다.
+          <%= t("shared.cells.source_metadata.privacy_note") %>
         </div>
       </div>
     </div>

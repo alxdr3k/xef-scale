@@ -30,20 +30,24 @@
     abs_pct = pct.abs
   %>
   <section class="bg-surface rounded-lg shadow-card p-5"
-           aria-label="이번 달 페이스">
-    <p class="text-meta text-secondary">지난달 같은 시점 대비</p>
+           aria-label="<%= t("shared.variance_card.aria") %>">
+    <p class="text-meta text-secondary"><%= t("shared.variance_card.label") %></p>
     <div class="mt-1 flex items-baseline gap-2">
       <span class="<%= tone_class %> text-2xl font-bold tabular-nums">
         <%= arrow %> <%= abs_pct %>%
       </span>
       <span class="text-meta text-tertiary">
-        (D-<%= variance[:compared_until_day] %>까지 ₩<%= number_with_delimiter(variance[:prior_total]) %> → ₩<%= number_with_delimiter(variance[:current_total]) %>)
+        <%= t("shared.variance_card.detail",
+              day: variance[:compared_until_day],
+              prior: number_with_delimiter(variance[:prior_total]),
+              current: number_with_delimiter(variance[:current_total])) %>
       </span>
     </div>
     <p class="mt-3 text-meta text-secondary">
-      이 페이스 유지 시 예상 마감 약 <span class="text-primary font-medium tabular-nums">₩<%= number_with_delimiter(variance[:projected_end]) %></span>
+      <%= t("shared.variance_card.projection_html",
+            amount: number_with_delimiter(variance[:projected_end])).html_safe %>
     </p>
-    <%= link_to '상세 보기 →',
+    <%= link_to t("shared.variance_card.detail_link"),
           workspace_transactions_path(workspace, year: year, month: month),
           class: "mt-3 inline-flex items-center text-meta font-medium text-action hover:text-action-hover" %>
   </section>

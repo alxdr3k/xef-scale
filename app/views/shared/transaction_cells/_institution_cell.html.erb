@@ -9,7 +9,7 @@
         url: update_url,
         method: :patch, data: { controller: 'auto-submit' } do |f| %>
       <%= f.collection_select :financial_institution_id, institutions, :id, :name,
-          { include_blank: '알수없음' },
+          { include_blank: t("shared.cells.institution.unknown") },
           class: 'text-sm rounded border-divider',
           data: { action: 'change->auto-submit#submit' } %>
     <% end %>
@@ -24,17 +24,17 @@
         </span>
         <div data-source-popover-target="popover"
              class="hidden fixed z-50 bg-surface border border-divider rounded-lg shadow-lg p-3 w-56">
-          <div class="text-xs text-disabled mb-1">원본 파일</div>
+          <div class="text-xs text-disabled mb-1"><%= t("shared.cells.institution.original_file") %></div>
           <a href="<%= review_workspace_parsing_session_path(transaction.workspace, ps) %>"
              class="text-sm font-medium text-action hover:text-action hover:underline truncate block"
              data-action="click->source-popover#navigate:stop">
-            <%= ps.processed_file&.original_filename || ps.processed_file&.filename || (ps.text_paste? ? '텍스트 붙여넣기' : '파일 업로드') %>
+            <%= ps.processed_file&.original_filename || ps.processed_file&.filename || (ps.text_paste? ? t("shared.cells.institution.text_paste_fallback") : t("shared.cells.institution.file_fallback")) %>
           </a>
           <div class="text-xs text-disabled mt-1.5">
-            업로드 <%= time_ago_in_words(ps.created_at) %> 전
+            <%= t("shared.cells.institution.uploaded", relative: time_ago_in_words(ps.created_at)) %>
           </div>
           <% if ps.review_committed? %>
-            <div class="text-xs text-positive mt-0.5">확정됨</div>
+            <div class="text-xs text-positive mt-0.5"><%= t("shared.cells.institution.committed") %></div>
           <% end %>
         </div>
       </div>

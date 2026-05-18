@@ -17,7 +17,7 @@
             <div class="ml-3 flex-1">
               <p class="text-sm font-medium text-primary"><%= notification.title %></p>
               <p class="text-xs text-tertiary line-clamp-2"><%= notification.message %></p>
-              <p class="text-xs text-disabled mt-1"><%= time_ago_in_words(notification.created_at) %> 전</p>
+              <p class="text-xs text-disabled mt-1"><%= t("notifications_dropdown.relative_time", relative: time_ago_in_words(notification.created_at)) %></p>
             </div>
             <% if notification.unread? %>
               <div class="flex-shrink-0 ml-2">
@@ -35,7 +35,7 @@
             <div class="ml-3 flex-1">
               <p class="text-sm font-medium text-primary"><%= notification.title %></p>
               <p class="text-xs text-tertiary"><%= notification.message %></p>
-              <p class="text-xs text-disabled mt-1"><%= time_ago_in_words(notification.created_at) %> 전</p>
+              <p class="text-xs text-disabled mt-1"><%= t("notifications_dropdown.relative_time", relative: time_ago_in_words(notification.created_at)) %></p>
             </div>
           </div>
         </div>
@@ -43,7 +43,7 @@
     <% end %>
   <% else %>
     <div class="px-4 py-8 text-center text-tertiary text-sm">
-      알림이 없습니다.
+      <%= t("notifications_dropdown.empty") %>
     </div>
   <% end %>
 </div>

@@ -9,7 +9,7 @@
 <div data-controller="color-picker">
   <%= form.hidden_field :color, value: color_value, data: { color_picker_target: "hidden" } %>
 
-  <label class="block text-sm font-medium text-secondary mb-2">색상</label>
+  <label class="block text-sm font-medium text-secondary mb-2"><%= t("shared.color_picker.label") %></label>
   <div class="flex flex-wrap gap-2 items-center">
     <% presets.each do |hex| %>
       <button type="button"
@@ -30,7 +30,7 @@
             data-color-picker-target="customButton"
             data-action="click->color-picker#openCustom"
             class="w-7 h-7 rounded-full cursor-pointer transition-all flex items-center justify-center shrink-0 bg-surface border-2 border-dashed border-divider hover:border-edge"
-            title="직접 선택">
+            title="<%= t("shared.color_picker.custom_title") %>">
       <%# Phase 5 cleanup (Scope C-3): default custom-icon은 surface 위 hint라 semantic
           secondary. controller가 swatch 선택 시 inline hex로 override (임의 색 swatch 위에는 raw hex 필요). %>
       <svg data-custom-icon class="w-3.5 h-3.5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">

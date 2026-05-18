@@ -8,7 +8,7 @@
     <% if needs_date_update %>
       <span class="relative group cursor-default">
         <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-warning-subtle text-warning text-[10px] font-bold">!</span>
-        <span class="absolute bottom-full left-0 mb-1 px-2 py-1 text-[11px] rounded bg-primary text-inverse whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">날짜를 실제 결제일로 수정해주세요</span>
+        <span class="absolute bottom-full left-0 mb-1 px-2 py-1 text-[11px] rounded bg-primary text-inverse whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10"><%= t("shared.cells.date.edit_hint") %></span>
       </span>
     <% end %>
     <% if editable && update_url %>

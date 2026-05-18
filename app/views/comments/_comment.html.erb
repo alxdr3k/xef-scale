@@ -14,17 +14,17 @@
         <span class="text-[11px] text-disabled">
           <%= comment.created_at.strftime('%m/%d %H:%M') %>
           <% if comment.edited_at.present? %>
-            <span class="text-disabled">(수정됨)</span>
+            <span class="text-disabled"><%= t("comments.comment.edited") %></span>
           <% end %>
         </span>
         <% if uid && comment.user_id == uid %>
           <div class="ml-auto flex items-center gap-1 opacity-0 group-hover/comment:opacity-100 transition-opacity">
             <button data-action="click->comment#edit:stop"
-                    class="text-[11px] text-disabled hover:text-secondary cursor-pointer">수정</button>
+                    class="text-[11px] text-disabled hover:text-secondary cursor-pointer"><%= t("comments.comment.edit") %></button>
             <button data-action="click->comment#delete:stop"
                     data-comment-url-value="<%= workspace_transaction_comment_path(comment.commentable_transaction.workspace, comment.commentable_transaction, comment) %>"
-                    data-turbo-confirm="댓글을 삭제하시겠습니까?"
-                    class="text-[11px] text-disabled hover:text-danger cursor-pointer">삭제</button>
+                    data-turbo-confirm="<%= t("comments.comment.delete_confirm") %>"
+                    class="text-[11px] text-disabled hover:text-danger cursor-pointer"><%= t("comments.comment.delete") %></button>
           </div>
         <% end %>
       </div>
@@ -40,8 +40,8 @@
                     class="w-full text-sm border border-divider rounded-md px-2 py-1.5 resize-none focus:ring-1 focus:ring-action focus:border-transparent"
                     rows="2"><%= comment.body %></textarea>
           <div class="flex gap-1.5 mt-1">
-            <button type="submit" class="text-xs font-medium text-action-on bg-action hover:bg-action-hover px-2.5 py-1 rounded">저장</button>
-            <button type="button" data-action="click->comment#cancelEdit:stop" class="text-xs text-tertiary hover:text-secondary px-2 py-1">취소</button>
+            <button type="submit" class="text-xs font-medium text-action-on bg-action hover:bg-action-hover px-2.5 py-1 rounded"><%= t("comments.comment.save") %></button>
+            <button type="button" data-action="click->comment#cancelEdit:stop" class="text-xs text-tertiary hover:text-secondary px-2 py-1"><%= t("comments.comment.cancel") %></button>
           </div>
         </form>
       </div>
