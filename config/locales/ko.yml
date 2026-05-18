@@ -200,7 +200,73 @@ ko:
   # 결정 메커니즘(transactions.classification_source)과 매핑 출처(category_mappings.source)는
   # 어휘를 공유하지 않는다 — "학습 매핑" vs "직접 등록" 등 분리.
   # ──────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────
+  # 거래 (Phase 6-3)
+  # ──────────────────────────────────────────────────
   transactions:
+    index:
+      title: "결제 내역"
+      add: "+ 결제 추가"
+      filter_year: "연도"
+      filter_month: "월"
+      filter_category: "카테고리"
+      filter_search: "검색"
+      filter_all: "-전체-"
+      filter_month_label: "%{month}월"
+      search_placeholder: "내역 검색..."
+      duplicate_check: "중복 검사"
+      total_count_html: "총 <strong>%{count}</strong>건"
+      total_amount: "합계: %{amount}"
+      bulk_select_all: "전체 선택"
+      bulk_selected_count: "%{count}개 선택됨"
+      bulk_delete: "삭제"
+      bulk_allowance: "용돈 표시"
+      bulk_category_placeholder: "카테고리..."
+      bulk_apply: "적용"
+      bulk_more: "더보기"
+      bulk_clear: "선택 해제"
+      th_date: "날짜"
+      th_merchant: "내역"
+      th_amount: "금액"
+      th_category: "카테고리"
+      th_source: "출처"
+      th_comments: "댓글"
+      empty: "결제 내역이 없습니다."
+    new:
+      title: "결제 추가"
+    edit:
+      title: "결제 수정"
+    form:
+      date_required: "날짜 *"
+      merchant_required: "가맹점/내역 *"
+      amount_required: "금액 *"
+      category: "카테고리"
+      category_placeholder: "선택하세요"
+      description: "설명"
+      notes: "메모"
+      cancel: "취소"
+      submit_new: "추가"
+      submit_edit: "수정"
+    row:
+      no_merchant: "내역 없음"
+      uncategorized: "미분류"
+      delete_confirm: "정말 삭제하시겠습니까?"
+      edit_aria: "수정"
+      delete_aria: "삭제"
+      allowance_aria: "용돈 표시"
+    duplicate_modal:
+      title: "중복 결제 검사"
+      undo_title: "바로 직전 단계만 되돌릴 수 있습니다"
+      loading: "중복 결제를 검색하고 있습니다..."
+      empty_title: "중복 결제가 없습니다"
+      empty_hint: "모든 결제가 고유합니다."
+      keep_left: "← 기존 결제만 남기기"
+      keep_right: "새 결제로 교체하기 →"
+      keep_both: "둘 다 남기기 (B)"
+      keyboard_hint: "키보드: ← 기존결제 · → 새결제 · B 둘다남기기 · Z 되돌리기 · Esc 닫기"
+    edit_modal:
+      title: "결제 수정"
+      loading: "불러오는 중..."
     category_learning_suggestion:
       body: "다음 같은 가맹점부터는 이 카테고리로 자동 분류할까요?"
       accept: "예, 자동 분류"
