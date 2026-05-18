@@ -5,7 +5,7 @@
   <div class="bg-surface shadow rounded-lg p-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-base font-semibold text-primary"><%= @date.strftime('%Y.%m.%d') %></h2>
-      <%= link_to '월간 보기 →',
+      <%= link_to t("dashboards.calendar.monthly_view_link"),
           monthly_dashboard_path(year: @date.year, month: @date.month),
           class: 'text-xs text-action hover:text-action',
           data: { turbo_frame: '_top' } %>
@@ -15,20 +15,20 @@
       <%# Daily total %>
       <% day_total = @selected_day_transactions.sum(&:amount) %>
       <div class="mb-3 text-right text-sm font-semibold text-secondary">
-        합계 <%= number_to_currency(day_total, unit: '₩', precision: 0) %>
+        <%= t("dashboards.calendar.sum", amount: number_to_currency(day_total, unit: '₩', precision: 0)) %>
       </div>
 
       <ul class="divide-y divide-divider">
         <% @selected_day_transactions.each do |tx| %>
           <li class="py-2 flex items-start justify-between gap-2">
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium text-primary truncate"><%= tx.merchant.presence || '내역 없음' %></div>
+              <div class="text-sm font-medium text-primary truncate"><%= tx.merchant.presence || t("dashboards.calendar.no_merchant") %></div>
               <div class="flex items-center gap-1.5 mt-0.5">
                 <% if tx.category %>
                   <span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background-color: <%= tx.category.color %>"></span>
                   <span class="text-xs text-tertiary truncate"><%= tx.category.name %></span>
                 <% else %>
-                  <span class="text-xs text-disabled italic">미분류</span>
+                  <span class="text-xs text-disabled italic"><%= t("dashboards.calendar.uncategorized_label") %></span>
                 <% end %>
               </div>
             </div>
@@ -44,7 +44,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
         </svg>
-        <p class="text-sm">결제 내역이 없습니다.</p>
+        <p class="text-sm"><%= t("dashboards.calendar.no_transactions") %></p>
       </div>
     <% end %>
   </div>

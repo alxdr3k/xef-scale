@@ -2,8 +2,8 @@
      data-dashboard-category-year-value="<%= @year %>"
      data-dashboard-category-month-value="<%= @month %>">
   <div class="mb-8">
-    <h1 class="text-2xl font-bold text-primary">대시보드</h1>
-    <p class="text-secondary"><%= @workspace.name %> - <%= @year %>년 <%= @month %>월</p>
+    <h1 class="text-2xl font-bold text-primary"><%= t("dashboards.title") %></h1>
+    <p class="text-secondary"><%= t("dashboards.workspace_year_month", workspace: @workspace.name, year: @year, month: @month) %></p>
   </div>
 
   <%= render 'tabs' %>
@@ -12,29 +12,31 @@
   <div class="flex items-center space-x-4 mb-6">
     <% prev_month = @month == 1 ? 12 : @month - 1 %>
     <% prev_year = @month == 1 ? @year - 1 : @year %>
-    <%= link_to '← 이전 달', monthly_dashboard_path(year: prev_year, month: prev_month),
+    <%= link_to t("dashboards.monthly.prev_month"), monthly_dashboard_path(year: prev_year, month: prev_month),
         class: 'text-action hover:text-action-hover' %>
 
     <%= render 'shared/month_picker', year: @year, month: @month, base_path: monthly_dashboard_path %>
 
     <% next_month = @month == 12 ? 1 : @month + 1 %>
     <% next_year = @month == 12 ? @year + 1 : @year %>
-    <%= link_to '다음 달 →', monthly_dashboard_path(year: next_year, month: next_month),
+    <%= link_to t("dashboards.monthly.next_month"), monthly_dashboard_path(year: next_year, month: next_month),
         class: 'text-action hover:text-action-hover' %>
   </div>
 
   <%# Phase 4: shared/_hero_stat 채택 (ADR-0003 / ADR-0006 시맨틱 토큰).
       옛 인디고 그라데이션은 ADR-0006의 컬러 의미축과 충돌하므로 제거. %>
   <% supporting_parts = [] %>
-  <% supporting_parts << "#{@transactions.count}건 결제" %>
-  <% supporting_parts << "일 평균 #{number_to_currency(@daily_average, unit: '₩', precision: 0)}" if @daily_average_denominator.positive? %>
+  <% supporting_parts << t("dashboards.monthly.supporting_count", count: @transactions.count) %>
+  <% supporting_parts << t("dashboards.monthly.supporting_daily_avg", amount: number_to_currency(@daily_average, unit: '₩', precision: 0)) if @daily_average_denominator.positive? %>
   <% if @budget_progress %>
-    <% supporting_parts << "예산 대비 #{@budget_progress[:percentage]}% (#{number_to_currency(@budget_progress[:budget], unit: '₩', precision: 0)})" %>
+    <% supporting_parts << t("dashboards.monthly.supporting_budget_progress",
+        percentage: @budget_progress[:percentage],
+        budget: number_to_currency(@budget_progress[:budget], unit: '₩', precision: 0)) %>
   <% end %>
 
   <div class="mb-4">
     <%= render 'shared/hero_stat',
-        label: "#{@year}년 #{@month}월 총 지출",
+        label: t("dashboards.monthly.hero_label", year: @year, month: @month),
         value: @total_spending,
         tone: :neutral,
         supporting: supporting_parts.join(" · ") %>
@@ -72,10 +74,10 @@
     <!-- Category Breakdown -->
     <div class="bg-surface rounded-lg shadow p-6">
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-semibold text-primary">카테고리별 지출</h2>
-        <%= link_to '카테고리 관리', workspace_categories_path(@workspace), class: 'text-sm text-action hover:text-action-hover' %>
+        <h2 class="text-lg font-semibold text-primary"><%= t("dashboards.monthly.breakdown_title") %></h2>
+        <%= link_to t("dashboards.monthly.manage_categories"), workspace_categories_path(@workspace), class: 'text-sm text-action hover:text-action-hover' %>
       </div>
-      <p class="text-sm text-tertiary mb-4">카테고리를 클릭하면 해당 결제를 볼 수 있습니다</p>
+      <p class="text-sm text-tertiary mb-4"><%= t("dashboards.monthly.breakdown_hint") %></p>
       <%= render 'category_breakdown' %>
     </div>
 

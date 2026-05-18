@@ -34,6 +34,6 @@
   <% end %>
 
   <% if @category_breakdown.empty? %>
-    <p class="text-tertiary text-center py-4">결제 내역이 없습니다.</p>
+    <p class="text-tertiary text-center py-4"><%= t("dashboards.category_breakdown_empty") %></p>
   <% end %>
 </div>
