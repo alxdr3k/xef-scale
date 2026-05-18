@@ -4,7 +4,24 @@ import { jsonPatchHeaders } from "../utils/csrf"
 
 export default class extends Controller {
   static targets = ["modal", "content", "loading", "empty", "summary", "counter", "progress", "undoBtn", "footer"]
-  static values = { url: String }
+  static values = {
+    url: String,
+    // i18n copy injected from the view (i18n-allow: keys, not user-visible text)
+    registeredPrefix: String,
+    fieldLabelDate: String,
+    fieldLabelMerchant: String,
+    fieldLabelDescription: String,
+    fieldLabelAmount: String,
+    fieldLabelCategory: String,
+    fieldLabelNotes: String,
+    uncategorizedOption: String,
+    summaryTitle: String,
+    summaryCount: String,
+    summaryStatDeleted: String,
+    summaryStatKept: String,
+    summaryStatSkipped: String,
+    summaryClose: String
+  }
 
   connect() {
     this.pairs = []
@@ -128,14 +145,15 @@ export default class extends Controller {
 
     this.contentTarget.innerHTML = ""
 
-    // Fields definition
+    // Fields definition. Labels are injected from the view via Stimulus values
+    // so all user-visible text lives in config/locales/ko.yml.
     const fields = [
-      { label: "날짜", key: "date", editable: false },
-      { label: "가맹점", key: "merchant", editable: true, type: "text" },
-      { label: "설명", key: "description", editable: true, type: "text" },
-      { label: "금액", key: "amount", editable: false, format: "currency" },
-      { label: "카테고리", key: "category", editable: true, type: "select" },
-      { label: "메모", key: "notes", editable: true, type: "text" }
+      { label: this.fieldLabelDateValue,        key: "date",        editable: false },
+      { label: this.fieldLabelMerchantValue,    key: "merchant",    editable: true,  type: "text"   },
+      { label: this.fieldLabelDescriptionValue, key: "description", editable: true,  type: "text"   },
+      { label: this.fieldLabelAmountValue,      key: "amount",      editable: false, format: "currency" },
+      { label: this.fieldLabelCategoryValue,    key: "category",    editable: true,  type: "select" },
+      { label: this.fieldLabelNotesValue,       key: "notes",       editable: true,  type: "text"   }
     ]
 
     // 3-column layout: left card | labels | right card
@@ -151,7 +169,7 @@ export default class extends Controller {
 
     const leftHeader = document.createElement("div")
     leftHeader.className = "text-center mb-3 pb-2 border-b border-info"
-    leftHeader.innerHTML = `<span class="text-xs font-medium text-info">등록: ${pair.left.created_at}</span>`
+    leftHeader.innerHTML = `<span class="text-xs font-medium text-info">${this.registeredPrefixValue}: ${pair.left.created_at}</span>`
     leftCard.appendChild(leftHeader)
 
     const leftFields = document.createElement("div")
@@ -174,7 +192,7 @@ export default class extends Controller {
 
     const rightHeader = document.createElement("div")
     rightHeader.className = "text-center mb-3 pb-2 border-b border-ai-border"
-    rightHeader.innerHTML = `<span class="text-xs font-medium text-ai">등록: ${pair.right.created_at}</span>`
+    rightHeader.innerHTML = `<span class="text-xs font-medium text-ai">${this.registeredPrefixValue}: ${pair.right.created_at}</span>`
     rightCard.appendChild(rightHeader)
 
     const rightFields = document.createElement("div")
@@ -337,7 +355,7 @@ export default class extends Controller {
     // Add empty option
     const emptyOption = document.createElement("option")
     emptyOption.value = ""
-    emptyOption.textContent = "미분류"
+    emptyOption.textContent = this.uncategorizedOptionValue
     select.appendChild(emptyOption)
 
     // Add category options
@@ -639,20 +657,20 @@ export default class extends Controller {
 
     const h3 = document.createElement("h3")
     h3.className = "text-xl font-semibold text-primary mb-2"
-    h3.textContent = "중복 검사 완료"
+    h3.textContent = this.summaryTitleValue
 
     const p = document.createElement("p")
     p.className = "text-secondary mb-6"
-    p.textContent = `총 ${this.pairs.length}개 쌍을 검토했습니다`
+    p.textContent = this.summaryCountValue.replace("%{count}", this.pairs.length)
 
     const statsGrid = document.createElement("div")
     statsGrid.className = "grid grid-cols-3 gap-4 max-w-md mx-auto mb-6"
 
     // Phase 5 cleanup (Scope C-3): bg-${color}-50 / text-${color}-600 template literal은
     // Tailwind JIT가 못 잡을 수 있고 semantic 계약도 깨므로 STAT_TONES 맵으로 교체.
-    const deletedStat = this.createStatBox(this.stats.deleted, "삭제됨", "deleted")
-    const keptStat = this.createStatBox(kept, "유지됨", "kept")
-    const skippedStat = this.createStatBox(this.stats.skipped, "건너뛰기", "skipped")
+    const deletedStat = this.createStatBox(this.stats.deleted, this.summaryStatDeletedValue, "deleted")
+    const keptStat = this.createStatBox(kept, this.summaryStatKeptValue, "kept")
+    const skippedStat = this.createStatBox(this.stats.skipped, this.summaryStatSkippedValue, "skipped")
 
     statsGrid.appendChild(deletedStat)
     statsGrid.appendChild(keptStat)
@@ -660,7 +678,7 @@ export default class extends Controller {
 
     const closeBtn = document.createElement("button")
     closeBtn.className = "px-6 py-2 bg-action text-action-on rounded-lg hover:bg-action-hover"
-    closeBtn.textContent = "닫기"
+    closeBtn.textContent = this.summaryCloseValue
     closeBtn.addEventListener("click", () => this.close())
 
     summaryDiv.appendChild(svg)

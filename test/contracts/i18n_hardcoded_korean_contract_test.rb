@@ -66,8 +66,6 @@ class I18nHardcodedKoreanContractTest < ActiveSupport::TestCase
     app/javascript/controllers/bulk_select_controller.js
     app/javascript/controllers/comment_controller.js
     app/javascript/controllers/comment_panel_controller.js
-    app/javascript/controllers/duplicate_modal_controller.js
-    app/javascript/controllers/edit_modal_controller.js
     app/javascript/controllers/month_picker_controller.js
     app/javascript/controllers/review_keyboard_controller.js
     app/javascript/controllers/year_picker_controller.js

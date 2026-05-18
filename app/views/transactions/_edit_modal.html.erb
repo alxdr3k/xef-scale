@@ -1,4 +1,14 @@
-<div id="edit-modal" class="hidden fixed inset-0 z-50 overflow-y-auto" data-edit-modal-target="modal" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+<div id="edit-modal"
+     class="hidden fixed inset-0 z-50 overflow-y-auto"
+     data-edit-modal-target="modal"
+     data-edit-modal-title-edit-value="<%= t("transactions.edit_modal.title") %>"
+     data-edit-modal-title-new-value="<%= t("transactions.edit_modal.title_new") %>"
+     data-edit-modal-allowance-toggle-value="<%= t("transactions.edit_modal.allowance_toggle") %>"
+     data-edit-modal-load-error-value="<%= t("transactions.edit_modal.load_error") %>"
+     data-edit-modal-loading-value="<%= t("transactions.edit_modal.loading") %>"
+     aria-labelledby="modal-title"
+     role="dialog"
+     aria-modal="true">
   <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
     <!-- Background overlay -->
     <div class="fixed inset-0 bg-black/50 transition-opacity" data-action="click->edit-modal#close"></div>

@@ -829,9 +829,29 @@ ko:
       keep_right: "새 결제로 교체하기 →"
       keep_both: "둘 다 남기기 (B)"
       keyboard_hint: "키보드: ← 기존결제 · → 새결제 · B 둘다남기기 · Z 되돌리기 · Esc 닫기"
+      # JS-built DOM 카피 (#223 cleanup). duplicate_modal_controller.js가 동적으로
+      # 그리는 요약/필드 라벨/스탯/등록일 prefix는 모두 view에서 data-* value로
+      # 주입된다. user-visible Korean이 controller 안에 박혀있지 않도록 한다.
+      registered_prefix: "등록"
+      field_label_date: "날짜"
+      field_label_merchant: "가맹점"
+      field_label_description: "설명"
+      field_label_amount: "금액"
+      field_label_category: "카테고리"
+      field_label_notes: "메모"
+      uncategorized_option: "미분류"
+      summary_title: "중복 검사 완료"
+      summary_count: "총 %{count}개 쌍을 검토했습니다"
+      summary_stat_deleted: "삭제됨"
+      summary_stat_kept: "유지됨"
+      summary_stat_skipped: "건너뛰기"
+      summary_close: "닫기"
     edit_modal:
       title: "결제 수정"
+      title_new: "결제 추가"
       loading: "불러오는 중..."
+      allowance_toggle: "💰 용돈으로 표시"
+      load_error: "폼을 불러오는데 실패했습니다."
     category_learning_suggestion:
       body: "다음 같은 가맹점부터는 이 카테고리로 자동 분류할까요?"
       accept: "예, 자동 분류"

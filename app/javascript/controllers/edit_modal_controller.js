@@ -4,7 +4,14 @@ export default class extends Controller {
   static values = {
     url: String,
     transactionId: Number,
-    allowance: Boolean
+    allowance: Boolean,
+    // i18n copy injected from the view so all user-visible text lives in
+    // config/locales/ko.yml.
+    titleEdit: String,
+    titleNew: String,
+    allowanceToggle: String,
+    loadError: String,
+    loading: String
   }
 
   get modalElement() {
@@ -34,7 +41,7 @@ export default class extends Controller {
 
     // Update modal title based on action type
     if (this.titleElement) {
-      this.titleElement.textContent = this.isNewTransaction ? "결제 추가" : "결제 수정"
+      this.titleElement.textContent = this.isNewTransaction ? this.titleNewValue : this.titleEditValue
     }
 
     // Show modal
@@ -81,7 +88,7 @@ export default class extends Controller {
           const label = document.createElement("label")
           label.htmlFor = "allowance"
           label.className = "ml-2 block text-sm text-primary"
-          label.textContent = "💰 용돈으로 표시"
+          label.textContent = this.allowanceToggleValue
 
           allowanceDiv.appendChild(checkbox)
           allowanceDiv.appendChild(label)
@@ -95,7 +102,7 @@ export default class extends Controller {
       console.error("Error loading form:", error)
       const errorDiv = document.createElement("div")
       errorDiv.className = "text-danger text-center py-4"
-      errorDiv.textContent = "폼을 불러오는데 실패했습니다."
+      errorDiv.textContent = this.loadErrorValue
       this.contentElement.textContent = ""
       this.contentElement.appendChild(errorDiv)
     }
@@ -106,7 +113,7 @@ export default class extends Controller {
     document.body.style.overflow = ""
     const loadingDiv = document.createElement("div")
     loadingDiv.className = "text-center py-8 text-tertiary"
-    loadingDiv.textContent = "로딩 중..."
+    loadingDiv.textContent = this.loadingValue
     this.contentElement.textContent = ""
     this.contentElement.appendChild(loadingDiv)
   }
