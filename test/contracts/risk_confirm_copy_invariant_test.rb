@@ -112,7 +112,8 @@ class RiskConfirmCopyInvariantTest < ActiveSupport::TestCase
     "reviews.import_issues.dismiss_confirm",        # single import issue dismiss — 낮은 위험
     "workspace_memberships.index.remove_confirm",   # single member remove (workspace_more page)
     "workspace_invitations.index.delete_confirm",   # single invitation remove — 낮은 위험
-    "workspaces.settings.remove_confirm"            # settings 페이지 단일 멤버 제거
+    "workspaces.settings.remove_confirm",           # settings 페이지 단일 멤버 제거
+    "comments.comment.delete_confirm"               # single comment delete — 낮은 위험 (Phase 6-9)
   ].freeze
 
   private

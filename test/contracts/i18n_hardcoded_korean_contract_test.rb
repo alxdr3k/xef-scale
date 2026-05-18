@@ -70,37 +70,11 @@ class I18nHardcodedKoreanContractTest < ActiveSupport::TestCase
     app/javascript/controllers/review_keyboard_controller.js
     app/javascript/controllers/year_picker_controller.js
     app/jobs/file_parsing_job.rb
-    app/views/comments/_badge.html.erb
-    app/views/comments/_comment.html.erb
-    app/views/notifications/_dropdown.html.erb
-    app/views/notifications/_list.html.erb
     app/views/pages/landing.html.erb
     app/views/reviews/update_transaction.turbo_stream.erb
-    app/views/shared/_blob_purged_badge.html.erb
-    app/views/shared/_category_source_chip.html.erb
-    app/views/shared/_color_picker.html.erb
-    app/views/shared/_comment_panel.html.erb
     app/views/shared/_context_header.html.erb
-    app/views/shared/_flash.html.erb
-    app/views/shared/_input_sheet.html.erb
-    app/views/shared/_keyboard_shortcuts_help.html.erb
-    app/views/shared/_month_picker.html.erb
-    app/views/shared/_note_panel.html.erb
-    app/views/shared/_pending_badge.html.erb
-    app/views/shared/_recurring_payment_card.html.erb
-    app/views/shared/_review_inbox_card.html.erb
-    app/views/shared/_source_icon.html.erb
-    app/views/shared/_status_badge.html.erb
     app/views/shared/_variance_card.html.erb
-    app/views/shared/_year_picker.html.erb
     app/views/shared/transaction_cells/_amount_cell.html.erb
-    app/views/shared/transaction_cells/_category_cell.html.erb
-    app/views/shared/transaction_cells/_date_cell.html.erb
-    app/views/shared/transaction_cells/_institution_cell.html.erb
-    app/views/shared/transaction_cells/_merchant_cell.html.erb
-    app/views/shared/transaction_cells/_notes_cell.html.erb
-    app/views/shared/transaction_cells/_payment_type_cell.html.erb
-    app/views/shared/transaction_cells/_source_metadata_cell.html.erb
     app/views/transactions/toggle_allowance.turbo_stream.erb
   ].freeze
 
