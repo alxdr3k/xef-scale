@@ -72,6 +72,9 @@ Rails.application.routes.draw do
     # 세부 화면은 기존 경로(workspaces#settings, allowances 등) 그대로 사용.
     resource :more, only: [ :show ], controller: "workspace_more"
 
+    # Phase 7 metrics dashboard (admin only) — Issue #187 baseline web view.
+    resource :metrics, only: [ :show ]
+
     # File uploads and parsing
     resources :parsing_sessions, only: [ :index, :show, :create, :destroy ] do
       collection do
