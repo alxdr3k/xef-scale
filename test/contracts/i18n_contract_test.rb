@@ -39,7 +39,7 @@ class I18nContractTest < ActiveSupport::TestCase
     "app/views/pages/landing.html.erb",
     # ERB docstring 내부에 ERB escape (`<%% end %>`)가 있어 `<%# ... %>` 매치가 일찍
     # 끊긴다. partial 본문은 한글 0줄, docstring만 한글이라 path-level allowlist.
-    "app/views/shared/_context_header.html.erb",
+    "app/views/shared/_context_header.html.erb"
   ].freeze
 
   # 라인 단위 inline allowlist 마커. 의도된 hardcoded 한글 (모델 enum 값 비교 등)
