@@ -60,6 +60,7 @@ class TransactionsController < ApplicationController
   def update
     old_allowance_status = @transaction.allowance?
     old_category_id = @transaction.category_id
+    old_merchant = @transaction.merchant
     # ADR-0011 §Decision 3: 폼에 `category_id` 키가 포함됐는지로 판단.
     # 빈 문자열로 해제한 경우도 사용자 명시 행위.
     category_id_submitted = params[:transaction].respond_to?(:key?) &&
@@ -71,10 +72,19 @@ class TransactionsController < ApplicationController
       #   - 새 category_id present → manual_set
       #   - 새 category_id nil (clear) → nil (category가 없으면 source 의미도 없음)
       #   - 동일 카테고리 재전송 → 기존 provenance 보존
-      if category_id_submitted && @transaction.category_id != old_category_id
+      category_changed = category_id_submitted && @transaction.category_id != old_category_id
+      if category_changed
         new_source = @transaction.category_id.present? ? "manual_set" : nil
         @transaction.update_column(:classification_source, new_source)
       end
+
+      # ADR-0011 §Decision 3 (Phase 5 cleanup): merchant가 바뀌면 새 merchant
+      # 기준으로 provenance 재평가. inline_update / ReviewsController#update_transaction
+      # form path와 동일 의미를 ledger full edit route에도 적용한다.
+      # 사용자가 같은 요청에서 category까지 명시 변경했다면 user intent가 우선이므로
+      # rematch로 덮지 않는다.
+      merchant_changed = old_merchant != @transaction.merchant
+      apply_merchant_rematch_policy!(@transaction) if merchant_changed && !category_changed
 
       # Handle allowance toggle if present in params
       if params[:allowance].present?
@@ -406,7 +416,7 @@ class TransactionsController < ApplicationController
 
   def transaction_params
     params.require(:transaction).permit(
-      :date, :merchant, :amount, :notes,
+      :date, :merchant, :description, :amount, :notes,
       :category_id, :payment_type,
       :installment_month, :installment_total
     )
