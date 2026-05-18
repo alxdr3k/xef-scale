@@ -523,17 +523,116 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
                  "no-op 클릭은 기존 provenance 보존"
   end
 
-  test "update (edit page) routine non-category edit preserves classification_source" do
-    # Codex PR #174 — edit 폼은 collection_select로 category_id를 항상 보내므로
-    # merchant/amount/notes만 편집해도 manual_set으로 덮으면 안 된다.
+  test "update (edit page) amount/notes-only edit preserves classification_source" do
+    # Phase 5 cleanup: edit 폼은 collection_select로 category_id를 항상 보내므로
+    # category/merchant 미변경 + amount/notes만 편집하는 trivial edit에서는
+    # provenance가 흔들리지 않아야 한다 (#174 원래 의도).
+    # merchant 변경 케이스는 별도 wiring 테스트 (아래 4건)에서 검증.
+    @transaction.update!(category: categories(:food), classification_source: "mapping_match")
+    same_category_id = @transaction.category_id
+    same_merchant = @transaction.merchant
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: {
+            merchant: same_merchant, category_id: same_category_id,
+            amount: 9999, notes: "메모 수정"
+          } }
+
+    assert_equal "mapping_match", @transaction.reload.classification_source,
+                 "category/merchant 미변경 trivial edit 시 provenance 보존"
+  end
+
+  test "update (edit page) merchant change with no mapping + existing category flips to manual_set" do
+    # Phase 5 cleanup (Scope A): ledger full edit route도 MerchantRematchPolicy를
+    # 타야 한다. 새 merchant에 매핑이 없고 기존 category가 있으면 manual_set으로 정리.
     @transaction.update!(category: categories(:food), classification_source: "mapping_match")
     same_category_id = @transaction.category_id
 
     patch workspace_transaction_path(@workspace, @transaction),
-          params: { transaction: { merchant: "노카테고리편집_가맹점", category_id: same_category_id } }
+          params: { transaction: { merchant: "신규_무매핑_가맹점_#{SecureRandom.hex(4)}",
+                                   category_id: same_category_id } }
 
-    assert_equal "mapping_match", @transaction.reload.classification_source,
-                 "category 미변경 + 다른 필드만 편집 시 provenance 보존"
+    @transaction.reload
+    assert_equal "manual_set", @transaction.classification_source,
+                 "merchant 변경 + 매핑 없음 → 기존 category는 manual_set로 정리"
+    assert_equal same_category_id, @transaction.category_id,
+                 "기존 category는 유지"
+  end
+
+  test "update (edit page) merchant change with mapping hit sets mapping_match" do
+    # 새 merchant에 매핑이 있으면 그 매핑의 category로 옮기고 mapping_match.
+    target_category = categories(:transport)
+    new_merchant = "매핑존재_가맹점_#{SecureRandom.hex(4)}"
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: new_merchant,
+      match_type: "exact",
+      category: target_category,
+      source: "manual"
+    )
+    @transaction.update!(category: categories(:food), classification_source: "manual_set")
+    same_category_id = @transaction.category_id
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { merchant: new_merchant, category_id: same_category_id } }
+
+    @transaction.reload
+    assert_equal target_category.id, @transaction.category_id,
+                 "매핑 hit → 매핑의 category로 이동"
+    assert_equal "mapping_match", @transaction.classification_source,
+                 "매핑 hit → mapping_match"
+  end
+
+  test "update (edit page) merchant change with no mapping + no category leaves source nil" do
+    # 새 merchant에 매핑이 없고 기존 category도 없으면 source는 nil.
+    @transaction.update!(category: nil, classification_source: nil)
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { merchant: "무카테고리_무매핑_#{SecureRandom.hex(4)}", category_id: "" } }
+
+    @transaction.reload
+    assert_nil @transaction.category_id, "category 없음 유지"
+    assert_nil @transaction.classification_source, "source nil 유지"
+  end
+
+  test "update (edit page) merchant change with user category change in same request preserves user choice" do
+    # precedence: 같은 요청에서 사용자가 category를 명시 변경하면 user intent 우선.
+    # rematch가 덮어쓰면 안 된다.
+    new_merchant = "매핑존재_가맹점_#{SecureRandom.hex(4)}"
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: new_merchant,
+      match_type: "exact",
+      category: categories(:transport),
+      source: "manual"
+    )
+    @transaction.update!(category: categories(:food), classification_source: "mapping_match")
+    user_picked = categories(:etc)
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { merchant: new_merchant, category_id: user_picked.id } }
+
+    @transaction.reload
+    assert_equal user_picked.id, @transaction.category_id,
+                 "사용자 명시 category가 우선"
+    assert_equal "manual_set", @transaction.classification_source,
+                 "사용자 명시 변경 → manual_set, rematch가 mapping_match로 덮지 않음"
+  end
+
+  test "update (edit page) persists :description and feeds rematch lookup" do
+    # Phase 5 cleanup (Scope A): form에 :description 필드가 있는데 strong params에서
+    # 누락되어 저장되지 않던 버그 회귀 방지. MerchantRematchPolicy는 description도
+    # 매핑 lookup에 사용하므로 persistence가 필수.
+    @transaction.update!(category: categories(:food), classification_source: "manual_set")
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { merchant: @transaction.merchant,
+                                   description: "결제 메모 #{SecureRandom.hex(3)}",
+                                   category_id: @transaction.category_id } }
+
+    @transaction.reload
+    assert_match(/결제 메모/, @transaction.description.to_s,
+                 ":description이 strong params에서 permit되어 저장됨")
   end
 
   test "bulk_update change_category per-row guard preserves provenance on no-op rows" do
