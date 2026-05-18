@@ -49,8 +49,9 @@ ko:
     loading: "불러오는 중..."
     none: "없음"
     all: "전체"
-    yes: "예"
-    no: "아니요"
+    # YAML bare `yes`/`no` 는 boolean으로 파싱되므로 quote해 string key로 고정.
+    "yes": "예"
+    "no": "아니요"
     optional: "선택"
     required: "필수"
 
@@ -71,7 +72,7 @@ ko:
   # 라이브 컨텍스트 (synthesis 8.2)
   # ──────────────────────────────────────────────────
   live:
-    month_pace: "지난달 같은 시점 대비 %{delta}%%"
+    month_pace: "지난달 같은 시점 대비 %{delta}%"
     expected_end: "예상 마감 약 %{amount}원"
     review_pending: "검토 대기 %{count}건"
     duplicate_pending: "중복 후보 %{count}건"
