@@ -38,7 +38,7 @@ export default class extends Controller {
 
     // 새 행 하이라이트
     const row = document.getElementById(rowId)
-    if (row) row.classList.add("bg-indigo-50/50")
+    if (row) row.classList.add("bg-action-subtle")
 
     // 패널 위치: 테이블 오른쪽 바로 옆, 행과 수직 정렬
     const panel = this.panelTarget
@@ -156,7 +156,7 @@ export default class extends Controller {
 
   _clearHighlight() {
     if (this._rowId) {
-      document.getElementById(this._rowId)?.classList.remove("bg-indigo-50/50")
+      document.getElementById(this._rowId)?.classList.remove("bg-action-subtle")
     }
   }
 }

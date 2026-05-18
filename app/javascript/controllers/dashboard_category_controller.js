@@ -15,9 +15,9 @@ export default class extends Controller {
 
     // Update visual selection
     this.categoryBarTargets.forEach(bar => {
-      bar.classList.remove("ring-2", "ring-offset-2", "ring-indigo-500")
+      bar.classList.remove("ring-2", "ring-offset-2", "ring-focus")
     })
-    event.currentTarget.classList.add("ring-2", "ring-offset-2", "ring-indigo-500")
+    event.currentTarget.classList.add("ring-2", "ring-offset-2", "ring-focus")
 
     this.selectedIdValue = parseInt(categoryId)
 
@@ -38,7 +38,7 @@ export default class extends Controller {
   clearSelection() {
     // Remove visual selection
     this.categoryBarTargets.forEach(bar => {
-      bar.classList.remove("ring-2", "ring-offset-2", "ring-indigo-500")
+      bar.classList.remove("ring-2", "ring-offset-2", "ring-focus")
     })
     this.selectedIdValue = 0
 
