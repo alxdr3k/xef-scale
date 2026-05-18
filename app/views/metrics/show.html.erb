@@ -1,0 +1,46 @@
+<div class="max-w-4xl mx-auto">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold text-primary"><%= t("metrics.show.title") %></h1>
+    <p class="text-secondary text-sm mt-1">
+      <%= t("metrics.show.subtitle") %>
+    </p>
+  </div>
+
+  <%# Period filter %>
+  <div class="bg-surface rounded-lg shadow p-4 mb-6">
+    <%= form_with url: workspace_metrics_path(@workspace), method: :get, local: true, class: 'flex flex-wrap gap-4 items-end' do %>
+      <div>
+        <label class="block text-sm font-medium text-secondary mb-1"><%= t("metrics.show.since_label") %></label>
+        <%= date_field_tag :since, @since,
+            class: 'block w-40 rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-secondary mb-1"><%= t("metrics.show.until_label") %></label>
+        <%= date_field_tag :until, @until,
+            class: 'block w-40 rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
+      </div>
+      <div class="flex gap-2">
+        <%= submit_tag t("metrics.show.apply"),
+            class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
+        <%= link_to t("metrics.show.reset"), workspace_metrics_path(@workspace),
+            class: 'px-4 py-2 border border-divider text-secondary rounded-md hover:bg-elev' %>
+      </div>
+    <% end %>
+  </div>
+
+  <%# Summary %>
+  <div class="bg-surface rounded-lg shadow p-4 mb-6">
+    <p class="text-secondary">
+      <%= t("metrics.show.scope_summary", count: @session_count) %>
+    </p>
+  </div>
+
+  <%# Report — Phase 7-2+에서 HTML/차트로 분해 예정. 현재는 CLI 텍스트 그대로 노출. %>
+  <div class="bg-surface rounded-lg shadow p-4 overflow-x-auto">
+    <pre class="text-sm text-primary font-mono whitespace-pre-wrap"><%= @report %></pre>
+  </div>
+
+  <p class="text-meta text-tertiary mt-4">
+    <%= t("metrics.show.cli_hint_html").html_safe %>
+  </p>
+</div>

@@ -93,6 +93,19 @@
     </div>
   </section>
 
+  <%# Group 3.5: 관리 (admin-only) — Phase 7 metrics 진입점 %>
+  <% if current_user.admin_of?(@workspace) %>
+    <section class="mb-6">
+      <h2 class="text-sm font-semibold text-secondary uppercase tracking-wider mb-2 px-1"><%= t("workspace_more.section_admin") %></h2>
+      <div class="bg-surface rounded-lg shadow-sm overflow-hidden divide-y divide-divider">
+        <%= link_to workspace_metrics_path(@workspace), class: "flex items-center justify-between px-4 py-3 hover:bg-elev" do %>
+          <span class="text-primary"><%= t("workspace_more.metrics") %></span>
+          <%= render 'shared/chevron' %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+
   <%# Group 4: 위험한 작업 %>
   <% if current_user.admin_of?(@workspace) %>
     <section>
