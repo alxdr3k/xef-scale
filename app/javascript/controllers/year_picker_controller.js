@@ -78,11 +78,12 @@ export default class extends Controller {
       button.dataset.year = yearIndex
       button.textContent = `${yearIndex}년`
 
-      // Update styling
+      // Phase 5 cleanup (Scope C-2): semantic 토큰. selected → filled action,
+      // inactive → secondary 본문 색 + elev hover (PR #217/#218 가이드).
       if (yearIndex === this.selectedYear) {
-        button.className = 'px-3 py-2 text-sm font-medium rounded-lg transition-colors bg-indigo-600 text-white'
+        button.className = 'px-3 py-2 text-sm font-medium rounded-lg transition-colors bg-action text-action-on'
       } else {
-        button.className = 'px-3 py-2 text-sm font-medium rounded-lg transition-colors text-gray-700 hover:bg-gray-100'
+        button.className = 'px-3 py-2 text-sm font-medium rounded-lg transition-colors text-secondary hover:bg-elev'
       }
 
       yearIndex++

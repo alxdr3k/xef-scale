@@ -1,5 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
+// Phase 5 cleanup (Scope C-2): tab active/inactive class + sparkline 카드 DOM을
+// ADR-0008 semantic 토큰으로 통일.
+const ACTIVE_TAB_CLASSES = ["text-action", "border-action"]
+const INACTIVE_TAB_CLASSES = ["text-secondary", "hover:text-primary", "border-transparent"]
+
 export default class extends Controller {
   static targets = ["tab", "integratedView", "trendView", "sparklineContainer"]
   static values = {
@@ -22,11 +27,11 @@ export default class extends Controller {
     // Update tab styles
     this.tabTargets.forEach(t => {
       if (t === tab) {
-        t.classList.remove('text-gray-500', 'hover:text-gray-700', 'border-transparent')
-        t.classList.add('text-indigo-600', 'border-indigo-600')
+        t.classList.remove(...INACTIVE_TAB_CLASSES)
+        t.classList.add(...ACTIVE_TAB_CLASSES)
       } else {
-        t.classList.remove('text-indigo-600', 'border-indigo-600')
-        t.classList.add('text-gray-500', 'hover:text-gray-700', 'border-transparent')
+        t.classList.remove(...ACTIVE_TAB_CLASSES)
+        t.classList.add(...INACTIVE_TAB_CLASSES)
       }
     })
 
@@ -61,13 +66,20 @@ export default class extends Controller {
       return sumB - sumA
     })
 
+    // Phase 5 cleanup (Scope C-2 + Codex PR #222 P2): Chart.js는 raw color
+    // string을 요구하지만 --color-surface는 light-dark(...) 형식으로 정의되어
+    // getPropertyValue()로 직접 읽으면 그 raw 토큰이 그대로 반환되어 canvas가
+    // 못 해석한다. probe element에 var() 를 적용한 뒤 computed style을 읽으면
+    // 브라우저가 light-dark()를 resolve해서 rgb() 문자열을 돌려준다.
+    const surfaceColor = this._resolveCssVar('--color-surface', '#ffffff')
+
     // Create sparkline for each category
     sortedDatasets.forEach(dataset => {
       const total = dataset.data.reduce((acc, val) => acc + val, 0)
 
       // Create container
       const container = document.createElement('div')
-      container.className = 'bg-white rounded-lg shadow p-4'
+      container.className = 'bg-surface rounded-lg shadow p-4'
 
       // Category header
       const header = document.createElement('div')
@@ -81,14 +93,14 @@ export default class extends Controller {
       colorDot.style.backgroundColor = dataset.borderColor
 
       const categoryName = document.createElement('span')
-      categoryName.className = 'font-semibold text-gray-900'
+      categoryName.className = 'font-semibold text-primary'
       categoryName.textContent = dataset.label
 
       leftDiv.appendChild(colorDot)
       leftDiv.appendChild(categoryName)
 
       const amountSpan = document.createElement('span')
-      amountSpan.className = 'text-lg font-bold text-gray-900'
+      amountSpan.className = 'text-lg font-bold text-primary'
       amountSpan.textContent = `₩${total.toLocaleString()}`
 
       header.appendChild(leftDiv)
@@ -122,7 +134,7 @@ export default class extends Controller {
             pointRadius: 0,
             pointHoverRadius: 4,
             pointHoverBackgroundColor: dataset.borderColor,
-            pointHoverBorderColor: '#fff',
+            pointHoverBorderColor: surfaceColor,
             pointHoverBorderWidth: 2
           }]
         },
@@ -168,5 +180,18 @@ export default class extends Controller {
     if (this.hasSparklineContainerTarget) {
       this.sparklineContainerTarget.innerHTML = ''
     }
+  }
+
+  // light-dark()로 정의된 CSS var를 브라우저가 resolve한 rgb() 문자열로 변환.
+  // probe element에 color 속성으로 var()를 적용한 뒤 getComputedStyle로 읽으면
+  // light-dark()가 풀려서 사용 가능한 색이 나온다.
+  _resolveCssVar(name, fallback) {
+    const probe = document.createElement('div')
+    probe.style.display = 'none'
+    probe.style.color = `var(${name})`
+    document.body.appendChild(probe)
+    const resolved = getComputedStyle(probe).color
+    document.body.removeChild(probe)
+    return resolved || fallback
   }
 }

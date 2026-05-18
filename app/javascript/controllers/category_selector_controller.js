@@ -52,7 +52,8 @@ export default class extends Controller {
     btn.type = "button"
     btn.dataset.action = "click->category-selector#selectCategory"
     btn.dataset.categoryId = id
-    btn.className = "w-full text-left px-3 py-2 h-14 text-sm hover:bg-gray-50 flex items-center justify-between"
+    // Phase 5 cleanup (Scope C-2): _category_cell의 정적 dropdown 항목과 같은 의미.
+    btn.className = "w-full text-left px-3 py-2 h-14 text-sm hover:bg-elev flex items-center justify-between"
 
     const labelSpan = document.createElement("span")
     labelSpan.className = "flex items-center gap-2"

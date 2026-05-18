@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 
+// Phase 5 cleanup (Scope C-2): tabs_controller와 같은 의미 토큰 사용.
 export default class extends Controller {
   static targets = ["tab", "panel"]
 
@@ -8,10 +9,10 @@ export default class extends Controller {
 
     this.tabTargets.forEach(tab => {
       const isActive = tab.dataset.inputTabsTabParam === selectedTab
-      tab.classList.toggle("border-indigo-500", isActive)
-      tab.classList.toggle("text-indigo-600", isActive)
+      tab.classList.toggle("border-action", isActive)
+      tab.classList.toggle("text-action", isActive)
       tab.classList.toggle("border-transparent", !isActive)
-      tab.classList.toggle("text-gray-500", !isActive)
+      tab.classList.toggle("text-secondary", !isActive)
     })
 
     this.panelTargets.forEach(panel => {
