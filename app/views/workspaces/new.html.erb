@@ -1,5 +1,5 @@
 <div class="max-w-md mx-auto">
-  <h1 class="text-2xl font-bold text-primary mb-6">새 워크스페이스</h1>
+  <h1 class="text-2xl font-bold text-primary mb-6"><%= t("workspaces.new.title") %></h1>
 
   <%= form_with model: @workspace, class: 'space-y-6' do |f| %>
     <% if @workspace.errors.any? %>
@@ -14,16 +14,16 @@
 
     <div class="bg-surface shadow rounded-lg p-6">
       <div>
-        <label class="block text-sm font-medium text-secondary mb-1">워크스페이스 이름 *</label>
-        <%= f.text_field :name, required: true, placeholder: '예: 가족 가계부',
+        <label class="block text-sm font-medium text-secondary mb-1"><%= t("workspaces.new.name_required") %></label>
+        <%= f.text_field :name, required: true, placeholder: t("workspaces.new.name_placeholder"),
             class: 'w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
       </div>
     </div>
 
     <div class="flex justify-end space-x-3">
-      <%= link_to '취소', workspaces_path,
+      <%= link_to t("workspaces.new.cancel"), workspaces_path,
           class: 'px-4 py-2 border border-divider rounded-md text-secondary hover:bg-elev' %>
-      <%= f.submit '만들기',
+      <%= f.submit t("workspaces.new.submit"),
           class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
     </div>
   <% end %>

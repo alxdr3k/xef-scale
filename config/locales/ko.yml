@@ -366,6 +366,142 @@ ko:
       empty: "중복 결제가 없습니다."
 
   # ──────────────────────────────────────────────────
+  # 워크스페이스 (Phase 6-7)
+  # ──────────────────────────────────────────────────
+  workspaces:
+    index:
+      title: "워크스페이스"
+      new: "+ 새 워크스페이스"
+      owner_prefix: "소유자:"
+      member_count: "· 멤버 %{count}명"
+      settings: "설정"
+      empty_title: "아직 워크스페이스가 없습니다."
+      empty_cta: "첫 워크스페이스 만들기"
+    new:
+      title: "새 워크스페이스"
+      name_required: "워크스페이스 이름 *"
+      name_placeholder: "예: 가족 가계부"
+      cancel: "취소"
+      submit: "만들기"
+    edit:
+      back: "← 워크스페이스로"
+      title: "워크스페이스 수정"
+      name: "이름"
+      cancel: "취소"
+      submit: "저장"
+    show:
+      year_month: "%{year}년 %{month}월"
+      view_transactions: "결제 내역 보기"
+      prev_month: "← 이전 달"
+      next_month: "다음 달 →"
+      stat_count: "총 결제"
+      stat_total: "총 지출"
+      stat_daily_avg: "일평균"
+      count_suffix: "%{count}건"
+      recent: "최근 결제"
+      view_all: "전체 보기 →"
+      th_date: "날짜"
+      th_merchant: "내역"
+      th_category: "분류"
+      th_amount: "금액"
+      empty: "이 달에 결제 내역이 없습니다."
+    settings:
+      title: "워크스페이스 설정"
+      basic_section: "기본 설정"
+      name_label: "워크스페이스 이름"
+      save: "저장"
+      ai_section: "AI 사용 설정"
+      ai_description: "AI 문자 파싱과 스크린샷 파싱을 사용하면 입력한 SMS 본문 또는 명세서 이미지가 외부 Gemini API로 전송되어 결제로 변환됩니다. AI 카테고리 추천을 사용하면 거래처 이름이 외부 Gemini API로 전송되어 카테고리를 추천받습니다. 비활성화하면 해당 입력 경로는 사용할 수 없거나 자동 추천이 동작하지 않습니다."
+      ai_consent_missing: "외부 AI 사용에 대한 동의가 아직 기록되지 않았습니다. 아래 체크박스로 동의하면 시간 정보가 함께 저장됩니다."
+      ai_consent_at: "외부 AI 사용 동의일: %{at}"
+      ai_text_parsing: "AI 문자 파싱 사용"
+      ai_text_parsing_hint: "금융 SMS 텍스트를 Gemini Flash로 파싱."
+      ai_image_parsing: "AI 스크린샷 파싱 사용"
+      ai_image_parsing_hint: "명세서 이미지를 Gemini Vision으로 파싱."
+      ai_category_suggestions: "AI 카테고리 추천 사용"
+      ai_category_suggestions_hint: "미분류 결제의 카테고리를 Gemini로 추천."
+      ai_consent_label: "위 항목에 사용되는 데이터가 외부 AI(Google Gemini)로 전송됨을 이해하고 동의합니다."
+      ai_save: "AI 설정 저장"
+      members_section: "멤버"
+      th_member: "멤버"
+      th_role: "역할"
+      owner_label: "소유자"
+      role_co_owner: "공동 관리자"
+      role_member_write: "편집 가능"
+      role_member_read: "읽기 전용"
+      remove_member: "제거"
+      remove_confirm: "정말 이 멤버를 제거하시겠습니까?"
+      invitation_section: "초대 링크"
+      expires_label: "만료일 (선택)"
+      max_uses_label: "최대 사용 횟수 (선택)"
+      max_uses_placeholder: "무제한"
+      create_invitation: "초대 링크 생성"
+      th_creator: "생성자"
+      th_expires: "만료"
+      th_uses: "사용"
+      expires_none: "없음"
+      copy: "복사"
+      delete: "삭제"
+      no_invitations: "활성 초대 링크가 없습니다."
+      danger_section: "위험 구역"
+      danger_hint: "워크스페이스를 삭제하면 모든 결제 내역과 설정이 영구적으로 삭제됩니다."
+      delete_workspace: "워크스페이스 삭제"
+      delete_confirm: "정말 '%{name}' 워크스페이스를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다."
+
+  # ──────────────────────────────────────────────────
+  # 더보기 (Phase 6-7)
+  # ──────────────────────────────────────────────────
+  workspace_more:
+    role_owner: "소유자"
+    role_co_owner: "공동 소유자"
+    role_member_write: "쓰기 멤버"
+    role_member_read: "읽기 멤버"
+    section_this_workspace: "이 워크스페이스"
+    workspace_info: "워크스페이스 정보"
+    workspace_settings: "설정 (AI · 멤버 · 예산)"
+    workspace_switch: "다른 워크스페이스로 이동"
+    section_my_account: "내 계정"
+    theme_label: "화면 테마"
+    theme_aria: "화면 테마"
+    theme_auto: "자동 (시스템)"
+    theme_light: "라이트"
+    theme_dark: "다크"
+    account_settings: "계정 설정"
+    notifications: "알림"
+    section_tools: "도구"
+    allowances: "용돈 관리"
+    section_danger: "위험한 작업"
+    delete_confirm: "워크스페이스를 삭제하면 모든 거래·카테고리·매핑·세션이 함께 삭제됩니다. 계속하시겠습니까?"
+    delete_workspace: "워크스페이스 삭제"
+    sign_out: "로그아웃"
+
+  # ──────────────────────────────────────────────────
+  # 멤버/초대 관리 (Phase 6-7)
+  # ──────────────────────────────────────────────────
+  workspace_memberships:
+    index:
+      title: "멤버 관리"
+      th_name: "이름"
+      th_email: "이메일"
+      th_role: "역할"
+      th_action: "작업"
+      remove: "제거"
+      remove_confirm: "정말 제거하시겠습니까?"
+
+  workspace_invitations:
+    index:
+      title: "초대 관리"
+      new: "새 초대 링크"
+      th_token: "토큰"
+      th_expires: "만료"
+      th_uses: "사용 횟수"
+      th_action: "작업"
+      expires_none: "없음"
+      delete: "삭제"
+      delete_confirm: "정말 삭제하시겠습니까?"
+      empty: "초대 링크가 없습니다."
+
+  # ──────────────────────────────────────────────────
   # ADR-0011 — Transaction 결정 메커니즘 / Mapping 출처
   # 결정 메커니즘(transactions.classification_source)과 매핑 출처(category_mappings.source)는
   # 어휘를 공유하지 않는다 — "학습 매핑" vs "직접 등록" 등 분리.
