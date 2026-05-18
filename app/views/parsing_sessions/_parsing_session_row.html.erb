@@ -26,7 +26,7 @@
               data-note-panel-original-param="<%= parsing_session.notes || '' %>"
               data-note-panel-merchant-param="<%= parsing_session.processed_file&.original_filename || t("parsing_sessions.source_text_paste_alt") %>"
               data-note-panel-date-param="<%= parsing_session.created_at.strftime('%Y.%m.%d') %>"
-              data-note-panel-amount-param="<%= t("parsing_sessions.note_panel.amount_html", count: parsing_session.success_count) %>"
+              data-note-panel-amount-param="<%= t("parsing_sessions.note_panel.amount", count: parsing_session.success_count) %>"
               data-note-panel-row-id-param="<%= dom_id(parsing_session) %>"
               data-note-panel-trigger
               class="cursor-pointer hover:bg-warning-subtle ml-1.5 align-middle inline-block">
@@ -38,7 +38,7 @@
               data-note-panel-original-param=""
               data-note-panel-merchant-param="<%= parsing_session.processed_file&.original_filename || t("parsing_sessions.source_text_paste_alt") %>"
               data-note-panel-date-param="<%= parsing_session.created_at.strftime('%Y.%m.%d') %>"
-              data-note-panel-amount-param="<%= t("parsing_sessions.note_panel.amount_html", count: parsing_session.success_count) %>"
+              data-note-panel-amount-param="<%= t("parsing_sessions.note_panel.amount", count: parsing_session.success_count) %>"
               data-note-panel-row-id-param="<%= dom_id(parsing_session) %>"
               data-note-panel-trigger
               class="cursor-pointer text-tertiary hover:text-info opacity-0 group-hover/row:opacity-100 transition-opacity ml-1.5 align-middle inline-block"

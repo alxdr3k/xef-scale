@@ -319,7 +319,10 @@ ko:
     relative_time: "%{relative} 전"
     notes_add: "메모 추가"
     note_panel:
-      amount_html: "성공 %{count}건"
+      # 본 값은 HTML attribute(data-note-panel-amount-param)에 그대로 들어간다.
+      # `_html` suffix는 Rails I18n이 HTML-safe로 마킹해 escape를 우회하므로
+      # 속성 주입 위험. plain key로 유지.
+      amount: "성공 %{count}건"
     actions:
       review: "검토하기"
       detail: "상세보기"
