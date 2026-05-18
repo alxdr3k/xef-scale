@@ -133,6 +133,15 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 
 이 우선순위는 시간이 지나면 빠르게 stale 됩니다. 현재 권위 있는 우선순위는 `PRD.md` + 머지된 ADR + 최근 커밋입니다.
 
+### i18n + `.html_safe` 정책
+
+Phase 6 migration 으로 HTML 이 필요한 번역이 늘었다 (count span, link interpolation, static rich text). 호출지에서 `.html_safe` 가 흩어지면 XSS audit 부담이 커지므로 다음 정책을 적용한다.
+
+- **키 이름.** `.html_safe` 로 마킹되는 translation 키는 반드시 `_html` 로 끝나야 한다. `test/contracts/html_safe_translation_policy_test.rb` 가 회귀를 잠근다.
+- **사용 컨텍스트.** `_html` 키는 body 컨텍스트 (라벨/span/본문) 에서만 사용한다. attribute (`data-*`, `title`, `aria-*`) 에 박지 않는다 (Rails 가 HTML-safe 로 마킹된 값을 attribute escape 우회 통로로 만들 수 있음 — `parsing_sessions.note_panel.amount` 가 참조 케이스).
+- **interpolation 내용.** 현재 모든 `_html` 키 interpolation 은 (1) integer count, (2) static span, (3) `link_to` 같은 Rails helper output. user input 이 흘러오는 경로는 없다. 새 interpolation 을 추가할 때는 source 가 1·2·3 중 하나라는 사실을 PR 설명에 명시한다.
+- **확장 시.** body context rich text 가 더 복잡해지면 `safe_t_html` / `safe_join` / `content_tag` 헬퍼로 통일하는 것이 다음 단계. 지금은 호출 수가 작아 호출지 `.html_safe` 를 유지한다.
+
 ### Finalized parsing_session mutation 정책 (Policy A, #220 lock)
 
 `ParsingSession#review_pending?`가 false (committed/rolled_back/discarded) 인 session 의 거래는 다음과 같이 다룬다.

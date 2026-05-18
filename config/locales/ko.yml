@@ -783,7 +783,7 @@ ko:
       total_count_html: "총 <strong>%{count}</strong>건"
       total_amount: "합계: %{amount}"
       bulk_select_all: "전체 선택"
-      bulk_selected_count: "%{count}개 선택됨"
+      bulk_selected_count_html: "%{count}개 선택됨"
       bulk_delete: "삭제"
       bulk_allowance: "용돈 표시"
       bulk_category_placeholder: "카테고리..."
