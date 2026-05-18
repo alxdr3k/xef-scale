@@ -454,3 +454,85 @@ ko:
       manual: "직접 등록"
       import: "가져온 매핑"
       gemini: "AI 학습 매핑"
+    # Phase 6-6
+    index:
+      filter_all: "전체"
+      new_rule: "새 규칙"
+      th_pattern: "내역 패턴"
+      th_match_type: "매칭 방식"
+      th_amount: "금액"
+      th_category: "카테고리"
+      th_source: "출처"
+      th_action: "작업"
+      empty: "등록된 분류 규칙이 없습니다."
+    row:
+      all_amounts: "모든 금액"
+      amount_won: "%{amount}원"
+      edit: "수정"
+      delete: "삭제"
+      delete_confirm: "이 분류 규칙을 삭제하시겠습니까?"
+    slideover:
+      new_title: "새 규칙"
+      edit_title: "규칙 수정"
+      pattern_required: "내역 패턴 *"
+      pattern_placeholder: "예: 스타벅스, 배달의민족"
+      match_type: "매칭 방식"
+      match_type_exact: "정확히 일치"
+      match_type_contains: "포함"
+      match_type_hint_html: '"정확히 일치": 가맹점명이 패턴과 동일할 때 매칭<br>"포함": 가맹점명에 패턴이 포함될 때 매칭'
+      amount: "금액 조건"
+      amount_placeholder: "비워두면 모든 금액에 적용"
+      amount_hint: "특정 금액일 때만 매칭하려면 입력하세요."
+      category_required: "카테고리 *"
+      category_prompt: "카테고리 선택"
+      cancel: "취소"
+      submit: "저장"
+
+  # ──────────────────────────────────────────────────
+  # 카테고리 (Phase 6-6)
+  # ──────────────────────────────────────────────────
+  categories:
+    index:
+      title: "카테고리"
+      summary: "카테고리 %{count}개 · 학습된 매핑 %{mapping_count}건"
+      my_categories: "내 카테고리"
+      add: "+ 카테고리 추가"
+      th_color: "색상"
+      th_name: "이름"
+      th_keyword: "키워드"
+      th_action: "작업"
+      empty: "등록된 카테고리가 없습니다."
+      mappings_section: "학습된 매핑"
+      view_all: "전체 보기 →"
+      th_pattern: "가맹점 패턴"
+      th_category: "카테고리"
+      th_source: "출처"
+      th_updated: "최근 갱신"
+      relative_time: "%{relative} 전"
+      pagination_hint: "최근 %{shown}건만 표시. 전체 %{total}건 — 전체 보기에서 필터·수정."
+      empty_mappings_html: "아직 학습된 매핑이 없습니다.<br><span class=\"text-meta text-tertiary\">거래의 카테고리를 바꾼 뒤 \"다음부터는 자동 분류\"에 동의하면 여기에 표시됩니다.</span>"
+    row:
+      edit: "수정"
+      delete: "삭제"
+      delete_confirm: "정말 삭제하시겠습니까?"
+    new:
+      back: "← 카테고리 목록"
+      title: "새 카테고리"
+    edit:
+      back: "← 카테고리 목록"
+      title: "카테고리 수정"
+    form:
+      name: "이름"
+      keyword: "키워드"
+      keyword_hint: "결제 내역에서 이 키워드가 포함되면 자동으로 분류됩니다."
+      cancel: "취소"
+      submit: "저장"
+    slideover:
+      new_title: "새 카테고리"
+      name_required: "이름 *"
+      name_placeholder: "예: 식비, 교통비, 쇼핑"
+      keyword_label: "자동 분류 키워드"
+      keyword_placeholder: "쉼표로 구분 (예: 스타벅스, 카페)"
+      keyword_hint: "결제 내역에 이 키워드가 포함되면 자동으로 분류됩니다."
+      cancel: "취소"
+      submit: "저장"

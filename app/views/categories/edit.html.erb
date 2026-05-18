@@ -1,7 +1,7 @@
 <div class="max-w-lg mx-auto">
-  <%= link_to '← 카테고리 목록', workspace_categories_path(@workspace), class: 'text-action hover:text-action mb-4 inline-block' %>
+  <%= link_to t("categories.edit.back"), workspace_categories_path(@workspace), class: 'text-action hover:text-action mb-4 inline-block' %>
 
-  <h1 class="text-2xl font-bold text-primary mb-6">카테고리 수정</h1>
+  <h1 class="text-2xl font-bold text-primary mb-6"><%= t("categories.edit.title") %></h1>
 
   <div class="bg-surface rounded-lg shadow p-6">
     <%= form_with model: [@workspace, @category], data: { turbo: false }, class: 'space-y-4' do |f| %>
@@ -19,21 +19,21 @@
       <% end %>
 
       <div>
-        <label class="block text-sm font-medium text-secondary mb-1">이름</label>
+        <label class="block text-sm font-medium text-secondary mb-1"><%= t("categories.form.name") %></label>
         <%= f.text_field :name, class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-secondary mb-1">키워드</label>
+        <label class="block text-sm font-medium text-secondary mb-1"><%= t("categories.form.keyword") %></label>
         <%= f.text_field :keyword, class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
-        <p class="mt-1 text-sm text-tertiary">결제 내역에서 이 키워드가 포함되면 자동으로 분류됩니다.</p>
+        <p class="mt-1 text-sm text-tertiary"><%= t("categories.form.keyword_hint") %></p>
       </div>
 
       <%= render 'shared/color_picker', form: f %>
 
       <div class="flex justify-end gap-3">
-        <%= link_to '취소', workspace_categories_path(@workspace), class: 'px-4 py-2 text-secondary hover:text-primary' %>
-        <%= f.submit '저장', class: 'bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover cursor-pointer' %>
+        <%= link_to t("categories.form.cancel"), workspace_categories_path(@workspace), class: 'px-4 py-2 text-secondary hover:text-primary' %>
+        <%= f.submit t("categories.form.submit"), class: 'bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover cursor-pointer' %>
       </div>
     <% end %>
   </div>

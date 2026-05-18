@@ -5,17 +5,17 @@
 %>
 <div class="max-w-4xl mx-auto">
   <div class="mb-6">
-    <h1 class="text-2xl font-bold text-primary">카테고리</h1>
+    <h1 class="text-2xl font-bold text-primary"><%= t("categories.index.title") %></h1>
     <p class="text-secondary text-sm mt-1">
-      카테고리 <%= @categories.size %>개 · 학습된 매핑 <%= @total_mappings_count %>건
+      <%= t("categories.index.summary", count: @categories.size, mapping_count: @total_mappings_count) %>
     </p>
   </div>
 
   <%# 섹션 1: 내 카테고리 %>
   <section class="mb-8">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-base font-semibold text-primary">내 카테고리</h2>
-      <%= link_to '+ 카테고리 추가', new_workspace_category_path(@workspace),
+      <h2 class="text-base font-semibold text-primary"><%= t("categories.index.my_categories") %></h2>
+      <%= link_to t("categories.index.add"), new_workspace_category_path(@workspace),
             class: 'inline-flex items-center px-3 py-2 text-sm font-medium rounded-md bg-action text-action-on hover:bg-action-hover' %>
     </div>
 
@@ -23,10 +23,10 @@
       <table class="min-w-full divide-y divide-divider">
         <thead class="bg-elev">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">색상</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">이름</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">키워드</th>
-            <th class="px-6 py-3 text-right text-xs font-medium text-secondary uppercase">작업</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase"><%= t("categories.index.th_color") %></th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase"><%= t("categories.index.th_name") %></th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase"><%= t("categories.index.th_keyword") %></th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-secondary uppercase"><%= t("categories.index.th_action") %></th>
           </tr>
         </thead>
         <tbody id="categories-list" class="bg-surface divide-y divide-divider">
@@ -36,7 +36,7 @@
 
           <% if @categories.empty? %>
             <tr id="no-categories-row">
-              <td colspan="4" class="px-6 py-12 text-center text-secondary">등록된 카테고리가 없습니다.</td>
+              <td colspan="4" class="px-6 py-12 text-center text-secondary"><%= t("categories.index.empty") %></td>
             </tr>
           <% end %>
         </tbody>
@@ -47,8 +47,8 @@
   <%# 섹션 2: 학습된 매핑 (최근 N개 미리보기) %>
   <section>
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-base font-semibold text-primary">학습된 매핑</h2>
-      <%= link_to '전체 보기 →', workspace_category_mappings_path(@workspace),
+      <h2 class="text-base font-semibold text-primary"><%= t("categories.index.mappings_section") %></h2>
+      <%= link_to t("categories.index.view_all"), workspace_category_mappings_path(@workspace),
             class: 'text-sm font-medium text-action hover:underline' %>
     </div>
 
@@ -57,10 +57,10 @@
         <table class="min-w-full divide-y divide-divider">
           <thead class="bg-elev">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">가맹점 패턴</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">카테고리</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">출처</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase">최근 갱신</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase"><%= t("categories.index.th_pattern") %></th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase"><%= t("categories.index.th_category") %></th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase"><%= t("categories.index.th_source") %></th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-secondary uppercase"><%= t("categories.index.th_updated") %></th>
             </tr>
           </thead>
           <tbody class="bg-surface divide-y divide-divider">
@@ -83,7 +83,7 @@
                   </span>
                 </td>
                 <td class="px-6 py-3 text-sm text-secondary">
-                  <%= time_ago_in_words(mapping.updated_at) %> 전
+                  <%= t("categories.index.relative_time", relative: time_ago_in_words(mapping.updated_at)) %>
                 </td>
               </tr>
             <% end %>
@@ -92,13 +92,12 @@
       </div>
       <% if @total_mappings_count > @recent_mappings.size %>
         <p class="text-meta text-tertiary text-center mt-2">
-          최근 <%= @recent_mappings.size %>건만 표시. 전체 <%= @total_mappings_count %>건 — 전체 보기에서 필터·수정.
+          <%= t("categories.index.pagination_hint", shown: @recent_mappings.size, total: @total_mappings_count) %>
         </p>
       <% end %>
     <% else %>
       <div class="bg-surface rounded-lg shadow-sm px-6 py-8 text-center text-secondary">
-        아직 학습된 매핑이 없습니다.<br>
-        <span class="text-meta text-tertiary">거래의 카테고리를 바꾼 뒤 "다음부터는 자동 분류"에 동의하면 여기에 표시됩니다.</span>
+        <%= t("categories.index.empty_mappings_html").html_safe %>
       </div>
     <% end %>
   </section>

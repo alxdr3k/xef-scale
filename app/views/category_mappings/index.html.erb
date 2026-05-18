@@ -3,7 +3,7 @@
     <%# 필터 버튼 %>
     <div class="flex gap-2">
       <% current_source = params[:source] || "all" %>
-      <%= link_to "전체",
+      <%= link_to t("category_mappings.index.filter_all"),
             workspace_category_mappings_path(@workspace, source: "all"),
             class: "px-3 py-1.5 text-sm rounded-full #{current_source == 'all' ? 'bg-primary text-inverse' : 'bg-elev text-secondary hover:bg-divider'}",
             data: { turbo_frame: "category-mappings-panel" } %>
@@ -26,7 +26,7 @@
     <%= link_to new_workspace_category_mapping_path(@workspace),
           class: "bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover text-sm",
           data: { action: "click->slideover#open", turbo_frame: "slideover-content" } do %>
-      새 규칙
+      <%= t("category_mappings.index.new_rule") %>
     <% end %>
   </div>
 
@@ -34,12 +34,12 @@
     <table class="min-w-full divide-y divide-divider">
       <thead class="bg-elev">
         <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase">내역 패턴</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase">매칭 방식</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase">금액</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase">카테고리</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase">출처</th>
-          <th class="px-6 py-3 text-right text-xs font-medium text-tertiary uppercase">작업</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase"><%= t("category_mappings.index.th_pattern") %></th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase"><%= t("category_mappings.index.th_match_type") %></th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase"><%= t("category_mappings.index.th_amount") %></th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase"><%= t("category_mappings.index.th_category") %></th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-tertiary uppercase"><%= t("category_mappings.index.th_source") %></th>
+          <th class="px-6 py-3 text-right text-xs font-medium text-tertiary uppercase"><%= t("category_mappings.index.th_action") %></th>
         </tr>
       </thead>
       <tbody id="category-mappings-list" class="bg-surface divide-y divide-divider">
@@ -49,7 +49,7 @@
 
         <% if @mappings.empty? %>
           <tr id="no-mappings-row">
-            <td colspan="6" class="px-6 py-12 text-center text-tertiary">등록된 분류 규칙이 없습니다.</td>
+            <td colspan="6" class="px-6 py-12 text-center text-tertiary"><%= t("category_mappings.index.empty") %></td>
           </tr>
         <% end %>
       </tbody>

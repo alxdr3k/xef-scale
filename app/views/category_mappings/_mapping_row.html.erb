@@ -3,9 +3,9 @@
   <td class="px-6 py-4 text-sm text-tertiary"><%= mapping.match_type_label %></td>
   <td class="px-6 py-4 text-sm text-tertiary">
     <% if mapping.amount.present? %>
-      <%= number_with_delimiter(mapping.amount) %>원
+      <%= t("category_mappings.row.amount_won", amount: number_with_delimiter(mapping.amount)) %>
     <% else %>
-      <span class="text-disabled">모든 금액</span>
+      <span class="text-disabled"><%= t("category_mappings.row.all_amounts") %></span>
     <% end %>
   </td>
   <td class="px-6 py-4 text-sm">
@@ -32,13 +32,13 @@
     <% end %>
   </td>
   <td class="px-6 py-4 text-right text-sm">
-    <%= link_to '수정',
+    <%= link_to t("category_mappings.row.edit"),
           edit_workspace_category_mapping_path(@workspace, mapping),
           class: 'text-action hover:text-action mr-3',
           data: { action: "click->slideover#open", turbo_frame: "slideover-content" } %>
-    <%= link_to '삭제',
+    <%= link_to t("category_mappings.row.delete"),
           workspace_category_mapping_path(@workspace, mapping),
-          data: { turbo_method: :delete, turbo_confirm: '이 분류 규칙을 삭제하시겠습니까?' },
+          data: { turbo_method: :delete, turbo_confirm: t("category_mappings.row.delete_confirm") },
           class: 'text-danger hover:text-danger' %>
   </td>
 </tr>

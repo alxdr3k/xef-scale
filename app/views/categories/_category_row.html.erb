@@ -5,7 +5,7 @@
   <td class="px-6 py-4 text-sm text-primary"><%= category.name %></td>
   <td class="px-6 py-4 text-sm text-tertiary"><%= category.keyword %></td>
   <td class="px-6 py-4 text-right text-sm">
-    <%= link_to '수정', edit_workspace_category_path(@workspace, category), class: 'text-action hover:text-action mr-3' %>
-    <%= link_to '삭제', workspace_category_path(@workspace, category), data: { turbo_method: :delete, turbo_confirm: '정말 삭제하시겠습니까?' }, class: 'text-danger hover:text-danger' %>
+    <%= link_to t("categories.row.edit"), edit_workspace_category_path(@workspace, category), class: 'text-action hover:text-action mr-3' %>
+    <%= link_to t("categories.row.delete"), workspace_category_path(@workspace, category), data: { turbo_method: :delete, turbo_confirm: t("categories.row.delete_confirm") }, class: 'text-danger hover:text-danger' %>
   </td>
 </tr>
