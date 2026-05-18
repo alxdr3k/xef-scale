@@ -619,10 +619,12 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
                  "사용자 명시 변경 → manual_set, rematch가 mapping_match로 덮지 않음"
   end
 
-  test "update (edit page) persists :description and feeds rematch lookup" do
+  test "update (edit page) persists :description through strong params (regression for #219)" do
     # Phase 5 cleanup (Scope A): form에 :description 필드가 있는데 strong params에서
-    # 누락되어 저장되지 않던 버그 회귀 방지. MerchantRematchPolicy는 description도
-    # 매핑 lookup에 사용하므로 persistence가 필수.
+    # 누락되어 저장되지 않던 버그. 이 테스트는 strong params permit 회귀만 잠근다.
+    # description 이 rematch lookup 에 실제로 참여하는지는 아래 별도 테스트가
+    # 검증한다 (merchant_changed 조건이 충족돼야 rematch 가 호출되므로 같은
+    # merchant 를 유지하는 이 케이스로는 lookup 동작을 증명할 수 없다).
     @transaction.update!(category: categories(:food), classification_source: "manual_set")
 
     patch workspace_transaction_path(@workspace, @transaction),
@@ -633,6 +635,53 @@ class TransactionsControllerTest < ActionDispatch::IntegrationTest
     @transaction.reload
     assert_match(/결제 메모/, @transaction.description.to_s,
                  ":description이 strong params에서 permit되어 저장됨")
+  end
+
+  test "update (edit page) rematch lookup uses :description to select description-specific mapping" do
+    # #219–#231 adversarial review (P2): 기존 "persists :description and feeds
+    # rematch lookup" 테스트는 merchant 를 그대로 두었기 때문에 merchant_changed
+    # 조건이 false 가 되어 apply_merchant_rematch_policy! 가 호출되지 않았다.
+    # 결국 lookup 동작은 검증되지 않고 persistence 만 검증되었다.
+    #
+    # 이 테스트는 description 이 매핑 선택에 실제로 영향을 주는지 잠근다:
+    #   - 같은 merchant_pattern 으로 description_pattern 이 다른 매핑 두 개를 둔다.
+    #   - merchant 를 변경해 rematch 를 트리거하고, description 만 다르게 보낸다.
+    #   - rematch 결과 category 가 description-specific 매핑의 category 와 같은지
+    #     확인한다.
+    rematch_merchant = "REMATCH_MERCHANT_#{SecureRandom.hex(3)}"
+    description_food = "REMATCH_DESCRIPTION_FOOD"
+    description_transport = "REMATCH_DESCRIPTION_TRANSPORT"
+
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: rematch_merchant,
+      description_pattern: description_food,
+      match_type: "exact",
+      amount: nil,
+      category: categories(:food),
+      source: "manual"
+    )
+    CategoryMapping.create!(
+      workspace: @workspace,
+      merchant_pattern: rematch_merchant,
+      description_pattern: description_transport,
+      match_type: "exact",
+      amount: nil,
+      category: categories(:transport),
+      source: "manual"
+    )
+
+    @transaction.update!(category: nil, classification_source: nil)
+
+    patch workspace_transaction_path(@workspace, @transaction),
+          params: { transaction: { merchant: rematch_merchant,
+                                   description: description_transport } }
+
+    @transaction.reload
+    assert_equal categories(:transport).id, @transaction.category_id,
+                 "description-specific 매핑이 rematch lookup 에서 선택돼야 함"
+    assert_equal "mapping_match", @transaction.classification_source,
+                 "rematch 가 description 을 활용해 mapping_match 로 갱신"
   end
 
   test "bulk_update change_category per-row guard preserves provenance on no-op rows" do
