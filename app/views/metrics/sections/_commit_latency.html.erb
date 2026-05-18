@@ -1,0 +1,27 @@
+<div class="bg-surface rounded-lg shadow p-4">
+  <h2 class="text-base font-semibold text-primary mb-1"><%= t("metrics.sections.commit_latency.title") %></h2>
+  <p class="text-meta text-tertiary mb-3"><%= t("metrics.sections.commit_latency.subtitle") %></p>
+
+  <% if section[:sessions_analyzed].zero? %>
+    <p class="text-sm text-tertiary"><%= t("metrics.sections.commit_latency.empty") %></p>
+  <% else %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div>
+        <div class="text-xs text-tertiary mb-1"><%= t("metrics.sections.commit_latency.sessions_analyzed") %></div>
+        <div class="text-xl font-bold text-primary tabular-nums"><%= section[:sessions_analyzed] %></div>
+      </div>
+      <div>
+        <div class="text-xs text-tertiary mb-1"><%= t("metrics.sections.commit_latency.average") %></div>
+        <div class="text-xl font-bold text-primary tabular-nums"><%= section[:average_humanized] %></div>
+      </div>
+      <div>
+        <div class="text-xs text-tertiary mb-1"><%= t("metrics.sections.commit_latency.p50") %></div>
+        <div class="text-xl font-bold text-primary tabular-nums"><%= section[:p50_humanized] %></div>
+      </div>
+      <div>
+        <div class="text-xs text-tertiary mb-1"><%= t("metrics.sections.commit_latency.p90") %></div>
+        <div class="text-xl font-bold text-primary tabular-nums"><%= section[:p90_humanized] %></div>
+      </div>
+    </div>
+  <% end %>
+</div>

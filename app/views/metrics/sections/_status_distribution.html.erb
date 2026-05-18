@@ -1,0 +1,27 @@
+<div class="bg-surface rounded-lg shadow p-4">
+  <h2 class="text-base font-semibold text-primary mb-2"><%= t("metrics.sections.status_distribution.title") %></h2>
+  <% if section[:total].zero? %>
+    <p class="text-sm text-tertiary"><%= t("metrics.sections.status_distribution.empty") %></p>
+  <% else %>
+    <table class="min-w-full divide-y divide-divider text-sm">
+      <thead>
+        <tr>
+          <th class="px-2 py-2 text-left text-xs font-medium text-tertiary uppercase"><%= t("metrics.sections.status_distribution.th_status") %></th>
+          <th class="px-2 py-2 text-left text-xs font-medium text-tertiary uppercase"><%= t("metrics.sections.status_distribution.th_review_status") %></th>
+          <th class="px-2 py-2 text-right text-xs font-medium text-tertiary uppercase"><%= t("metrics.sections.status_distribution.th_count") %></th>
+          <th class="px-2 py-2 text-right text-xs font-medium text-tertiary uppercase"><%= t("metrics.sections.status_distribution.th_pct") %></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-divider">
+        <% section[:rows].each do |row| %>
+          <tr>
+            <td class="px-2 py-1.5 font-mono text-meta text-secondary"><%= row[:status].presence || "(nil)" %></td>
+            <td class="px-2 py-1.5 font-mono text-meta text-secondary"><%= row[:review_status].presence || "(nil)" %></td>
+            <td class="px-2 py-1.5 text-right tabular-nums text-primary"><%= row[:count] %></td>
+            <td class="px-2 py-1.5 text-right tabular-nums text-tertiary"><%= row[:pct] %>%</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>
