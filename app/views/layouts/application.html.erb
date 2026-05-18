@@ -7,10 +7,10 @@
 <% current_theme = user_signed_in? ? current_user.theme : "auto" %>
 <html lang="ko" data-theme="<%= current_theme %>">
   <head>
-    <title><%= content_for(:title) || "지출 추적" %></title>
+    <title><%= content_for(:title) || t("app.name") %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="지출 추적">
+    <meta name="application-name" content="<%= t("app.name") %>">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="user-theme" content="<%= current_theme %>">
     <%= csrf_meta_tags %>

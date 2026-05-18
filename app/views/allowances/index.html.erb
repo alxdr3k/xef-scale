@@ -1,25 +1,25 @@
 <div class="max-w-4xl mx-auto" data-controller="bulk-select" data-action="click@document->bulk-select#closeMore">
-  <h1 class="text-2xl font-bold text-primary mb-2">내 용돈</h1>
-  <p class="text-secondary mb-6">다른 사람에게 보이지 않는 개인 지출 내역입니다.</p>
+  <h1 class="text-2xl font-bold text-primary mb-2"><%= t("allowances.index.title") %></h1>
+  <p class="text-secondary mb-6"><%= t("allowances.index.subtitle") %></p>
 
   <!-- Month Navigation -->
   <div class="flex items-center space-x-4 mb-6">
     <% prev_month = @month == 1 ? 12 : @month - 1 %>
     <% prev_year = @month == 1 ? @year - 1 : @year %>
-    <%= link_to '← 이전 달', allowances_path(year: prev_year, month: prev_month),
+    <%= link_to t("allowances.index.prev_month"), allowances_path(year: prev_year, month: prev_month),
         class: 'text-action hover:text-action-hover' %>
 
     <%= render 'shared/month_picker', year: @year, month: @month, base_path: allowances_path %>
 
     <% next_month = @month == 12 ? 1 : @month + 1 %>
     <% next_year = @month == 12 ? @year + 1 : @year %>
-    <%= link_to '다음 달 →', allowances_path(year: next_year, month: next_month),
+    <%= link_to t("allowances.index.next_month"), allowances_path(year: next_year, month: next_month),
         class: 'text-action hover:text-action-hover' %>
   </div>
 
   <!-- Monthly Summary -->
   <div class="bg-surface rounded-lg shadow p-6 mb-8">
-    <div class="text-sm font-medium text-tertiary">이번 달 용돈 지출</div>
+    <div class="text-sm font-medium text-tertiary"><%= t("allowances.index.monthly_label") %></div>
     <div class="text-3xl font-bold text-primary mt-2">
       <%= number_to_currency(@total_amount, unit: '₩', precision: 0) %>
     </div>
@@ -42,24 +42,24 @@
            class="h-4 w-4 rounded border-divider text-action focus:ring-action cursor-pointer">
 
     <div data-bulk-select-target="toolbarDefault" class="flex items-center gap-1 text-sm text-tertiary">
-      <span>전체 선택</span>
+      <span><%= t("allowances.index.bulk_select_all") %></span>
     </div>
 
     <div data-bulk-select-target="toolbarSelected" class="hidden flex items-center gap-1">
       <span class="text-sm font-medium text-action mr-2">
-        <span data-bulk-select-target="toolbarCount">0</span>개 선택됨
+        <span data-bulk-select-target="toolbarCount">0</span><%= t("allowances.index.bulk_count_suffix") %>
       </span>
 
       <div class="w-px h-5 bg-divider"></div>
 
       <button type="button" data-action="click->bulk-select#unmarkAllowance"
-              class="tooltip p-1.5 text-tertiary hover:text-danger hover:bg-danger-subtle rounded transition-colors" aria-label="용돈 해제">
+              class="tooltip p-1.5 text-tertiary hover:text-danger hover:bg-danger-subtle rounded transition-colors" aria-label="<%= t("allowances.index.bulk_unmark") %>">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
         </svg>
       </button>
 
-      <span class="text-xs text-tertiary">용돈 해제</span>
+      <span class="text-xs text-tertiary"><%= t("allowances.index.bulk_unmark_label") %></span>
     </div>
   </div>
 
@@ -68,10 +68,10 @@
     <table class="min-w-full divide-y divide-divider">
       <thead class="bg-elev">
         <tr>
-          <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider">날짜</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider">내역</th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-tertiary uppercase tracking-wider">금액</th>
-          <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider">카테고리</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider"><%= t("allowances.index.th_date") %></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider"><%= t("allowances.index.th_merchant") %></th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-tertiary uppercase tracking-wider"><%= t("allowances.index.th_amount") %></th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider"><%= t("allowances.index.th_category") %></th>
         </tr>
       </thead>
       <tbody class="bg-surface divide-y divide-divider">
@@ -92,7 +92,7 @@
         <% if @allowance_transactions.empty? %>
           <tr>
             <td colspan="5" class="px-6 py-12 text-center text-tertiary">
-              이번 달 용돈 내역이 없습니다.
+              <%= t("allowances.index.empty") %>
             </td>
           </tr>
         <% end %>
@@ -103,7 +103,7 @@
   <!-- Monthly Chart -->
   <% if @monthly_totals.any? %>
     <div class="bg-surface rounded-lg shadow p-6 mt-8">
-      <h2 class="text-lg font-semibold text-primary mb-4">월별 용돈 지출</h2>
+      <h2 class="text-lg font-semibold text-primary mb-4"><%= t("allowances.index.monthly_chart") %></h2>
       <div class="space-y-2">
         <% @monthly_totals.sort.each do |month, amount| %>
           <div class="flex items-center">
