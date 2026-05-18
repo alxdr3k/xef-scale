@@ -1,5 +1,5 @@
 <turbo-frame id="slideover-content">
-  <h2 class="text-lg font-semibold text-primary mb-6"><%= @mapping.persisted? ? '규칙 수정' : '새 규칙' %></h2>
+  <h2 class="text-lg font-semibold text-primary mb-6"><%= @mapping.persisted? ? t("category_mappings.slideover.edit_title") : t("category_mappings.slideover.new_title") %></h2>
 
   <%= form_with model: [@workspace, @mapping],
         url: @mapping.persisted? ? workspace_category_mapping_path(@workspace, @mapping) : workspace_category_mappings_path(@workspace),
@@ -17,39 +17,38 @@
     <% end %>
 
     <div>
-      <label class="block text-sm font-medium text-secondary mb-1">내역 패턴 *</label>
+      <label class="block text-sm font-medium text-secondary mb-1"><%= t("category_mappings.slideover.pattern_required") %></label>
       <%= f.text_field :merchant_pattern,
             class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
-            placeholder: '예: 스타벅스, 배달의민족',
+            placeholder: t("category_mappings.slideover.pattern_placeholder"),
             required: true,
             autofocus: true %>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-secondary mb-1">매칭 방식</label>
+      <label class="block text-sm font-medium text-secondary mb-1"><%= t("category_mappings.slideover.match_type") %></label>
       <%= f.select :match_type,
-            [["정확히 일치", "exact"], ["포함", "contains"]],
+            [[t("category_mappings.slideover.match_type_exact"), "exact"], [t("category_mappings.slideover.match_type_contains"), "contains"]],
             {},
             class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
       <p class="mt-1 text-xs text-tertiary">
-        "정확히 일치": 가맹점명이 패턴과 동일할 때 매칭<br>
-        "포함": 가맹점명에 패턴이 포함될 때 매칭
+        <%= t("category_mappings.slideover.match_type_hint_html").html_safe %>
       </p>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-secondary mb-1">금액 조건</label>
+      <label class="block text-sm font-medium text-secondary mb-1"><%= t("category_mappings.slideover.amount") %></label>
       <%= f.number_field :amount,
             class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
-            placeholder: '비워두면 모든 금액에 적용',
+            placeholder: t("category_mappings.slideover.amount_placeholder"),
             min: 1 %>
-      <p class="mt-1 text-xs text-tertiary">특정 금액일 때만 매칭하려면 입력하세요.</p>
+      <p class="mt-1 text-xs text-tertiary"><%= t("category_mappings.slideover.amount_hint") %></p>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-secondary mb-1">카테고리 *</label>
+      <label class="block text-sm font-medium text-secondary mb-1"><%= t("category_mappings.slideover.category_required") %></label>
       <%= f.collection_select :category_id, @categories, :id, :name,
-            { prompt: "카테고리 선택" },
+            { prompt: t("category_mappings.slideover.category_prompt") },
             { class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
               required: true } %>
     </div>
@@ -58,9 +57,9 @@
       <button type="button"
               data-action="click->slideover#close"
               class="px-4 py-2 text-secondary hover:text-primary">
-        취소
+        <%= t("category_mappings.slideover.cancel") %>
       </button>
-      <%= f.submit '저장', class: 'bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover cursor-pointer' %>
+      <%= f.submit t("category_mappings.slideover.submit"), class: 'bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover cursor-pointer' %>
     </div>
   <% end %>
 </turbo-frame>

@@ -1,5 +1,5 @@
 <turbo-frame id="slideover-content">
-  <h2 class="text-lg font-semibold text-primary mb-6">새 카테고리</h2>
+  <h2 class="text-lg font-semibold text-primary mb-6"><%= t("categories.slideover.new_title") %></h2>
 
   <%# Preserve review-context binding in the create POST. Without
       parsing_session_id the controller falls back to workspace scope and the
@@ -21,19 +21,19 @@
     <% end %>
 
     <div>
-      <label class="block text-sm font-medium text-secondary mb-1">이름 *</label>
+      <label class="block text-sm font-medium text-secondary mb-1"><%= t("categories.slideover.name_required") %></label>
       <%= f.text_field :name,
             class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
-            placeholder: '예: 식비, 교통비, 쇼핑',
+            placeholder: t("categories.slideover.name_placeholder"),
             autofocus: true %>
     </div>
 
     <div>
-      <label class="block text-sm font-medium text-secondary mb-1">자동 분류 키워드</label>
+      <label class="block text-sm font-medium text-secondary mb-1"><%= t("categories.slideover.keyword_label") %></label>
       <%= f.text_field :keyword,
             class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action',
-            placeholder: '쉼표로 구분 (예: 스타벅스, 카페)' %>
-      <p class="mt-1 text-xs text-tertiary">결제 내역에 이 키워드가 포함되면 자동으로 분류됩니다.</p>
+            placeholder: t("categories.slideover.keyword_placeholder") %>
+      <p class="mt-1 text-xs text-tertiary"><%= t("categories.slideover.keyword_hint") %></p>
     </div>
 
     <%= render 'shared/color_picker', form: f %>
@@ -42,9 +42,9 @@
       <button type="button"
               data-action="click->slideover#close"
               class="px-4 py-2 text-secondary hover:text-primary">
-        취소
+        <%= t("categories.slideover.cancel") %>
       </button>
-      <%= f.submit '저장', class: 'bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover cursor-pointer' %>
+      <%= f.submit t("categories.slideover.submit"), class: 'bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover cursor-pointer' %>
     </div>
   <% end %>
 </turbo-frame>
