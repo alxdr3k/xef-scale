@@ -12,9 +12,9 @@
 <div class="max-w-4xl mx-auto" data-controller="review-tabs">
   <div class="flex items-baseline justify-between mb-6">
     <div>
-      <h1 class="text-2xl font-bold text-primary">검토함</h1>
+      <h1 class="text-2xl font-bold text-primary"><%= t("reviews.index.title") %></h1>
       <p class="text-secondary text-sm mt-1">
-        파싱 결과를 확인하고 중복을 정리한 뒤 거래 내역에 반영하세요.
+        <%= t("reviews.index.subtitle") %>
       </p>
     </div>
     <%# Phase 3.3: "+ 새로 가져오기"는 시트를 연다. parsing_sessions/index로의 하드 링크는 폐기.
@@ -32,7 +32,7 @@
             data-tab="sessions"
             class="pb-3 -mb-px text-sm font-medium border-b-2 border-action text-primary"
             role="tab" aria-selected="true">
-      파싱 결과
+      <%= t("reviews.index.tab_pending") %>
       <span class="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-meta rounded-full bg-action-subtle text-action">
         <%= @pending_sessions_count %>
       </span>
@@ -43,7 +43,7 @@
             data-tab="duplicates"
             class="pb-3 -mb-px text-sm font-medium border-b-2 border-transparent text-secondary hover:text-primary"
             role="tab" aria-selected="false">
-      중복 후보
+      <%= t("reviews.index.tab_duplicates") %>
       <span class="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-meta rounded-full bg-elev text-secondary">
         <%= @pending_duplicates_count %>
       </span>
@@ -61,22 +61,22 @@
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-medium text-primary truncate">
                   <% if session.text_paste? %>
-                    문자 붙여넣기
+                    <%= t("reviews.index.session_text_paste") %>
                   <% else %>
-                    <%= session.processed_file&.original_filename || "이미지 업로드" %>
+                    <%= session.processed_file&.original_filename || t("reviews.index.session_image_fallback") %>
                   <% end %>
                 </p>
                 <p class="text-meta text-secondary mt-0.5">
-                  <%= @pending_tx_counts[session.id] || 0 %>건 검토 대기
+                  <%= t("reviews.index.session_pending_count", count: (@pending_tx_counts[session.id] || 0)) %>
                   <% dup_count = @pending_dup_counts[session.id] || 0 %>
                   <% if dup_count.positive? %>
-                    · 중복 의심 <%= dup_count %>건
+                    <%= t("reviews.index.session_duplicate_info", count: dup_count) %>
                   <% end %>
                   <% issue_count = @open_issue_counts[session.id] || 0 %>
                   <% if issue_count.positive? %>
-                    · 수리 필요 <%= issue_count %>건
+                    <%= t("reviews.index.session_issue_info", count: issue_count) %>
                   <% end %>
-                  · <%= time_ago_in_words(session.created_at) %> 전
+                  <%= t("reviews.index.session_relative_time", relative: time_ago_in_words(session.created_at)) %>
                 </p>
               </div>
               <svg class="w-5 h-5 text-tertiary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -88,13 +88,13 @@
       </ul>
       <% if @pending_sessions_count > @pending_sessions.size %>
         <p class="text-meta text-tertiary text-center mt-2">
-          최근 <%= @pending_sessions.size %>건만 표시. 전체 <%= @pending_sessions_count %>건 — 세부 페이지네이션은 후속.
+          <%= t("reviews.index.pagination_hint", shown: @pending_sessions.size, total: @pending_sessions_count) %>
         </p>
       <% end %>
     <% else %>
       <div class="px-6 py-12 text-center text-secondary bg-surface rounded-lg">
-        <p class="text-base">검토 대기 중인 항목이 없습니다.</p>
-        <p class="text-meta mt-1">문자나 명세서 스크린샷을 가져오면 여기에 표시됩니다.</p>
+        <p class="text-base"><%= t("reviews.index.empty_pending_title") %></p>
+        <p class="text-meta mt-1"><%= t("reviews.index.empty_pending_hint") %></p>
       </div>
     <% end %>
   </section>
@@ -109,10 +109,10 @@
                 class: "flex items-center justify-between gap-3 hover:bg-elev" do %>
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-medium text-primary truncate">
-                  <%= dup.new_transaction&.merchant.presence || "신규 거래" %>
+                  <%= dup.new_transaction&.merchant.presence || t("reviews.index.duplicate_new_transaction_fallback") %>
                 </p>
                 <p class="text-meta text-secondary mt-0.5">
-                  세션 #<%= dup.parsing_session_id %> · <%= time_ago_in_words(dup.created_at) %> 전
+                  <%= t("reviews.index.duplicate_session_label", id: dup.parsing_session_id, relative: time_ago_in_words(dup.created_at)) %>
                 </p>
               </div>
               <svg class="w-5 h-5 text-tertiary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -124,12 +124,12 @@
       </ul>
       <% if @pending_duplicates_count > @pending_duplicates.size %>
         <p class="text-meta text-tertiary text-center mt-2">
-          최근 <%= @pending_duplicates.size %>건만 표시. 전체 <%= @pending_duplicates_count %>건 — 세부 페이지네이션은 후속.
+          <%= t("reviews.index.pagination_hint", shown: @pending_duplicates.size, total: @pending_duplicates_count) %>
         </p>
       <% end %>
     <% else %>
       <div class="px-6 py-12 text-center text-secondary bg-surface rounded-lg">
-        <p class="text-base">중복 후보가 없습니다.</p>
+        <p class="text-base"><%= t("reviews.index.empty_duplicates_title") %></p>
       </div>
     <% end %>
   </section>

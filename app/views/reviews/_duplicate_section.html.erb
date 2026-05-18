@@ -11,9 +11,9 @@
             </svg>
             <div>
               <h3 class="font-semibold text-warning">
-                중복이 의심되는 결제 <span id="duplicate-count" data-duplicate-review-target="count"><%= duplicate_confirmations.count %></span>건을 발견했습니다
+                <%= t("reviews.duplicate_section.banner_html", count: duplicate_confirmations.count).html_safe %>
               </h3>
-              <p class="text-sm text-warning mt-1">장부에 어떻게 반영할지 각 항목에서 선택하거나 일괄 처리할 수 있습니다. 일괄 교체는 개별 확인 없이 적용되므로 주의해 주세요.</p>
+              <p class="text-sm text-warning mt-1"><%= t("reviews.duplicate_section.banner_hint") %></p>
             </div>
           </div>
 
@@ -25,21 +25,21 @@
                 data: { turbo_frame: "duplicate-section" } do |f| %>
               <button type="submit" name="decision" value="keep_original"
                       class="px-3 py-1.5 text-sm border border-divider text-secondary rounded-lg hover:bg-elev transition-colors cursor-pointer"
-                      title="새로 가져온 결제를 모두 제외합니다. 총액은 변하지 않습니다."
-                      data-turbo-confirm="모든 중복 결제를 기존 결제로 유지하시겠습니까? 새 결제는 장부에 반영되지 않습니다.">
-                기존 결제만 남기기
+                      title="<%= t("reviews.duplicate_section.bulk_keep_original_title") %>"
+                      data-turbo-confirm="<%= t("reviews.duplicate_section.bulk_keep_original_confirm") %>">
+                <%= t("reviews.duplicate_section.bulk_keep_original") %>
               </button>
               <button type="submit" name="decision" value="keep_new"
                       class="px-3 py-1.5 text-sm border border-action text-action rounded-lg hover:bg-action-subtle transition-colors cursor-pointer"
-                      title="기존 결제를 숨기고 새 결제로 교체합니다. 되돌리려면 개별 항목을 복원해야 합니다."
-                      data-turbo-confirm="⚠️ 기존 결제 전체를 새 결제로 교체합니다. 이 작업은 개별 확인 없이 일괄 적용됩니다. 계속할까요?">
-                새 결제로 전체 교체
+                      title="<%= t("reviews.duplicate_section.bulk_keep_new_title") %>"
+                      data-turbo-confirm="<%= t("reviews.duplicate_section.bulk_keep_new_confirm") %>">
+                <%= t("reviews.duplicate_section.bulk_keep_new") %>
               </button>
               <button type="submit" name="decision" value="keep_both"
                       class="px-3 py-1.5 text-sm border border-info text-info rounded-lg hover:bg-info-subtle transition-colors cursor-pointer"
-                      title="두 결제 모두 장부에 남습니다. 이번 달 총액이 늘어납니다."
-                      data-turbo-confirm="모든 중복 결제를 둘 다 남기시겠습니까? 장부 총액이 증가합니다.">
-                둘 다 남기기
+                      title="<%= t("reviews.duplicate_section.bulk_keep_both_title") %>"
+                      data-turbo-confirm="<%= t("reviews.duplicate_section.bulk_keep_both_confirm") %>">
+                <%= t("reviews.duplicate_section.bulk_keep_both") %>
               </button>
             <% end %>
 
@@ -48,7 +48,7 @@
                     class="p-1.5 text-warning hover:bg-warning-subtle rounded-lg transition-colors ml-2 cursor-pointer"
                     data-action="click->duplicate-review#toggleCollapse"
                     data-duplicate-review-target="toggleButton"
-                    title="접기/펼치기">
+                    title="<%= t("reviews.duplicate_section.collapse_toggle") %>">
               <svg class="w-5 h-5 transition-transform" data-duplicate-review-target="toggleIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
