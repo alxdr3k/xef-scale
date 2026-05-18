@@ -49,4 +49,31 @@ class MetricsControllerTest < ActionDispatch::IntegrationTest
     assert_response :redirect
     assert_redirected_to workspaces_path
   end
+
+  # Phase 7-4: CSV export (외부 분석 도구 호환).
+  test "show.csv returns CSV with section/metric/value headers" do
+    sign_in @admin
+    get workspace_metrics_path(@workspace, format: :csv)
+    assert_response :success
+    assert_match %r{text/csv}, @response.content_type
+    body = @response.body
+    assert_match(/\Asection,metric,value\n/, body)
+    # 핵심 섹션 명 포함 검사 — 빈 데이터라도 header / classification_source / commit_latency 등 노출.
+    assert_includes body, "header,scope"
+    assert_includes body, "header,session_count"
+  end
+
+  test "show.csv filename includes workspace + range" do
+    sign_in @admin
+    get workspace_metrics_path(@workspace, format: :csv, since: "2026-01-01", until: "2026-05-18")
+    disposition = @response.headers["Content-Disposition"]
+    assert_match(/metrics_#{@workspace.id}_since-2026-01-01_until-2026-05-18/, disposition)
+    assert_match(/\.csv/, disposition)
+  end
+
+  test "show.csv requires admin (member_read rejected)" do
+    sign_in @member
+    get workspace_metrics_path(@workspace, format: :csv)
+    assert_response :redirect
+  end
 end
