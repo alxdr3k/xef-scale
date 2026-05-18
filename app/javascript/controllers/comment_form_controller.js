@@ -69,8 +69,8 @@ export default class extends Controller {
       panelController.commentAdded()
     })
     .catch(() => {
-      this.inputTarget.classList.add("border-red-300")
-      setTimeout(() => this.inputTarget.classList.remove("border-red-300"), 1500)
+      this.inputTarget.classList.add("border-danger")
+      setTimeout(() => this.inputTarget.classList.remove("border-danger"), 1500)
     })
     .finally(() => {
       this.inputTarget.disabled = false

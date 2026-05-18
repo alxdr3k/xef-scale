@@ -39,8 +39,8 @@ export default class extends Controller {
       this._reloadPanel()
     })
     .catch(() => {
-      this.editInputTarget.classList.add("border-red-300")
-      setTimeout(() => this.editInputTarget.classList.remove("border-red-300"), 1500)
+      this.editInputTarget.classList.add("border-danger")
+      setTimeout(() => this.editInputTarget.classList.remove("border-danger"), 1500)
     })
   }
 
