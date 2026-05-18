@@ -8,10 +8,10 @@
 <div class="bg-surface rounded-lg shadow mb-6">
   <div class="px-4 py-3 border-b border-divider">
     <h2 class="text-base font-semibold text-primary">
-      수정 필요 항목 <span class="ml-1 text-tertiary"><%= open_import_issues.size %>건</span>
+      <%= t("reviews.import_issues.heading") %><%= t("reviews.import_issues.count_html", count: open_import_issues.size).html_safe %>
     </h2>
     <p class="text-xs text-tertiary mt-1">
-      파싱 결과 중 날짜·가맹점·금액 같은 필수값이 비어 있는 항목입니다. 채워서 결제 내역에 반영하거나 제외할 수 있습니다.
+      <%= t("reviews.import_issues.subtitle") %>
     </p>
   </div>
 
@@ -28,19 +28,19 @@
                           id: "import-issue-resolve-#{issue.id}",
                           class: "md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-2 items-end" do |f| %>
               <div>
-                <label class="block text-xs text-tertiary mb-1">날짜</label>
+                <label class="block text-xs text-tertiary mb-1"><%= t("reviews.import_issues.date_label") %></label>
                 <%= f.date_field :date, value: issue.date,
                       class: "w-full px-2 py-1 border border-divider rounded text-sm",
                       required: issue.missing_fields.include?("date") %>
               </div>
               <div>
-                <label class="block text-xs text-tertiary mb-1">가맹점</label>
+                <label class="block text-xs text-tertiary mb-1"><%= t("reviews.import_issues.merchant_label") %></label>
                 <%= f.text_field :merchant, value: issue.merchant,
                       class: "w-full px-2 py-1 border border-divider rounded text-sm",
-                      placeholder: "예: 스타벅스" %>
+                      placeholder: t("reviews.import_issues.merchant_placeholder") %>
               </div>
               <div>
-                <label class="block text-xs text-tertiary mb-1">금액</label>
+                <label class="block text-xs text-tertiary mb-1"><%= t("reviews.import_issues.amount_label") %></label>
                 <%= f.number_field :amount, value: issue.amount,
                       class: "w-full px-2 py-1 border border-divider rounded text-sm",
                       placeholder: "0" %>
@@ -50,28 +50,33 @@
               <%# Submit refers to the sibling resolve form via form= attribute. %>
               <button type="submit" form="import-issue-resolve-<%= issue.id %>"
                       class="px-3 py-1 bg-action text-action-on text-sm rounded hover:bg-action-hover cursor-pointer">
-                반영
+                <%= t("reviews.import_issues.apply") %>
               </button>
-              <%= button_to "제외", workspace_import_issue_path(workspace, issue),
+              <%= button_to t("reviews.import_issues.dismiss"), workspace_import_issue_path(workspace, issue),
                     method: :patch,
                     params: { resolution_action: "dismiss" },
                     class: "px-3 py-1 border border-divider text-secondary text-sm rounded hover:bg-elev inline-block",
                     form: { class: "inline-block" },
-                    data: { turbo_confirm: "이 항목을 제외하시겠습니까?" } %>
+                    data: { turbo_confirm: t("reviews.import_issues.dismiss_confirm") } %>
             </div>
           </div>
           <% if issue.missing_fields.any? %>
             <p class="text-xs text-warning mt-1">
-              누락: <%= issue.missing_fields.map { |f| { "date" => "날짜", "merchant" => "가맹점", "amount" => "금액" }[f] || f }.join(", ") %>
+              <%= t("reviews.import_issues.missing_prefix",
+                    fields: issue.missing_fields.map { |f|
+                      { "date" => t("reviews.import_issues.field_date"),
+                        "merchant" => t("reviews.import_issues.field_merchant"),
+                        "amount" => t("reviews.import_issues.field_amount") }[f] || f
+                    }.join(", ")) %>
             </p>
           <% end %>
         <% else %>
           <%# Ambiguous duplicate or other types — not user-resolvable in B4 yet. %>
           <p class="text-sm text-secondary">
-            <%= issue.merchant.presence || "가맹점 미상" %> · <%= issue.amount %>원
+            <%= issue.merchant.presence || t("reviews.import_issues.no_merchant_fallback") %> · <%= t("reviews.import_issues.amount_won", amount: issue.amount) %>
           </p>
           <p class="text-xs text-tertiary mt-0.5">
-            중복 의심 — 중복 검토 화면에서 처리해 주세요.
+            <%= t("reviews.import_issues.duplicate_hint") %>
           </p>
         <% end %>
       </li>

@@ -2,20 +2,20 @@
 <div class="max-w-7xl mx-auto"
      data-controller="bulk-select note-panel comment-panel review-keyboard"
      data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick click@document->comment-panel#handleOutsideClick keydown@window->review-keyboard#handleKey">
-  <%= link_to '← 업로드 목록', workspace_parsing_sessions_path(@workspace),
+  <%= link_to t("reviews.show.back"), workspace_parsing_sessions_path(@workspace),
       class: 'text-action hover:text-action-hover mb-4 inline-block' %>
 
   <div class="flex justify-between items-start mb-6">
     <div>
-      <h1 class="text-2xl font-bold text-primary">결제 검토</h1>
+      <h1 class="text-2xl font-bold text-primary"><%= t("reviews.show.title") %></h1>
       <p class="text-secondary">
         <% if @parsing_session.text_paste? %>
-          텍스트 붙여넣기
+          <%= t("reviews.show.text_paste_source") %>
         <% elsif @parsing_session.processed_file %>
           <%= @parsing_session.processed_file.filename %>
           <%= render "shared/blob_purged_badge", processed_file: @parsing_session.processed_file %>
         <% else %>
-          파일 정보 없음
+          <%= t("reviews.show.no_file_info") %>
         <% end %>
       </p>
     </div>
@@ -28,26 +28,26 @@
   <!-- Summary Cards -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
     <div class="bg-surface rounded-lg shadow p-4">
-      <div class="text-sm text-tertiary">전체</div>
-      <div class="text-2xl font-bold text-primary"><%= @parsing_session.total_count || 0 %>건</div>
+      <div class="text-sm text-tertiary"><%= t("reviews.show.stat_total") %></div>
+      <div class="text-2xl font-bold text-primary"><%= t("reviews.show.count_suffix", count: (@parsing_session.total_count || 0)) %></div>
     </div>
     <div class="bg-surface rounded-lg shadow p-4">
-      <div class="text-sm text-tertiary">성공</div>
-      <div class="text-2xl font-bold text-positive"><%= @parsing_session.success_count || 0 %>건</div>
+      <div class="text-sm text-tertiary"><%= t("reviews.show.stat_success") %></div>
+      <div class="text-2xl font-bold text-positive"><%= t("reviews.show.count_suffix", count: (@parsing_session.success_count || 0)) %></div>
     </div>
     <div class="bg-surface rounded-lg shadow p-4">
-      <div class="text-sm text-tertiary">총 금액</div>
+      <div class="text-sm text-tertiary"><%= t("reviews.show.stat_amount") %></div>
       <div class="text-2xl font-bold text-action">
         <%= number_to_currency(@transactions.excluding_coupon.sum(&:amount), unit: '₩', precision: 0) %>
       </div>
     </div>
     <div class="bg-surface rounded-lg shadow p-4">
-      <div class="text-sm text-tertiary">상태</div>
+      <div class="text-sm text-tertiary"><%= t("reviews.show.stat_status") %></div>
       <div class="text-lg font-bold">
         <% if @read_only %>
-          읽기 전용
+          <%= t("reviews.show.status_read_only") %>
         <% else %>
-          편집 가능
+          <%= t("reviews.show.status_editable") %>
         <% end %>
       </div>
     </div>
@@ -74,21 +74,21 @@
       <div class="flex justify-end items-center gap-3">
         <% if @parsing_session.review_pending? %>
           <%= form_with url: discard_workspace_parsing_session_path(@workspace, @parsing_session),
-              method: :post, class: 'inline-block', data: { turbo_confirm: '모든 결제를 취소하고 업로드를 폐기하시겠습니까? 이 작업은 되돌릴 수 없습니다.' } do %>
+              method: :post, class: 'inline-block', data: { turbo_confirm: t("reviews.show.cancel_all_confirm") } do %>
             <button type="submit" class="px-4 py-2 border border-divider text-secondary rounded-lg hover:bg-elev">
-              전체 취소
+              <%= t("reviews.show.cancel_all") %>
             </button>
           <% end %>
           <% commit_msg = @pagy.pages > 1 ?
-               "전체 #{@total_commit_count}건 중 현재 #{@transactions.count}건 표시 중입니다. 커밋하면 전체 #{@total_commit_count}건이 결제 내역에 반영됩니다." :
-               "#{@total_commit_count}건의 결제를 결제 내역에 반영하시겠습니까?" %>
+               t("reviews.show.commit_confirm_partial", total: @total_commit_count, shown: @transactions.count) :
+               t("reviews.show.commit_confirm_full", count: @total_commit_count) %>
           <%# Phase 5 slice 4: c 키 단축키 — review_keyboard_controller가
               data-review-keyboard-target="commitForm"으로 requestSubmit. %>
           <%= form_with url: commit_workspace_parsing_session_path(@workspace, @parsing_session),
               method: :post, class: 'inline-block',
               data: { turbo_confirm: commit_msg, review_keyboard_target: "commitForm" } do %>
             <button type="submit" class="px-4 py-2 bg-positive text-action-on rounded-lg hover:bg-positive">
-              결제 내역 반영
+              <%= t("reviews.show.commit") %>
             </button>
           <% end %>
         <% end %>
@@ -102,37 +102,37 @@
       <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div class="space-y-2 text-sm text-secondary">
           <div class="text-base font-semibold text-primary">
-            <%= summary[:committed] %>건이 결제 내역에 반영되었습니다.
+            <%= t("reviews.show.summary.committed", count: summary[:committed]) %>
           </div>
           <% if summary[:originals_replaced].positive? %>
-            <div>중복 <%= summary[:originals_replaced] %>건은 새 결제로 교체되었습니다.</div>
+            <div><%= t("reviews.show.summary.originals_replaced", count: summary[:originals_replaced]) %></div>
           <% end %>
           <% if summary[:originals_kept].positive? %>
-            <div>중복 <%= summary[:originals_kept] %>건은 기존 결제만 남겼습니다.</div>
+            <div><%= t("reviews.show.summary.originals_kept", count: summary[:originals_kept]) %></div>
           <% end %>
           <% if summary[:duplicates_kept_both].positive? %>
-            <div>중복 <%= summary[:duplicates_kept_both] %>건은 양쪽 모두 보관했습니다.</div>
+            <div><%= t("reviews.show.summary.duplicates_kept_both", count: summary[:duplicates_kept_both]) %></div>
           <% end %>
           <% if summary[:excluded].positive? %>
-            <div><%= summary[:excluded] %>건은 이번 가져오기에서 제외했습니다.</div>
+            <div><%= t("reviews.show.summary.excluded", count: summary[:excluded]) %></div>
           <% end %>
           <% if summary[:uncategorized].positive? %>
-            <div class="text-warning"><%= summary[:uncategorized] %>건은 분류가 필요합니다.</div>
+            <div class="text-warning"><%= t("reviews.show.summary.uncategorized", count: summary[:uncategorized]) %></div>
           <% end %>
           <div class="text-xs text-tertiary pt-1">
-            확정일: <%= @parsing_session.committed_at&.strftime('%Y-%m-%d %H:%M') %>
+            <%= t("reviews.show.summary.committed_at", date: @parsing_session.committed_at&.strftime('%Y-%m-%d %H:%M')) %>
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
-          <%= link_to '결제 내역 보기',
+          <%= link_to t("reviews.show.view_transactions"),
               workspace_transactions_path(@workspace, year: Date.current.year, month: Date.current.month),
               class: 'px-4 py-2 bg-action text-action-on rounded-lg hover:bg-action-hover' %>
           <%# rollback은 write 권한 action — member_read는 dead-end 버튼이 안 보여야. %>
           <% if current_user.can_write?(@workspace) %>
             <%= form_with url: rollback_workspace_parsing_session_path(@workspace, @parsing_session),
-                method: :post, class: 'inline-block', data: { turbo_confirm: '이번 가져오기를 모두 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.' } do %>
+                method: :post, class: 'inline-block', data: { turbo_confirm: t("reviews.show.rollback_confirm") } do %>
               <button type="submit" class="px-4 py-2 bg-surface border border-danger text-danger rounded-lg hover:bg-danger-subtle">
-                가져오기 되돌리기
+                <%= t("reviews.show.rollback") %>
               </button>
             <% end %>
           <% end %>
@@ -161,32 +161,32 @@
              class="h-4 w-4 rounded border-divider text-action focus:ring-action cursor-pointer">
 
       <div data-bulk-select-target="toolbarDefault" class="flex items-center gap-1 text-sm text-tertiary">
-        <span>전체 선택</span>
+        <span><%= t("reviews.show.bulk_select_all") %></span>
       </div>
 
       <div data-bulk-select-target="toolbarSelected" class="hidden flex items-center gap-1">
         <span class="text-sm font-medium text-action mr-2">
-          <span data-bulk-select-target="toolbarCount">0</span>개 선택됨
+          <span data-bulk-select-target="toolbarCount">0</span><%= t("reviews.show.bulk_count_label") %>
         </span>
 
         <div class="w-px h-5 bg-divider"></div>
 
         <button type="button" data-action="click->bulk-select#deleteSelected"
-                class="tooltip p-1.5 text-tertiary hover:text-danger hover:bg-danger-subtle rounded transition-colors" aria-label="삭제">
+                class="tooltip p-1.5 text-tertiary hover:text-danger hover:bg-danger-subtle rounded transition-colors" aria-label="<%= t("reviews.show.bulk_delete") %>">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
           </svg>
         </button>
 
         <button type="button" data-action="click->bulk-select#markAllowance"
-                class="tooltip p-1.5 text-tertiary hover:text-warning hover:bg-warning-subtle rounded transition-colors" aria-label="용돈 표시">
+                class="tooltip p-1.5 text-tertiary hover:text-warning hover:bg-warning-subtle rounded transition-colors" aria-label="<%= t("reviews.show.bulk_allowance") %>">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
         </button>
 
         <button type="button" data-action="click->bulk-select#unmarkAllowance"
-                class="tooltip p-1.5 text-tertiary hover:text-secondary hover:bg-elev rounded transition-colors" aria-label="용돈 해제">
+                class="tooltip p-1.5 text-tertiary hover:text-secondary hover:bg-elev rounded transition-colors" aria-label="<%= t("reviews.show.bulk_allowance_off") %>">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" />
           </svg>
@@ -196,14 +196,14 @@
 
         <div class="flex items-center gap-1">
           <select name="category_id" class="text-xs rounded border-divider py-1 pl-2 pr-6">
-            <option value="">카테고리...</option>
+            <option value=""><%= t("reviews.show.bulk_category_placeholder") %></option>
             <% @categories.each do |cat| %>
               <option value="<%= cat.id %>"><%= cat.name %></option>
             <% end %>
           </select>
           <button type="button" data-action="click->bulk-select#changeCategory"
                   class="px-2 py-1 bg-action text-action-on rounded text-xs hover:bg-action-hover">
-            적용
+            <%= t("reviews.show.bulk_apply") %>
           </button>
         </div>
 
@@ -211,7 +211,7 @@
 
         <div class="relative">
           <button type="button" data-action="click->bulk-select#toggleMore"
-                  class="tooltip p-1.5 text-tertiary hover:text-secondary hover:bg-elev rounded transition-colors" aria-label="더보기">
+                  class="tooltip p-1.5 text-tertiary hover:text-secondary hover:bg-elev rounded transition-colors" aria-label="<%= t("reviews.show.bulk_more") %>">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z" />
             </svg>
@@ -223,7 +223,7 @@
                       py-1 min-w-[160px] text-secondary">
             <button type="button" data-action="click->bulk-select#deselectAll"
                     class="w-full px-4 py-2 text-left text-sm hover:bg-elev transition-colors">
-              선택 해제
+              <%= t("reviews.show.bulk_clear") %>
             </button>
           </div>
         </div>
@@ -237,12 +237,12 @@
       <table class="min-w-full divide-y divide-divider">
         <thead class="bg-elev">
           <tr>
-            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase">날짜</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase">내역</th>
-            <th class="px-4 py-3 text-right text-xs font-medium text-tertiary uppercase">금액</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase w-36">카테고리</th>
-            <th class="px-2 py-3 text-center text-xs font-medium text-tertiary uppercase w-16">출처</th>
-            <th class="px-4 py-3 text-center text-xs font-medium text-tertiary uppercase w-16">댓글</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase"><%= t("reviews.show.th_date") %></th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase"><%= t("reviews.show.th_merchant") %></th>
+            <th class="px-4 py-3 text-right text-xs font-medium text-tertiary uppercase"><%= t("reviews.show.th_amount") %></th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase w-36"><%= t("reviews.show.th_category") %></th>
+            <th class="px-2 py-3 text-center text-xs font-medium text-tertiary uppercase w-16"><%= t("reviews.show.th_source") %></th>
+            <th class="px-4 py-3 text-center text-xs font-medium text-tertiary uppercase w-16"><%= t("reviews.show.th_comments") %></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-divider" id="transactions-review-list">
