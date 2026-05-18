@@ -222,6 +222,101 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
     assert_equal initial_count, @workspace.categories.count
   end
 
+  # Phase 5 cleanup (Scope B): finalized parsing_session에서는 슬라이드오버 경로로도
+  # category 생성 + transaction mutation이 불가능해야 한다.
+  # ReviewsController#reject_if_finalized 와 같은 의미. invalid id (404)만 막던 가드를
+  # finalized state (committed/rolled_back/discarded)까지 확장.
+
+  test "new slideover rejects committed parsing_session (review-context closed)" do
+    ps = parsing_sessions(:completed_session)
+    ps.update!(review_status: "committed")
+
+    get new_workspace_category_path(@workspace), params: {
+      slideover: "true",
+      transaction_id: 1,
+      parsing_session_id: ps.id
+    }, as: :turbo_stream
+
+    assert_response :not_found
+  end
+
+  test "create via slideover rejects committed parsing_session and does not persist category or mutate transaction" do
+    ps = parsing_sessions(:completed_session)
+    ps.update!(review_status: "committed")
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "COMMITTED_SCOPE",
+      status: "committed", parsing_session: ps
+    )
+    initial_category_id = tx.category_id
+    initial_count = @workspace.categories.count
+
+    post workspace_categories_path(@workspace), params: {
+      category: { name: "신규_거부_카테고리", color: "#000000" },
+      slideover: "true",
+      transaction_id: tx.id,
+      parsing_session_id: ps.id
+    }, as: :turbo_stream
+
+    assert_response :not_found
+    assert_equal initial_count, @workspace.categories.count,
+                 "finalized session에서 category가 생성되면 안 됨"
+    if initial_category_id.nil?
+      assert_nil tx.reload.category_id
+    else
+      assert_equal initial_category_id, tx.reload.category_id
+    end
+  end
+
+  test "create via slideover rejects rolled_back parsing_session" do
+    ps = parsing_sessions(:completed_session)
+    ps.update!(review_status: "rolled_back")
+
+    post workspace_categories_path(@workspace), params: {
+      category: { name: "롤백거부카테고리", color: "#000000" },
+      slideover: "true",
+      transaction_id: 1,
+      parsing_session_id: ps.id
+    }, as: :turbo_stream
+
+    assert_response :not_found
+  end
+
+  test "create via slideover rejects discarded parsing_session" do
+    ps = parsing_sessions(:completed_session)
+    ps.update!(review_status: "discarded")
+
+    post workspace_categories_path(@workspace), params: {
+      category: { name: "폐기거부카테고리", color: "#000000" },
+      slideover: "true",
+      transaction_id: 1,
+      parsing_session_id: ps.id
+    }, as: :turbo_stream
+
+    assert_response :not_found
+  end
+
+  test "create via slideover with pending review-context limits transaction scope to pending_review rows" do
+    # session.transactions.pending_review로 좁혔으므로 같은 session 안에서도
+    # 이미 committed/discarded된 row는 mutation 불가.
+    ps = parsing_sessions(:completed_session)
+    ps.update!(review_status: "pending_review")
+    finalized_row = @workspace.transactions.create!(
+      date: Date.current, amount: 2000, merchant: "ROW_ALREADY_COMMITTED",
+      status: "committed", parsing_session: ps
+    )
+
+    post workspace_categories_path(@workspace), params: {
+      category: { name: "행단위거부", color: "#000000" },
+      slideover: "true",
+      transaction_id: finalized_row.id,
+      parsing_session_id: ps.id
+    }, as: :turbo_stream
+
+    assert_response :not_found
+    assert_nil finalized_row.reload.category_id,
+               "review-context 안에서도 committed row는 mutation 거부"
+  end
+
   test "create via slideover rejects transaction not belonging to parsing_session" do
     ps = parsing_sessions(:completed_session)
     ps.update!(review_status: "pending_review")
