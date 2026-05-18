@@ -111,6 +111,91 @@ ko:
     applied: "학습됐어요. 같은 가맹점부터는 자동으로 분류돼요."
 
   # ──────────────────────────────────────────────────
+  # 대시보드 (Phase 6-2)
+  # ──────────────────────────────────────────────────
+  dashboards:
+    title: "대시보드"
+    workspace_year_month: "%{workspace} - %{year}년 %{month}월"
+    workspace_year: "%{workspace} - %{year}년"
+    year_month: "%{year}년 %{month}월"
+    tabs:
+      calendar: "캘린더"
+      monthly: "월별"
+      yearly: "연도별"
+      recurring: "반복 결제"
+    month_label: "%{month}월"
+    monthly:
+      prev_month: "← 이전 달"
+      next_month: "다음 달 →"
+      hero_label: "%{year}년 %{month}월 총 지출"
+      supporting_count: "%{count}건 결제"
+      supporting_daily_avg: "일 평균 %{amount}"
+      supporting_budget_progress: "예산 대비 %{percentage}% (%{budget})"
+      breakdown_title: "카테고리별 지출"
+      breakdown_hint: "카테고리를 클릭하면 해당 결제를 볼 수 있습니다"
+      manage_categories: "카테고리 관리"
+    yearly:
+      prev_year: "← 이전 연도"
+      next_year: "다음 연도 →"
+      annual_total: "연간 총 지출"
+      monthly_avg: "월 평균 지출"
+      highest_month: "최고 지출 월"
+      lowest_month: "최저 지출 월"
+      monthly_category_title: "월별 카테고리 지출"
+      integrated_view: "통합 보기"
+      trend_view: "추세 보기"
+      legend_hint: "범례를 클릭하여 카테고리를 숨기거나 표시할 수 있습니다"
+      empty: "해당 연도의 결제 내역이 없습니다."
+      category_annual_title: "카테고리별 연간 지출"
+    calendar:
+      header: "%{year}년 %{month}월 지출"
+      needs_review_count: "검토 필요 %{count}건"
+      needs_review_zero: "검토 필요 0건"
+      duplicate_count: "중복 의심 %{count}건"
+      duplicate_zero: "중복 의심 0건"
+      uncategorized_count: "미분류 %{count}건"
+      uncategorized_zero: "미분류 0건"
+      badge_review: "검토 %{count}"
+      badge_duplicate: "중복 %{count}"
+      badge_uncategorized: "미분류 %{count}"
+      no_transactions_for_date: "선택한 날짜에는 결제가 없습니다."
+      no_merchant: "내역 없음"
+      uncategorized_label: "미분류"
+      monthly_view_link: "월간 보기 →"
+      sum: "합계 %{amount}"
+      no_transactions: "결제 내역이 없습니다."
+    weekdays:
+      sun: "일"
+      mon: "월"
+      tue: "화"
+      wed: "수"
+      thu: "목"
+      fri: "금"
+      sat: "토"
+    recurring:
+      title: "반복 결제"
+      subtitle: "2개월 이상 동일 상점에서 결제된 항목을 자동으로 감지합니다."
+      detected_count: "%{count}개 반복 결제 감지됨"
+      monthly_expected: "월 예상 합계: %{amount}"
+      fixed_amount: "정액"
+      variable_amount: "변동"
+      occurrence_summary: "%{count}개월 연속 · 마지막 결제 %{date}"
+      per_month: "%{amount}/월"
+      total: "총 %{amount}"
+      empty_title: "반복 결제가 감지되지 않았습니다."
+      empty_hint: "2개월 이상의 결제 데이터가 쌓이면 자동으로 감지됩니다."
+    category_breakdown_empty: "결제 내역이 없습니다."
+    category_transactions_panel:
+      title_html: "%{category} 결제"
+      view_all: "전체 보기 →"
+      close: "선택 해제"
+      empty: "이 카테고리에 결제 내역이 없습니다."
+    recent_transactions:
+      title: "최근 결제"
+      view_all: "전체 보기 →"
+      empty: "최근 결제 내역이 없습니다."
+
+  # ──────────────────────────────────────────────────
   # ADR-0011 — Transaction 결정 메커니즘 / Mapping 출처
   # 결정 메커니즘(transactions.classification_source)과 매핑 출처(category_mappings.source)는
   # 어휘를 공유하지 않는다 — "학습 매핑" vs "직접 등록" 등 분리.

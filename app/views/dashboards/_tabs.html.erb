@@ -1,14 +1,14 @@
 <div class="flex space-x-1 bg-elev p-1 rounded-lg w-fit mb-6">
-  <%= link_to '캘린더',
+  <%= link_to t("dashboards.tabs.calendar"),
       calendar_dashboard_path(year: @year, month: defined?(@month) ? @month : Date.current.month),
       class: "px-4 py-2 rounded-md text-sm font-medium transition-colors #{@view_type == 'calendar' ? 'bg-surface shadow text-primary' : 'text-secondary hover:text-primary'}" %>
-  <%= link_to '월별',
+  <%= link_to t("dashboards.tabs.monthly"),
       monthly_dashboard_path(year: @year, month: defined?(@month) ? @month : Date.current.month),
       class: "px-4 py-2 rounded-md text-sm font-medium transition-colors #{@view_type == 'monthly' ? 'bg-surface shadow text-primary' : 'text-secondary hover:text-primary'}" %>
-  <%= link_to '연도별',
+  <%= link_to t("dashboards.tabs.yearly"),
       yearly_dashboard_path(year: @year),
       class: "px-4 py-2 rounded-md text-sm font-medium transition-colors #{@view_type == 'yearly' ? 'bg-surface shadow text-primary' : 'text-secondary hover:text-primary'}" %>
-  <%= link_to '반복 결제',
+  <%= link_to t("dashboards.tabs.recurring"),
       recurring_dashboard_path,
       class: "px-4 py-2 rounded-md text-sm font-medium transition-colors #{@view_type == 'recurring' ? 'bg-surface shadow text-primary' : 'text-secondary hover:text-primary'}" %>
 </div>

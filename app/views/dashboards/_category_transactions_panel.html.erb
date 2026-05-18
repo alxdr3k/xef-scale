@@ -1,16 +1,16 @@
 <div class="bg-surface rounded-lg shadow p-6">
   <div class="flex justify-between items-center mb-4">
     <h2 class="text-lg font-semibold" style="color: <%= @category.color %>">
-      <%= @category.name %> 결제
+      <%= t("dashboards.category_transactions_panel.title_html", category: @category.name) %>
     </h2>
     <div class="flex items-center gap-3">
-      <%= link_to '전체 보기 →',
+      <%= link_to t("dashboards.category_transactions_panel.view_all"),
           workspace_transactions_path(@workspace, year: @year, month: @month, category_id: @category.id),
           data: { turbo_frame: '_top' },
           class: 'text-action hover:text-action text-sm' %>
       <button data-action="click->dashboard-category#clearSelection"
               class="text-disabled hover:text-secondary text-lg cursor-pointer"
-              title="선택 해제">
+              title="<%= t("dashboards.category_transactions_panel.close") %>">
         &times;
       </button>
     </div>
@@ -33,7 +33,7 @@
     <% end %>
 
     <% if @transactions.empty? %>
-      <p class="text-tertiary text-center py-4">이 카테고리에 결제 내역이 없습니다.</p>
+      <p class="text-tertiary text-center py-4"><%= t("dashboards.category_transactions_panel.empty") %></p>
     <% end %>
   </div>
 </div>

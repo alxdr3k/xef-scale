@@ -1,7 +1,7 @@
 <div class="max-w-7xl mx-auto">
   <div class="mb-8">
-    <h1 class="text-2xl font-bold text-primary">대시보드</h1>
-    <p class="text-secondary"><%= @workspace.name %> - <%= @year %>년 <%= @month %>월</p>
+    <h1 class="text-2xl font-bold text-primary"><%= t("dashboards.title") %></h1>
+    <p class="text-secondary"><%= t("dashboards.workspace_year_month", workspace: @workspace.name, year: @year, month: @month) %></p>
   </div>
 
   <%= render 'tabs' %>
@@ -9,7 +9,7 @@
   <%# Action strip: monthly summary + quick-filter badges %>
   <div class="bg-surface shadow rounded-xl px-4 py-3 mb-5 flex flex-wrap items-center gap-3">
     <div class="flex items-center gap-1.5 text-sm font-semibold text-primary">
-      <span class="text-tertiary font-normal"><%= @year %>년 <%= @month %>월 지출</span>
+      <span class="text-tertiary font-normal"><%= t("dashboards.calendar.header", year: @year, month: @month) %></span>
       <%= number_to_currency(@monthly_total, unit: '₩', precision: 0) %>
     </div>
 
@@ -20,11 +20,11 @@
         <%= link_to workspace_parsing_sessions_path(@workspace, year: @year, month: @month, filter: 'needs_review'),
             class: "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-warning-subtle text-warning hover:ring-1 hover:ring-warning transition-colors" do %>
           <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-          검토 필요 <%= @needs_review_total %>건
+          <%= t("dashboards.calendar.needs_review_count", count: @needs_review_total) %>
         <% end %>
       <% else %>
         <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-warning-subtle text-warning">
-          검토 필요 0건
+          <%= t("dashboards.calendar.needs_review_zero") %>
         </span>
       <% end %>
 
@@ -32,11 +32,11 @@
         <%= link_to workspace_parsing_sessions_path(@workspace, year: @year, month: @month, filter: 'has_duplicates'),
             class: "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-danger-subtle text-danger hover:ring-1 hover:ring-danger transition-colors" do %>
           <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z"/><path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z"/></svg>
-          중복 의심 <%= @duplicate_total %>건
+          <%= t("dashboards.calendar.duplicate_count", count: @duplicate_total) %>
         <% end %>
       <% else %>
         <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-danger-subtle text-danger">
-          중복 의심 0건
+          <%= t("dashboards.calendar.duplicate_zero") %>
         </span>
       <% end %>
 
@@ -44,11 +44,11 @@
         <%= link_to workspace_transactions_path(@workspace, filter: 'uncategorized', year: @year, month: @month),
             class: "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-elev text-secondary hover:bg-divider transition-colors" do %>
           <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
-          미분류 <%= @uncategorized_total %>건
+          <%= t("dashboards.calendar.uncategorized_count", count: @uncategorized_total) %>
         <% end %>
       <% else %>
         <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-elev text-tertiary">
-          미분류 0건
+          <%= t("dashboards.calendar.uncategorized_zero") %>
         </span>
       <% end %>
     </div>
@@ -60,10 +60,10 @@
   <% next_year  = @month == 12 ? @year + 1 : @year %>
 
   <div class="flex items-center space-x-4 mb-6">
-    <%= link_to '← 이전 달', calendar_dashboard_path(year: prev_year, month: prev_month),
+    <%= link_to t("dashboards.monthly.prev_month"), calendar_dashboard_path(year: prev_year, month: prev_month),
         class: 'text-action hover:text-action-hover' %>
-    <span class="text-lg font-semibold text-primary"><%= @year %>년 <%= @month %>월</span>
-    <%= link_to '다음 달 →', calendar_dashboard_path(year: next_year, month: next_month),
+    <span class="text-lg font-semibold text-primary"><%= t("dashboards.year_month", year: @year, month: @month) %></span>
+    <%= link_to t("dashboards.monthly.next_month"), calendar_dashboard_path(year: next_year, month: next_month),
         class: 'text-action hover:text-action-hover' %>
   </div>
 
@@ -71,8 +71,8 @@
     <%# Calendar grid %>
     <div class="lg:col-span-2 bg-surface shadow rounded-lg p-4">
       <div class="grid grid-cols-7 text-xs font-medium text-tertiary mb-2">
-        <% %w[일 월 화 수 목 금 토].each do |label| %>
-          <div class="px-1 py-2 text-center"><%= label %></div>
+        <% %w[sun mon tue wed thu fri sat].each do |key| %>
+          <div class="px-1 py-2 text-center"><%= t("dashboards.weekdays.#{key}") %></div>
         <% end %>
       </div>
 
@@ -103,13 +103,13 @@
             <% if in_month %>
               <div class="mt-1 flex flex-wrap gap-1">
                 <% if review_count.positive? %>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-warning-subtle text-warning">검토 <%= review_count %></span>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-warning-subtle text-warning"><%= t("dashboards.calendar.badge_review", count: review_count) %></span>
                 <% end %>
                 <% if duplicate_count.positive? %>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-danger-subtle text-danger">중복 <%= duplicate_count %></span>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-danger-subtle text-danger"><%= t("dashboards.calendar.badge_duplicate", count: duplicate_count) %></span>
                 <% end %>
                 <% if uncategorized_count.positive? %>
-                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-elev text-secondary">미분류 <%= uncategorized_count %></span>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] bg-elev text-secondary"><%= t("dashboards.calendar.badge_uncategorized", count: uncategorized_count) %></span>
                 <% end %>
               </div>
             <% end %>
@@ -126,7 +126,7 @@
       <div class="bg-surface shadow rounded-lg p-4">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-base font-semibold text-primary"><%= @selected_date.strftime('%Y.%m.%d') %></h2>
-          <%= link_to '월간 보기 →',
+          <%= link_to t("dashboards.calendar.monthly_view_link"),
               monthly_dashboard_path(year: @year, month: @month),
               class: 'text-xs text-action hover:text-action-hover',
               data: { turbo_frame: '_top' } %>
@@ -136,9 +136,9 @@
             <% @selected_day_transactions.each do |tx| %>
               <li class="py-2 flex items-start justify-between">
                 <div class="min-w-0 pr-2">
-                  <div class="text-sm font-medium text-primary truncate"><%= tx.merchant.presence || '내역 없음' %></div>
+                  <div class="text-sm font-medium text-primary truncate"><%= tx.merchant.presence || t("dashboards.calendar.no_merchant") %></div>
                   <div class="text-xs text-tertiary truncate">
-                    <%= tx.category&.name || '미분류' %>
+                    <%= tx.category&.name || t("dashboards.calendar.uncategorized_label") %>
                   </div>
                 </div>
                 <div class="text-sm font-semibold text-primary whitespace-nowrap"><%= number_to_currency(tx.amount, unit: '₩', precision: 0) %></div>
@@ -146,7 +146,7 @@
             <% end %>
           </ul>
         <% else %>
-          <p class="text-sm text-tertiary py-4 text-center">선택한 날짜에는 결제가 없습니다.</p>
+          <p class="text-sm text-tertiary py-4 text-center"><%= t("dashboards.calendar.no_transactions_for_date") %></p>
         <% end %>
       </div>
     </turbo-frame>
