@@ -775,6 +775,7 @@ ko:
       reset: "초기화"
       scope_summary: "범위 내 세션 %{count}개"
       cli_hint_html: 'CLI에서 동일 리포트를 보려면 <code class="px-1 py-0.5 bg-elev rounded">bin/rails import_review_metrics:report</code> 를 사용하세요.'
+      export_csv: "CSV 내보내기"
     sections:
       header:
         title: "요약"
