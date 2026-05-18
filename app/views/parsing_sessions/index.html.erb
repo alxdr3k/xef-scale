@@ -5,9 +5,12 @@
       여기에서도 같은 시트로 새로 가져오기를 시작할 수 있도록 trigger를 둔다. %>
   <div class="flex items-baseline justify-between mb-6">
     <div>
-      <h1 class="text-2xl font-bold text-primary">입력 기록</h1>
+      <h1 class="text-2xl font-bold text-primary"><%= t("parsing_sessions.index.title") %></h1>
       <p class="text-secondary text-sm mt-1">
-        가져오기 세션 목록입니다. 검토 흐름은 <%= link_to '검토함', workspace_reviews_path(@workspace), class: 'underline text-action' %>에서 진행합니다.
+        <%= t("parsing_sessions.index.subtitle_html",
+              link: link_to(t("parsing_sessions.index.subtitle_link_text"),
+                            workspace_reviews_path(@workspace),
+                            class: 'underline text-action')).html_safe %>
       </p>
     </div>
     <%# Codex hotfix A: 새 입력은 write action이므로 read-only 멤버에게 노출 금지. %>
@@ -19,14 +22,14 @@
   <!-- 입력 기록 -->
   <div class="bg-surface rounded-lg shadow">
     <div class="px-6 py-4 border-b border-divider flex justify-between items-center">
-      <h2 class="text-lg font-semibold text-primary">입력 기록</h2>
+      <h2 class="text-lg font-semibold text-primary"><%= t("parsing_sessions.index.section_title") %></h2>
       <% if @pending_files.any? %>
         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info-subtle text-info">
           <svg class="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-info" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <%= @pending_files.size %>개 처리 중
+          <%= t("parsing_sessions.index.pending_count", count: @pending_files.size) %>
         </span>
       <% end %>
     </div>
@@ -46,24 +49,24 @@
              class="h-4 w-4 rounded border-divider text-action focus:ring-action cursor-pointer">
 
       <div data-bulk-select-target="toolbarDefault" class="flex items-center gap-1 text-sm text-tertiary">
-        <span>전체 선택</span>
+        <span><%= t("parsing_sessions.index.bulk_select_all") %></span>
       </div>
 
       <div data-bulk-select-target="toolbarSelected" class="hidden flex items-center gap-1">
         <span class="text-sm font-medium text-action mr-2">
-          <span data-bulk-select-target="toolbarCount">0</span>개 선택됨
+          <span data-bulk-select-target="toolbarCount">0</span><%= t("parsing_sessions.index.bulk_count_suffix") %>
         </span>
 
         <div class="w-px h-5 bg-divider"></div>
 
         <button type="button" data-action="click->bulk-select#discardSelected"
-                class="p-1.5 text-tertiary hover:text-danger hover:bg-danger-subtle rounded transition-colors" title="취소">
+                class="p-1.5 text-tertiary hover:text-danger hover:bg-danger-subtle rounded transition-colors" title="<%= t("parsing_sessions.index.bulk_cancel") %>">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
           </svg>
         </button>
 
-        <span class="text-xs text-tertiary">취소</span>
+        <span class="text-xs text-tertiary"><%= t("parsing_sessions.index.bulk_cancel_label") %></span>
       </div>
     </div>
 
@@ -79,10 +82,10 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <%= processed_file.status == 'pending' ? '대기중' : '처리중' %>
+              <%= processed_file.status == 'pending' ? t("parsing_sessions.index.status_pending") : t("parsing_sessions.index.status_processing") %>
             </span>
           </div>
-          <div class="text-xs text-tertiary mt-1"><%= time_ago_in_words(processed_file.created_at) %> 전</div>
+          <div class="text-xs text-tertiary mt-1"><%= t("parsing_sessions.relative_time", relative: time_ago_in_words(processed_file.created_at)) %></div>
         </div>
       <% end %>
 
@@ -93,7 +96,7 @@
 
       <% if @parsing_sessions.empty? && @pending_files.empty? %>
         <div class="px-6 py-12 text-center text-tertiary">
-          입력 기록이 없습니다.
+          <%= t("parsing_sessions.index.empty") %>
         </div>
       <% end %>
     </div>
@@ -104,10 +107,10 @@
         <thead class="bg-elev">
           <tr>
             <th class="px-2 py-3 text-center text-xs font-medium text-tertiary uppercase tracking-wider w-12">#</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider">입력 내용</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider w-40">상태</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider w-44">결과</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider w-28">시간</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider"><%= t("parsing_sessions.index.th_input") %></th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider w-40"><%= t("parsing_sessions.index.th_status") %></th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider w-44"><%= t("parsing_sessions.index.th_result") %></th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-tertiary uppercase tracking-wider w-28"><%= t("parsing_sessions.index.th_time") %></th>
             <th class="px-4 py-3 text-right text-xs font-medium text-tertiary uppercase tracking-wider w-24"></th>
           </tr>
         </thead>
@@ -125,12 +128,12 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <%= processed_file.status == 'pending' ? '대기중' : '처리중' %>
+                  <%= processed_file.status == 'pending' ? t("parsing_sessions.index.status_pending") : t("parsing_sessions.index.status_processing") %>
                 </span>
               </td>
               <td class="px-4 py-4 whitespace-nowrap text-sm text-tertiary">-</td>
               <td class="px-4 py-4 whitespace-nowrap text-sm text-tertiary">
-                <%= time_ago_in_words(processed_file.created_at) %> 전
+                <%= t("parsing_sessions.relative_time", relative: time_ago_in_words(processed_file.created_at)) %>
               </td>
               <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium"></td>
             </tr>
@@ -144,7 +147,7 @@
           <% if @parsing_sessions.empty? && @pending_files.empty? %>
             <tr>
               <td colspan="6" class="px-6 py-12 text-center text-tertiary">
-                입력 기록이 없습니다.
+                <%= t("parsing_sessions.index.empty") %>
               </td>
             </tr>
           <% end %>

@@ -1,7 +1,7 @@
 <div class="max-w-4xl mx-auto">
-  <%= link_to '← 목록으로', workspace_parsing_sessions_path(@workspace), class: 'text-action hover:text-action-hover mb-4 inline-block' %>
+  <%= link_to t("parsing_sessions.show.back"), workspace_parsing_sessions_path(@workspace), class: 'text-action hover:text-action-hover mb-4 inline-block' %>
 
-  <h1 class="text-2xl font-bold text-primary mb-2">파싱 결과</h1>
+  <h1 class="text-2xl font-bold text-primary mb-2"><%= t("parsing_sessions.show.title") %></h1>
   <p class="text-secondary mb-6">
     <%= @parsing_session.processed_file.original_filename %>
     <%= render "shared/blob_purged_badge", processed_file: @parsing_session.processed_file %>
@@ -10,20 +10,20 @@
   <!-- Summary -->
   <div class="grid grid-cols-4 gap-4 mb-8">
     <div class="bg-surface rounded-lg shadow p-4">
-      <div class="text-sm text-tertiary">전체</div>
-      <div class="text-2xl font-bold text-primary"><%= @parsing_session.total_count || 0 %>건</div>
+      <div class="text-sm text-tertiary"><%= t("parsing_sessions.show.stat_total") %></div>
+      <div class="text-2xl font-bold text-primary"><%= t("parsing_sessions.show.count_suffix", count: (@parsing_session.total_count || 0)) %></div>
     </div>
     <div class="bg-surface rounded-lg shadow p-4">
-      <div class="text-sm text-tertiary">성공</div>
-      <div class="text-2xl font-bold text-positive"><%= @parsing_session.success_count || 0 %>건</div>
+      <div class="text-sm text-tertiary"><%= t("parsing_sessions.show.stat_success") %></div>
+      <div class="text-2xl font-bold text-positive"><%= t("parsing_sessions.show.count_suffix", count: (@parsing_session.success_count || 0)) %></div>
     </div>
     <div class="bg-surface rounded-lg shadow p-4">
-      <div class="text-sm text-tertiary">중복</div>
-      <div class="text-2xl font-bold text-warning"><%= @parsing_session.duplicate_count || 0 %>건</div>
+      <div class="text-sm text-tertiary"><%= t("parsing_sessions.show.stat_duplicate") %></div>
+      <div class="text-2xl font-bold text-warning"><%= t("parsing_sessions.show.count_suffix", count: (@parsing_session.duplicate_count || 0)) %></div>
     </div>
     <div class="bg-surface rounded-lg shadow p-4">
-      <div class="text-sm text-tertiary">오류</div>
-      <div class="text-2xl font-bold text-danger"><%= @parsing_session.error_count || 0 %>건</div>
+      <div class="text-sm text-tertiary"><%= t("parsing_sessions.show.stat_error") %></div>
+      <div class="text-2xl font-bold text-danger"><%= t("parsing_sessions.show.count_suffix", count: (@parsing_session.error_count || 0)) %></div>
     </div>
   </div>
 
@@ -31,8 +31,8 @@
   <% if @duplicate_confirmations.any? %>
     <div class="bg-surface rounded-lg shadow overflow-hidden">
       <div class="px-6 py-4 border-b border-divider">
-        <h2 class="text-lg font-semibold text-primary">중복 확인</h2>
-        <p class="text-sm text-tertiary">새로 추가된 결제와 기존 결제가 중복됩니다. 어떻게 처리할지 선택해 주세요.</p>
+        <h2 class="text-lg font-semibold text-primary"><%= t("parsing_sessions.show.duplicate_section_title") %></h2>
+        <p class="text-sm text-tertiary"><%= t("parsing_sessions.show.duplicate_section_hint") %></p>
       </div>
 
       <div class="divide-y divide-divider">
@@ -42,7 +42,7 @@
               <div class="grid grid-cols-2 gap-4 mb-4">
                 <!-- Original Transaction -->
                 <div class="border rounded-lg p-4">
-                  <div class="text-xs text-tertiary mb-2">기존 결제</div>
+                  <div class="text-xs text-tertiary mb-2"><%= t("parsing_sessions.show.duplicate_existing") %></div>
                   <div class="font-medium text-primary"><%= dc.original_transaction.merchant %></div>
                   <div class="text-sm text-tertiary">
                     <%= dc.original_transaction.formatted_date %>
@@ -52,7 +52,7 @@
 
                 <!-- New Transaction -->
                 <div class="border rounded-lg p-4 border-warning bg-warning-subtle">
-                  <div class="text-xs text-tertiary mb-2">새 결제</div>
+                  <div class="text-xs text-tertiary mb-2"><%= t("parsing_sessions.show.duplicate_new") %></div>
                   <div class="font-medium text-primary"><%= dc.new_transaction.merchant %></div>
                   <div class="text-sm text-tertiary">
                     <%= dc.new_transaction.formatted_date %>
@@ -62,29 +62,29 @@
               </div>
 
               <div class="flex space-x-3">
-                <%= button_to '둘 다 유지',
+                <%= button_to t("parsing_sessions.show.keep_both"),
                     workspace_parsing_session_duplicate_confirmation_path(@workspace, @parsing_session, dc, decision: 'keep_both'),
                     method: :patch,
                     class: 'px-4 py-2 border border-divider rounded-md text-secondary hover:bg-elev' %>
-                <%= button_to '기존 결제 유지',
+                <%= button_to t("parsing_sessions.show.keep_existing"),
                     workspace_parsing_session_duplicate_confirmation_path(@workspace, @parsing_session, dc, decision: 'keep_original'),
                     method: :patch,
                     class: 'px-4 py-2 border border-divider rounded-md text-secondary hover:bg-elev' %>
-                <%= button_to '새 결제로 교체',
+                <%= button_to t("parsing_sessions.show.keep_new"),
                     workspace_parsing_session_duplicate_confirmation_path(@workspace, @parsing_session, dc, decision: 'keep_new'),
                     method: :patch,
                     class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover' %>
               </div>
             <% else %>
               <div class="text-tertiary">
-                <span class="font-medium">처리됨:</span>
+                <span class="font-medium"><%= t("parsing_sessions.show.processed_label") %></span>
                 <% case dc.status %>
                 <% when 'keep_both' %>
-                  둘 다 유지
+                  <%= t("parsing_sessions.show.keep_both") %>
                 <% when 'keep_original' %>
-                  기존 결제 유지
+                  <%= t("parsing_sessions.show.keep_existing") %>
                 <% when 'keep_new' %>
-                  새 결제로 교체
+                  <%= t("parsing_sessions.show.keep_new") %>
                 <% end %>
               </div>
             <% end %>
@@ -95,7 +95,7 @@
   <% else %>
     <div class="bg-surface rounded-lg shadow p-6 text-center">
       <div class="text-4xl mb-4">✅</div>
-      <p class="text-secondary">중복 결제가 없습니다.</p>
+      <p class="text-secondary"><%= t("parsing_sessions.show.empty") %></p>
     </div>
   <% end %>
 </div>
