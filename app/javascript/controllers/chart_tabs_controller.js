@@ -66,10 +66,12 @@ export default class extends Controller {
       return sumB - sumA
     })
 
-    // Phase 5 cleanup (Scope C-2): Chart.js는 raw color string을 요구하므로
-    // semantic 토큰을 runtime에 resolve해서 다크 모드와 동기화.
-    const surfaceColor = getComputedStyle(document.documentElement)
-      .getPropertyValue('--color-surface').trim() || '#ffffff'
+    // Phase 5 cleanup (Scope C-2 + Codex PR #222 P2): Chart.js는 raw color
+    // string을 요구하지만 --color-surface는 light-dark(...) 형식으로 정의되어
+    // getPropertyValue()로 직접 읽으면 그 raw 토큰이 그대로 반환되어 canvas가
+    // 못 해석한다. probe element에 var() 를 적용한 뒤 computed style을 읽으면
+    // 브라우저가 light-dark()를 resolve해서 rgb() 문자열을 돌려준다.
+    const surfaceColor = this._resolveCssVar('--color-surface', '#ffffff')
 
     // Create sparkline for each category
     sortedDatasets.forEach(dataset => {
@@ -178,5 +180,18 @@ export default class extends Controller {
     if (this.hasSparklineContainerTarget) {
       this.sparklineContainerTarget.innerHTML = ''
     }
+  }
+
+  // light-dark()로 정의된 CSS var를 브라우저가 resolve한 rgb() 문자열로 변환.
+  // probe element에 color 속성으로 var()를 적용한 뒤 getComputedStyle로 읽으면
+  // light-dark()가 풀려서 사용 가능한 색이 나온다.
+  _resolveCssVar(name, fallback) {
+    const probe = document.createElement('div')
+    probe.style.display = 'none'
+    probe.style.color = `var(${name})`
+    document.body.appendChild(probe)
+    const resolved = getComputedStyle(probe).color
+    document.body.removeChild(probe)
+    return resolved || fallback
   }
 }
