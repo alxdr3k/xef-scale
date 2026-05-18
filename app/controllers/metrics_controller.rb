@@ -19,7 +19,8 @@ class MetricsController < ApplicationController
     sessions = sessions.where("created_at < ?", @until) if @until
 
     options = { workspace_id: @workspace.id, since: @since, until: @until }
-    @report = ImportReviewMetricsReport.new(sessions: sessions, options: options).render
+    @report = ImportReviewMetricsReport.new(sessions: sessions, options: options)
+    @sections = @report.sections
     @session_count = sessions.count
   end
 

@@ -28,16 +28,11 @@
     <% end %>
   </div>
 
-  <%# Summary %>
-  <div class="bg-surface rounded-lg shadow p-4 mb-6">
-    <p class="text-secondary">
-      <%= t("metrics.show.scope_summary", count: @session_count) %>
-    </p>
-  </div>
-
-  <%# Report — Phase 7-2+에서 HTML/차트로 분해 예정. 현재는 CLI 텍스트 그대로 노출. %>
-  <div class="bg-surface rounded-lg shadow p-4 overflow-x-auto">
-    <pre class="text-sm text-primary font-mono whitespace-pre-wrap"><%= @report %></pre>
+  <%# Metric cards (Phase 7-2: HTML 카드 분해) %>
+  <div class="space-y-4">
+    <% @sections.each do |section| %>
+      <%= render "metrics/sections/#{section[:type]}", section: section %>
+    <% end %>
   </div>
 
   <p class="text-meta text-tertiary mt-4">

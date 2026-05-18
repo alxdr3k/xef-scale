@@ -1,0 +1,44 @@
+<%# Rate section — modification / exclusion 공통 partial.
+    Issue #187 thresholds: <10% C(auto-post) 후보, 10–30% B, >30% A 강화. %>
+<% key = section[:key] %>
+<div class="bg-surface rounded-lg shadow p-4">
+  <h2 class="text-base font-semibold text-primary mb-1"><%= t("metrics.sections.rate.#{key}.title") %></h2>
+  <p class="text-meta text-tertiary mb-3"><%= t("metrics.sections.rate.#{key}.subtitle") %></p>
+
+  <% if section[:rates].empty? %>
+    <p class="text-sm text-tertiary"><%= t("metrics.sections.rate.empty") %></p>
+  <% else %>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+      <div>
+        <div class="text-xs text-tertiary mb-1"><%= t("metrics.sections.rate.sessions_analyzed") %></div>
+        <div class="text-xl font-bold text-primary tabular-nums"><%= section[:sessions_analyzed] %></div>
+      </div>
+      <div>
+        <div class="text-xs text-tertiary mb-1"><%= t("metrics.sections.rate.average") %></div>
+        <div class="text-xl font-bold text-primary tabular-nums"><%= section[:avg_pct] %>%</div>
+      </div>
+    </div>
+
+    <%# Bucket distribution (<10% / 10-30% / >30%). 각 bucket을 비례 막대로 표시. %>
+    <% total_in_buckets = section[:distribution].values.sum %>
+    <div class="space-y-1.5">
+      <% section[:distribution].each do |bucket_label, count| %>
+        <% pct = total_in_buckets.zero? ? 0 : (100.0 * count / total_in_buckets).round(1) %>
+        <% tone_class = case bucket_label
+                       when "<10%"   then "bg-positive"
+                       when "10–30%" then "bg-warning"
+                       else "bg-danger"
+                       end %>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="w-16 text-xs text-tertiary tabular-nums"><%= bucket_label %></span>
+          <div class="flex-1 h-4 bg-elev rounded">
+            <div class="h-full rounded <%= tone_class %>" style="width: <%= pct %>%"></div>
+          </div>
+          <span class="w-12 text-right tabular-nums text-secondary"><%= count %></span>
+        </div>
+      <% end %>
+    </div>
+
+    <p class="text-meta text-tertiary mt-3"><%= t("metrics.sections.rate.#{key}.footer") %></p>
+  <% end %>
+</div>

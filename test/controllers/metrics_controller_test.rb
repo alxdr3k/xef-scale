@@ -24,7 +24,9 @@ class MetricsControllerTest < ActionDispatch::IntegrationTest
     get workspace_metrics_path(@workspace)
     assert_response :success
     assert_select "h1", text: /검토 메트릭/
-    assert_select "pre"
+    # Phase 7-2: HTML 카드 — 각 섹션 partial이 렌더되었는지 확인.
+    assert_select "h2", text: /요약/
+    assert_select "h2", text: /세션 상태 분포/
   end
 
   test "show accepts since/until filters and ignores invalid dates" do

@@ -1,0 +1,17 @@
+<div class="bg-surface rounded-lg shadow p-4">
+  <h2 class="text-base font-semibold text-primary mb-2"><%= t("metrics.sections.header.title") %></h2>
+  <dl class="text-sm text-secondary space-y-1">
+    <div class="flex justify-between gap-3">
+      <dt class="text-tertiary"><%= t("metrics.sections.header.generated_at") %></dt>
+      <dd class="font-mono text-meta"><%= section[:generated_at] %></dd>
+    </div>
+    <div class="flex justify-between gap-3">
+      <dt class="text-tertiary"><%= t("metrics.sections.header.scope") %></dt>
+      <dd class="font-mono text-meta"><%= section[:scope_summary] %></dd>
+    </div>
+    <div class="flex justify-between gap-3">
+      <dt class="text-tertiary"><%= t("metrics.sections.header.sessions_in_scope") %></dt>
+      <dd class="font-medium text-primary tabular-nums"><%= section[:session_count] %></dd>
+    </div>
+  </dl>
+</div>

@@ -775,6 +775,46 @@ ko:
       reset: "초기화"
       scope_summary: "범위 내 세션 %{count}개"
       cli_hint_html: 'CLI에서 동일 리포트를 보려면 <code class="px-1 py-0.5 bg-elev rounded">bin/rails import_review_metrics:report</code> 를 사용하세요.'
+    sections:
+      header:
+        title: "요약"
+        generated_at: "생성 시각"
+        scope: "범위"
+        sessions_in_scope: "범위 내 세션"
+      status_distribution:
+        title: "세션 상태 분포 (status × review_status)"
+        empty: "범위 내 세션이 없습니다."
+        th_status: "status"
+        th_review_status: "review_status"
+        th_count: "건수"
+        th_pct: "비율"
+      rate:
+        empty: "분석할 commit된 세션이 없습니다."
+        sessions_analyzed: "분석된 세션"
+        average: "평균"
+        modification:
+          title: "행 수정률 (distinct transaction / reviewable)"
+          subtitle: "사용자가 검토 중 카테고리·금액·날짜 등을 수정한 row의 distinct 비율."
+          footer: "Issue #187 thresholds: <10% C(auto-post) 후보 / 10–30% B 유지 / >30% A 강화"
+        exclusion:
+          title: "행 제외율 (distinct excluded transaction / candidate)"
+          subtitle: "검토 중 사용자가 제외했거나 중복으로 폐기된 row 비율."
+          footer: "수정률이 낮아도 제외율이 높으면 auto-post 전환 시 잘못된 row가 자동으로 장부에 들어갈 수 있음."
+      import_issues:
+        title: "ImportIssue 분포 (source × type × status)"
+        empty: "범위 내 이슈가 없습니다."
+        th_source: "source"
+        th_type: "type"
+        th_status: "status"
+        th_count: "건수"
+      commit_latency:
+        title: "확정 지연 시간 (completed_at → committed_at)"
+        subtitle: "파싱 완료 후 사용자가 확정하기까지 걸린 시간."
+        empty: "타임스탬프가 있는 commit된 세션이 없습니다."
+        sessions_analyzed: "분석된 세션"
+        average: "평균"
+        p50: "p50"
+        p90: "p90"
 
   # ──────────────────────────────────────────────────
   # ADR-0011 — Transaction 결정 메커니즘 / Mapping 출처
