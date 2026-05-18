@@ -1,40 +1,36 @@
 <div class="max-w-4xl mx-auto">
-  <h1 class="text-2xl font-bold text-primary mb-6">워크스페이스 설정</h1>
+  <h1 class="text-2xl font-bold text-primary mb-6"><%= t("workspaces.settings.title") %></h1>
   <p class="text-secondary mb-8"><%= @workspace.name %></p>
 
   <!-- Basic Settings -->
   <div class="bg-surface shadow rounded-lg p-6 mb-8">
-    <h2 class="text-lg font-semibold text-primary mb-4">기본 설정</h2>
+    <h2 class="text-lg font-semibold text-primary mb-4"><%= t("workspaces.settings.basic_section") %></h2>
 
     <%= form_with model: @workspace, class: 'space-y-4' do |f| %>
       <div>
-        <label class="block text-sm font-medium text-secondary mb-1">워크스페이스 이름</label>
+        <label class="block text-sm font-medium text-secondary mb-1"><%= t("workspaces.settings.name_label") %></label>
         <%= f.text_field :name, class: 'w-full max-w-md rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
       </div>
       <div>
-        <%= f.submit '저장', class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
+        <%= f.submit t("workspaces.settings.save"), class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
       </div>
     <% end %>
   </div>
 
   <!-- AI Settings -->
   <div class="bg-surface shadow rounded-lg p-6 mb-8">
-    <h2 class="text-lg font-semibold text-primary mb-2">AI 사용 설정</h2>
+    <h2 class="text-lg font-semibold text-primary mb-2"><%= t("workspaces.settings.ai_section") %></h2>
     <p class="text-sm text-secondary mb-4">
-      AI 문자 파싱과 스크린샷 파싱을 사용하면 입력한 SMS 본문 또는 명세서 이미지가
-      외부 Gemini API로 전송되어 결제로 변환됩니다. AI 카테고리 추천을 사용하면
-      거래처 이름이 외부 Gemini API로 전송되어 카테고리를 추천받습니다. 비활성화하면
-      해당 입력 경로는 사용할 수 없거나 자동 추천이 동작하지 않습니다.
+      <%= t("workspaces.settings.ai_description") %>
     </p>
 
     <% unless @workspace.ai_consent_acknowledged_at %>
       <div class="rounded-md bg-warning-subtle border border-warning p-3 mb-4 text-sm text-warning">
-        외부 AI 사용에 대한 동의가 아직 기록되지 않았습니다. 아래 체크박스로 동의하면
-        시간 정보가 함께 저장됩니다.
+        <%= t("workspaces.settings.ai_consent_missing") %>
       </div>
     <% else %>
       <p class="text-xs text-tertiary mb-4">
-        외부 AI 사용 동의일: <%= @workspace.ai_consent_acknowledged_at.strftime('%Y-%m-%d %H:%M') %>
+        <%= t("workspaces.settings.ai_consent_at", at: @workspace.ai_consent_acknowledged_at.strftime('%Y-%m-%d %H:%M')) %>
       </p>
     <% end %>
 
@@ -42,22 +38,22 @@
       <label class="flex items-start gap-2">
         <%= f.check_box :ai_text_parsing_enabled, class: 'mt-1' %>
         <span>
-          <span class="font-medium text-primary">AI 문자 파싱 사용</span>
-          <span class="block text-xs text-tertiary">금융 SMS 텍스트를 Gemini Flash로 파싱.</span>
+          <span class="font-medium text-primary"><%= t("workspaces.settings.ai_text_parsing") %></span>
+          <span class="block text-xs text-tertiary"><%= t("workspaces.settings.ai_text_parsing_hint") %></span>
         </span>
       </label>
       <label class="flex items-start gap-2">
         <%= f.check_box :ai_image_parsing_enabled, class: 'mt-1' %>
         <span>
-          <span class="font-medium text-primary">AI 스크린샷 파싱 사용</span>
-          <span class="block text-xs text-tertiary">명세서 이미지를 Gemini Vision으로 파싱.</span>
+          <span class="font-medium text-primary"><%= t("workspaces.settings.ai_image_parsing") %></span>
+          <span class="block text-xs text-tertiary"><%= t("workspaces.settings.ai_image_parsing_hint") %></span>
         </span>
       </label>
       <label class="flex items-start gap-2">
         <%= f.check_box :ai_category_suggestions_enabled, class: 'mt-1' %>
         <span>
-          <span class="font-medium text-primary">AI 카테고리 추천 사용</span>
-          <span class="block text-xs text-tertiary">미분류 결제의 카테고리를 Gemini로 추천.</span>
+          <span class="font-medium text-primary"><%= t("workspaces.settings.ai_category_suggestions") %></span>
+          <span class="block text-xs text-tertiary"><%= t("workspaces.settings.ai_category_suggestions_hint") %></span>
         </span>
       </label>
 
@@ -65,26 +61,26 @@
         <label class="flex items-start gap-2 pt-2">
           <%= check_box_tag "workspace[ai_consent_acknowledged]", "true", false, class: 'mt-1' %>
           <span class="text-sm text-secondary">
-            위 항목에 사용되는 데이터가 외부 AI(Google Gemini)로 전송됨을 이해하고 동의합니다.
+            <%= t("workspaces.settings.ai_consent_label") %>
           </span>
         </label>
       <% end %>
 
       <div>
-        <%= f.submit 'AI 설정 저장', class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
+        <%= f.submit t("workspaces.settings.ai_save"), class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
       </div>
     <% end %>
   </div>
 
   <!-- Members -->
   <div class="bg-surface shadow rounded-lg p-6 mb-8">
-    <h2 class="text-lg font-semibold text-primary mb-4">멤버</h2>
+    <h2 class="text-lg font-semibold text-primary mb-4"><%= t("workspaces.settings.members_section") %></h2>
 
     <table class="min-w-full divide-y divide-divider">
       <thead>
         <tr>
-          <th class="text-left text-xs font-medium text-tertiary uppercase tracking-wider pb-3">멤버</th>
-          <th class="text-left text-xs font-medium text-tertiary uppercase tracking-wider pb-3">역할</th>
+          <th class="text-left text-xs font-medium text-tertiary uppercase tracking-wider pb-3"><%= t("workspaces.settings.th_member") %></th>
+          <th class="text-left text-xs font-medium text-tertiary uppercase tracking-wider pb-3"><%= t("workspaces.settings.th_role") %></th>
           <th class="text-right text-xs font-medium text-tertiary uppercase tracking-wider pb-3"></th>
         </tr>
       </thead>
@@ -110,20 +106,20 @@
             </td>
             <td class="py-3">
               <% if membership.role == 'owner' %>
-                <span class="text-sm text-secondary">소유자</span>
+                <span class="text-sm text-secondary"><%= t("workspaces.settings.owner_label") %></span>
               <% else %>
                 <%= form_with model: [@workspace, membership], url: workspace_membership_path(@workspace, membership), local: true do |f| %>
                   <%= f.select :role,
-                      [['공동 관리자', 'co_owner'], ['편집 가능', 'member_write'], ['읽기 전용', 'member_read']],
+                      [[t("workspaces.settings.role_co_owner"), 'co_owner'], [t("workspaces.settings.role_member_write"), 'member_write'], [t("workspaces.settings.role_member_read"), 'member_read']],
                       {}, { onchange: 'this.form.submit()', class: 'text-sm rounded-md border-divider' } %>
                 <% end %>
               <% end %>
             </td>
             <td class="py-3 text-right">
               <% unless membership.role == 'owner' || membership.user == current_user %>
-                <%= button_to '제거', workspace_membership_path(@workspace, membership),
+                <%= button_to t("workspaces.settings.remove_member"), workspace_membership_path(@workspace, membership),
                     method: :delete,
-                    data: { turbo_confirm: '정말 이 멤버를 제거하시겠습니까?' },
+                    data: { turbo_confirm: t("workspaces.settings.remove_confirm") },
                     class: 'text-danger hover:text-danger text-sm' %>
               <% end %>
             </td>
@@ -135,19 +131,19 @@
 
   <!-- Invitations -->
   <div class="bg-surface shadow rounded-lg p-6 mb-8">
-    <h2 class="text-lg font-semibold text-primary mb-4">초대 링크</h2>
+    <h2 class="text-lg font-semibold text-primary mb-4"><%= t("workspaces.settings.invitation_section") %></h2>
 
     <%= form_with model: [@workspace, WorkspaceInvitation.new], url: workspace_invitations_path(@workspace), local: true, class: 'flex gap-4 mb-4' do |f| %>
       <div>
-        <label class="block text-sm font-medium text-secondary mb-1">만료일 (선택)</label>
+        <label class="block text-sm font-medium text-secondary mb-1"><%= t("workspaces.settings.expires_label") %></label>
         <%= f.datetime_local_field :expires_at, class: 'rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
       </div>
       <div>
-        <label class="block text-sm font-medium text-secondary mb-1">최대 사용 횟수 (선택)</label>
-        <%= f.number_field :max_uses, min: 1, placeholder: '무제한', class: 'w-24 rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
+        <label class="block text-sm font-medium text-secondary mb-1"><%= t("workspaces.settings.max_uses_label") %></label>
+        <%= f.number_field :max_uses, min: 1, placeholder: t("workspaces.settings.max_uses_placeholder"), class: 'w-24 rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
       </div>
       <div class="flex items-end">
-        <%= f.submit '초대 링크 생성', class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
+        <%= f.submit t("workspaces.settings.create_invitation"), class: 'px-4 py-2 bg-action text-action-on rounded-md hover:bg-action-hover cursor-pointer' %>
       </div>
     <% end %>
 
@@ -155,9 +151,9 @@
       <table class="min-w-full divide-y divide-divider">
         <thead>
           <tr>
-            <th class="text-left text-xs font-medium text-tertiary uppercase tracking-wider pb-3">생성자</th>
-            <th class="text-left text-xs font-medium text-tertiary uppercase tracking-wider pb-3">만료</th>
-            <th class="text-left text-xs font-medium text-tertiary uppercase tracking-wider pb-3">사용</th>
+            <th class="text-left text-xs font-medium text-tertiary uppercase tracking-wider pb-3"><%= t("workspaces.settings.th_creator") %></th>
+            <th class="text-left text-xs font-medium text-tertiary uppercase tracking-wider pb-3"><%= t("workspaces.settings.th_expires") %></th>
+            <th class="text-left text-xs font-medium text-tertiary uppercase tracking-wider pb-3"><%= t("workspaces.settings.th_uses") %></th>
             <th class="text-right text-xs font-medium text-tertiary uppercase tracking-wider pb-3"></th>
           </tr>
         </thead>
@@ -165,11 +161,11 @@
           <% @invitations.each do |invitation| %>
             <tr>
               <td class="py-3 text-sm"><%= invitation.invited_by.name || invitation.invited_by.email %></td>
-              <td class="py-3 text-sm"><%= invitation.expires_at ? l(invitation.expires_at, format: :short) : '없음' %></td>
+              <td class="py-3 text-sm"><%= invitation.expires_at ? l(invitation.expires_at, format: :short) : t("workspaces.settings.expires_none") %></td>
               <td class="py-3 text-sm"><%= invitation.current_uses %>/<%= invitation.max_uses || '∞' %></td>
               <td class="py-3 text-right">
-                <button onclick="navigator.clipboard.writeText('<%= join_workspace_url(invitation.token) %>')" class="text-action hover:text-action-hover text-sm mr-2">복사</button>
-                <%= button_to '삭제', workspace_invitation_path(@workspace, invitation),
+                <button onclick="navigator.clipboard.writeText('<%= join_workspace_url(invitation.token) %>')" class="text-action hover:text-action-hover text-sm mr-2"><%= t("workspaces.settings.copy") %></button>
+                <%= button_to t("workspaces.settings.delete"), workspace_invitation_path(@workspace, invitation),
                     method: :delete, class: 'text-danger hover:text-danger text-sm' %>
               </td>
             </tr>
@@ -177,17 +173,17 @@
         </tbody>
       </table>
     <% else %>
-      <p class="text-tertiary text-sm">활성 초대 링크가 없습니다.</p>
+      <p class="text-tertiary text-sm"><%= t("workspaces.settings.no_invitations") %></p>
     <% end %>
   </div>
 
   <!-- Danger Zone -->
   <div class="bg-surface shadow rounded-lg p-6 border-2 border-danger">
-    <h2 class="text-lg font-semibold text-danger mb-4">위험 구역</h2>
-    <p class="text-secondary mb-4">워크스페이스를 삭제하면 모든 결제 내역과 설정이 영구적으로 삭제됩니다.</p>
-    <%= button_to '워크스페이스 삭제', workspace_path(@workspace),
+    <h2 class="text-lg font-semibold text-danger mb-4"><%= t("workspaces.settings.danger_section") %></h2>
+    <p class="text-secondary mb-4"><%= t("workspaces.settings.danger_hint") %></p>
+    <%= button_to t("workspaces.settings.delete_workspace"), workspace_path(@workspace),
         method: :delete,
-        data: { turbo_confirm: "정말 '#{@workspace.name}' 워크스페이스를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다." },
+        data: { turbo_confirm: t("workspaces.settings.delete_confirm", name: @workspace.name) },
         class: 'px-4 py-2 bg-danger text-action-on rounded-md hover:bg-danger' %>
   </div>
 </div>

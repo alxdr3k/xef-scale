@@ -1,7 +1,7 @@
 <div class="max-w-lg mx-auto">
-  <%= link_to '← 워크스페이스로', @workspace, class: 'text-action hover:text-action mb-4 inline-block' %>
+  <%= link_to t("workspaces.edit.back"), @workspace, class: 'text-action hover:text-action mb-4 inline-block' %>
 
-  <h1 class="text-2xl font-bold text-primary mb-6">워크스페이스 수정</h1>
+  <h1 class="text-2xl font-bold text-primary mb-6"><%= t("workspaces.edit.title") %></h1>
 
   <div class="bg-surface rounded-lg shadow p-6">
     <%= form_with model: @workspace, local: true, class: 'space-y-4' do |f| %>
@@ -19,13 +19,13 @@
       <% end %>
 
       <div>
-        <label class="block text-sm font-medium text-secondary mb-1">이름</label>
+        <label class="block text-sm font-medium text-secondary mb-1"><%= t("workspaces.edit.name") %></label>
         <%= f.text_field :name, class: 'block w-full rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
       </div>
 
       <div class="flex justify-end gap-3">
-        <%= link_to '취소', @workspace, class: 'px-4 py-2 text-secondary hover:text-primary' %>
-        <%= f.submit '저장', class: 'bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover cursor-pointer' %>
+        <%= link_to t("workspaces.edit.cancel"), @workspace, class: 'px-4 py-2 text-secondary hover:text-primary' %>
+        <%= f.submit t("workspaces.edit.submit"), class: 'bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover cursor-pointer' %>
       </div>
     <% end %>
   </div>

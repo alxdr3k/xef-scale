@@ -1,7 +1,7 @@
 <div class="max-w-4xl mx-auto">
   <div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-primary">워크스페이스</h1>
-    <%= link_to '+ 새 워크스페이스', new_workspace_path,
+    <h1 class="text-2xl font-bold text-primary"><%= t("workspaces.index.title") %></h1>
+    <%= link_to t("workspaces.index.new"), new_workspace_path,
         class: 'bg-action text-action-on px-4 py-2 rounded-lg hover:bg-action-hover' %>
   </div>
 
@@ -14,12 +14,12 @@
               <%= link_to workspace.name, workspace_path(workspace), class: 'hover:text-action' %>
             </h2>
             <p class="text-sm text-tertiary">
-              소유자: <%= workspace.owner.name || workspace.owner.email %>
-              · 멤버 <%= workspace.members.count %>명
+              <%= t("workspaces.index.owner_prefix") %> <%= workspace.owner.name || workspace.owner.email %>
+              <%= t("workspaces.index.member_count", count: workspace.members.count) %>
             </p>
           </div>
           <% if current_user.admin_of?(workspace) %>
-            <%= link_to '설정', settings_workspace_path(workspace),
+            <%= link_to t("workspaces.index.settings"), settings_workspace_path(workspace),
                 class: 'text-secondary hover:text-primary' %>
           <% end %>
         </div>
@@ -28,8 +28,8 @@
 
     <% if @workspaces.empty? %>
       <div class="bg-surface rounded-lg shadow p-12 text-center">
-        <p class="text-tertiary mb-4">아직 워크스페이스가 없습니다.</p>
-        <%= link_to '첫 워크스페이스 만들기', new_workspace_path,
+        <p class="text-tertiary mb-4"><%= t("workspaces.index.empty_title") %></p>
+        <%= link_to t("workspaces.index.empty_cta"), new_workspace_path,
             class: 'text-action hover:text-action font-medium' %>
       </div>
     <% end %>
