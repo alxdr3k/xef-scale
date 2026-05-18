@@ -133,6 +133,15 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 
 이 우선순위는 시간이 지나면 빠르게 stale 됩니다. 현재 권위 있는 우선순위는 `PRD.md` + 머지된 ADR + 최근 커밋입니다.
 
+### Finalized parsing_session mutation 정책 (Policy A, #220 lock)
+
+`ParsingSession#review_pending?`가 false (committed/rolled_back/discarded) 인 session 의 거래는 다음과 같이 다룬다.
+
+- **Review/import 컨텍스트 mutation 차단.** slideover/inline edit 요청이 `parsing_session_id` 를 함께 보내면 `ReviewsController#reject_if_finalized`, `CategoriesController#new/#create`, `CategoryMappingsController#new/#create` 가 404 로 거부한다.
+- **Ledger 컨텍스트 mutation 허용.** 같은 거래라도 `parsing_session_id` 없이 일반 workspace/ledger 편집으로 들어오는 요청은 허용한다. finalize 는 "검토 워크플로 종료"이지 "장부 row 영구 잠금"이 아니므로, 사용자는 finalize 이후에도 카테고리/메모/설명을 수정할 수 있어야 한다.
+- **회귀 차단.** `categories_controller_test.rb` 의 `slideover with parsing_session_id` 시리즈가 review-context 거부를, `without_parsing_session_id` 시리즈가 ledger 허용을 잠근다.
+- **반대 정책(row 영구 잠금)을 채택하려면** transaction 객체의 `parsing_session.review_pending?` 까지 controller 단에서 검사해야 하며, 이는 본 정책의 변경이다 — 별도 ADR 필요.
+
 ### 가져오기 예외 처리 정책 (2026-05-17, B1~B4 완료)
 
 본 라운드(#188~#192)로 incomplete row → `ImportIssue` 분기와 사용자 수리 흐름이 들어왔습니다. 현재 상태:

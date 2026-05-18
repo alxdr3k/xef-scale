@@ -342,4 +342,59 @@ class CategoriesControllerTest < ActionDispatch::IntegrationTest
       assert_equal initial_category_id, foreign_tx.reload.category_id
     end
   end
+
+  # ────────────────────────────────────────────────────────────────────
+  # #220 Policy A regression coverage.
+  #
+  # Policy lock (PR #219–#231 adversarial review § P1/P2-1):
+  #   finalized parsing_session 은 "review/import 컨텍스트 종료"이지 row 영구
+  #   잠금이 아니다. 따라서:
+  #     - parsing_session_id 가 함께 오는 review-context slideover mutation 은
+  #       finalized session 에서 거부한다 (위 `rejects committed/rolled_back/
+  #       discarded parsing_session` 테스트가 이미 잠금).
+  #     - parsing_session_id 가 없는 일반 ledger slideover mutation 은 허용한다.
+  #       사용자는 finalize 이후에도 장부 거래의 카테고리/메모 등을 고칠 수
+  #       있어야 한다.
+  #
+  # 이 테스트들은 "finalized session 의 transaction 이라도 ledger 컨텍스트에서는
+  # 수정 가능" 정책이 향후 회귀로 깨지지 않도록 한다. parsing_session_id 누락 →
+  # workspace scope 로 fallback 하는 동작은 Codex hotfix A 가 review 컨텍스트
+  # 보존을 위해 의도적으로 남겨둔 정상 경로다.
+  test "create via slideover without parsing_session_id allows ledger edit even if tx belongs to a finalized session" do
+    ps = parsing_sessions(:completed_session)
+    ps.update!(review_status: "committed")
+    tx = @workspace.transactions.create!(
+      date: Date.current, amount: 1000, merchant: "LEDGER_EDIT",
+      status: "committed", parsing_session: ps
+    )
+
+    assert_difference "Category.count", 1 do
+      post workspace_categories_path(@workspace), params: {
+        category: { name: "ledger_edit_category", color: "#000000" },
+        slideover: "true",
+        transaction_id: tx.id
+        # parsing_session_id 의도적으로 누락 — 일반 ledger 편집 경로.
+      }, as: :turbo_stream
+    end
+
+    assert_response :success
+    created = @workspace.categories.find_by(name: "ledger_edit_category")
+    assert_not_nil created, "ledger 컨텍스트에서는 finalized session row 라도 카테고리 변경 허용"
+    assert_equal created.id, tx.reload.category_id,
+                 "Policy A: parsing_session_id 누락 → workspace scope fallback → 거래 카테고리 적용"
+    assert_equal "manual_set", tx.classification_source,
+                 "사용자가 명시적으로 만든 카테고리는 manual_set 으로 기록"
+  end
+
+  test "new slideover without parsing_session_id renders ledger form (no finalized 404)" do
+    # 위 정책의 GET 대응. parsing_session_id 가 없으면 finalized session 여부를
+    # 보지 않으므로 slideover form 이 정상 렌더된다.
+    get new_workspace_category_path(@workspace), params: {
+      slideover: "true",
+      transaction_id: 1
+      # parsing_session_id 의도적으로 누락.
+    }, as: :turbo_stream
+
+    assert_response :success
+  end
 end
