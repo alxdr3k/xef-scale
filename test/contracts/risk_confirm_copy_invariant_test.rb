@@ -88,6 +88,7 @@ class RiskConfirmCopyInvariantTest < ActiveSupport::TestCase
     # Walk the loaded ko backend and find every *_confirm key, then assert
     # it's either in RISK_KEYS or in EXCLUDED_KEYS. This way new destructive
     # copy can't slip past the invariant registry.
+    I18n.backend.send(:init_translations) unless I18n.backend.initialized?
     confirm_keys = collect_confirm_keys(I18n.backend.send(:translations).fetch(:ko))
     known_keys = (RISK_KEYS.map(&:first) + EXCLUDED_KEYS).to_set
 
