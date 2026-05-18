@@ -31,6 +31,10 @@ class CategoriesController < ApplicationController
     if @slideover && params[:parsing_session_id].present?
       @parsing_session = load_review_parsing_session(params[:parsing_session_id])
       raise ActiveRecord::RecordNotFound if @parsing_session.nil?
+      # Phase 5 cleanup (Scope B): finalized session에서 슬라이드오버를 다시 여는
+      # 시도는 거부. ReviewsController#reject_if_finalized 와 같은 의미로 review-
+      # context mutation을 review_pending? 상태로 한정.
+      raise ActiveRecord::RecordNotFound unless @parsing_session.review_pending?
     end
 
     if @slideover
@@ -50,12 +54,18 @@ class CategoriesController < ApplicationController
     if @slideover && params[:parsing_session_id].present?
       @parsing_session = load_review_parsing_session(params[:parsing_session_id])
       raise ActiveRecord::RecordNotFound if @parsing_session.nil?
+      # Phase 5 cleanup (Scope B): finalized session (committed/rolled_back/
+      # discarded) 에서 슬라이드오버를 통한 category 생성 + transaction mutation은
+      # 거부. ReviewsController#reject_if_finalized 와 같은 의미.
+      raise ActiveRecord::RecordNotFound unless @parsing_session.review_pending?
     end
 
     # Validate transaction scope BEFORE persisting the category so a failed
     # scope check does not leave an orphan category in the workspace.
+    # Phase 5 cleanup (Scope B): review-context에서는 session.transactions.pending_review
+    # 로 좁혀서 committed/discarded row도 mutation 대상이 되지 않도록 보장.
     if @slideover && @transaction_id.present?
-      scope = @parsing_session ? @parsing_session.transactions : @workspace.transactions
+      scope = @parsing_session ? @parsing_session.transactions.pending_review : @workspace.transactions
       @transaction = scope.find(@transaction_id) # 404s if the transaction is
       # not part of the chosen scope.
     end
