@@ -133,6 +133,24 @@ API write 경로 (`POST /api/v1/transactions`, `Transaction#source_type = "api"`
 
 이 우선순위는 시간이 지나면 빠르게 stale 됩니다. 현재 권위 있는 우선순위는 `PRD.md` + 머지된 ADR + 최근 커밋입니다.
 
+### i18n + `.html_safe` 정책
+
+Phase 6 migration 으로 HTML 이 필요한 번역이 늘었다 (count span, link interpolation, static rich text). 호출지에서 `.html_safe` 가 흩어지면 XSS audit 부담이 커지므로 다음 정책을 적용한다.
+
+- **키 이름.** `.html_safe` 로 마킹되는 translation 키는 반드시 `_html` 로 끝나야 한다. `test/contracts/html_safe_translation_policy_test.rb` 가 회귀를 잠근다.
+- **사용 컨텍스트.** `_html` 키는 body 컨텍스트 (라벨/span/본문) 에서만 사용한다. attribute (`data-*`, `title`, `aria-*`) 에 박지 않는다 (Rails 가 HTML-safe 로 마킹된 값을 attribute escape 우회 통로로 만들 수 있음 — `parsing_sessions.note_panel.amount` 가 참조 케이스).
+- **interpolation 내용.** 현재 모든 `_html` 키 interpolation 은 (1) integer count, (2) static span, (3) `link_to` 같은 Rails helper output. user input 이 흘러오는 경로는 없다. 새 interpolation 을 추가할 때는 source 가 1·2·3 중 하나라는 사실을 PR 설명에 명시한다.
+- **확장 시.** body context rich text 가 더 복잡해지면 `safe_t_html` / `safe_join` / `content_tag` 헬퍼로 통일하는 것이 다음 단계. 지금은 호출 수가 작아 호출지 `.html_safe` 를 유지한다.
+
+### Finalized parsing_session mutation 정책 (Policy A, #220 lock)
+
+`ParsingSession#review_pending?`가 false (committed/rolled_back/discarded) 인 session 의 거래는 다음과 같이 다룬다.
+
+- **Review/import 컨텍스트 mutation 차단.** slideover/inline edit 요청이 `parsing_session_id` 를 함께 보내면 `ReviewsController#reject_if_finalized`, `CategoriesController#new/#create`, `CategoryMappingsController#new/#create` 가 404 로 거부한다.
+- **Ledger 컨텍스트 mutation 허용.** 같은 거래라도 `parsing_session_id` 없이 일반 workspace/ledger 편집으로 들어오는 요청은 허용한다. finalize 는 "검토 워크플로 종료"이지 "장부 row 영구 잠금"이 아니므로, 사용자는 finalize 이후에도 카테고리/메모/설명을 수정할 수 있어야 한다.
+- **회귀 차단.** `categories_controller_test.rb` 의 `slideover with parsing_session_id` 시리즈가 review-context 거부를, `without_parsing_session_id` 시리즈가 ledger 허용을 잠근다.
+- **반대 정책(row 영구 잠금)을 채택하려면** transaction 객체의 `parsing_session.review_pending?` 까지 controller 단에서 검사해야 하며, 이는 본 정책의 변경이다 — 별도 ADR 필요.
+
 ### 가져오기 예외 처리 정책 (2026-05-17, B1~B4 완료)
 
 본 라운드(#188~#192)로 incomplete row → `ImportIssue` 분기와 사용자 수리 흐름이 들어왔습니다. 현재 상태:

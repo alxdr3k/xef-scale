@@ -11,6 +11,13 @@ export default class extends Controller {
     return document.getElementById("edit-modal")
   }
 
+  // i18n strings live on the modal element (data-i18n-* attrs from the partial).
+  // The controller mounts on individual trigger buttons, so these cannot be
+  // Stimulus values on `this` — read them from the shared modal element.
+  get i18n() {
+    return this.modalElement?.dataset || {}
+  }
+
   get contentElement() {
     return document.querySelector('[data-edit-modal-target="content"]')
   }
@@ -34,7 +41,7 @@ export default class extends Controller {
 
     // Update modal title based on action type
     if (this.titleElement) {
-      this.titleElement.textContent = this.isNewTransaction ? "결제 추가" : "결제 수정"
+      this.titleElement.textContent = this.isNewTransaction ? this.i18n.i18nTitleNew : this.i18n.i18nTitleEdit
     }
 
     // Show modal
@@ -81,7 +88,7 @@ export default class extends Controller {
           const label = document.createElement("label")
           label.htmlFor = "allowance"
           label.className = "ml-2 block text-sm text-primary"
-          label.textContent = "💰 용돈으로 표시"
+          label.textContent = this.i18n.i18nAllowanceToggle
 
           allowanceDiv.appendChild(checkbox)
           allowanceDiv.appendChild(label)
@@ -95,7 +102,7 @@ export default class extends Controller {
       console.error("Error loading form:", error)
       const errorDiv = document.createElement("div")
       errorDiv.className = "text-danger text-center py-4"
-      errorDiv.textContent = "폼을 불러오는데 실패했습니다."
+      errorDiv.textContent = this.i18n.i18nLoadError
       this.contentElement.textContent = ""
       this.contentElement.appendChild(errorDiv)
     }
@@ -106,7 +113,7 @@ export default class extends Controller {
     document.body.style.overflow = ""
     const loadingDiv = document.createElement("div")
     loadingDiv.className = "text-center py-8 text-tertiary"
-    loadingDiv.textContent = "로딩 중..."
+    loadingDiv.textContent = this.i18n.i18nLoading
     this.contentElement.textContent = ""
     this.contentElement.appendChild(loadingDiv)
   }

@@ -1,7 +1,21 @@
 <div class="max-w-7xl mx-auto"
      data-controller="bulk-select duplicate-modal note-panel comment-panel"
      data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick click@document->comment-panel#handleOutsideClick"
-     data-duplicate-modal-url-value="<%= duplicates_workspace_transactions_path(@workspace) %>">
+     data-duplicate-modal-url-value="<%= duplicates_workspace_transactions_path(@workspace) %>"
+     data-duplicate-modal-registered-prefix-value="<%= t("transactions.duplicate_modal.registered_prefix") %>"
+     data-duplicate-modal-field-label-date-value="<%= t("transactions.duplicate_modal.field_label_date") %>"
+     data-duplicate-modal-field-label-merchant-value="<%= t("transactions.duplicate_modal.field_label_merchant") %>"
+     data-duplicate-modal-field-label-description-value="<%= t("transactions.duplicate_modal.field_label_description") %>"
+     data-duplicate-modal-field-label-amount-value="<%= t("transactions.duplicate_modal.field_label_amount") %>"
+     data-duplicate-modal-field-label-category-value="<%= t("transactions.duplicate_modal.field_label_category") %>"
+     data-duplicate-modal-field-label-notes-value="<%= t("transactions.duplicate_modal.field_label_notes") %>"
+     data-duplicate-modal-uncategorized-option-value="<%= t("transactions.duplicate_modal.uncategorized_option") %>"
+     data-duplicate-modal-summary-title-value="<%= t("transactions.duplicate_modal.summary_title") %>"
+     data-duplicate-modal-summary-count-value="<%= t("transactions.duplicate_modal.summary_count") %>"
+     data-duplicate-modal-summary-stat-deleted-value="<%= t("transactions.duplicate_modal.summary_stat_deleted") %>"
+     data-duplicate-modal-summary-stat-kept-value="<%= t("transactions.duplicate_modal.summary_stat_kept") %>"
+     data-duplicate-modal-summary-stat-skipped-value="<%= t("transactions.duplicate_modal.summary_stat_skipped") %>"
+     data-duplicate-modal-summary-close-value="<%= t("transactions.duplicate_modal.summary_close") %>">
   <div class="flex justify-between items-center mb-6">
     <div>
       <h1 class="text-2xl font-bold text-primary"><%= t("transactions.index.title") %></h1>
@@ -91,7 +105,7 @@
     <%# 선택 상태 %>
     <div data-bulk-select-target="toolbarSelected" class="hidden flex items-center gap-1">
       <span class="text-sm font-medium text-action mr-2">
-        <%= t("transactions.index.bulk_selected_count", count: '<span data-bulk-select-target="toolbarCount">0</span>').html_safe %>
+        <%= t("transactions.index.bulk_selected_count_html", count: '<span data-bulk-select-target="toolbarCount">0</span>').html_safe %>
       </span>
 
       <div class="w-px h-5 bg-divider"></div>
