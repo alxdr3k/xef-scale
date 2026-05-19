@@ -13,6 +13,15 @@ export default class extends Controller {
     "toolbar", "toolbarDefault", "toolbarSelected",
     "toolbarCount", "toolbarCheckbox"
   ]
+  static values = {
+    // 사용자 가시 텍스트는 view에서 t() 결과를 data-bulk-select-*-value로 주입.
+    // confirm template은 `__COUNT__` 자리에 선택 건수를 replace한다 — Rails I18n
+    // %{count} 와 의도적으로 분리 (PR #242의 template naming 패턴).
+    deletePaymentConfirmTemplate: String,
+    discardUploadConfirmTemplate: String,
+    selectAllLabel: String,
+    deselectAllLabel: String
+  }
 
   connect() {
     this.selectedIds = new Set()
@@ -118,13 +127,15 @@ export default class extends Controller {
   // 일괄 액션
   deleteSelected() {
     if (this.selectedIds.size === 0) return
-    if (!confirm(`선택한 ${this.selectedIds.size}개의 결제를 삭제하시겠습니까?`)) return
+    const prompt = this.deletePaymentConfirmTemplateValue.replace("__COUNT__", this.selectedIds.size)
+    if (!confirm(prompt)) return
     this.submitBulkAction("delete")
   }
 
   discardSelected() {
     if (this.selectedIds.size === 0) return
-    if (!confirm(`선택한 ${this.selectedIds.size}개의 업로드를 취소하시겠습니까?`)) return
+    const prompt = this.discardUploadConfirmTemplateValue.replace("__COUNT__", this.selectedIds.size)
+    if (!confirm(prompt)) return
     this.submitBulkAction("discard")
   }
 
@@ -238,7 +249,7 @@ export default class extends Controller {
 
     // 전체 선택 라벨 업데이트 (하위 호환)
     if (this.hasSelectAllLabelTarget) {
-      this.selectAllLabelTarget.textContent = allSelected ? "전체 해제" : "전체 선택"
+      this.selectAllLabelTarget.textContent = allSelected ? this.deselectAllLabelValue : this.selectAllLabelValue
     }
   }
 }

@@ -2,6 +2,10 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["panel", "context", "commentsList", "commentsContainer", "emptyState"]
+  static values = {
+    // view에서 data-comment-panel-load-error-value로 t() 주입.
+    loadError: String
+  }
 
   _url = null
   _transactionId = null
@@ -128,7 +132,7 @@ export default class extends Controller {
       this.commentsListTarget.scrollTop = this.commentsListTarget.scrollHeight
     })
     .catch(() => {
-      this.commentsContainerTarget.textContent = "댓글을 불러올 수 없습니다"
+      this.commentsContainerTarget.textContent = this.loadErrorValue
       this.commentsContainerTarget.className = "text-sm text-danger text-center py-4"
     })
   }

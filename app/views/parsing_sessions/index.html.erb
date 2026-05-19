@@ -1,4 +1,9 @@
-<div class="max-w-4xl mx-auto" data-controller="bulk-select note-panel" data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick">
+<div class="max-w-4xl mx-auto"
+     data-controller="bulk-select note-panel"
+     data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick"
+     data-bulk-select-discard-upload-confirm-template-value="<%= t("common.js_bulk.discard_upload_confirm_template") %>"
+     data-bulk-select-select-all-label-value="<%= t("common.js_bulk.select_all_label") %>"
+     data-bulk-select-deselect-all-label-value="<%= t("common.js_bulk.deselect_all_label") %>">
   <%# Phase 3.3 (ADR-0004 / preflight §3.1): 입력 폼은 검토함의 "+ 새로 가져오기"
       시트로 이동했다. 본 페이지는 *입력 기록*만 노출한다. parsing_sessions/index
       라우트는 북마크·외부 링크 호환을 위해 유지 (ADR-0004 §"라우트 매핑")하지만,

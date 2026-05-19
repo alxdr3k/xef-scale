@@ -1,7 +1,12 @@
 <%# Phase 5 slice 3: review-keyboard 컨트롤러로 j/k row navigation (ADR-0008 / ui-redesign-plan §3.3). %>
 <div class="max-w-7xl mx-auto"
      data-controller="bulk-select note-panel comment-panel review-keyboard"
-     data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick click@document->comment-panel#handleOutsideClick keydown@window->review-keyboard#handleKey">
+     data-action="click@document->bulk-select#closeMore click@document->note-panel#handleOutsideClick click@document->comment-panel#handleOutsideClick keydown@window->review-keyboard#handleKey"
+     data-bulk-select-delete-payment-confirm-template-value="<%= t("common.js_bulk.delete_payment_confirm_template") %>"
+     data-bulk-select-select-all-label-value="<%= t("common.js_bulk.select_all_label") %>"
+     data-bulk-select-deselect-all-label-value="<%= t("common.js_bulk.deselect_all_label") %>"
+     data-comment-panel-load-error-value="<%= t("common.js_comment.load_error") %>"
+     data-review-keyboard-exclude-confirm-value="<%= t("common.js_review_keyboard.exclude_confirm") %>">
   <%= link_to t("reviews.show.back"), workspace_parsing_sessions_path(@workspace),
       class: 'text-action hover:text-action-hover mb-4 inline-block' %>
 

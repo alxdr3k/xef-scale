@@ -2,6 +2,12 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["dropdown", "chevron", "currentDisplay", "yearDisplay", "currentYear", "currentMonth", "basePath"]
+  static values = {
+    // "년" 같은 한국어 접미사도 view에서 t() 결과로 주입한다. defaultValue 폴백으로
+    // 마운트 view가 누락해도 깨지진 않게 — 본 컨트롤러는 i18n-allow가 아닌
+    // 사용자 가시 텍스트를 직접 박지 않는다.
+    yearSuffix: { type: String, default: "" }
+  }
 
   connect() {
     this.year = parseInt(this.currentYearTarget.value)
@@ -63,7 +69,7 @@ export default class extends Controller {
   }
 
   updateYearDisplay() {
-    this.yearDisplayTarget.textContent = `${this.year}년`
+    this.yearDisplayTarget.textContent = `${this.year}${this.yearSuffixValue}`
   }
 
   navigate() {

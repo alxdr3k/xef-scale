@@ -4,7 +4,9 @@ export default class extends Controller {
   static targets = ["dropdown", "chevron", "currentDisplay", "rangeDisplay", "yearGrid", "basePath"]
   static values = {
     selectedYear: Number,
-    startYear: Number
+    startYear: Number,
+    // "년" 한국어 접미사. view에서 t() 주입.
+    yearSuffix: { type: String, default: "" }
   }
 
   connect() {
@@ -68,7 +70,8 @@ export default class extends Controller {
 
   updateGrid() {
     const endYear = this.startYear + 11
-    this.rangeDisplayTarget.textContent = `${this.startYear}년 - ${endYear}년`
+    const suffix = this.yearSuffixValue
+    this.rangeDisplayTarget.textContent = `${this.startYear}${suffix} - ${endYear}${suffix}`
 
     // Update year buttons
     const buttons = this.yearGridTarget.querySelectorAll('button[data-year]')
@@ -76,7 +79,7 @@ export default class extends Controller {
 
     buttons.forEach((button) => {
       button.dataset.year = yearIndex
-      button.textContent = `${yearIndex}년`
+      button.textContent = `${yearIndex}${suffix}`
 
       // Phase 5 cleanup (Scope C-2): semantic 토큰. selected → filled action,
       // inactive → secondary 본문 색 + elev hover (PR #217/#218 가이드).

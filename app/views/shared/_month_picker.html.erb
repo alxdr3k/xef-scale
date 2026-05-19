@@ -1,4 +1,6 @@
-<div data-controller="month-picker" class="relative inline-block">
+<div data-controller="month-picker"
+     data-month-picker-year-suffix-value="<%= t("common.year_suffix") %>"
+     class="relative inline-block">
   <!-- Current Month Display (clickable) -->
   <button type="button"
           data-action="click->month-picker#toggle"
