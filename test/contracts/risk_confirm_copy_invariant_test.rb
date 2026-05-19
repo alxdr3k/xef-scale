@@ -113,7 +113,9 @@ class RiskConfirmCopyInvariantTest < ActiveSupport::TestCase
     "workspace_memberships.index.remove_confirm",   # single member remove (workspace_more page)
     "workspace_invitations.index.delete_confirm",   # single invitation remove — 낮은 위험
     "workspaces.settings.remove_confirm",           # settings 페이지 단일 멤버 제거
-    "comments.comment.delete_confirm"               # single comment delete — 낮은 위험 (Phase 6-9)
+    "comments.comment.delete_confirm",              # single comment delete — 낮은 위험 (Phase 6-9)
+    "common.js_comment.delete_confirm",             # JS Stimulus comment#delete — 낮은 위험 (Phase 6 residual JS)
+    "common.js_review_keyboard.exclude_confirm"     # 검토함 d-key 단일 row 제외 — 낮은 위험 + 되돌리기 가능 (재포함)
   ].freeze
 
   private

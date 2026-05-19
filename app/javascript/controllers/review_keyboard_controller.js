@@ -16,7 +16,11 @@ import { Controller } from "@hotwired/stimulus"
 //
 // 추가 단축키(x=duplicate)는 후속 슬라이스.
 export default class extends Controller {
-  static values = { rowSelector: { type: String, default: "tr[data-transaction-id]" } }
+  static values = {
+    rowSelector: { type: String, default: "tr[data-transaction-id]" },
+    // view에서 t() 결과를 data-review-keyboard-exclude-confirm-value로 주입.
+    excludeConfirm: String
+  }
   static targets = ["commitForm", "excludeForm", "helpBackdrop", "helpDialog"]
 
   handleKey(event) {
@@ -150,7 +154,7 @@ export default class extends Controller {
     if (!id) return
 
     // Lightweight guard — 실수로 d를 누른 사용자에게 한 번 더 확인.
-    if (!window.confirm("이 거래를 이번 가져오기에서 제외하시겠습니까?")) return
+    if (!window.confirm(this.excludeConfirmValue)) return
 
     const form = this.excludeFormTarget
     const idsInput = form.querySelector("input[name='transaction_ids']")

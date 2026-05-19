@@ -2,6 +2,10 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["display", "editor", "editInput"]
+  static values = {
+    // 사용자 가시 텍스트는 view에서 t() 결과를 data-comment-*-value로 주입.
+    deleteConfirm: String
+  }
 
   edit() {
     this.displayTarget.classList.add("hidden")
@@ -49,7 +53,7 @@ export default class extends Controller {
     const button = event.currentTarget
     const url = button.dataset.commentUrlValue
 
-    if (!url || !confirm("댓글을 삭제하시겠습니까?")) return
+    if (!url || !confirm(this.deleteConfirmValue)) return
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
 

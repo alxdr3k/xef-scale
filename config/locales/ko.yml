@@ -54,6 +54,21 @@ ko:
     "no": "아니요"
     optional: "선택"
     required: "필수"
+    year_suffix: "년"
+    # JS Stimulus controllers (bulk_select / review_keyboard / comment / comment_panel /
+    # month_picker / year_picker) 가 view에서 data-* attribute로 주입받는 사용자
+    # 가시 텍스트. `__COUNT__` 같은 placeholder는 JS replace() 패턴이며 Rails
+    # interpolation과 의도적으로 분리한다 (PR #242의 summary_count_template 패턴).
+    js_bulk:
+      delete_payment_confirm_template: "선택한 __COUNT__개의 결제를 삭제하시겠습니까?"
+      discard_upload_confirm_template: "선택한 __COUNT__개의 업로드를 취소하시겠습니까?"
+      select_all_label: "전체 선택"
+      deselect_all_label: "전체 해제"
+    js_review_keyboard:
+      exclude_confirm: "이 거래를 이번 가져오기에서 제외하시겠습니까?"
+    js_comment:
+      delete_confirm: "댓글을 삭제하시겠습니까?"
+      load_error: "댓글을 불러올 수 없습니다"
 
   # ──────────────────────────────────────────────────
   # CTA 사전 (synthesis 8.1)

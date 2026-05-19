@@ -63,12 +63,6 @@ class I18nHardcodedKoreanContractTest < ActiveSupport::TestCase
     app/controllers/workspace_memberships_controller.rb
     app/controllers/workspaces_controller.rb
     app/helpers/application_helper.rb
-    app/javascript/controllers/bulk_select_controller.js
-    app/javascript/controllers/comment_controller.js
-    app/javascript/controllers/comment_panel_controller.js
-    app/javascript/controllers/month_picker_controller.js
-    app/javascript/controllers/review_keyboard_controller.js
-    app/javascript/controllers/year_picker_controller.js
     app/jobs/file_parsing_job.rb
     app/views/pages/landing.html.erb
     app/views/shared/_context_header.html.erb
