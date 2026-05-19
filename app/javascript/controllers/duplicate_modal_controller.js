@@ -16,7 +16,11 @@ export default class extends Controller {
     fieldLabelNotes: String,
     uncategorizedOption: String,
     summaryTitle: String,
-    summaryCount: String,
+    // Stimulus value carries a template string ("총 __COUNT__개 ...") that JS
+    // fills with the real count via replace(). Name 끝에 Template을 붙여 "이건
+    // Rails interpolated final string 이 아니라 JS placeholder 가 남은 template
+    // 이다" 라는 의도를 호출지에서 즉시 드러낸다. 동작은 동일.
+    summaryCountTemplate: String,
     summaryStatDeleted: String,
     summaryStatKept: String,
     summaryStatSkipped: String,
@@ -661,7 +665,7 @@ export default class extends Controller {
 
     const p = document.createElement("p")
     p.className = "text-secondary mb-6"
-    p.textContent = this.summaryCountValue.replace("__COUNT__", this.pairs.length)
+    p.textContent = this.summaryCountTemplateValue.replace("__COUNT__", this.pairs.length)
 
     const statsGrid = document.createElement("div")
     statsGrid.className = "grid grid-cols-3 gap-4 max-w-md mx-auto mb-6"
