@@ -661,7 +661,7 @@ export default class extends Controller {
 
     const p = document.createElement("p")
     p.className = "text-secondary mb-6"
-    p.textContent = this.summaryCountValue.replace("%{count}", this.pairs.length)
+    p.textContent = this.summaryCountValue.replace("__COUNT__", this.pairs.length)
 
     const statsGrid = document.createElement("div")
     statsGrid.className = "grid grid-cols-3 gap-4 max-w-md mx-auto mb-6"

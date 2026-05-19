@@ -91,8 +91,16 @@ class ImportReviewMetricsReport
     { type: :import_issues, rows: formatted }
   end
 
-  # Phase 7-3: classification_source 분포 — 4 분류 메커니즘 비율 + AI 수용률 proxy.
-  # `gemini_batch` 비율이 곧 사용자가 AI 추천을 *변경 없이* commit 한 비율 (수용률).
+  # Phase 7-3: classification_source 분포 — 4 분류 메커니즘 비율 + Gemini 최종 분류 비율.
+  #
+  # `gemini_final_share_pct`는 committed reviewable 거래 중 최종 classification_source가
+  # `gemini_batch`로 남아 있는 비율이다. "AI 수용률"이 아니다. 이유:
+  #   - 사용자가 AI 추천을 *보고 수락*했다는 이벤트를 추적하지 않는다.
+  #   - Gemini가 만든 mapping (FileParsingJob#categorize_with_gemini_batch에서
+  #     CategoryMapping.find_or_create_by!)은 후속 거래를 `mapping_match`로 잡으므로
+  #     AI 학습 효과가 metric에서 빠진다.
+  # 정확한 수용률은 추천 시점 vs commit 시점 snapshot 비교가 필요하다 (별도 슬라이스).
+  #
   # 분모는 committed sessions의 reviewable transaction 중 classification_source 가 *set 된* 거래.
   # nil/blank source 는 분류되지 않은 거래 (예: 직접 입력 후 카테고리 미선택) 로 별도 집계.
   def classification_source_distribution_section
@@ -115,13 +123,13 @@ class ImportReviewMetricsReport
     end
 
     gemini_count = counts["gemini_batch"].to_i
-    ai_acceptance_pct = total.zero? ? nil : (100.0 * gemini_count / total).round(1)
+    gemini_final_share_pct = total.zero? ? nil : (100.0 * gemini_count / total).round(1)
 
     {
       type: :classification_source_distribution,
       total: total,
       rows: rows,
-      ai_acceptance_pct: ai_acceptance_pct
+      gemini_final_share_pct: gemini_final_share_pct
     }
   end
 
@@ -135,9 +143,9 @@ class ImportReviewMetricsReport
       label = (row[:source] || "(none)").ljust(16)
       lines << "  #{label} #{row[:count].to_s.rjust(6)}  (#{row[:pct]}%)"
     end
-    if section[:ai_acceptance_pct]
-      lines << "  AI acceptance rate (gemini_batch / total): #{section[:ai_acceptance_pct]}%"
-      lines << "  사용자가 AI 추천 카테고리를 변경 없이 commit한 비율 — proxy. 정확한 수용률은 추천 시점 vs commit 시점 비교가 필요."
+    if section[:gemini_final_share_pct]
+      lines << "  Gemini final share (gemini_batch / total): #{section[:gemini_final_share_pct]}%"
+      lines << "  최종 classification_source가 gemini_batch인 비율 — 수용률 아님. Gemini가 만든 mapping은 후속 거래에서 mapping_match로 집계됨."
     end
     lines.join("\n")
   end

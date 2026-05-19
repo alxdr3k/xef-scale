@@ -71,11 +71,7 @@ class I18nHardcodedKoreanContractTest < ActiveSupport::TestCase
     app/javascript/controllers/year_picker_controller.js
     app/jobs/file_parsing_job.rb
     app/views/pages/landing.html.erb
-    app/views/reviews/update_transaction.turbo_stream.erb
     app/views/shared/_context_header.html.erb
-    app/views/shared/_variance_card.html.erb
-    app/views/shared/transaction_cells/_amount_cell.html.erb
-    app/views/transactions/toggle_allowance.turbo_stream.erb
   ].freeze
 
   SURFACES = [
@@ -92,7 +88,13 @@ class I18nHardcodedKoreanContractTest < ActiveSupport::TestCase
   def strip_comments(content, ext)
     case ext
     when ".erb"
-      content.gsub(/<%#.*?%>/m, "").gsub(/<!--.*?-->/m, "")
+      # ERB 코멘트 + HTML 코멘트 + ERB 스크립트릿(`<% ... %>`) 내부의 Ruby 라인
+      # 코멘트까지 제거. partial 안 Ruby 코멘트가 user-visible 한글로 잘못 잡히는
+      # false positive(예: `_variance_card.html.erb`의 ADR 주석)를 차단한다.
+      content
+        .gsub(/<%#.*?%>/m, "")
+        .gsub(/<!--.*?-->/m, "")
+        .gsub(/<%[-=]?.*?%>/m) { |scriptlet| scriptlet.gsub(/^\s*#.*$/, "") }
     when ".js"
       content.gsub(/\/\/.*$/, "").gsub(%r{/\*.*?\*/}m, "")
     when ".rb"
@@ -101,6 +103,19 @@ class I18nHardcodedKoreanContractTest < ActiveSupport::TestCase
     else
       content
     end
+  end
+
+  # 라인 단위 면제 마커가 들어간 라인을 raw에서 함께 비운다. stale baseline 검사가
+  # `i18n-allow`로 허용된 한 줄짜리 enum 비교 같은 잔여물을 "아직 한글 있음"으로
+  # 오인하지 않도록 한다.
+  def apply_allow_marker(raw, stripped)
+    return stripped unless raw.include?(ALLOW_LINE_MARKER)
+    raw_lines = raw.lines
+    stripped_lines = stripped.lines
+    stripped_lines.each_with_index.map do |line, i|
+      raw_line = raw_lines[i] || ""
+      raw_line.include?(ALLOW_LINE_MARKER) ? line.gsub(KOREAN_RE, "") : line
+    end.join
   end
 
   def line_for_offset(text, offset)
@@ -178,9 +193,9 @@ class I18nHardcodedKoreanContractTest < ActiveSupport::TestCase
       end
       raw = File.read(full)
       ext = File.extname(full)
-      stripped = strip_comments(raw, ext)
+      stripped = apply_allow_marker(raw, strip_comments(raw, ext))
       unless stripped.match?(KOREAN_RE)
-        stale << "#{rel} — no Korean literals left, baseline entry obsolete"
+        stale << "#{rel} — no Korean literals left (after comment/i18n-allow masking), baseline entry obsolete"
       end
     end
 

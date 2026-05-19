@@ -5,12 +5,12 @@
   <% if section[:total].zero? %>
     <p class="text-sm text-tertiary"><%= t("metrics.sections.classification_source.empty") %></p>
   <% else %>
-    <%# AI 수용률 highlight stat %>
-    <% if section[:ai_acceptance_pct] %>
+    <%# Gemini 최종 분류 비율 — "수용률"이 아님. 이름과 hint 둘 다 정직하게. %>
+    <% if section[:gemini_final_share_pct] %>
       <div class="bg-action-subtle rounded p-3 mb-3">
-        <div class="text-xs text-tertiary mb-1"><%= t("metrics.sections.classification_source.ai_acceptance_label") %></div>
-        <div class="text-2xl font-bold text-action tabular-nums"><%= section[:ai_acceptance_pct] %>%</div>
-        <p class="text-meta text-tertiary mt-1"><%= t("metrics.sections.classification_source.ai_acceptance_hint") %></p>
+        <div class="text-xs text-tertiary mb-1"><%= t("metrics.sections.classification_source.gemini_final_share_label") %></div>
+        <div class="text-2xl font-bold text-action tabular-nums"><%= section[:gemini_final_share_pct] %>%</div>
+        <p class="text-meta text-tertiary mt-1"><%= t("metrics.sections.classification_source.gemini_final_share_hint") %></p>
       </div>
     <% end %>
 
