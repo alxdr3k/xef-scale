@@ -45,6 +45,32 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
     \b
   /x
 
+  # GPT 적대적 리뷰 P1-5 (2026-05-19): black/white는 숫자 suffix가 없어서
+  # PALETTE_UTILITY_RE를 우회한다. 결과적으로 `bg-black/40`, `bg-black/50`,
+  # `ring-black ring-opacity-5` 같은 modal overlay·dropdown ring이 시맨틱 토큰
+  # 계약 밖에서 다크 모드 회귀를 만든다. 별도 regex로 잡는다.
+  #
+  # 매칭:
+  #   - bg-black, text-white, ring-black, border-white 등 (단독 utility)
+  #   - bg-black/40, ring-black/5 (opacity slash suffix)
+  #   - ring-opacity-N, divide-opacity-N (v3 legacy opacity utility — black/white 와
+  #     함께 쓰이는 패턴이므로 같이 차단)
+  # 매칭 제외:
+  #   - PATH_ALLOWLIST의 `:all` 파일 (devise/landing/color_picker — 의도된 fixed)
+  BLACK_WHITE_UTILITY_RE = /
+    \b
+    (?:(?:hover|focus|focus-visible|active|disabled|group-hover|peer-focus|dark|sm|md|lg|xl|2xl):)*
+    (?:
+      (?:bg|text|border|ring|divide|from|to|via|stroke|fill|outline|placeholder|caret|accent|decoration|shadow)
+      -
+      (?:black|white)
+      (?:\/\d{1,3})?
+      |
+      (?:ring|divide|border|bg|text)-opacity-\d{1,3}
+    )
+    \b
+  /x
+
   # bg-action-subtle0, text-action-on0, bg-info-subtle0 등 sed truncation 흔적.
   TRUNCATION_ARTIFACT_RE = /
     \b
@@ -167,6 +193,22 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
           - text-blue-* → text-info/bg-info-subtle
           - text-violet-*/text-purple-* → text-ai/text-category-7
         See `app/assets/stylesheets/application.tailwind.css` for full token list.
+      MSG
+    end
+
+    # black/white utility (GPT 적대적 리뷰 P1-5 blind spot 보강)
+    if (m = stripped.match(BLACK_WHITE_UTILITY_RE))
+      line = line_for_offset(stripped, m.begin(0))
+      flunk(<<~MSG)
+        #{rel_path}:#{line} — raw black/white utility "#{m[0]}" found.
+        ADR-0008 semantic token 계약을 우회한다 (modal overlay·dropdown ring 회귀 원인).
+        교체 예시:
+          - bg-black/40, bg-black/50 (modal backdrop) → bg-overlay
+          - ring-1 ring-black ring-opacity-5 (dropdown ring) → ring-1 ring-divider
+          - text-white on bg-action 등 → text-action-on
+          - bg-white card → bg-surface
+        의도된 고정색이 필요한 페이지(landing/devise/color_picker)는 PATH_ALLOWLIST = :all.
+        라인 단위 면제가 필요하면 `#{ALLOW_LINE_MARKER}` 코멘트 마커를 같은 라인에 추가.
       MSG
     end
 
