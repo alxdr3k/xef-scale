@@ -25,7 +25,14 @@ class ReviewsController < ApplicationController
   # - 정식 per-tab pagy 도입은 Phase 3.3 검토함 화면 PR에서.
   INDEX_LIMIT = 50
 
+  # GPT 적대적 리뷰 §2.7 (P0 #6) — calendar quick filter 등 외부 진입로가
+  # 특정 탭을 미리 선택할 수 있도록 query param ?tab=sessions|duplicates 를
+  # 수용. 값 검증으로 자유 입력 차단 (default: sessions).
+  INDEX_VALID_TABS = %w[sessions duplicates].freeze
+
   def index
+    @initial_tab = INDEX_VALID_TABS.include?(params[:tab]) ? params[:tab] : "sessions"
+
     sessions_scope = @workspace.parsing_sessions.needs_review
     @pending_sessions_count = sessions_scope.count
     @pending_sessions = sessions_scope
@@ -87,6 +94,27 @@ class ReviewsController < ApplicationController
                                                )
                                                .order(:created_at)
     @open_import_issues = @parsing_session.open_import_issues.to_a
+
+    # GPT 적대적 리뷰 §2.6.1 (P0 #5) — X11 commit_locked UI 게이트.
+    # 서버는 이미 has_unresolved_duplicates? / has_open_import_issues? 로
+    # commit 을 redirect 차단하지만, view 는 버튼을 무조건 활성으로 렌더해
+    # "클릭 후 거부" 형태였다. 의도된 마찰은 *비활성 + 사유 명시* 형태가
+    # 맞으므로 ivar로 컨트롤러에서 미리 판정한다.
+    #
+    # Codex PR #248 P1: server predicate (`has_open_import_issues?`)는
+    # `missing_required_fields` 타입만 commit 을 차단한다 — `ambiguous_duplicate`
+    # 는 사용자 해결 UI 가 아직 없어 commit 을 막지 않는다 (parsing_session.rb 본 메서드 주석 참조).
+    # UI 게이트도 동일 predicate 를 따라야 writable 사용자가 ambiguous_duplicate
+    # 만 남은 commitable 세션에서 UI-only 로 갇히지 않는다.
+    @commit_block_reasons = []
+    if (dup_count = @duplicate_confirmations.size).positive?
+      @commit_block_reasons << { kind: :duplicates, count: dup_count }
+    end
+    blocking_issue_count = @open_import_issues.count(&:missing_required_fields?)
+    if blocking_issue_count.positive?
+      @commit_block_reasons << { kind: :issues, count: blocking_issue_count }
+    end
+    @commit_blocked = @commit_block_reasons.any?
   end
 
   def commit

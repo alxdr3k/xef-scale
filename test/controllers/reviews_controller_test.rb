@@ -406,6 +406,105 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
 
   # ADR-0004 §"필수" — reviews#index callback fix + needs_review scope + cross-tenant safe duplicate scoping.
 
+  # GPT 적대적 리뷰 §2.6.1 (P0 #5) — commit_blocked UI 게이트.
+  # Codex PR #248 P2-a: blocked 일 때 form/keyboard target 자체를 렌더하지
+  # 않아 `c` 단축키 우회를 막는다. 그래서 blocked 버튼은 type=button + disabled,
+  # active 버튼은 form 내부 type=submit.
+  test "show disables commit button when pending duplicates remain (X11 commit_locked)" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    @parsing_session.duplicate_confirmations.create!(
+      original_transaction: transactions(:food_transaction),
+      new_transaction: transactions(:transport_transaction),
+      status: "pending"
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    # blocked 일 때는 form 자체를 렌더하지 않아 `c` 단축키가 no-op 이 된다.
+    assert_select "button[type=button][disabled][aria-disabled=true]", text: /결제 내역 반영/
+    assert_select "[data-review-keyboard-target=commitForm]", count: 0,
+                  text: "commit shortcut target must be absent when blocked"
+    # 사유 텍스트 — risk.commit_locked 카피.
+    assert_match(/중복 \d+건을 먼저 정리해야 반영할 수 있어요/, response.body)
+  end
+
+  test "show enables commit button when no duplicates / issues remain" do
+    @parsing_session.duplicate_confirmations.destroy_all
+    @parsing_session.import_issues.destroy_all
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    # 활성 commit 버튼은 form 내부 type=submit, 그리고 commitForm 키보드 target 이 있다.
+    assert_select "button[type=submit][aria-disabled=false]", text: /결제 내역 반영/
+    assert_select "form[data-review-keyboard-target=commitForm]"
+    refute_match(/먼저 정리해야 반영할 수 있어요/, response.body)
+  end
+
+  test "show disables commit and surfaces issue reason when open import issues remain" do
+    @parsing_session.duplicate_confirmations.destroy_all
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    @parsing_session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      missing_fields: %w[merchant]
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    assert_select "button[type=button][disabled][aria-disabled=true]", text: /결제 내역 반영/
+    assert_match(/수리 필요한 항목 \d+건/, response.body)
+  end
+
+  # Codex PR #248 P1 — ambiguous_duplicate ImportIssue 는 server predicate
+  # (has_open_import_issues?) 가 commit 을 차단하지 않으므로 UI 게이트도
+  # 풀려야 한다. 그렇지 않으면 writable 사용자가 UI-only 로 갇힌다.
+  test "show does NOT block commit when only ambiguous_duplicate import issues exist" do
+    @parsing_session.duplicate_confirmations.destroy_all
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    # ambiguous_duplicate 는 duplicate_transaction 이 있어야 valid (model validation).
+    @parsing_session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      issue_type: "ambiguous_duplicate",
+      duplicate_transaction: transactions(:food_transaction)
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    # 활성 commit 버튼이 렌더되어야 한다 (server 가 commit 을 허용하므로 UI 도 허용).
+    assert_select "button[type=submit][aria-disabled=false]", text: /결제 내역 반영/
+    refute_match(/수리 필요한 항목/, response.body)
+  end
+
+  # GPT 적대적 리뷰 §2.7 (P0 #6) — calendar quick filter retarget + tab param.
+  test "index honors ?tab=duplicates query param by pre-selecting the duplicates panel" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get workspace_reviews_path(@workspace, tab: "duplicates")
+
+    assert_response :success
+    # duplicates 탭이 aria-selected=true 이고 hidden 이 아님; sessions 탭이 반대.
+    assert_select "button[role=tab][data-tab=duplicates][aria-selected=true]"
+    assert_select "button[role=tab][data-tab=sessions][aria-selected=false]"
+    assert_select "section[role=tabpanel][data-tab=duplicates]:not([hidden])"
+    assert_select "section[role=tabpanel][data-tab=sessions][hidden]"
+  end
+
+  test "index defaults to sessions tab when tab param is missing or invalid" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get workspace_reviews_path(@workspace, tab: "not-a-real-tab")
+
+    assert_response :success
+    assert_select "button[role=tab][data-tab=sessions][aria-selected=true]"
+    assert_select "button[role=tab][data-tab=duplicates][aria-selected=false]"
+  end
+
   test "index renders for owner with parsing session present" do
     @parsing_session.update!(status: "completed", review_status: "pending_review")
 
@@ -842,7 +941,11 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
   end
 
   # Phase 5 slice 4: c 단축키가 commit form을 trigger하려면 form에 target이 있어야.
+  # Codex PR #248 P2-a: blocked 일 때는 target 이 의도적으로 누락되므로,
+  # 본 테스트는 commit 이 가능한 상태(중복/이슈 없음)로 setup 해야 한다.
   test "show wires commit form as review-keyboard target for c shortcut" do
+    @parsing_session.duplicate_confirmations.destroy_all
+    @parsing_session.import_issues.destroy_all
     @workspace.transactions.create!(
       date: Date.current, amount: 1000, merchant: "C_SHORTCUT_SESSION",
       status: "pending_review", parsing_session: @parsing_session

@@ -288,6 +288,9 @@ ko:
       commit_confirm_partial: "전체 %{total}건 중 현재 %{shown}건 표시 중입니다. 커밋하면 전체 %{total}건이 결제 내역에 반영됩니다."
       commit_confirm_full: "%{count}건의 결제를 결제 내역에 반영하시겠습니까?"
       commit: "결제 내역 반영"
+      # GPT 적대적 리뷰 §2.6.1 (P0 #5) — commit_blocked 사유 카피. 중복 사유는
+      # risk.commit_locked 재사용 (synthesis 8.5 §risk 사전에 이미 있음).
+      commit_locked_issues: "수리 필요한 항목 %{count}건을 먼저 채우거나 제외해야 반영할 수 있어요"
       summary:
         committed: "%{count}건이 결제 내역에 반영되었습니다."
         originals_replaced: "중복 %{count}건은 새 결제로 교체되었습니다."

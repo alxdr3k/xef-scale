@@ -144,10 +144,25 @@ class DashboardsController < ApplicationController
                                            .includes(:category)
                                            .order(created_at: :desc)
 
-    # Action strip aggregates
+    # Action strip aggregates.
+    # Codex PR #248 P2-b/P2-c: action strip 의 "검토 필요 / 중복 의심" 배지는
+    # workspace_reviews_path 로 향하므로 그 destination 의 스코프와 일치해야
+    # 한다. 이전에는 *이번 달* 전체 pending DuplicateConfirmation/needs_review
+    # transaction 을 카운트했지만, 검토함 인덱스는 ParsingSession.needs_review
+    # (= completed + pending_review) + workspace-wide 로 보여 준다. 따라서
+    # 두 ivar 는 그 스코프에 맞춰 재계산한다.
+    #   - 배지 count 가 destination 의 실제 row 수와 일치 → "X 클릭했는데 비어있다" 회피
+    #   - finalized 세션의 leftover pending dup 도 destination 에 안 보이므로 같이 제외
+    # @needs_review_per_day / @duplicate_per_day 는 calendar grid 셀별 시각화 용도라
+    # 월 스코프 그대로 유지 (workspace 전체 카운트는 셀 단위로 의미 없음).
     @monthly_total = @daily_totals.values.sum
-    @needs_review_total = @needs_review_per_day.values.sum
-    @duplicate_total = @duplicate_per_day.values.sum
+    @needs_review_total = @workspace.parsing_sessions.needs_review.count
+    @duplicate_total = DuplicateConfirmation
+                         .pending
+                         .joins(:parsing_session)
+                         .merge(ParsingSession.needs_review)
+                         .where(parsing_sessions: { workspace_id: @workspace.id })
+                         .count
     @uncategorized_total = @uncategorized_per_day.values.sum
   end
 

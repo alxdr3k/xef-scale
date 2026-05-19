@@ -16,8 +16,12 @@
     <div class="h-4 w-px bg-divider hidden sm:block"></div>
 
     <div class="flex flex-wrap gap-2">
+      <%# GPT 적대적 리뷰 §2.7 (P0 #6) — 첫 화면 행동 압력은 새 IA(검토함, ADR-0004)
+          으로 보낸다. 옛 workspace_parsing_sessions_path(filter:) 로 가면 5탭 IA
+          1번 시민(workspace_reviews_path)을 우회한다. tab 파라미터로 파싱
+          결과 / 중복 후보 탭을 직접 지정. %>
       <% if @needs_review_total > 0 %>
-        <%= link_to workspace_parsing_sessions_path(@workspace, year: @year, month: @month, filter: 'needs_review'),
+        <%= link_to workspace_reviews_path(@workspace, tab: "sessions"),
             class: "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-warning-subtle text-warning hover:ring-1 hover:ring-warning transition-colors" do %>
           <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
           <%= t("dashboards.calendar.needs_review_count", count: @needs_review_total) %>
@@ -29,7 +33,7 @@
       <% end %>
 
       <% if @duplicate_total > 0 %>
-        <%= link_to workspace_parsing_sessions_path(@workspace, year: @year, month: @month, filter: 'has_duplicates'),
+        <%= link_to workspace_reviews_path(@workspace, tab: "duplicates"),
             class: "inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-danger-subtle text-danger hover:ring-1 hover:ring-danger transition-colors" do %>
           <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z"/><path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z"/></svg>
           <%= t("dashboards.calendar.duplicate_count", count: @duplicate_total) %>
