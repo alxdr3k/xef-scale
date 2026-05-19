@@ -776,6 +776,7 @@ ko:
       scope_summary: "범위 내 세션 %{count}개"
       cli_hint_html: 'CLI에서 동일 리포트를 보려면 <code class="px-1 py-0.5 bg-elev rounded">bin/rails import_review_metrics:report</code> 를 사용하세요.'
       export_csv: "CSV 내보내기"
+      invalid_date_filter: "날짜 필터가 올바르지 않습니다 (%{fields}). 형식은 YYYY-MM-DD이며 since ≤ until이어야 합니다. 잘못된 값은 무시되고 해당 방향 범위 제한이 풀린 채로 표시됩니다."
     sections:
       header:
         title: "요약"
@@ -820,8 +821,8 @@ ko:
         title: "분류 메커니즘 분포 (ADR-0007 §1.1)"
         subtitle: "committed 세션의 reviewable 거래가 어떤 메커니즘으로 분류되었는가."
         empty: "committed 세션의 reviewable 거래가 없습니다."
-        ai_acceptance_label: "AI 수용률 (proxy)"
-        ai_acceptance_hint: "사용자가 AI 추천 카테고리를 변경 없이 commit한 비율. 정확한 추적은 추천 시점 vs commit 시점 비교가 필요 (향후 슬라이스)."
+        gemini_final_share_label: "Gemini 최종 분류 비율"
+        gemini_final_share_hint: "최종 분류가 gemini_batch로 남은 거래 비율 — 수용률이 아닙니다. Gemini가 만든 mapping은 후속 거래에서 mapping_match로 잡혀 AI 영향이 이 수치에서 빠집니다. 정확한 수용률은 추천 시점 vs commit 시점 snapshot 비교가 필요 (별도 슬라이스)."
         total: "전체 reviewable 거래 %{count}개"
         label:
           mapping_match: "학습 매핑"
@@ -911,7 +912,10 @@ ko:
       field_label_notes: "메모"
       uncategorized_option: "미분류"
       summary_title: "중복 검사 완료"
-      summary_count: "총 %{count}개 쌍을 검토했습니다"
+      # JS 측 (duplicate_modal_controller.js)에서 __COUNT__를 실제 숫자로 replace.
+      # Rails I18n %{...}을 의도적으로 피함 — 누가 t(..., scope:)처럼 옵션을 넘기면
+      # MissingInterpolationArgument로 깨질 위험을 차단하기 위함.
+      summary_count: "총 __COUNT__개 쌍을 검토했습니다"
       summary_stat_deleted: "삭제됨"
       summary_stat_kept: "유지됨"
       summary_stat_skipped: "건너뛰기"

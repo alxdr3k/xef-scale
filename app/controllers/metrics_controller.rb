@@ -11,8 +11,20 @@ class MetricsController < ApplicationController
   before_action :require_workspace_admin_access
 
   def show
-    @since = parse_date(params[:since])
-    @until = parse_date(params[:until])
+    @since, since_invalid = parse_date_with_status(params[:since])
+    @until, until_invalid = parse_date_with_status(params[:until])
+
+    # invalid 입력을 silent widening 하지 않는다. 잘못된 날짜를 nil로 떨어뜨려
+    # 전체 범위로 보여주면 admin이 분석 결과를 잘못 해석할 수 있다.
+    invalid_fields = []
+    invalid_fields << "since" if since_invalid
+    invalid_fields << "until" if until_invalid
+    if @since && @until && @since > @until
+      invalid_fields << "since>until"
+    end
+    if invalid_fields.any?
+      flash.now[:alert] = t("metrics.show.invalid_date_filter", fields: invalid_fields.join(", "))
+    end
 
     sessions = @workspace.parsing_sessions
     sessions = sessions.where("created_at >= ?", @since) if @since
@@ -38,21 +50,36 @@ class MetricsController < ApplicationController
   # ActiveRecord::RecordNotFound rescue + workspaces_path redirect + 한국어 alert
   # 흐름이 다른 workspace-scoped controllers 와 일치하도록.
 
-  # YYYY-MM-DD 만 수용. 잘못된 형식은 nil로 무시 (사용자 입력 신뢰 안 함).
-  def parse_date(raw)
-    return nil if raw.blank?
-    Date.strptime(raw.to_s, "%Y-%m-%d")
+  # YYYY-MM-DD 만 수용. blank → [nil, false], 잘못된 형식 → [nil, true].
+  # 두 번째 반환값으로 "사용자가 입력했는데 invalid"인지 호출자가 구분.
+  def parse_date_with_status(raw)
+    return [ nil, false ] if raw.blank?
+    [ Date.strptime(raw.to_s, "%Y-%m-%d"), false ]
   rescue ArgumentError
-    nil
+    [ nil, true ]
   end
+
+  # Schema version 이 1을 넘어가는 변경 (column 추가/제거/key 의미 변경) 은 외부
+  # 소비자에게 알리기 위해 명시적으로 bump 한다.
+  CSV_SCHEMA_VERSION = 1
 
   # Phase 7-4: 외부 분석 도구로 메트릭 데이터를 가져갈 수 있도록 CSV export.
   # sections 데이터를 long-format (section,metric,value) 로 flatten — 한 줄당 한 값.
   # Excel/스프레드시트에서 pivot 하기 좋은 형태.
+  #
+  # `meta` 섹션이 가장 먼저 나온다: schema_version, workspace_id, range_start,
+  # range_end (inclusive lower bound · exclusive upper bound), generated_at_utc.
+  # 외부 소비자가 dataset 신뢰성·범위·schema 호환성을 자동 검사할 수 있도록.
   def csv_for(sections)
     require "csv"
     CSV.generate(headers: true) do |csv|
       csv << %w[section metric value]
+      csv << [ "meta", "schema_version", CSV_SCHEMA_VERSION ]
+      csv << [ "meta", "workspace_id", @workspace.id ]
+      csv << [ "meta", "range_start", @since&.iso8601 ] # inclusive (created_at >=)
+      csv << [ "meta", "range_end", @until&.iso8601 ]   # exclusive (created_at <)
+      csv << [ "meta", "range_semantics", "start_inclusive_end_exclusive" ]
+      csv << [ "meta", "generated_at_utc", Time.current.utc.iso8601 ]
       sections.each do |s|
         case s[:type]
         when :header
@@ -73,7 +100,7 @@ class MetricsController < ApplicationController
           (s[:distribution] || {}).each { |bucket, n| csv << [ prefix, "bucket.#{bucket}", n ] }
         when :classification_source_distribution
           csv << [ "classification_source", "total", s[:total] ]
-          csv << [ "classification_source", "ai_acceptance_pct", s[:ai_acceptance_pct] ]
+          csv << [ "classification_source", "gemini_final_share_pct", s[:gemini_final_share_pct] ]
           s[:rows].each do |row|
             key = row[:source] || "(none)"
             csv << [ "classification_source", "#{key}.count", row[:count] ]
