@@ -26,7 +26,7 @@ class AllowancesController < ApplicationController
     transaction_ids = params[:transaction_ids].to_s.split(",").map(&:to_i).reject(&:zero?)
 
     if transaction_ids.empty?
-      redirect_to allowances_path(year: params[:year], month: params[:month]), alert: "선택된 항목이 없습니다."
+      redirect_to allowances_path(year: params[:year], month: params[:month]), alert: I18n.t("allowances.flash.empty_selection")
       return
     end
 
@@ -40,9 +40,9 @@ class AllowancesController < ApplicationController
       allowance_transactions.find_each do |at|
         AllowanceTransaction.unmark_as_allowance!(at.expense_transaction, current_user)
       end
-      notice = "#{count}건의 거래가 용돈에서 해제되었습니다."
+      notice = I18n.t("allowances.flash.bulk_unmark_done", count: count)
     else
-      notice = "알 수 없는 작업입니다."
+      notice = I18n.t("allowances.flash.unknown_action")
     end
 
     redirect_to allowances_path(year: params[:year], month: params[:month]), notice: notice

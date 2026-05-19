@@ -12,6 +12,6 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   end
 
   def failure
-    redirect_to root_path, alert: "로그인에 실패했습니다. 다시 시도해 주세요."
+    redirect_to root_path, alert: I18n.t("devise.omniauth_callbacks.failure_retry")
   end
 end

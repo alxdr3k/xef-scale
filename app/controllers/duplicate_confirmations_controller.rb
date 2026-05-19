@@ -13,9 +13,9 @@ class DuplicateConfirmationsController < ApplicationController
     respond_to do |format|
       format.html do
         redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
-                    notice: "중복 처리가 완료되었습니다."
+                    notice: I18n.t("parsing_sessions.flash.duplicate_resolved")
       end
-      format.turbo_stream { flash.now[:notice] = "중복 처리가 완료되었습니다." }
+      format.turbo_stream { flash.now[:notice] = I18n.t("parsing_sessions.flash.duplicate_resolved") }
     end
   rescue ArgumentError => e
     redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),

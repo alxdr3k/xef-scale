@@ -31,7 +31,7 @@ class CategoryMappingsController < ApplicationController
     @mapping.source = "manual"
 
     if @mapping.save
-      flash.now[:notice] = "분류 규칙이 추가되었습니다."
+      flash.now[:notice] = I18n.t("category_mappings.flash.created")
       respond_to do |format|
         format.turbo_stream
         format.html { redirect_to workspace_categories_path(@workspace) }
@@ -43,7 +43,7 @@ class CategoryMappingsController < ApplicationController
 
   def update
     if @mapping.update(mapping_params)
-      flash.now[:notice] = "분류 규칙이 수정되었습니다."
+      flash.now[:notice] = I18n.t("category_mappings.flash.updated")
       respond_to do |format|
         format.turbo_stream
         format.html { redirect_to workspace_categories_path(@workspace) }
@@ -55,7 +55,7 @@ class CategoryMappingsController < ApplicationController
 
   def destroy
     @mapping.destroy
-    flash.now[:notice] = "분류 규칙이 삭제되었습니다."
+    flash.now[:notice] = I18n.t("category_mappings.flash.destroyed")
 
     respond_to do |format|
       format.turbo_stream

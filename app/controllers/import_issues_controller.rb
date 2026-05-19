@@ -16,7 +16,7 @@ class ImportIssuesController < ApplicationController
       else
         ImportIssueResolutionService::Result.new(
           status: :failed,
-          message: "알 수 없는 처리 방식입니다."
+          message: I18n.t("common.unknown_action_general")
         )
       end
 
@@ -35,11 +35,11 @@ class ImportIssuesController < ApplicationController
   end
 
   def require_workspace_access
-    redirect_to root_path, alert: "접근 권한이 없습니다." unless current_user.can_read?(@workspace)
+    redirect_to root_path, alert: I18n.t("common.no_read_access") unless current_user.can_read?(@workspace)
   end
 
   def require_workspace_write_access
-    redirect_to root_path, alert: "수정 권한이 없습니다." unless current_user.can_write?(@workspace)
+    redirect_to root_path, alert: I18n.t("common.no_write_access") unless current_user.can_write?(@workspace)
   end
 
   def set_import_issue

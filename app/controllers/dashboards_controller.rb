@@ -169,7 +169,7 @@ class DashboardsController < ApplicationController
   def set_workspace
     @workspace = current_workspace
     unless @workspace
-      redirect_to new_workspace_path, notice: "먼저 워크스페이스를 생성해 주세요."
+      redirect_to new_workspace_path, notice: I18n.t("dashboards.flash.workspace_required")
     end
   end
 
@@ -284,7 +284,7 @@ class DashboardsController < ApplicationController
       category = Category.find_by(id: category_id)
       {
         id: category_id,
-        name: category&.name || "미분류",
+        name: category&.name || I18n.t("dashboards.uncategorized"),
         amount: amount,
         color: category&.color || "#9CA3AF",
         percentage: total > 0 ? (amount.to_f / total * 100).round(1) : 0
@@ -296,7 +296,7 @@ class DashboardsController < ApplicationController
     categories = @workspace.categories.order(:name)
 
     {
-      labels: (1..12).map { |m| "#{m}월" },
+      labels: (1..12).map { |m| I18n.t("dashboards.month_label", month: m) },
       datasets: categories.map do |cat|
         {
           label: cat.name,
