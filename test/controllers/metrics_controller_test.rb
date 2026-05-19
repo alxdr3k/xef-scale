@@ -55,6 +55,36 @@ class MetricsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/range_order/, @response.body)
   end
 
+  test "show rejects trailing garbage and non-padded date formats (strptime laxness guard)" do
+    sign_in @admin
+    # Date.strptime은 "2026-01-01abc"와 "2026-1-1"을 silently 받아들이므로 강한 사전 검증 필요.
+    get workspace_metrics_path(@workspace, since: "2026-01-01abc")
+    assert_response :success
+    assert_match(/날짜 필터가 올바르지 않습니다/, @response.body)
+    assert_match(/since/, @response.body)
+
+    get workspace_metrics_path(@workspace, since: "2026-1-1")
+    assert_response :success
+    assert_match(/날짜 필터가 올바르지 않습니다/, @response.body)
+    assert_match(/since/, @response.body)
+  end
+
+  test "show.csv rejects invalid date filters with 422 instead of silent widening" do
+    sign_in @admin
+    # CSV 다운로드는 flash가 안 보이므로 422로 명시적 거부 — 분석 자동화 안전성.
+    get workspace_metrics_path(@workspace, format: :csv, since: "not-a-date")
+    assert_response :unprocessable_entity
+    assert_match(/날짜 필터가 올바르지 않습니다/, @response.body)
+    refute_match %r{text/csv}, @response.content_type
+  end
+
+  test "show.csv rejects since > until with 422" do
+    sign_in @admin
+    get workspace_metrics_path(@workspace, format: :csv, since: "2026-05-18", until: "2026-01-01")
+    assert_response :unprocessable_entity
+    assert_match(/range_order/, @response.body)
+  end
+
   # Codex PR #236 P2: ApplicationController#set_workspace 와 동일한 RecordNotFound
   # rescue 흐름을 metrics에서도 강제 — invalid id 에 대해 404 예외 path 가 아니라
   # workspaces_path 로 redirect.

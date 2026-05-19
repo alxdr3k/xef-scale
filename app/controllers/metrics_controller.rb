@@ -22,9 +22,6 @@ class MetricsController < ApplicationController
     if @since && @until && @since > @until
       invalid_fields << "range_order"
     end
-    if invalid_fields.any?
-      flash.now[:alert] = t("metrics.show.invalid_date_filter", fields: invalid_fields.join(", "))
-    end
 
     sessions = @workspace.parsing_sessions
     sessions = sessions.where("created_at >= ?", @since) if @since
@@ -35,11 +32,23 @@ class MetricsController < ApplicationController
     @session_count = sessions.count
 
     respond_to do |format|
-      format.html { @sections = @report.sections }
+      format.html do
+        flash.now[:alert] = t("metrics.show.invalid_date_filter", fields: invalid_fields.join(", ")) if invalid_fields.any?
+        @sections = @report.sections
+      end
       format.csv do
-        send_data csv_for(@report.sections),
-                  filename: csv_filename,
-                  type: "text/csv; charset=utf-8"
+        # CSV 다운로드에서는 flash가 노출되지 않는다 — invalid 입력이면 silent
+        # range widening 대신 422로 명시적으로 거부. 분석 자동화가 잘못된 dataset을
+        # downstream에 흘리지 않게.
+        if invalid_fields.any?
+          render plain: t("metrics.show.invalid_date_filter", fields: invalid_fields.join(", ")),
+                 status: :unprocessable_entity,
+                 content_type: "text/plain; charset=utf-8"
+        else
+          send_data csv_for(@report.sections),
+                    filename: csv_filename,
+                    type: "text/csv; charset=utf-8"
+        end
       end
     end
   end
@@ -50,10 +59,15 @@ class MetricsController < ApplicationController
   # ActiveRecord::RecordNotFound rescue + workspaces_path redirect + 한국어 alert
   # 흐름이 다른 workspace-scoped controllers 와 일치하도록.
 
-  # YYYY-MM-DD 만 수용. blank → [nil, false], 잘못된 형식 → [nil, true].
-  # 두 번째 반환값으로 "사용자가 입력했는데 invalid"인지 호출자가 구분.
+  # 엄격한 YYYY-MM-DD만 수용. Date.strptime은 trailing garbage("2026-01-01abc")와
+  # 0-padding 없는 형식("2026-1-1")을 silently 받아들이므로, 사전에 정확 길이/숫자
+  # 규격을 검증해야 admin이 입력 형식을 일관되게 인식한다.
+  # blank → [nil, false], 잘못된 형식 → [nil, true].
+  STRICT_DATE_RE = /\A\d{4}-\d{2}-\d{2}\z/
+
   def parse_date_with_status(raw)
     return [ nil, false ] if raw.blank?
+    return [ nil, true ] unless STRICT_DATE_RE.match?(raw.to_s)
     [ Date.strptime(raw.to_s, "%Y-%m-%d"), false ]
   rescue ArgumentError
     [ nil, true ]
