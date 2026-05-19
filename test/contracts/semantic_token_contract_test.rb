@@ -50,13 +50,21 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
   # `ring-black ring-opacity-5` 같은 modal overlay·dropdown ring이 시맨틱 토큰
   # 계약 밖에서 다크 모드 회귀를 만든다. 별도 regex로 잡는다.
   #
+  # Codex PR #247 P3-1: Tailwind arbitrary opacity 구문(`bg-black/[.35]`,
+  # `text-white/[var(--alpha)]`)도 같은 의미축 회귀이므로 차단.
+  #
   # 매칭:
   #   - bg-black, text-white, ring-black, border-white 등 (단독 utility)
-  #   - bg-black/40, ring-black/5 (opacity slash suffix)
+  #   - bg-black/40, ring-black/5 (opacity slash suffix, digits)
+  #   - bg-black/[.35], text-white/[var(--alpha)] (Tailwind arbitrary value opacity)
   #   - ring-opacity-N, divide-opacity-N (v3 legacy opacity utility — black/white 와
   #     함께 쓰이는 패턴이므로 같이 차단)
   # 매칭 제외:
   #   - PATH_ALLOWLIST의 `:all` 파일 (devise/landing/color_picker — 의도된 fixed)
+  #   - 라인 단위 `semantic-allow` 마커 (match_with_allowlist 경유)
+  # 코멘트 안 `/` 문자는 Ruby lexer가 regex 종결자로 잡아버려 syntax error 가 되므로
+  # `#` 코멘트는 슬래시 없이 작성. 대안: %r{}x — 그러나 regex 안 grouping `()`가 많아
+  # delimiter 충돌이 더 까다로움. 본 regex는 그대로 두고 코멘트만 슬래시-free 로 유지.
   BLACK_WHITE_UTILITY_RE = /
     \b
     (?:(?:hover|focus|focus-visible|active|disabled|group-hover|peer-focus|dark|sm|md|lg|xl|2xl):)*
@@ -64,11 +72,16 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
       (?:bg|text|border|ring|divide|from|to|via|stroke|fill|outline|placeholder|caret|accent|decoration|shadow)
       -
       (?:black|white)
-      (?:\/\d{1,3})?
+      (?:
+        \b                              # 단독 utility 끝 (다음 문자 non-word)
+        |
+        \/\d{1,3}\b                     # digit opacity suffix
+        |
+        \/\[[^\]\s]*\]                  # arbitrary value opacity bracket
+      )
       |
-      (?:ring|divide|border|bg|text)-opacity-\d{1,3}
+      (?:ring|divide|border|bg|text)-opacity-\d{1,3}\b
     )
-    \b
   /x
 
   # bg-action-subtle0, text-action-on0, bg-info-subtle0 등 sed truncation 흔적.
@@ -134,6 +147,11 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
                     "#{rel_path}: palette utility class found in CSS"
     assert_no_match TRUNCATION_ARTIFACT_RE, stripped,
                     "#{rel_path}: truncation artifact (bg-*-subtle0 등) found in CSS"
+    # Codex PR #247 P2-2: BW guard는 ERB/helper/JS surface 만이 아니라 CSS
+    # surface(`@apply bg-black/50`, `ring-opacity-*`)에서도 동일하게 적용.
+    # 그렇지 않으면 documented surface 중 한 곳(stylesheets)에 blind spot이 남는다.
+    assert_no_match BLACK_WHITE_UTILITY_RE, stripped,
+                    "#{rel_path}: raw black/white utility (bg-black/text-white/ring-black/ring-opacity-*) found in CSS — use bg-overlay / ring-divider / text-action-on / bg-surface 시맨틱 토큰"
     # raw hex / rgb()는 token 정의 외에서는 의미 손실 — keyframes/utilities에서는
     # var(--color-*) + color-mix() 로만 가능.
     assert_no_match RAW_HEX_RE, stripped,
@@ -197,7 +215,9 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
     end
 
     # black/white utility (GPT 적대적 리뷰 P1-5 blind spot 보강)
-    if (m = stripped.match(BLACK_WHITE_UTILITY_RE))
+    # Codex PR #247 P2-1: flunk 메시지가 `semantic-allow` 마커를 광고하므로
+    # 실제 매칭도 라인 단위 allowlist를 존중해야 한다 (raw hex/rgb 와 동일).
+    if (m = match_with_allowlist(stripped, BLACK_WHITE_UTILITY_RE, raw))
       line = line_for_offset(stripped, m.begin(0))
       flunk(<<~MSG)
         #{rel_path}:#{line} — raw black/white utility "#{m[0]}" found.
@@ -205,6 +225,7 @@ class SemanticTokenContractTest < ActiveSupport::TestCase
         교체 예시:
           - bg-black/40, bg-black/50 (modal backdrop) → bg-overlay
           - ring-1 ring-black ring-opacity-5 (dropdown ring) → ring-1 ring-divider
+          - bg-black/[.35], text-white/[var(--alpha)] (arbitrary opacity) → 시맨틱 token
           - text-white on bg-action 등 → text-action-on
           - bg-white card → bg-surface
         의도된 고정색이 필요한 페이지(landing/devise/color_picker)는 PATH_ALLOWLIST = :all.
