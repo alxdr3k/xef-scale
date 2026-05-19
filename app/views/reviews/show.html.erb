@@ -104,22 +104,32 @@
             </button>
           <% end %>
 
-          <% commit_msg = @pagy.pages > 1 ?
-               t("reviews.show.commit_confirm_partial", total: @total_commit_count, shown: @transactions.count) :
-               t("reviews.show.commit_confirm_full", count: @total_commit_count) %>
-          <%# Phase 5 slice 4: c 키 단축키 — review_keyboard_controller가
-              data-review-keyboard-target="commitForm"으로 requestSubmit.
-              commit_blocked일 때도 동일한 target을 유지하되 button을 disabled
-              로 두면 form.requestSubmit() 가 native validation 으로 차단된다. %>
-          <%= form_with url: commit_workspace_parsing_session_path(@workspace, @parsing_session),
-              method: :post, class: 'inline-block',
-              data: { turbo_confirm: commit_msg, review_keyboard_target: "commitForm" } do %>
-            <button type="submit"
-                    <%= "disabled" if @commit_blocked %>
-                    aria-disabled="<%= @commit_blocked %>"
-                    class="px-4 py-2 bg-positive text-action-on rounded-lg <%= @commit_blocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-positive cursor-pointer' %>">
+          <%# Codex PR #248 P2-a: form.requestSubmit() 은 submitter 없이 호출되면
+              disabled button 을 우회한다. blocked 일 때는 form 과 commitForm
+              target 자체를 렌더하지 않아 `c` 키 단축키가 자연스럽게 no-op
+              (review_keyboard_controller는 hasCommitFormTarget 가드를 가짐). %>
+          <% if @commit_blocked %>
+            <button type="button"
+                    disabled
+                    aria-disabled="true"
+                    class="px-4 py-2 bg-positive text-action-on rounded-lg opacity-50 cursor-not-allowed">
               <%= t("reviews.show.commit") %>
             </button>
+          <% else %>
+            <% commit_msg = @pagy.pages > 1 ?
+                 t("reviews.show.commit_confirm_partial", total: @total_commit_count, shown: @transactions.count) :
+                 t("reviews.show.commit_confirm_full", count: @total_commit_count) %>
+            <%# Phase 5 slice 4: c 키 단축키 — review_keyboard_controller가
+                data-review-keyboard-target="commitForm"으로 requestSubmit. %>
+            <%= form_with url: commit_workspace_parsing_session_path(@workspace, @parsing_session),
+                method: :post, class: 'inline-block',
+                data: { turbo_confirm: commit_msg, review_keyboard_target: "commitForm" } do %>
+              <button type="submit"
+                      aria-disabled="false"
+                      class="px-4 py-2 bg-positive text-action-on rounded-lg hover:bg-positive cursor-pointer">
+                <%= t("reviews.show.commit") %>
+              </button>
+            <% end %>
           <% end %>
         <% end %>
       </div>

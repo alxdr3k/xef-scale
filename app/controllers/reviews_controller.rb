@@ -100,12 +100,19 @@ class ReviewsController < ApplicationController
     # commit 을 redirect 차단하지만, view 는 버튼을 무조건 활성으로 렌더해
     # "클릭 후 거부" 형태였다. 의도된 마찰은 *비활성 + 사유 명시* 형태가
     # 맞으므로 ivar로 컨트롤러에서 미리 판정한다.
+    #
+    # Codex PR #248 P1: server predicate (`has_open_import_issues?`)는
+    # `missing_required_fields` 타입만 commit 을 차단한다 — `ambiguous_duplicate`
+    # 는 사용자 해결 UI 가 아직 없어 commit 을 막지 않는다 (parsing_session.rb 본 메서드 주석 참조).
+    # UI 게이트도 동일 predicate 를 따라야 writable 사용자가 ambiguous_duplicate
+    # 만 남은 commitable 세션에서 UI-only 로 갇히지 않는다.
     @commit_block_reasons = []
     if (dup_count = @duplicate_confirmations.size).positive?
       @commit_block_reasons << { kind: :duplicates, count: dup_count }
     end
-    if (issue_count = @open_import_issues.size).positive?
-      @commit_block_reasons << { kind: :issues, count: issue_count }
+    blocking_issue_count = @open_import_issues.count(&:missing_required_fields?)
+    if blocking_issue_count.positive?
+      @commit_block_reasons << { kind: :issues, count: blocking_issue_count }
     end
     @commit_blocked = @commit_block_reasons.any?
   end
