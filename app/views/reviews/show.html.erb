@@ -76,23 +76,48 @@
   <!-- Session Action Bar (세션 전체 액션만) -->
   <% unless @read_only %>
     <div class="bg-surface rounded-lg shadow p-4 mb-6">
-      <div class="flex justify-end items-center gap-3">
+      <div class="flex flex-col gap-3 sm:flex-row sm:justify-end sm:items-center">
         <% if @parsing_session.review_pending? %>
+          <%# GPT 적대적 리뷰 §2.6.1 (P0 #5) — commit_blocked일 때 사유 명시.
+              미해결 중복 / 미해결 import issue 가 있으면 commit 자체를 비활성
+              버튼으로 보여주고, "왜 못 누르는지" 를 한 줄로 명시한다. 서버
+              가드는 reviews_controller#commit에 그대로 남아 있어 defense
+              in depth. %>
+          <% if @commit_blocked %>
+            <div class="flex-1 text-sm text-warning sm:text-left text-center"
+                 role="status" aria-live="polite">
+              <% @commit_block_reasons.each do |reason| %>
+                <% case reason[:kind]
+                   when :duplicates %>
+                  <div><%= t("risk.commit_locked", count: reason[:count]) %></div>
+                <% when :issues %>
+                  <div><%= t("reviews.show.commit_locked_issues", count: reason[:count]) %></div>
+                <% end %>
+              <% end %>
+            </div>
+          <% end %>
+
           <%= form_with url: discard_workspace_parsing_session_path(@workspace, @parsing_session),
               method: :post, class: 'inline-block', data: { turbo_confirm: t("reviews.show.cancel_all_confirm") } do %>
             <button type="submit" class="px-4 py-2 border border-divider text-secondary rounded-lg hover:bg-elev">
               <%= t("reviews.show.cancel_all") %>
             </button>
           <% end %>
+
           <% commit_msg = @pagy.pages > 1 ?
                t("reviews.show.commit_confirm_partial", total: @total_commit_count, shown: @transactions.count) :
                t("reviews.show.commit_confirm_full", count: @total_commit_count) %>
           <%# Phase 5 slice 4: c 키 단축키 — review_keyboard_controller가
-              data-review-keyboard-target="commitForm"으로 requestSubmit. %>
+              data-review-keyboard-target="commitForm"으로 requestSubmit.
+              commit_blocked일 때도 동일한 target을 유지하되 button을 disabled
+              로 두면 form.requestSubmit() 가 native validation 으로 차단된다. %>
           <%= form_with url: commit_workspace_parsing_session_path(@workspace, @parsing_session),
               method: :post, class: 'inline-block',
               data: { turbo_confirm: commit_msg, review_keyboard_target: "commitForm" } do %>
-            <button type="submit" class="px-4 py-2 bg-positive text-action-on rounded-lg hover:bg-positive">
+            <button type="submit"
+                    <%= "disabled" if @commit_blocked %>
+                    aria-disabled="<%= @commit_blocked %>"
+                    class="px-4 py-2 bg-positive text-action-on rounded-lg <%= @commit_blocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-positive cursor-pointer' %>">
               <%= t("reviews.show.commit") %>
             </button>
           <% end %>

@@ -406,6 +406,77 @@ class ReviewsControllerTest < ActionDispatch::IntegrationTest
 
   # ADR-0004 §"필수" — reviews#index callback fix + needs_review scope + cross-tenant safe duplicate scoping.
 
+  # GPT 적대적 리뷰 §2.6.1 (P0 #5) — commit_blocked UI 게이트.
+  test "show disables commit button when pending duplicates remain (X11 commit_locked)" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    @parsing_session.duplicate_confirmations.create!(
+      original_transaction: transactions(:food_transaction),
+      new_transaction: transactions(:transport_transaction),
+      status: "pending"
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    # commit 버튼이 disabled 로 렌더되어야 한다 (단순 redirect 가드만이 아닌 UI 차단).
+    assert_select "button[type=submit][disabled][aria-disabled=true]", text: /결제 내역 반영/
+    # 사유 텍스트 — risk.commit_locked 카피.
+    assert_match(/중복 \d+건을 먼저 정리해야 반영할 수 있어요/, response.body)
+  end
+
+  test "show enables commit button when no duplicates / issues remain" do
+    @parsing_session.duplicate_confirmations.destroy_all
+    @parsing_session.import_issues.destroy_all
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    # disabled 가 없는 활성 commit 버튼.
+    assert_select "button[type=submit][aria-disabled=false]", text: /결제 내역 반영/
+    refute_match(/먼저 정리해야 반영할 수 있어요/, response.body)
+  end
+
+  test "show disables commit and surfaces issue reason when open import issues remain" do
+    @parsing_session.duplicate_confirmations.destroy_all
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+    @parsing_session.import_issues.create!(
+      workspace: @workspace,
+      source_type: "image_upload",
+      missing_fields: %w[merchant]
+    )
+
+    get review_workspace_parsing_session_path(@workspace, @parsing_session)
+
+    assert_response :success
+    assert_select "button[type=submit][disabled][aria-disabled=true]", text: /결제 내역 반영/
+    assert_match(/수리 필요한 항목 \d+건/, response.body)
+  end
+
+  # GPT 적대적 리뷰 §2.7 (P0 #6) — calendar quick filter retarget + tab param.
+  test "index honors ?tab=duplicates query param by pre-selecting the duplicates panel" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get workspace_reviews_path(@workspace, tab: "duplicates")
+
+    assert_response :success
+    # duplicates 탭이 aria-selected=true 이고 hidden 이 아님; sessions 탭이 반대.
+    assert_select "button[role=tab][data-tab=duplicates][aria-selected=true]"
+    assert_select "button[role=tab][data-tab=sessions][aria-selected=false]"
+    assert_select "section[role=tabpanel][data-tab=duplicates]:not([hidden])"
+    assert_select "section[role=tabpanel][data-tab=sessions][hidden]"
+  end
+
+  test "index defaults to sessions tab when tab param is missing or invalid" do
+    @parsing_session.update!(status: "completed", review_status: "pending_review")
+
+    get workspace_reviews_path(@workspace, tab: "not-a-real-tab")
+
+    assert_response :success
+    assert_select "button[role=tab][data-tab=sessions][aria-selected=true]"
+    assert_select "button[role=tab][data-tab=duplicates][aria-selected=false]"
+  end
+
   test "index renders for owner with parsing session present" do
     @parsing_session.update!(status: "completed", review_status: "pending_review")
 

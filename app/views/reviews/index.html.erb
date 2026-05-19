@@ -24,14 +24,19 @@
     <% end %>
   </div>
 
-  <%# 세그먼트 탭 — segmented_tabs 채택은 Phase 3.x. 본 PR은 인라인. %>
+  <%# 세그먼트 탭 — segmented_tabs 채택은 Phase 3.x. 본 PR은 인라인.
+      GPT 적대적 리뷰 §2.7 (P0 #6) — @initial_tab 으로 calendar quick filter
+      등 외부 진입로가 미리 선택한 탭을 SSR 단계에서 반영. JS 가 disabled
+      되어도 첫 페인트에서 의도된 탭이 보인다. %>
+  <% sessions_active = @initial_tab == "sessions" %>
+  <% duplicates_active = @initial_tab == "duplicates" %>
   <div class="border-b border-divider mb-4 flex gap-6" role="tablist">
     <button type="button"
             data-action="click->review-tabs#select"
             data-review-tabs-target="tab"
             data-tab="sessions"
-            class="pb-3 -mb-px text-sm font-medium border-b-2 border-action text-primary"
-            role="tab" aria-selected="true">
+            class="pb-3 -mb-px text-sm font-medium border-b-2 <%= sessions_active ? 'border-action text-primary' : 'border-transparent text-secondary hover:text-primary' %>"
+            role="tab" aria-selected="<%= sessions_active %>">
       <%= t("reviews.index.tab_pending") %>
       <span class="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-meta rounded-full bg-action-subtle text-action">
         <%= @pending_sessions_count %>
@@ -41,8 +46,8 @@
             data-action="click->review-tabs#select"
             data-review-tabs-target="tab"
             data-tab="duplicates"
-            class="pb-3 -mb-px text-sm font-medium border-b-2 border-transparent text-secondary hover:text-primary"
-            role="tab" aria-selected="false">
+            class="pb-3 -mb-px text-sm font-medium border-b-2 <%= duplicates_active ? 'border-action text-primary' : 'border-transparent text-secondary hover:text-primary' %>"
+            role="tab" aria-selected="<%= duplicates_active %>">
       <%= t("reviews.index.tab_duplicates") %>
       <span class="ml-1 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-meta rounded-full bg-elev text-secondary">
         <%= @pending_duplicates_count %>
@@ -51,7 +56,7 @@
   </div>
 
   <%# 파싱 결과 탭 %>
-  <section data-review-tabs-target="panel" data-tab="sessions" role="tabpanel">
+  <section data-review-tabs-target="panel" data-tab="sessions" role="tabpanel" <%= "hidden" unless sessions_active %>>
     <% if @pending_sessions.any? %>
       <ul class="divide-y divide-divider bg-surface rounded-lg shadow-sm">
         <% @pending_sessions.each do |session| %>
@@ -99,8 +104,8 @@
     <% end %>
   </section>
 
-  <%# 중복 후보 탭 %>
-  <section data-review-tabs-target="panel" data-tab="duplicates" role="tabpanel" hidden>
+  <%# 중복 후보 탭 — sessions_active 일 때만 hidden. %>
+  <section data-review-tabs-target="panel" data-tab="duplicates" role="tabpanel" <%= "hidden" unless duplicates_active %>>
     <% if @pending_duplicates.any? %>
       <ul class="divide-y divide-divider bg-surface rounded-lg shadow-sm">
         <% @pending_duplicates.each do |dup| %>
