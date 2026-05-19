@@ -27,7 +27,7 @@ class WorkspacesController < ApplicationController
     @workspace = current_user.owned_workspaces.build(workspace_params)
 
     if @workspace.save
-      redirect_to dashboard_path, notice: "워크스페이스가 생성되었습니다."
+      redirect_to dashboard_path, notice: I18n.t("workspaces.flash.created")
     else
       render :new, status: :unprocessable_entity
     end
@@ -38,7 +38,7 @@ class WorkspacesController < ApplicationController
 
   def update
     if @workspace.update(workspace_params)
-      redirect_to @workspace, notice: "워크스페이스가 업데이트되었습니다."
+      redirect_to @workspace, notice: I18n.t("workspaces.flash.updated")
     else
       render :edit, status: :unprocessable_entity
     end
@@ -46,7 +46,7 @@ class WorkspacesController < ApplicationController
 
   def destroy
     @workspace.destroy
-    redirect_to workspaces_path, notice: "워크스페이스가 삭제되었습니다."
+    redirect_to workspaces_path, notice: I18n.t("workspaces.flash.destroyed")
   end
 
   def settings

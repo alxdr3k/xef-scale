@@ -13,28 +13,28 @@ class WorkspaceInvitationsController < ApplicationController
 
     if @invitation.save
       redirect_to settings_workspace_path(@workspace),
-                  notice: "초대 링크가 생성되었습니다: #{join_workspace_url(@invitation.token)}"
+                  notice: I18n.t("workspace_invitations.flash.created", url: join_workspace_url(@invitation.token))
     else
-      redirect_to settings_workspace_path(@workspace), alert: "초대 링크 생성에 실패했습니다."
+      redirect_to settings_workspace_path(@workspace), alert: I18n.t("workspace_invitations.flash.create_failed")
     end
   end
 
   def destroy
     @invitation = @workspace.workspace_invitations.find(params[:id])
     @invitation.destroy
-    redirect_to settings_workspace_path(@workspace), notice: "초대 링크가 삭제되었습니다."
+    redirect_to settings_workspace_path(@workspace), notice: I18n.t("workspace_invitations.flash.destroyed")
   end
 
   def join
     @invitation = WorkspaceInvitation.find_by(token: params[:token])
 
     if @invitation.nil?
-      redirect_to root_path, alert: "유효하지 않은 초대 링크입니다."
+      redirect_to root_path, alert: I18n.t("workspace_invitations.flash.invalid_token")
       return
     end
 
     unless @invitation.usable?
-      redirect_to root_path, alert: "만료되었거나 사용할 수 없는 초대 링크입니다."
+      redirect_to root_path, alert: I18n.t("workspace_invitations.flash.expired_token")
       return
     end
 
@@ -42,7 +42,7 @@ class WorkspaceInvitationsController < ApplicationController
       process_join
     else
       session[:invitation_token] = params[:token]
-      redirect_to new_user_session_path, notice: "먼저 로그인해 주세요."
+      redirect_to new_user_session_path, notice: I18n.t("workspace_invitations.flash.sign_in_required")
     end
   end
 
@@ -56,15 +56,15 @@ class WorkspaceInvitationsController < ApplicationController
     workspace = @invitation.workspace
 
     if current_user.workspaces.include?(workspace)
-      redirect_to workspace_path(workspace), notice: "이미 이 워크스페이스의 멤버입니다."
+      redirect_to workspace_path(workspace), notice: I18n.t("workspace_invitations.flash.already_member")
       return
     end
 
     if @invitation.use!
       workspace.workspace_memberships.create!(user: current_user, role: "member_read")
-      redirect_to workspace_path(workspace), notice: "워크스페이스에 참여했습니다!"
+      redirect_to workspace_path(workspace), notice: I18n.t("workspace_invitations.flash.joined")
     else
-      redirect_to root_path, alert: "워크스페이스 참여에 실패했습니다."
+      redirect_to root_path, alert: I18n.t("workspace_invitations.flash.join_failed")
     end
   end
 end

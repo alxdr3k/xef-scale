@@ -45,35 +45,35 @@ class ApplicationController < ActionController::Base
     @workspace = current_user.workspaces.find(params[:workspace_id] || params[:id])
     session[:workspace_id] = @workspace.id
   rescue ActiveRecord::RecordNotFound
-    redirect_to workspaces_path, alert: "워크스페이스를 찾을 수 없습니다."
+    redirect_to workspaces_path, alert: I18n.t("common.workspace_not_found")
   end
 
   def require_workspace_access
     unless current_user.can_read?(@workspace)
-      redirect_to workspaces_path, alert: "이 워크스페이스에 접근할 권한이 없습니다."
+      redirect_to workspaces_path, alert: I18n.t("common.workspace_no_access")
     end
   end
 
   def require_workspace_write_access
     unless current_user.can_write?(@workspace)
-      redirect_to workspace_path(@workspace), alert: "이 워크스페이스를 수정할 권한이 없습니다."
+      redirect_to workspace_path(@workspace), alert: I18n.t("common.workspace_no_write_access")
     end
   end
 
   def require_workspace_admin_access
     unless current_user.admin_of?(@workspace)
-      redirect_to workspace_path(@workspace), alert: "관리자 권한이 필요합니다."
+      redirect_to workspace_path(@workspace), alert: I18n.t("common.workspace_no_admin_access")
     end
   end
 
   private
 
   def user_not_authorized
-    flash[:alert] = "이 작업을 수행할 권한이 없습니다."
+    flash[:alert] = I18n.t("common.not_authorized")
     redirect_back(fallback_location: root_path)
   end
 
   def handle_pagy_overflow(exception)
-    render plain: "존재하지 않는 페이지입니다.", status: :not_found
+    render plain: I18n.t("common.not_found_page"), status: :not_found
   end
 end

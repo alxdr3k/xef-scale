@@ -44,8 +44,8 @@ class TransactionsController < ApplicationController
     if @transaction.save
       @categories = @workspace.categories.order(:name)
       respond_to do |format|
-        format.html { redirect_to workspace_transactions_path(@workspace), notice: "거래가 추가되었습니다." }
-        format.turbo_stream { flash[:notice] = "거래가 추가되었습니다." }
+        format.html { redirect_to workspace_transactions_path(@workspace), notice: I18n.t("transactions.flash.created") }
+        format.turbo_stream { flash[:notice] = I18n.t("transactions.flash.created") }
       end
     else
       @categories = @workspace.categories
@@ -104,8 +104,8 @@ class TransactionsController < ApplicationController
 
       @categories = @workspace.categories.order(:name)
       respond_to do |format|
-        format.html { redirect_to params[:return_to].presence || workspace_transactions_path(@workspace), notice: "거래가 수정되었습니다." }
-        format.turbo_stream { flash[:notice] = "거래가 수정되었습니다." }
+        format.html { redirect_to params[:return_to].presence || workspace_transactions_path(@workspace), notice: I18n.t("transactions.flash.updated") }
+        format.turbo_stream { flash[:notice] = I18n.t("transactions.flash.updated") }
       end
     else
       @categories = @workspace.categories
@@ -117,18 +117,18 @@ class TransactionsController < ApplicationController
     @transaction.soft_delete!
 
     respond_to do |format|
-      format.html { redirect_to workspace_transactions_path(@workspace), notice: "거래가 삭제되었습니다." }
-      format.turbo_stream { flash.now[:notice] = "거래가 삭제되었습니다." }
+      format.html { redirect_to workspace_transactions_path(@workspace), notice: I18n.t("transactions.flash.destroyed") }
+      format.turbo_stream { flash.now[:notice] = I18n.t("transactions.flash.destroyed") }
     end
   end
 
   def toggle_allowance
     if @transaction.allowance?
       AllowanceTransaction.unmark_as_allowance!(@transaction, current_user)
-      notice = "용돈에서 제외되었습니다."
+      notice = I18n.t("transactions.flash.allowance_unset")
     else
       AllowanceTransaction.mark_as_allowance!(@transaction, current_user)
-      notice = "용돈으로 표시되었습니다."
+      notice = I18n.t("transactions.flash.allowance_set")
     end
 
     # 변경된 상태 반영을 위해 reload (association 캐시 포함)
@@ -158,7 +158,7 @@ class TransactionsController < ApplicationController
       respond_to do |format|
         format.turbo_stream { head :unprocessable_entity }
         format.json do
-          render json: { success: false, errors: [ "다른 워크스페이스의 카테고리는 사용할 수 없습니다." ] },
+          render json: { success: false, errors: [ I18n.t("transactions.flash.wrong_workspace_category") ] },
                  status: :unprocessable_entity
         end
       end
@@ -264,7 +264,7 @@ class TransactionsController < ApplicationController
     transaction_ids = params[:transaction_ids].to_s.split(",").map(&:to_i).reject(&:zero?)
 
     if transaction_ids.empty?
-      redirect_to workspace_transactions_path(@workspace), alert: "선택된 항목이 없습니다."
+      redirect_to workspace_transactions_path(@workspace), alert: I18n.t("transactions.flash.empty_selection")
       return
     end
 
@@ -275,7 +275,7 @@ class TransactionsController < ApplicationController
     when "delete"
       count = transactions.count
       transactions.find_each(&:soft_delete!)
-      notice = "#{count}건의 거래가 삭제되었습니다."
+      notice = I18n.t("transactions.flash.bulk_deleted", count: count)
     when "mark_allowance"
       count = 0
       transactions.find_each do |tx|
@@ -284,7 +284,7 @@ class TransactionsController < ApplicationController
           count += 1
         end
       end
-      notice = "#{count}건의 거래가 용돈으로 표시되었습니다."
+      notice = I18n.t("transactions.flash.bulk_allowance_set", count: count)
     when "unmark_allowance"
       count = 0
       transactions.find_each do |tx|
@@ -293,20 +293,20 @@ class TransactionsController < ApplicationController
           count += 1
         end
       end
-      notice = "#{count}건의 거래가 용돈에서 해제되었습니다."
+      notice = I18n.t("transactions.flash.bulk_allowance_unset", count: count)
     when "change_category"
       # Codex hotfix B: invalid/blank category_id를 nil clear로 silent 해석하지
       # 않는다 — bulk action은 파괴 범위가 크므로 422/alert로 막는다. 단건
       # quick_update_category와 contract를 맞춤.
       if params[:category_id].blank?
         redirect_to workspace_transactions_path(@workspace),
-                    alert: "카테고리를 선택해 주세요."
+                    alert: I18n.t("transactions.flash.category_required")
         return
       end
       category = @workspace.categories.find_by(id: params[:category_id])
       unless category
         redirect_to workspace_transactions_path(@workspace),
-                    alert: "유효하지 않은 카테고리입니다."
+                    alert: I18n.t("transactions.flash.invalid_category")
         return
       end
       count = 0
@@ -318,9 +318,9 @@ class TransactionsController < ApplicationController
         tx.update!(attrs)
         count += 1
       end
-      notice = "#{count}건의 거래 카테고리가 변경되었습니다."
+      notice = I18n.t("transactions.flash.bulk_category_changed", count: count)
     else
-      notice = "알 수 없는 작업입니다."
+      notice = I18n.t("transactions.flash.unknown_action")
     end
 
     redirect_to workspace_transactions_path(@workspace), notice: notice
@@ -425,7 +425,13 @@ class TransactionsController < ApplicationController
   def generate_csv(transactions)
     require "csv"
     CSV.generate(headers: true, encoding: "UTF-8") do |csv|
-      csv << [ "날짜", "내역", "금액", "분류", "메모" ]
+      csv << [
+        I18n.t("transactions.csv.header_date"),
+        I18n.t("transactions.csv.header_merchant"),
+        I18n.t("transactions.csv.header_amount"),
+        I18n.t("transactions.csv.header_category"),
+        I18n.t("transactions.csv.header_notes")
+      ]
       transactions.order(date: :desc).each do |tx|
         csv << [
           tx.formatted_date,

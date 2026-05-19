@@ -1,10 +1,8 @@
 module ApplicationHelper
   include Pagy::Frontend
 
-  APP_NAME = "지출 추적"
-
   def app_name
-    APP_NAME
+    I18n.t("app.name")
   end
 
   def safe_return_to(fallback_path)
@@ -39,7 +37,7 @@ module ApplicationHelper
     html << '<ul class="inline-flex -space-x-px">'
 
     if pagy.prev
-      html << "<li>#{link_to '이전', url_for(base_params.merge(page: pagy.prev)), class: PAGY_PREV_CLASS}</li>"
+      html << "<li>#{link_to I18n.t('common.pagination.prev'), url_for(base_params.merge(page: pagy.prev)), class: PAGY_PREV_CLASS}</li>"
     end
 
     pagy.series.each do |item|
@@ -55,7 +53,7 @@ module ApplicationHelper
     end
 
     if pagy.next
-      html << "<li>#{link_to '다음', url_for(base_params.merge(page: pagy.next)), class: PAGY_NEXT_CLASS}</li>"
+      html << "<li>#{link_to I18n.t('common.pagination.next'), url_for(base_params.merge(page: pagy.next)), class: PAGY_NEXT_CLASS}</li>"
     end
 
     html << "</ul>"

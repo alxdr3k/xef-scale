@@ -77,7 +77,7 @@ class CategoriesController < ApplicationController
         # 명시적으로 새 카테고리를 만들고 거래에 적용한 흐름이므로 manual_set.
         @transaction.update(category_id: @category.id, classification_source: "manual_set")
         @categories = @workspace.categories.order(:name)
-        flash.now[:notice] = "카테고리가 추가되고 거래에 적용되었습니다."
+        flash.now[:notice] = I18n.t("categories.flash.created_and_applied")
         broadcast_html = helpers.content_tag(:div, "",
           data: {
             controller: "category-broadcast",
@@ -102,8 +102,8 @@ class CategoriesController < ApplicationController
         ]
       else
         respond_to do |format|
-          format.html { redirect_to workspace_categories_path(@workspace), notice: "카테고리가 추가되었습니다." }
-          format.turbo_stream { flash.now[:notice] = "카테고리가 추가되었습니다." }
+          format.html { redirect_to workspace_categories_path(@workspace), notice: I18n.t("categories.flash.created") }
+          format.turbo_stream { flash.now[:notice] = I18n.t("categories.flash.created") }
         end
       end
     else
@@ -121,8 +121,8 @@ class CategoriesController < ApplicationController
   def update
     if @category.update(category_params)
       respond_to do |format|
-        format.html { redirect_to workspace_categories_path(@workspace), notice: "카테고리가 수정되었습니다." }
-        format.turbo_stream { flash.now[:notice] = "카테고리가 수정되었습니다." }
+        format.html { redirect_to workspace_categories_path(@workspace), notice: I18n.t("categories.flash.updated") }
+        format.turbo_stream { flash.now[:notice] = I18n.t("categories.flash.updated") }
       end
     else
       render :edit, status: :unprocessable_entity
@@ -133,8 +133,8 @@ class CategoriesController < ApplicationController
     @category.destroy
 
     respond_to do |format|
-      format.html { redirect_to workspace_categories_path(@workspace), notice: "카테고리가 삭제되었습니다." }
-      format.turbo_stream { flash.now[:notice] = "카테고리가 삭제되었습니다." }
+      format.html { redirect_to workspace_categories_path(@workspace), notice: I18n.t("categories.flash.destroyed") }
+      format.turbo_stream { flash.now[:notice] = I18n.t("categories.flash.destroyed") }
     end
   end
 

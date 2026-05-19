@@ -47,23 +47,6 @@ class I18nHardcodedKoreanContractTest < ActiveSupport::TestCase
   #   2) 이 목록에서 파일을 제거한다.
   #   3) 테스트 재실행으로 회귀 차단이 새 surface까지 확장됐는지 확인.
   BASELINE_FILES_WITH_KOREAN = %w[
-    app/controllers/allowances_controller.rb
-    app/controllers/application_controller.rb
-    app/controllers/categories_controller.rb
-    app/controllers/category_mappings_controller.rb
-    app/controllers/dashboards_controller.rb
-    app/controllers/duplicate_confirmations_controller.rb
-    app/controllers/import_issues_controller.rb
-    app/controllers/parsing_sessions_controller.rb
-    app/controllers/reviews_controller.rb
-    app/controllers/transactions_controller.rb
-    app/controllers/user_settings_controller.rb
-    app/controllers/users/omniauth_callbacks_controller.rb
-    app/controllers/workspace_invitations_controller.rb
-    app/controllers/workspace_memberships_controller.rb
-    app/controllers/workspaces_controller.rb
-    app/helpers/application_helper.rb
-    app/jobs/file_parsing_job.rb
     app/views/pages/landing.html.erb
     app/views/shared/_context_header.html.erb
   ].freeze
@@ -79,6 +62,11 @@ class I18nHardcodedKoreanContractTest < ActiveSupport::TestCase
 
   # 코멘트 마스킹. semantic_token_contract_test 와 동일한 정책:
   # 한글이 코멘트에만 있으면 contract 통과.
+  #
+  # 라인 시작 들여쓰기 매치에 `\s*` 대신 `[ \t]*`를 쓴다. Ruby 정규식의 `\s`는
+  # `\n`도 포함하므로 `^\s*#` 가 직전 빈 줄의 newline까지 먹어버려 raw vs stripped
+  # 사이에 라인 정렬이 어긋나고 (`first_disallowed_match`가 잘못된 raw 라인을
+  # 검사해 i18n-allow 마커를 놓치는 회귀 원인), `.lines.count`도 줄어든다.
   def strip_comments(content, ext)
     case ext
     when ".erb"
@@ -88,12 +76,12 @@ class I18nHardcodedKoreanContractTest < ActiveSupport::TestCase
       content
         .gsub(/<%#.*?%>/m, "")
         .gsub(/<!--.*?-->/m, "")
-        .gsub(/<%[-=]?.*?%>/m) { |scriptlet| scriptlet.gsub(/^\s*#.*$/, "") }
+        .gsub(/<%[-=]?.*?%>/m) { |scriptlet| scriptlet.gsub(/^[ \t]*#.*$/, "") }
     when ".js"
       content.gsub(/\/\/.*$/, "").gsub(%r{/\*.*?\*/}m, "")
     when ".rb"
       # 라인 시작 `#` 만 제거. `"#{interpolation}"` 안의 `#` 보호.
-      content.gsub(/^\s*#.*$/, "")
+      content.gsub(/^[ \t]*#.*$/, "")
     else
       content
     end

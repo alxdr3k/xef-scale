@@ -12,14 +12,14 @@ class WorkspaceMembershipsController < ApplicationController
 
     # Cannot change owner role
     if @membership.role == "owner"
-      redirect_to settings_workspace_path(@workspace), alert: "소유자의 역할은 변경할 수 없습니다."
+      redirect_to settings_workspace_path(@workspace), alert: I18n.t("workspace_memberships.flash.owner_role_immutable")
       return
     end
 
     if @membership.update(membership_params)
-      redirect_to settings_workspace_path(@workspace), notice: "멤버 역할이 변경되었습니다."
+      redirect_to settings_workspace_path(@workspace), notice: I18n.t("workspace_memberships.flash.role_updated")
     else
-      redirect_to settings_workspace_path(@workspace), alert: "역할 변경에 실패했습니다."
+      redirect_to settings_workspace_path(@workspace), alert: I18n.t("workspace_memberships.flash.role_update_failed")
     end
   end
 
@@ -28,18 +28,18 @@ class WorkspaceMembershipsController < ApplicationController
 
     # Cannot remove owner
     if @membership.role == "owner"
-      redirect_to settings_workspace_path(@workspace), alert: "소유자는 제거할 수 없습니다."
+      redirect_to settings_workspace_path(@workspace), alert: I18n.t("workspace_memberships.flash.owner_remove_blocked")
       return
     end
 
     # Cannot remove yourself
     if @membership.user == current_user
-      redirect_to settings_workspace_path(@workspace), alert: "자기 자신은 제거할 수 없습니다."
+      redirect_to settings_workspace_path(@workspace), alert: I18n.t("workspace_memberships.flash.self_remove_blocked")
       return
     end
 
     @membership.destroy
-    redirect_to settings_workspace_path(@workspace), notice: "멤버가 제거되었습니다."
+    redirect_to settings_workspace_path(@workspace), notice: I18n.t("workspace_memberships.flash.removed")
   end
 
   private

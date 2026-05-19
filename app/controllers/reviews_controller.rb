@@ -92,48 +92,48 @@ class ReviewsController < ApplicationController
   def commit
     if @parsing_session.has_unresolved_duplicates?
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
-                  alert: "중복으로 의심되는 거래가 남아 있습니다. 먼저 처리해 주세요."
+                  alert: I18n.t("reviews.flash.unresolved_duplicates")
       return
     end
 
     if @parsing_session.has_open_import_issues?
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
-                  alert: "수리 필요한 항목이 남아 있습니다. 먼저 채우거나 제외해 주세요."
+                  alert: I18n.t("reviews.flash.open_import_issues")
       return
     end
 
     if @parsing_session.commit_all!(current_user)
       check_budget_alerts
       summary = @parsing_session.commit_summary
-      parts = [ "#{summary[:committed]}건의 거래가 확정되었습니다." ]
-      parts << "#{summary[:excluded]}건은 제외되었습니다." if summary[:excluded].positive?
-      parts << "중복 #{summary[:originals_kept]}건은 기존 거래만 남겼습니다." if summary[:originals_kept].positive?
-      parts << "분류 필요 #{summary[:uncategorized]}건." if summary[:uncategorized].positive?
+      parts = [ I18n.t("reviews.flash.commit_summary_committed", count: summary[:committed]) ]
+      parts << I18n.t("reviews.flash.commit_summary_excluded", count: summary[:excluded]) if summary[:excluded].positive?
+      parts << I18n.t("reviews.flash.commit_summary_originals_kept", count: summary[:originals_kept]) if summary[:originals_kept].positive?
+      parts << I18n.t("reviews.flash.commit_summary_uncategorized", count: summary[:uncategorized]) if summary[:uncategorized].positive?
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
                   notice: parts.join(" ")
     else
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
-                  alert: "거래 확정에 실패했습니다."
+                  alert: I18n.t("reviews.flash.commit_failed")
     end
   end
 
   def rollback
     if @parsing_session.rollback_all!(current_user)
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  notice: "모든 거래가 롤백되었습니다."
+                  notice: I18n.t("reviews.flash.rollback_done")
     else
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
-                  alert: "롤백에 실패했습니다."
+                  alert: I18n.t("reviews.flash.rollback_failed")
     end
   end
 
   def discard
     if @parsing_session.discard_all!
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  notice: "업로드가 취소되었습니다."
+                  notice: I18n.t("reviews.flash.discard_done")
     else
       redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
-                  alert: "취소에 실패했습니다."
+                  alert: I18n.t("reviews.flash.discard_failed")
     end
   end
 
@@ -150,10 +150,10 @@ class ReviewsController < ApplicationController
     respond_to do |format|
       format.html do
         redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
-                    notice: "#{resolved_count}건의 중복 거래가 처리되었습니다."
+                    notice: I18n.t("reviews.flash.duplicates_resolved", count: resolved_count)
       end
       format.turbo_stream do
-        flash.now[:notice] = "#{resolved_count}건의 중복 거래가 처리되었습니다."
+        flash.now[:notice] = I18n.t("reviews.flash.duplicates_resolved", count: resolved_count)
       end
     end
   rescue ArgumentError => e
@@ -177,7 +177,7 @@ class ReviewsController < ApplicationController
           count += 1
         end
       end
-      notice = "#{count}건의 거래가 이번 가져오기에서 제외되었습니다."
+      notice = I18n.t("reviews.flash.bulk_excluded", count: count)
     when "mark_allowance"
       count = 0
       transactions.find_each do |tx|
@@ -186,7 +186,7 @@ class ReviewsController < ApplicationController
           count += 1
         end
       end
-      notice = "#{count}건의 거래가 용돈으로 표시되었습니다."
+      notice = I18n.t("reviews.flash.bulk_allowance_set", count: count)
     when "unmark_allowance"
       count = 0
       transactions.find_each do |tx|
@@ -195,14 +195,14 @@ class ReviewsController < ApplicationController
           count += 1
         end
       end
-      notice = "#{count}건의 거래가 용돈에서 해제되었습니다."
+      notice = I18n.t("reviews.flash.bulk_allowance_unset", count: count)
     when "change_category"
       # Codex hotfix B: invalid/blank category_id를 nil clear로 silent 해석하지
       # 않는다. bulk action은 파괴 범위가 크므로 422/alert로 막는다.
       err = if params[:category_id].blank?
-              "카테고리를 선택해 주세요."
+              I18n.t("reviews.flash.category_required")
       elsif !(category = @workspace.categories.find_by(id: params[:category_id]))
-              "유효하지 않은 카테고리입니다."
+              I18n.t("reviews.flash.invalid_category")
       end
       if err
         respond_to do |format|
@@ -226,9 +226,9 @@ class ReviewsController < ApplicationController
         record_review_event_for(tx, "transaction_updated", changed_fields: [ "category_id" ]) if category_changed
         count += 1
       end
-      notice = "#{count}건의 거래 카테고리가 변경되었습니다."
+      notice = I18n.t("reviews.flash.bulk_category_changed", count: count)
     else
-      notice = "알 수 없는 작업입니다."
+      notice = I18n.t("reviews.flash.unknown_action")
     end
 
     respond_to do |format|
@@ -299,8 +299,8 @@ class ReviewsController < ApplicationController
         apply_merchant_rematch_policy!(@transaction) if field == "merchant"
 
         respond_to do |format|
-          format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), notice: "거래가 수정되었습니다." }
-          format.turbo_stream { flash.now[:notice] = "거래가 수정되었습니다." }
+          format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), notice: I18n.t("reviews.flash.transaction_updated") }
+          format.turbo_stream { flash.now[:notice] = I18n.t("reviews.flash.transaction_updated") }
         end
         return
       else
@@ -348,12 +348,12 @@ class ReviewsController < ApplicationController
       # 학습은 CategoryLearningSuggestionsController explicit opt-in으로만 가능하다.
 
       respond_to do |format|
-        format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), notice: "거래가 수정되었습니다." }
-        format.turbo_stream { flash.now[:notice] = "거래가 수정되었습니다." }
+        format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), notice: I18n.t("reviews.flash.transaction_updated") }
+        format.turbo_stream { flash.now[:notice] = I18n.t("reviews.flash.transaction_updated") }
       end
     else
       respond_to do |format|
-        format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), alert: "수정에 실패했습니다." }
+        format.html { redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session), alert: I18n.t("reviews.flash.transaction_update_failed") }
         format.turbo_stream { render :update_transaction_error }
       end
     end
@@ -395,13 +395,13 @@ class ReviewsController < ApplicationController
 
   def require_workspace_access
     unless current_user.can_read?(@workspace)
-      redirect_to root_path, alert: "접근 권한이 없습니다."
+      redirect_to root_path, alert: I18n.t("common.no_read_access")
     end
   end
 
   def require_workspace_write_access
     unless current_user.can_write?(@workspace)
-      redirect_to root_path, alert: "수정 권한이 없습니다."
+      redirect_to root_path, alert: I18n.t("common.no_write_access")
     end
   end
 
@@ -424,7 +424,7 @@ class ReviewsController < ApplicationController
       format.json { head :forbidden }
       format.html do
         redirect_to review_workspace_parsing_session_path(@workspace, @parsing_session),
-                    alert: "이미 종료된 세션은 수정할 수 없습니다."
+                    alert: I18n.t("reviews.flash.finalized_immutable")
       end
     end
   end

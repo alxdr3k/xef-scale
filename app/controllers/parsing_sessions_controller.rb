@@ -71,12 +71,12 @@ class ParsingSessionsController < ApplicationController
     text = params[:text].to_s.strip
 
     if text.blank?
-      redirect_to workspace_parsing_sessions_path(@workspace), alert: "텍스트를 입력해 주세요."
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: I18n.t("parsing_sessions.flash.text_required")
       return
     end
 
     if text.length > 10_000
-      redirect_to workspace_parsing_sessions_path(@workspace), alert: "텍스트는 10,000자 이내로 입력해 주세요."
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: I18n.t("parsing_sessions.flash.text_too_long")
       return
     end
 
@@ -84,7 +84,7 @@ class ParsingSessionsController < ApplicationController
 
     unless @workspace.ai_text_parsing_enabled?
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  alert: "AI 문자 파싱이 비활성화되어 있습니다. 워크스페이스 설정에서 활성화한 뒤 다시 시도해 주세요."
+                  alert: I18n.t("parsing_sessions.flash.ai_text_disabled")
       return
     end
 
@@ -98,14 +98,14 @@ class ParsingSessionsController < ApplicationController
     AiTextParsingJob.perform_later(parsing_session.id)
 
     redirect_to workspace_parsing_sessions_path(@workspace),
-                notice: "AI 파싱 중입니다. 완료되면 검토 후 거래내역에 반영할 수 있습니다."
+                notice: I18n.t("parsing_sessions.flash.ai_pending")
   end
 
   def create
     uploaded_files = Array(params[:files]).reject(&:blank?)
 
     if uploaded_files.empty?
-      redirect_to workspace_parsing_sessions_path(@workspace), alert: "파일을 선택해 주세요."
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: I18n.t("parsing_sessions.flash.file_required")
       return
     end
 
@@ -113,7 +113,7 @@ class ParsingSessionsController < ApplicationController
 
     unless @workspace.ai_image_parsing_enabled?
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  alert: "AI 스크린샷 파싱이 비활성화되어 있습니다. 워크스페이스 설정에서 활성화한 뒤 다시 시도해 주세요."
+                  alert: I18n.t("parsing_sessions.flash.ai_image_disabled")
       return
     end
 
@@ -140,14 +140,16 @@ class ParsingSessionsController < ApplicationController
     end
 
     if failed_files.empty?
-      message = success_count == 1 ? "파일이 업로드되었습니다. 처리 중입니다..." : "#{success_count}개 파일이 업로드되었습니다. 처리 중입니다..."
+      message = success_count == 1 ?
+                  I18n.t("parsing_sessions.flash.upload_done_one") :
+                  I18n.t("parsing_sessions.flash.upload_done_many", count: success_count)
       redirect_to workspace_parsing_sessions_path(@workspace), notice: message
     elsif success_count.zero?
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  alert: "파일 업로드에 실패했습니다. #{summarize_failed_files(failed_files)}"
+                  alert: I18n.t("parsing_sessions.flash.upload_failed", detail: summarize_failed_files(failed_files))
     else
       redirect_to workspace_parsing_sessions_path(@workspace),
-                  notice: "#{success_count}개 업로드 완료. 실패: #{summarize_failed_files(failed_files)}"
+                  notice: I18n.t("parsing_sessions.flash.upload_partial", count: success_count, detail: summarize_failed_files(failed_files))
     end
   end
 
@@ -171,7 +173,7 @@ class ParsingSessionsController < ApplicationController
 
   def retry
     unless @parsing_session.failed?
-      redirect_to workspace_parsing_sessions_path(@workspace), alert: "실패한 세션만 재시도할 수 있습니다."
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: I18n.t("parsing_sessions.flash.retry_only_failed")
       return
     end
 
@@ -180,7 +182,7 @@ class ParsingSessionsController < ApplicationController
     if processed_file
       unless @workspace.ai_image_parsing_enabled?
         redirect_to workspace_parsing_sessions_path(@workspace),
-                    alert: "AI 스크린샷 파싱이 비활성화되어 있습니다."
+                    alert: I18n.t("parsing_sessions.flash.ai_image_disabled_short")
         return
       end
       return unless require_ai_consent!
@@ -192,11 +194,11 @@ class ParsingSessionsController < ApplicationController
       end
       job_args = { institution_identifier: processed_file.institution_identifier }.compact
       FileParsingJob.perform_later(processed_file.id, **job_args)
-      redirect_to workspace_parsing_sessions_path(@workspace), notice: "재처리를 시작했습니다."
+      redirect_to workspace_parsing_sessions_path(@workspace), notice: I18n.t("parsing_sessions.flash.retry_started")
     else
       unless @workspace.ai_text_parsing_enabled?
         redirect_to workspace_parsing_sessions_path(@workspace),
-                    alert: "AI 문자 파싱이 비활성화되어 있습니다."
+                    alert: I18n.t("parsing_sessions.flash.ai_text_disabled_short")
         return
       end
       return unless require_ai_consent!
@@ -221,17 +223,17 @@ class ParsingSessionsController < ApplicationController
       rescue StandardError
         new_session.update_columns(status: "failed")
         redirect_to workspace_parsing_sessions_path(@workspace),
-                    alert: "재처리 등록에 실패했습니다. 다시 시도해 주세요."
+                    alert: I18n.t("parsing_sessions.flash.retry_enqueue_failed")
         return
       end
 
-      redirect_to workspace_parsing_sessions_path(@workspace), notice: "재처리를 시작했습니다."
+      redirect_to workspace_parsing_sessions_path(@workspace), notice: I18n.t("parsing_sessions.flash.retry_started")
     end
   end
 
   def destroy
     unless @parsing_session.failed? || @parsing_session.review_discarded?
-      redirect_to workspace_parsing_sessions_path(@workspace), alert: "실패하거나 취소된 세션만 삭제할 수 있습니다."
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: I18n.t("parsing_sessions.flash.destroy_only_failed_or_discarded")
       return
     end
 
@@ -241,14 +243,14 @@ class ParsingSessionsController < ApplicationController
     @parsing_session.destroy!
     processed_file&.destroy
 
-    redirect_to workspace_parsing_sessions_path(@workspace), notice: "세션이 삭제되었습니다."
+    redirect_to workspace_parsing_sessions_path(@workspace), notice: I18n.t("parsing_sessions.flash.destroyed")
   end
 
   def bulk_discard
     session_ids = params[:session_ids].to_s.split(",").map(&:to_i).reject(&:zero?)
 
     if session_ids.empty?
-      redirect_to workspace_parsing_sessions_path(@workspace), alert: "선택된 항목이 없습니다."
+      redirect_to workspace_parsing_sessions_path(@workspace), alert: I18n.t("parsing_sessions.flash.empty_selection")
       return
     end
 
@@ -263,7 +265,7 @@ class ParsingSessionsController < ApplicationController
     end
 
     redirect_to workspace_parsing_sessions_path(@workspace),
-                notice: "#{count}건의 업로드가 취소되었습니다."
+                notice: I18n.t("parsing_sessions.flash.bulk_discarded", count: count)
   end
 
   private
@@ -275,7 +277,7 @@ class ParsingSessionsController < ApplicationController
   def summarize_failed_files(failed_files, limit: 3)
     shown = failed_files.first(limit)
     rest  = failed_files.size - shown.size
-    rest > 0 ? "#{shown.join(" / ")} 외 #{rest}개" : shown.join(" / ")
+    rest > 0 ? I18n.t("parsing_sessions.flash.upload_failed_detail_more", shown: shown.join(" / "), rest: rest) : shown.join(" / ")
   end
 
   # Hard gate: we will not send SMS text or screenshots to an external model
@@ -286,7 +288,7 @@ class ParsingSessionsController < ApplicationController
     return true unless @workspace.ai_consent_required?
 
     redirect_to settings_workspace_path(@workspace),
-                alert: "AI 기능을 사용하려면 워크스페이스 설정에서 외부 AI 사용 동의가 필요합니다."
+                alert: I18n.t("parsing_sessions.flash.ai_consent_required")
     false
   end
 end

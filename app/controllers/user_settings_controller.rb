@@ -12,9 +12,9 @@ class UserSettingsController < ApplicationController
 
     if current_user.save
       respond_to do |format|
-        format.html { redirect_to user_settings_path, notice: "설정이 저장되었습니다." }
+        format.html { redirect_to user_settings_path, notice: I18n.t("user_settings.flash.saved") }
         format.turbo_stream do
-          flash.now[:notice] = "설정이 저장되었습니다."
+          flash.now[:notice] = I18n.t("user_settings.flash.saved")
           # ADR-0011 §Decision 3 X — Codex PR #180 P1: turbo_stream 응답은
           # render 또는 redirect를 명시해야 한다 (implicit template render는
           # 존재하지 않는 update.turbo_stream.erb를 찾아 MissingTemplate 발생).
@@ -22,7 +22,7 @@ class UserSettingsController < ApplicationController
         end
       end
     else
-      redirect_to user_settings_path, alert: "설정 저장에 실패했습니다."
+      redirect_to user_settings_path, alert: I18n.t("user_settings.flash.save_failed")
     end
   end
 

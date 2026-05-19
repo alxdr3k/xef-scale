@@ -184,7 +184,7 @@ class FileParsingJob < ApplicationJob
     merchants = transactions.map(&:merchant).compact.uniq
     return 0 if merchants.blank?
 
-    Rails.logger.info "[FileParsingJob] Gemini 배치 처리 시작: #{merchants.size}개 merchant"
+    Rails.logger.info "[FileParsingJob] Gemini 배치 처리 시작: #{merchants.size}개 merchant" # i18n-allow: server log, not user-visible
 
     gemini_service = GeminiCategoryService.new
     results = gemini_service.suggest_categories_batch(merchants, workspace.categories.to_a)
@@ -219,13 +219,13 @@ class FileParsingJob < ApplicationJob
       end
     end
 
-    Rails.logger.info "[FileParsingJob] Gemini 배치 처리 완료: #{categorized_count}건 분류됨"
+    Rails.logger.info "[FileParsingJob] Gemini 배치 처리 완료: #{categorized_count}건 분류됨" # i18n-allow: server log
     categorized_count
   rescue ArgumentError => e
-    Rails.logger.warn "[FileParsingJob] Gemini API 비활성화: #{e.message}"
+    Rails.logger.warn "[FileParsingJob] Gemini API 비활성화: #{e.message}" # i18n-allow: server log
     0
   rescue StandardError => e
-    Rails.logger.error "[FileParsingJob] Gemini API 오류: #{e.message}"
+    Rails.logger.error "[FileParsingJob] Gemini API 오류: #{e.message}" # i18n-allow: server log
     0
   end
 
