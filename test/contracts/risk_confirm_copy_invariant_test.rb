@@ -22,9 +22,12 @@ require "test_helper"
 class RiskConfirmCopyInvariantTest < ActiveSupport::TestCase
   PATTERNS = {
     irreversible: /되돌릴 수 없|영구|비가역/,
-    bulk:         /전체|모두|모든|일괄/,
+    bulk:         /전체|모두|모든|일괄|선택한/,
     amount:       /총액|장부|교체|숨기|반영되지/,
-    scope:        /%\{[a-z_]+\}/   # name/count interpolation
+    # Rails I18n %{...} interpolation 또는 JS replace template placeholder
+    # (`__COUNT__` 등 — PR #242 idiom). 양쪽 다 "영향 범위 변수가 카피에 들어있다"
+    # 의 contract markers.
+    scope:        /%\{[a-z_]+\}|__[A-Z_]+__/
   }.freeze
 
   # destructive 키 등록부. 각 항목은 다음 형태:
@@ -49,7 +52,13 @@ class RiskConfirmCopyInvariantTest < ActiveSupport::TestCase
     [ "workspaces.settings.delete_confirm",               %i[irreversible scope] ],
 
     # workspace_more 워크스페이스 삭제 — 범위 명시 (모든 거래·카테고리·매핑·세션).
-    [ "workspace_more.delete_confirm",                    %i[bulk] ]
+    [ "workspace_more.delete_confirm",                    %i[bulk] ],
+
+    # JS bulk_select_controller — N건의 결제 일괄 삭제 / 업로드 일괄 취소. 키
+    # suffix가 `_confirm_template`이지만 collect_confirm_keys가 이 suffix도
+    # 수집하므로 RISK_KEYS에 반드시 등록된다. bulk + scope(__COUNT__) 마커.
+    [ "common.js_bulk.delete_payment_confirm_template",   %i[bulk scope] ],
+    [ "common.js_bulk.discard_upload_confirm_template",   %i[bulk scope] ]
   ].freeze
 
   test "every registered destructive confirm key has the required risk markers" do
@@ -120,13 +129,18 @@ class RiskConfirmCopyInvariantTest < ActiveSupport::TestCase
 
   private
 
+  # JS replace template 키 (`__COUNT__` placeholder가 남은 것)도 잠금에 포함하기
+  # 위해 `_confirm` 또는 `_confirm_template` 양쪽 suffix를 수집한다. PR #245
+  # Codex P2 — bulk delete/discard template이 invariant 우회되는 문제 해소.
+  CONFIRM_SUFFIXES = %w[_confirm _confirm_template].freeze
+
   def collect_confirm_keys(translations, prefix = nil)
     result = []
     translations.each do |key, value|
       full = [ prefix, key ].compact.join(".")
       if value.is_a?(Hash)
         result.concat(collect_confirm_keys(value, full))
-      elsif key.to_s.end_with?("_confirm")
+      elsif CONFIRM_SUFFIXES.any? { |suf| key.to_s.end_with?(suf) }
         result << full
       end
     end
