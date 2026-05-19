@@ -20,7 +20,7 @@ class MetricsController < ApplicationController
     invalid_fields << "since" if since_invalid
     invalid_fields << "until" if until_invalid
     if @since && @until && @since > @until
-      invalid_fields << "since>until"
+      invalid_fields << "range_order"
     end
     if invalid_fields.any?
       flash.now[:alert] = t("metrics.show.invalid_date_filter", fields: invalid_fields.join(", "))

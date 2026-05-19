@@ -52,7 +52,7 @@ class MetricsControllerTest < ActionDispatch::IntegrationTest
     get workspace_metrics_path(@workspace, since: "2026-05-18", until: "2026-01-01")
     assert_response :success
     assert_match(/날짜 필터가 올바르지 않습니다/, @response.body)
-    assert_match(/since>until/, @response.body)
+    assert_match(/range_order/, @response.body)
   end
 
   # Codex PR #236 P2: ApplicationController#set_workspace 와 동일한 RecordNotFound
