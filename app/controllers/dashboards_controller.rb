@@ -155,6 +155,8 @@ class DashboardsController < ApplicationController
     #   - finalized 세션의 leftover pending dup 도 destination 에 안 보이므로 같이 제외
     # @needs_review_per_day / @duplicate_per_day 는 calendar grid 셀별 시각화 용도라
     # 월 스코프 그대로 유지 (workspace 전체 카운트는 셀 단위로 의미 없음).
+    # 라벨도 calendar.needs_review_count / duplicate_count 에서 "전체" prefix 로
+    # workspace-wide 임을 명시 — 월간 칼레더 상단의 시각 문맥과 충돌하지 않게.
     @monthly_total = @daily_totals.values.sum
     @needs_review_total = @workspace.parsing_sessions.needs_review.count
     @duplicate_total = DuplicateConfirmation

@@ -154,6 +154,8 @@ class ImportReviewMetricsReport
   private
 
   # Text formatter dispatcher. 새 섹션 type을 추가할 때 여기 한 곳만 확장하면 된다.
+  # canonical source 계약 강화: 새 type 을 sections 에 추가하고 formatter 를 빼먹으면
+  # 텍스트/HTML/CSV 사이에서 섹션이 조용히 누락된다. 명시적으로 raise 하여 즉시 실패.
   def text_for(section)
     case section[:type]
     when :header                            then header_text(section)
@@ -162,6 +164,8 @@ class ImportReviewMetricsReport
     when :classification_source_distribution then classification_source_distribution_text(section)
     when :import_issues                     then import_issue_distribution_text(section)
     when :commit_latency                    then commit_latency_text(section)
+    else
+      raise ArgumentError, "unknown metrics section type: #{section[:type].inspect}"
     end
   end
 

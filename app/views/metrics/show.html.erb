@@ -11,12 +11,16 @@
     <%= form_with url: workspace_metrics_path(@workspace), method: :get, local: true, class: 'flex flex-wrap gap-4 items-end' do %>
       <div>
         <label class="block text-sm font-medium text-secondary mb-1"><%= t("metrics.show.since_label") %></label>
-        <%= date_field_tag :since, @since,
+        <%# invalid 입력은 raw 값을 보여 admin 이 무엇이 잘못됐는지 확인할 수 있게 한다.
+            text_field_tag 사용 — date_field 는 invalid 한 string 을 표시하지 못한다. %>
+        <%= text_field_tag :since, (@metrics_invalid ? @raw_since : @since),
+            placeholder: 'YYYY-MM-DD',
             class: 'block w-40 rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
       </div>
       <div>
         <label class="block text-sm font-medium text-secondary mb-1"><%= t("metrics.show.until_label") %></label>
-        <%= date_field_tag :until, @until,
+        <%= text_field_tag :until, (@metrics_invalid ? @raw_until : @until),
+            placeholder: 'YYYY-MM-DD',
             class: 'block w-40 rounded-md border-divider shadow-sm focus:border-action focus:ring-action' %>
       </div>
       <div class="flex gap-2">
@@ -28,19 +32,23 @@
     <% end %>
   </div>
 
-  <%# Metric cards (Phase 7-2: HTML 카드 분해) %>
-  <div class="space-y-4">
-    <% @sections.each do |section| %>
-      <%= render "metrics/sections/#{section[:type]}", section: section %>
-    <% end %>
-  </div>
+  <%# Metric cards (Phase 7-2: HTML 카드 분해).
+      invalid 필터 상태에서는 widened/empty dataset 으로 잘못된 운영 결론을 내리지 않도록
+      sections / CSV export 링크 모두 숨긴다 (CSV 422 거부와 동일 정책). %>
+  <% unless @metrics_invalid %>
+    <div class="space-y-4">
+      <% @sections.each do |section| %>
+        <%= render "metrics/sections/#{section[:type]}", section: section %>
+      <% end %>
+    </div>
 
-  <div class="mt-4 flex items-center justify-between gap-3">
-    <p class="text-meta text-tertiary">
-      <%= t("metrics.show.cli_hint_html").html_safe %>
-    </p>
-    <%= link_to t("metrics.show.export_csv"),
-        workspace_metrics_path(@workspace, format: :csv, since: @since, until: @until),
-        class: 'shrink-0 px-3 py-1.5 text-sm font-medium rounded-md bg-elev text-primary hover:bg-divider' %>
-  </div>
+    <div class="mt-4 flex items-center justify-between gap-3">
+      <p class="text-meta text-tertiary">
+        <%= t("metrics.show.cli_hint_html").html_safe %>
+      </p>
+      <%= link_to t("metrics.show.export_csv"),
+          workspace_metrics_path(@workspace, format: :csv, since: @since, until: @until),
+          class: 'shrink-0 px-3 py-1.5 text-sm font-medium rounded-md bg-elev text-primary hover:bg-divider' %>
+    </div>
+  <% end %>
 </div>
