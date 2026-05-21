@@ -158,6 +158,12 @@ class MetricsController < ApplicationController
           csv << [ "commit_latency", "average_seconds", s[:average_seconds] ]
           csv << [ "commit_latency", "p50_seconds", s[:p50_seconds] ]
           csv << [ "commit_latency", "p90_seconds", s[:p90_seconds] ]
+        else
+          # canonical source 계약 (PR #249 후속): text_for 와 동일하게 unknown
+          # section type 은 silent drop 하지 않고 명시 실패. ImportReviewMetricsReport
+          # 가 새 section type 을 sections 에 추가하고 CSV emitter 를 빼먹으면
+          # 외부 소비자가 신호 없이 schema 가 바뀐 dataset 을 받게 된다.
+          raise ArgumentError, "unknown metrics CSV section type: #{s[:type].inspect}"
         end
       end
     end
