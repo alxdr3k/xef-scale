@@ -280,4 +280,49 @@ class ImportReviewMetricsReportTest < ActiveSupport::TestCase
     assert_match(/committed sessions analyzed: 2/, report)
     assert_match(/average modification rate: 25\.0%/, report)
   end
+
+  # Rate section state 회귀 가드. text/HTML/CSV 가 동일한 source 를 보더라도
+  # state 가 빠지면 "왜 비었는가" 가 drift 한다 (PR #243 후속).
+  test "rate_section state distinguishes no_committed from no_data" do
+    # case 1: commit 된 세션 자체가 없음 → :no_committed
+    empty_report = ImportReviewMetricsReport.new(
+      sessions: ParsingSession.where(id: -1), options: {}
+    )
+    mod = empty_report.sections.find { |s| s[:type] == :rate && s[:key] == :modification }
+    exc = empty_report.sections.find { |s| s[:type] == :rate && s[:key] == :exclusion }
+    assert_equal :no_committed, mod[:state]
+    assert_equal :no_committed, exc[:state]
+
+    # case 2: commit 된 세션은 있으나 reviewable 거래 없음 → :no_data
+    session = @workspace.parsing_sessions.create!(
+      source_type: "file_upload", status: "completed",
+      review_status: "committed",
+      completed_at: 2.minutes.ago, committed_at: 1.minute.ago
+    )
+    # rolled_back 만 있어 reviewable / candidate 모두 0
+    no_data_report = ImportReviewMetricsReport.new(
+      sessions: @workspace.parsing_sessions.where(id: session.id), options: {}
+    )
+    mod = no_data_report.sections.find { |s| s[:type] == :rate && s[:key] == :modification }
+    assert_equal :no_data, mod[:state]
+    # text 에서 modification 의 no_data 문구가 분리되어 출력
+    text = no_data_report.render
+    assert_match(/no reviewable transactions in committed sessions/, text)
+
+    # case 3: 정상 데이터 → :ok
+    @workspace.transactions.create!(date: Date.current, amount: 1, status: "committed", parsing_session: session)
+    ok_report = ImportReviewMetricsReport.new(
+      sessions: @workspace.parsing_sessions.where(id: session.id), options: {}
+    )
+    mod = ok_report.sections.find { |s| s[:type] == :rate && s[:key] == :modification }
+    assert_equal :ok, mod[:state]
+  end
+
+  # canonical source 계약: 새 section type 을 sections 에 넣고 formatter 를 빼먹으면
+  # text/HTML/CSV 사이에서 조용히 누락된다. 명시적 raise 로 즉시 실패하는지 회귀 가드.
+  test "text_for raises on unknown section type to prevent silent drift" do
+    report = ImportReviewMetricsReport.new(sessions: ParsingSession.where(id: -1), options: {})
+    err = assert_raises(ArgumentError) { report.send(:text_for, { type: :unknown_kind }) }
+    assert_match(/unknown metrics section type/, err.message)
+  end
 end

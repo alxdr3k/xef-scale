@@ -180,10 +180,14 @@ ko:
       category_annual_title: "카테고리별 연간 지출"
     calendar:
       header: "%{year}년 %{month}월 지출"
-      needs_review_count: "검토 필요 %{count}건"
-      needs_review_zero: "검토 필요 0건"
-      duplicate_count: "중복 의심 %{count}건"
-      duplicate_zero: "중복 의심 0건"
+      # 배지 라벨 (Codex PR #248 후속): destination 인 workspace_reviews_path 는 워크스페이스
+      # 전체 backlog 를 보여 주므로, 월간 calendar 상단에 놓인 카운트가 *이번 달* 만의 수치로
+      # 오해되지 않도록 "전체" prefix 로 스코프를 명시한다. uncategorized 배지는 destination 이
+      # year/month 파라미터를 받아 월-스코프 로 가므로 prefix 없이 그대로 유지.
+      needs_review_count: "전체 검토 필요 %{count}건"
+      needs_review_zero: "전체 검토 필요 0건"
+      duplicate_count: "전체 중복 의심 %{count}건"
+      duplicate_zero: "전체 중복 의심 0건"
       uncategorized_count: "미분류 %{count}건"
       uncategorized_zero: "미분류 0건"
       badge_review: "검토 %{count}"
@@ -886,7 +890,7 @@ ko:
       scope_summary: "범위 내 세션 %{count}개"
       cli_hint_html: 'CLI에서 동일 리포트를 보려면 <code class="px-1 py-0.5 bg-elev rounded">bin/rails import_review_metrics:report</code> 를 사용하세요.'
       export_csv: "CSV 내보내기"
-      invalid_date_filter: "날짜 필터가 올바르지 않습니다 (%{fields}). 형식은 YYYY-MM-DD이며 since ≤ until이어야 합니다. 잘못된 값은 무시되고 해당 방향 범위 제한이 풀린 채로 표시됩니다."
+      invalid_date_filter: "날짜 필터가 올바르지 않습니다 (%{fields}). 형식은 YYYY-MM-DD이며 since ≤ until이어야 합니다. 잘못된 값으로는 분석 결과를 표시하지 않습니다 — 입력을 수정한 뒤 다시 적용하세요."
     sections:
       header:
         title: "요약"
@@ -901,17 +905,21 @@ ko:
         th_count: "건수"
         th_pct: "비율"
       rate:
+        # state-specific empty messages. legacy `empty` 는 호환 위해 보존하되 신규 view 는 사용하지 않음.
         empty: "분석할 commit된 세션이 없습니다."
+        no_committed: "범위 내 commit된 세션이 없습니다 — 운영 데이터가 쌓이면 다시 확인하세요."
         sessions_analyzed: "분석된 세션"
         average: "평균"
         modification:
           title: "행 수정률 (distinct transaction / reviewable)"
           subtitle: "사용자가 검토 중 카테고리·금액·날짜 등을 수정한 row의 distinct 비율."
           footer: "Issue #187 thresholds: <10% C(auto-post) 후보 / 10–30% B 유지 / >30% A 강화"
+          no_data: "commit된 세션은 있으나 reviewable 거래가 없어 수정률을 계산할 수 없습니다."
         exclusion:
           title: "행 제외율 (distinct excluded transaction / candidate)"
           subtitle: "검토 중 사용자가 제외했거나 중복으로 폐기된 row 비율."
           footer: "수정률이 낮아도 제외율이 높으면 auto-post 전환 시 잘못된 row가 자동으로 장부에 들어갈 수 있음."
+          no_data: "commit된 세션은 있으나 분모(candidate row)가 없어 제외율을 계산할 수 없습니다."
       import_issues:
         title: "ImportIssue 분포 (source × type × status)"
         empty: "범위 내 이슈가 없습니다."

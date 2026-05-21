@@ -157,6 +157,30 @@ class DashboardsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, financial_institutions(:shinhan_card).name
   end
 
+  test "calendar action strip badge labels mark workspace-wide scope" do
+    # PR #248 후속 (F3): 월간 calendar 상단의 action strip 배지는 destination 인
+    # workspace_reviews_path 의 워크스페이스-전체 backlog 를 카운트하므로, 라벨에
+    # "전체" prefix 를 명시해 *이번 달* 범위로 오해되지 않도록 한다.
+    target = Date.current.beginning_of_month + 6.days
+    session = @workspace.parsing_sessions.create!(
+      source_type: "text_paste", status: "completed", review_status: "pending_review"
+    )
+    original = @workspace.transactions.create!(date: target, amount: 1_500, merchant: "GS25", status: "committed")
+    new_tx = @workspace.transactions.create!(
+      date: target, amount: 1_500, merchant: "GS25", status: "pending_review", parsing_session: session
+    )
+    DuplicateConfirmation.create!(
+      parsing_session: session, original_transaction: original,
+      new_transaction: new_tx, status: "pending"
+    )
+
+    get calendar_dashboard_path, params: { year: target.year, month: target.month }
+    assert_response :success
+    # 두 quick-filter 배지가 워크스페이스-전체 카운트임을 라벨에서 명시
+    assert_match(/전체 검토 필요 \d+건/, @response.body)
+    assert_match(/전체 중복 의심 \d+건/, @response.body)
+  end
+
   test "calendar dashboard duplicate counts ignore resolved confirmations" do
     target = Date.current.beginning_of_month + 5.days
     session = @workspace.parsing_sessions.create!(

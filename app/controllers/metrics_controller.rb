@@ -13,6 +13,9 @@ class MetricsController < ApplicationController
   def show
     @since, since_invalid = parse_date_with_status(params[:since])
     @until, until_invalid = parse_date_with_status(params[:until])
+    # form 에 사용자가 입력한 raw 값을 그대로 재표시해, 무엇이 잘못된 입력인지 보이게 한다.
+    @raw_since = params[:since]
+    @raw_until = params[:until]
 
     # invalid 입력을 silent widening 하지 않는다. 잘못된 날짜를 nil로 떨어뜨려
     # 전체 범위로 보여주면 admin이 분석 결과를 잘못 해석할 수 있다.
@@ -22,30 +25,35 @@ class MetricsController < ApplicationController
     if @since && @until && @since > @until
       invalid_fields << "range_order"
     end
-
-    sessions = @workspace.parsing_sessions
-    sessions = sessions.where("created_at >= ?", @since) if @since
-    sessions = sessions.where("created_at < ?", @until) if @until
-
-    options = { workspace_id: @workspace.id, since: @since, until: @until }
-    @report = ImportReviewMetricsReport.new(sessions: sessions, options: options)
-    @session_count = sessions.count
+    @metrics_invalid = invalid_fields.any?
 
     respond_to do |format|
       format.html do
-        flash.now[:alert] = t("metrics.show.invalid_date_filter", fields: invalid_fields.join(", ")) if invalid_fields.any?
-        @sections = @report.sections
+        # HTML 도 invalid 일 때 report sections/export link 를 렌더하지 않는다.
+        # flash alert 만 띄우고 widened/empty dataset 을 그대로 보여 주면
+        # admin 이 잘못된 데이터를 실제 분석 결과로 읽을 수 있다 (CSV 422 거부와 동일 정책).
+        if @metrics_invalid
+          flash.now[:alert] = t("metrics.show.invalid_date_filter", fields: invalid_fields.join(", "))
+          @sections = []
+          @session_count = 0
+          render :show, status: :unprocessable_entity
+        else
+          sessions = scoped_sessions
+          @session_count = sessions.count
+          @sections = report_for(sessions).sections
+        end
       end
       format.csv do
         # CSV 다운로드에서는 flash가 노출되지 않는다 — invalid 입력이면 silent
         # range widening 대신 422로 명시적으로 거부. 분석 자동화가 잘못된 dataset을
         # downstream에 흘리지 않게.
-        if invalid_fields.any?
+        if @metrics_invalid
           render plain: t("metrics.show.invalid_date_filter", fields: invalid_fields.join(", ")),
                  status: :unprocessable_entity,
                  content_type: "text/plain; charset=utf-8"
         else
-          send_data csv_for(@report.sections),
+          sessions = scoped_sessions
+          send_data csv_for(report_for(sessions).sections),
                     filename: csv_filename,
                     type: "text/csv; charset=utf-8"
         end
@@ -54,6 +62,20 @@ class MetricsController < ApplicationController
   end
 
   private
+
+  def scoped_sessions
+    sessions = @workspace.parsing_sessions
+    sessions = sessions.where("created_at >= ?", @since) if @since
+    sessions = sessions.where("created_at < ?", @until) if @until
+    sessions
+  end
+
+  def report_for(sessions)
+    ImportReviewMetricsReport.new(
+      sessions: sessions,
+      options: { workspace_id: @workspace.id, since: @since, until: @until }
+    )
+  end
 
   # set_workspace 는 ApplicationController의 메서드를 그대로 사용 (Codex PR #236 P2):
   # ActiveRecord::RecordNotFound rescue + workspaces_path redirect + 한국어 alert
@@ -109,6 +131,9 @@ class MetricsController < ApplicationController
           end
         when :rate
           prefix = s[:key].to_s
+          # `state` 를 먼저 내보내, 외부 분석 도구가 avg_pct blank 의 원인을
+          # `no_committed` (운영 데이터 부재) vs `no_data` (분모 0) vs `ok` 로 구분할 수 있게 한다.
+          csv << [ prefix, "state", s[:state] ]
           csv << [ prefix, "sessions_analyzed", s[:sessions_analyzed] ]
           csv << [ prefix, "avg_pct", s[:avg_pct] ]
           (s[:distribution] || {}).each { |bucket, n| csv << [ prefix, "bucket.#{bucket}", n ] }

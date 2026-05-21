@@ -1,12 +1,21 @@
 <%# Rate section — modification / exclusion 공통 partial.
-    Issue #187 thresholds: <10% C(auto-post) 후보, 10–30% B, >30% A 강화. %>
+    Issue #187 thresholds: <10% C(auto-post) 후보, 10–30% B, >30% A 강화.
+
+    state 분기 (Codex PR #243 후속): "왜 비었는가" 를 분리해서 표시한다.
+      :no_committed — commit 된 세션 자체가 없음 (운영 데이터 부재 → 판단 보류)
+      :no_data      — commit 은 있으나 분모(reviewable/candidate) 없음 (특수 상태)
+      :ok           — 정상 데이터.
+    두 empty 상태를 합치면 auto-post threshold 판단 / 운영 진단이 흐려진다. %>
 <% key = section[:key] %>
 <div class="bg-surface rounded-lg shadow p-4">
   <h2 class="text-base font-semibold text-primary mb-1"><%= t("metrics.sections.rate.#{key}.title") %></h2>
   <p class="text-meta text-tertiary mb-3"><%= t("metrics.sections.rate.#{key}.subtitle") %></p>
 
-  <% if section[:rates].empty? %>
-    <p class="text-sm text-tertiary"><%= t("metrics.sections.rate.empty") %></p>
+  <% case section[:state] %>
+  <% when :no_committed %>
+    <p class="text-sm text-tertiary"><%= t("metrics.sections.rate.no_committed") %></p>
+  <% when :no_data %>
+    <p class="text-sm text-tertiary"><%= t("metrics.sections.rate.#{key}.no_data") %></p>
   <% else %>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
       <div>
