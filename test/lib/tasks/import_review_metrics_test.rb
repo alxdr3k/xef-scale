@@ -293,21 +293,27 @@ class ImportReviewMetricsReportTest < ActiveSupport::TestCase
     assert_equal :no_committed, mod[:state]
     assert_equal :no_committed, exc[:state]
 
-    # case 2: commit 된 세션은 있으나 reviewable 거래 없음 → :no_data
+    # case 2: commit 된 세션은 있으나 transaction row 가 없어 reviewable/candidate
+    # 분모가 모두 0 → :no_data. (exclusion denominator 는 Transaction.unscoped 의
+    # candidate count 이므로 rolled_back row 가 단 한 건이라도 있으면 분모는 1 이
+    # 되고 state 는 :ok 가 된다는 점에 주의 — 진짜 no_data 는 transaction 자체가
+    # 없는 상태.)
     session = @workspace.parsing_sessions.create!(
       source_type: "file_upload", status: "completed",
       review_status: "committed",
       completed_at: 2.minutes.ago, committed_at: 1.minute.ago
     )
-    # rolled_back 만 있어 reviewable / candidate 모두 0
     no_data_report = ImportReviewMetricsReport.new(
       sessions: @workspace.parsing_sessions.where(id: session.id), options: {}
     )
     mod = no_data_report.sections.find { |s| s[:type] == :rate && s[:key] == :modification }
+    exc = no_data_report.sections.find { |s| s[:type] == :rate && s[:key] == :exclusion }
     assert_equal :no_data, mod[:state]
-    # text 에서 modification 의 no_data 문구가 분리되어 출력
+    assert_equal :no_data, exc[:state]
+    # text 에서 modification / exclusion 의 no_data 문구가 분리되어 출력
     text = no_data_report.render
     assert_match(/no reviewable transactions in committed sessions/, text)
+    assert_match(/no candidate transactions in committed sessions/, text)
 
     # case 3: 정상 데이터 → :ok
     @workspace.transactions.create!(date: Date.current, amount: 1, status: "committed", parsing_session: session)

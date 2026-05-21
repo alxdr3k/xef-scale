@@ -178,4 +178,15 @@ class MetricsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/modification,state,(no_committed|no_data|ok)/, body)
     assert_match(/exclusion,state,(no_committed|no_data|ok)/, body)
   end
+
+  # csv_for 도 text_for 와 동일하게 unknown section type 은 silent drop 하지 않고
+  # 명시 실패한다 (canonical source 계약 일관성, PR #249 후속).
+  test "csv_for raises on unknown section type to prevent silent drift" do
+    sign_in @admin
+    get workspace_metrics_path(@workspace, format: :csv) # @workspace/@since/@until 셋업 후 private call
+
+    bogus_section = { type: :unknown_kind }
+    err = assert_raises(ArgumentError) { controller.send(:csv_for, [ bogus_section ]) }
+    assert_match(/unknown metrics CSV section type/, err.message)
+  end
 end
