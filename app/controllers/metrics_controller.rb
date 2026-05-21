@@ -97,7 +97,10 @@ class MetricsController < ApplicationController
 
   # Schema version 이 1을 넘어가는 변경 (column 추가/제거/key 의미 변경) 은 외부
   # 소비자에게 알리기 위해 명시적으로 bump 한다.
-  CSV_SCHEMA_VERSION = 1
+  #
+  # v2 (PR #249): rate 섹션에 `state` row 추가 ({modification,exclusion}.state =
+  #   no_committed | no_data | ok). v1 에서는 blank avg_pct 의 원인을 구분할 수 없었다.
+  CSV_SCHEMA_VERSION = 2
 
   # Phase 7-4: 외부 분석 도구로 메트릭 데이터를 가져갈 수 있도록 CSV export.
   # sections 데이터를 long-format (section,metric,value) 로 flatten — 한 줄당 한 값.

@@ -123,7 +123,9 @@ class MetricsControllerTest < ActionDispatch::IntegrationTest
     sign_in @admin
     get workspace_metrics_path(@workspace, format: :csv, since: "2026-01-01", until: "2026-05-18")
     body = @response.body
-    assert_match(/\Asection,metric,value\nmeta,schema_version,1\n/, body)
+    # schema_version v2 (PR #249): rate 섹션에 state row 추가. 외부 소비자가 호환성을
+    # 분기할 수 있도록 bump.
+    assert_match(/\Asection,metric,value\nmeta,schema_version,2\n/, body)
     assert_includes body, "meta,workspace_id,#{@workspace.id}"
     assert_includes body, "meta,range_start,2026-01-01"
     assert_includes body, "meta,range_end,2026-05-18"
